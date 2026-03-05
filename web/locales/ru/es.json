@@ -915,6 +915,8 @@
   "talkModeOk": "Режим установлен",
   "talkModeFailed": "Ошибка",
   "audioTranscription": "Транскрипция аудио",
+  "echoTranscript": "Эхо транскрипции",
+  "echoFormat": "Формат эхо",
   "audioCommand": "Команда",
   "audioModelId": "ID модели",
   "audioApiKey": "Ключ API",

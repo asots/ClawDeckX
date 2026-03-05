@@ -915,6 +915,8 @@
   "talkModeOk": "모드 설정됨",
   "talkModeFailed": "실패",
   "audioTranscription": "오디오 전사",
+  "echoTranscript": "전사 에코",
+  "echoFormat": "에코 형식",
   "audioCommand": "명령",
   "audioModelId": "모델 ID",
   "audioApiKey": "API Key",

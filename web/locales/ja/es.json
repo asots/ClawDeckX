@@ -915,6 +915,8 @@
   "talkModeOk": "モードを設定しました",
   "talkModeFailed": "設定に失敗しました",
   "audioTranscription": "音声文字起こし",
+  "echoTranscript": "トランスクリプトエコー",
+  "echoFormat": "エコーフォーマット",
   "audioCommand": "コマンド",
   "audioModelId": "モデルID",
   "audioApiKey": "APIキー",

@@ -915,6 +915,8 @@
   "talkModeOk": "Modo definido",
   "talkModeFailed": "Falhou",
   "audioTranscription": "Transcrição de Áudio",
+  "echoTranscript": "Eco de Transcrição",
+  "echoFormat": "Formato de Eco",
   "audioCommand": "Comando",
   "audioModelId": "ID do Modelo",
   "audioApiKey": "Chave API",

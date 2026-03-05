@@ -915,6 +915,8 @@
   "talkModeOk": "मोड सेट",
   "talkModeFailed": "विफल",
   "audioTranscription": "ऑडियो ट्रांसक्रिप्शन",
+  "echoTranscript": "ट्रांसक्रिप्ट इको",
+  "echoFormat": "इको प्रारूप",
   "audioCommand": "कमांड",
   "audioModelId": "मॉडल ID",
   "audioApiKey": "API कुंजी",

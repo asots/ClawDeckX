@@ -915,6 +915,8 @@
   "talkModeOk": "模式已设置",
   "talkModeFailed": "设置失败",
   "audioTranscription": "语音转录",
+  "echoTranscript": "回显转录",
+  "echoFormat": "回显格式",
   "audioCommand": "转录命令",
   "audioModelId": "模型 ID",
   "audioApiKey": "API 密钥",

@@ -915,6 +915,8 @@
   "talkModeOk": "Mode diatur",
   "talkModeFailed": "Gagal",
   "audioTranscription": "Transkripsi Audio",
+  "echoTranscript": "Echo Transkrip",
+  "echoFormat": "Format Echo",
   "audioCommand": "Perintah",
   "audioModelId": "ID Model",
   "audioApiKey": "API Key",

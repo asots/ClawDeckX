@@ -294,6 +294,8 @@ export const AudioSection: React.FC<SectionProps> = ({ setField, getField, langu
       <ConfigSection title={es.audioTranscription} icon="hearing" iconColor="text-fuchsia-500" defaultOpen={false}>
         <ArrayField label={es.audioCommand} tooltip={tip('audio.transcription.command')} value={getField(['audio', 'transcription', 'command']) || []} onChange={v => setField(['audio', 'transcription', 'command'], v)} placeholder={es.phWhisperCommand} />
         <NumberField label={es.timeoutS} tooltip={tip('audio.transcription.timeoutSeconds')} value={getField(['audio', 'transcription', 'timeoutSeconds'])} onChange={v => setField(['audio', 'transcription', 'timeoutSeconds'], v)} min={1} />
+        <SwitchField label={es.echoTranscript || 'Echo Transcript'} tooltip={tip('audio.transcription.echoTranscript')} value={getField(['audio', 'transcription', 'echoTranscript']) === true} onChange={v => setField(['audio', 'transcription', 'echoTranscript'], v)} />
+        <TextField label={es.echoFormat || 'Echo Format'} tooltip={tip('audio.transcription.echoFormat')} value={getField(['audio', 'transcription', 'echoFormat']) || ''} onChange={v => setField(['audio', 'transcription', 'echoFormat'], v)} placeholder="🎤 {text}" />
       </ConfigSection>
 
       {/* Voice Wake */}

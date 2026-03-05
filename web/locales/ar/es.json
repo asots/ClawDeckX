@@ -915,6 +915,8 @@
   "talkModeOk": "تم تعيين الوضع",
   "talkModeFailed": "فشل",
   "audioTranscription": "نسخ الصوت",
+  "echoTranscript": "صدى النسخ",
+  "echoFormat": "تنسيق الصدى",
   "audioCommand": "الأمر",
   "audioModelId": "معرف النموذج",
   "audioApiKey": "مفتاح API",
