@@ -31,7 +31,7 @@ Write-Host ""
 
 # Detect architecture
 $Arch = if ([System.Environment]::Is64BitOperatingSystem) { "amd64" } else { "386" }
-$AssetPattern = "ClawDeckX-windows-$Arch.exe"
+$AssetPattern = "clawdeckx-windows-$Arch.exe"
 
 Write-Host "Detected: Windows/$Arch" -ForegroundColor Green
 
@@ -50,7 +50,7 @@ Write-Host "Found asset: $FileName" -ForegroundColor Green
 
 # Download to user's local bin directory
 $InstallDir = "$env:LOCALAPPDATA\ClawDeckX"
-$Dest = "$InstallDir\ClawDeckX.exe"
+$Dest = "$InstallDir\clawdeckx.exe"
 
 if (-not (Test-Path $InstallDir)) {
     New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
@@ -71,7 +71,7 @@ if ($UserPath -notlike "*$InstallDir*") {
 Write-Host ""
 Write-Host "============================================================" -ForegroundColor Green
 Write-Host "  ClawDeckX $Version installed successfully!" -ForegroundColor Green
-Write-Host "  Run: ClawDeckX.exe" -ForegroundColor Green
+Write-Host "  Run: clawdeckx.exe" -ForegroundColor Green
 Write-Host "  Or find it at: $Dest" -ForegroundColor Green
 Write-Host "============================================================" -ForegroundColor Green
 Write-Host ""

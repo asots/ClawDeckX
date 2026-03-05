@@ -307,7 +307,7 @@ func expectedAssetName() string {
 	if runtime.GOOS == "windows" {
 		ext = ".exe"
 	}
-	return fmt.Sprintf("ClawDeckX-%s-%s%s", runtime.GOOS, runtime.GOARCH, ext)
+	return fmt.Sprintf("clawdeckx-%s-%s%s", runtime.GOOS, runtime.GOARCH, ext)
 }
 
 // replaceBinary replaces the current executable with the new one.

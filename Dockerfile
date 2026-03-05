@@ -18,8 +18,9 @@ COPY . .
 COPY --from=frontend /app/internal/web/dist ./internal/web/dist
 ARG VERSION=0.0.1
 ARG BUILD_NUMBER=0
-RUN CGO_ENABLED=0 GOOS=linux go build \
-    -ldflags="-s -w -X ClawDeckX/internal/version.Version=${VERSION} -X ClawDeckX/internal/version.Build=${BUILD_NUMBER}" \
+RUN COMPAT=$(grep -o '"openclawCompat"[[:space:]]*:[[:space:]]*"[^"]*"' web/package.json | cut -d'"' -f4) && \
+    CGO_ENABLED=0 GOOS=linux go build \
+    -ldflags="-s -w -X ClawDeckX/internal/version.Version=${VERSION} -X ClawDeckX/internal/version.Build=${BUILD_NUMBER} -X 'ClawDeckX/internal/version.OpenClawCompat=${COMPAT}'" \
     -o /clawdeckx ./cmd/clawdeckx
 
 # Stage 3: Runtime
