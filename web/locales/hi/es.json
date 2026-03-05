@@ -1153,6 +1153,8 @@
   "timeoutSeconds": "टाइमआउट (सेकंड)",
   "dmTopics": "DM विषय",
   "tipDmTopics": "DM वार्तालापों में फोरम-शैली विषय सक्षम करें",
+  "disableAudioPreflight": "ऑडियो प्रीफ्लाइट अक्षम करें",
+  "tipDisableAudioPreflight": "वॉइस संदेश भेजने से पहले ऑडियो प्रीफ्लाइट जांच छोड़ें",
   "topicBindings": "विषय बाइंडिंग",
   "topicId": "विषय ID",
   "addTopicBinding": "विषय बाइंडिंग जोड़ें",

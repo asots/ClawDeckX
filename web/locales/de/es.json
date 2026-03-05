@@ -1153,6 +1153,8 @@
   "timeoutSeconds": "Zeitüberschreitung (s)",
   "dmTopics": "DM-Themen",
   "tipDmTopics": "Forum-Stil-Themen in DM-Gesprächen aktivieren",
+  "disableAudioPreflight": "Audio-Preflight deaktivieren",
+  "tipDisableAudioPreflight": "Audio-Prüfung vor dem Senden von Sprachnachrichten überspringen",
   "topicBindings": "Themen-Zuordnungen",
   "topicId": "Themen-ID",
   "addTopicBinding": "Themen-Zuordnung hinzufügen",

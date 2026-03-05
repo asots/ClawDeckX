@@ -1153,6 +1153,8 @@
   "timeoutSeconds": "タイムアウト (秒)",
   "dmTopics": "DMトピック",
   "tipDmTopics": "DM会話でフォーラム式トピックを有効化",
+  "disableAudioPreflight": "音声プリフライトを無効化",
+  "tipDisableAudioPreflight": "音声メッセージ送信前のプリフライトチェックをスキップ",
   "topicBindings": "トピックバインディング",
   "topicId": "トピックID",
   "addTopicBinding": "トピックバインディングを追加",

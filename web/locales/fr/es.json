@@ -1153,6 +1153,8 @@
   "timeoutSeconds": "Délai d'attente (s)",
   "dmTopics": "Sujets DM",
   "tipDmTopics": "Activer les sujets style forum dans les conversations DM",
+  "disableAudioPreflight": "Désactiver le preflight audio",
+  "tipDisableAudioPreflight": "Ignorer la vérification audio avant l'envoi de messages vocaux",
   "topicBindings": "Liaisons de sujets",
   "topicId": "ID du sujet",
   "addTopicBinding": "Ajouter une liaison de sujet",

@@ -1153,6 +1153,8 @@
   "timeoutSeconds": "逾時 (秒)",
   "dmTopics": "私聊話題",
   "tipDmTopics": "在私聊會話中啟用論壇式話題",
+  "disableAudioPreflight": "停用音訊預檢",
+  "tipDisableAudioPreflight": "傳送語音訊息前跳過音訊預檢",
   "topicBindings": "話題綁定",
   "topicId": "話題 ID",
   "addTopicBinding": "新增話題綁定",

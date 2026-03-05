@@ -1153,6 +1153,8 @@
   "timeoutSeconds": "المهلة (ثانية)",
   "dmTopics": "مواضيع المحادثات",
   "tipDmTopics": "تفعيل المواضيع بأسلوب المنتدى في المحادثات الخاصة",
+  "disableAudioPreflight": "تعطيل فحص الصوت المسبق",
+  "tipDisableAudioPreflight": "تخطي فحص الصوت قبل إرسال الرسائل الصوتية",
   "topicBindings": "ربط المواضيع",
   "topicId": "معرّف الموضوع",
   "addTopicBinding": "إضافة ربط موضوع",

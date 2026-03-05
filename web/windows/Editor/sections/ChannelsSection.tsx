@@ -469,6 +469,7 @@ export const ChannelsSection: React.FC<SectionProps> = ({ config, setField, getF
             <TextField label={es.proxy || 'Proxy'} value={g(['proxy']) || ''} onChange={v => s(['proxy'], v)} placeholder="http://host:port" tooltip={tip('proxy')} />
             <NumberField label={es.timeoutSeconds || 'Timeout (s)'} value={g(['timeoutSeconds'])} onChange={v => s(['timeoutSeconds'], v)} placeholder="60" tooltip={es.tipTgTimeout} />
             <SwitchField label={es.dmTopics || 'DM Topics'} value={g(['dmTopics']) === true} onChange={v => s(['dmTopics'], v)} tooltip={es.tipDmTopics} />
+            <SwitchField label={es.disableAudioPreflight || 'Disable Audio Preflight'} value={g(['disableAudioPreflight']) === true} onChange={v => s(['disableAudioPreflight'], v)} tooltip={es.tipDisableAudioPreflight} />
             {/* Telegram Topics */}
             {(() => {
               const rawTopics = g(['topics']);

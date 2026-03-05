@@ -1154,6 +1154,8 @@
   "timeoutSeconds": "Timeout (s)",
   "dmTopics": "DM Topics",
   "tipDmTopics": "Enable forum-style topics in DM conversations",
+  "disableAudioPreflight": "Disable Audio Preflight",
+  "tipDisableAudioPreflight": "Skip audio preflight check before sending voice messages",
   "topicBindings": "Topic Bindings",
   "topicId": "Topic ID",
   "addTopicBinding": "Add Topic Binding",

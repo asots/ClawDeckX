@@ -1153,6 +1153,8 @@
   "timeoutSeconds": "Timeout (d)",
   "dmTopics": "Topik DM",
   "tipDmTopics": "Aktifkan topik gaya forum di percakapan DM",
+  "disableAudioPreflight": "Nonaktifkan Preflight Audio",
+  "tipDisableAudioPreflight": "Lewati pemeriksaan audio sebelum mengirim pesan suara",
   "topicBindings": "Pengikatan Topik",
   "topicId": "ID Topik",
   "addTopicBinding": "Tambah Pengikatan Topik",

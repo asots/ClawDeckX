@@ -1153,6 +1153,8 @@
   "timeoutSeconds": "Tiempo de espera (s)",
   "dmTopics": "Temas DM",
   "tipDmTopics": "Activar temas estilo foro en conversaciones DM",
+  "disableAudioPreflight": "Desactivar preflight de audio",
+  "tipDisableAudioPreflight": "Omitir verificación previa de audio al enviar mensajes de voz",
   "topicBindings": "Vinculaciones de temas",
   "topicId": "ID de tema",
   "addTopicBinding": "Agregar vinculación de tema",

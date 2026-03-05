@@ -1153,6 +1153,8 @@
   "timeoutSeconds": "Тайм-аут (с)",
   "dmTopics": "DM-темы",
   "tipDmTopics": "Включить темы в стиле форума в DM-беседах",
+  "disableAudioPreflight": "Отключить предварительную проверку аудио",
+  "tipDisableAudioPreflight": "Пропустить проверку аудио перед отправкой голосовых сообщений",
   "topicBindings": "Привязки тем",
   "topicId": "ID темы",
   "addTopicBinding": "Добавить привязку темы",
