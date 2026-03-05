@@ -1,4 +1,4 @@
-﻿#!/bin/bash
+#!/bin/bash
 set -e
 
 # ==============================================================================
@@ -139,14 +139,14 @@ echo -e "${YELLOW}Fetching latest release info... (${LATEST_VERSION})${NC}"
 # Asset name convention: ClawDeckX-{os}-{arch} (e.g., ClawDeckX-linux-amd64)
 # If on macOS, the binary might be named ClawDeckX-darwin-amd64 or similar.
 # Adjusting based on standard Go build naming.
-BINARY_NAME="ClawDeckX"
-ASSET_PATTERN="ClawDeckX-${OS}-${ARCH}"
+BINARY_NAME="clawdeckx"
+ASSET_PATTERN="clawdeckx-${OS}-${ARCH}"
 
 # Fallback for Windows (if run in git bash/wsl)
 if [[ "$OS" == *"mingw"* || "$OS" == *"cygwin"* ]]; then
     OS="windows"
-    ASSET_PATTERN="ClawDeckX-windows-${ARCH}.exe"
-    BINARY_NAME="ClawDeckX.exe"
+    ASSET_PATTERN="clawdeckx-windows-${ARCH}.exe"
+    BINARY_NAME="clawdeckx.exe"
 fi
 
 DOWNLOAD_URL=$(curl -s $API_URL | grep "browser_download_url" | grep "$ASSET_PATTERN" | cut -d '"' -f 4)
