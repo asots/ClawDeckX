@@ -763,10 +763,89 @@ func (s *Service) daemonStatusSystemd() DaemonStatusResult {
 	return res
 }
 
+func isWSL2() bool {
+	out, err := os.ReadFile("/proc/version")
+	if err != nil {
+		return false
+	}
+	lower := strings.ToLower(string(out))
+	return strings.Contains(lower, "microsoft") || strings.Contains(lower, "wsl")
+}
+
+func systemdUserAvailable() bool {
+	return runOk("systemctl", "--user", "status")
+}
+
+func checkLingerStatus() (enabled bool, user string) {
+	user = os.Getenv("USER")
+	if user == "" {
+		user = os.Getenv("LOGNAME")
+	}
+	if user == "" {
+		return false, ""
+	}
+	out, err := runOutput("loginctl", "show-user", user, "-p", "Linger")
+	if err != nil {
+		return false, user
+	}
+	return strings.Contains(strings.ToLower(out), "linger=yes"), user
+}
+
+// ReadLastGatewayError reads the gateway log and returns the last known error line.
+func ReadLastGatewayError() string {
+	stateDir := ResolveStateDir()
+	if stateDir == "" {
+		return ""
+	}
+	logFiles := []string{
+		filepath.Join(stateDir, "logs", "gateway-err.log"),
+		filepath.Join(stateDir, "logs", "gateway.log"),
+		"/tmp/openclaw-gateway.log",
+	}
+	errorPatterns := []string{
+		"refusing to bind",
+		"failed to bind",
+		"address already in use",
+		"permission denied",
+		"auth mode",
+		"gateway start blocked",
+		"EADDRINUSE",
+		"EACCES",
+	}
+	for _, logFile := range logFiles {
+		data, err := os.ReadFile(logFile)
+		if err != nil {
+			continue
+		}
+		lines := strings.Split(string(data), "\n")
+		for i := len(lines) - 1; i >= 0; i-- {
+			line := strings.TrimSpace(lines[i])
+			if line == "" {
+				continue
+			}
+			lower := strings.ToLower(line)
+			for _, pattern := range errorPatterns {
+				if strings.Contains(lower, pattern) {
+					return line
+				}
+			}
+		}
+	}
+	return ""
+}
+
 func (s *Service) daemonInstallSystemd() error {
 	unitPath := systemdUserUnitPath()
 	if unitPath == "" {
 		return errors.New("cannot determine user home directory")
+	}
+
+	// Check if systemd user services are available
+	if !systemdUserAvailable() {
+		if isWSL2() {
+			return errors.New("systemd user services unavailable in WSL2. Fix: edit /etc/wsl.conf and add [boot]\nsystemd=true, then run 'wsl --shutdown' from PowerShell and reopen your distro")
+		}
+		return errors.New("systemd user services unavailable. If running in a container, use foreground mode instead")
 	}
 
 	cmdName := ResolveOpenClawCmd()
@@ -822,7 +901,13 @@ WantedBy=default.target
 		return fmt.Errorf("enable: %w", err)
 	}
 	// Enable linger so user services survive logout
-	_ = runCommand("loginctl", "enable-linger", os.Getenv("USER"))
+	lingerOk, lingerUser := checkLingerStatus()
+	if !lingerOk && lingerUser != "" {
+		if err := runCommand("loginctl", "enable-linger", lingerUser); err != nil {
+			output.Debugf("Warning: failed to enable linger for user %s: %v\n", lingerUser, err)
+			output.Debugf("Service may stop when you log out. Run: sudo loginctl enable-linger %s\n", lingerUser)
+		}
+	}
 	return nil
 }
 
