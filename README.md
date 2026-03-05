@@ -64,9 +64,9 @@ Fully responsive layout that adapts seamlessly from large desktop monitors to ta
 
 ### Multilingual Support | 多语言支持
 
-Full i18n architecture with 13 built-in languages. Adding a new language is as simple as dropping in a JSON file — no code changes required.
+Full i18n architecture with 13 built-in languages. Adding a new language requires only a translated JSON folder and a two-line code change.
 
-完整的国际化架构，内置 13 种语言支持。新增语言只需添加一个 JSON 文件，无需修改任何代码。
+完整的国际化架构，内置 13 种语言支持。新增语言只需提供翻译的 JSON 文件夹，并修改两行代码即可完成接入。
 
 ### Local & Remote Gateway | 本地与远程网关
 
