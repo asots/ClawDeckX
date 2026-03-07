@@ -1,7 +1,7 @@
 {
   "fileApply": {
     "title": "適用の確認",
-    "affectedFiles": "以下のファイルが変更されます",
+    "affectedFiles": "以下のファイルが変更されます（追記/上書き切替可）",
     "modeAppend": "追記",
     "modeReplace": "上書き",
     "fileExists": "既存",

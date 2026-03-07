@@ -1,7 +1,7 @@
 {
   "fileApply": {
     "title": "적용 확인",
-    "affectedFiles": "다음 파일이 수정됩니다",
+    "affectedFiles": "수정할 파일 (추가/교체 전환 가능)",
     "modeAppend": "추가",
     "modeReplace": "교체",
     "fileExists": "존재함",

@@ -1,7 +1,7 @@
 {
   "fileApply": {
     "title": "Confirmer l'application",
-    "affectedFiles": "Les fichiers suivants seront modifiés",
+    "affectedFiles": "Fichiers à modifier (basculer ajouter/remplacer)",
     "modeAppend": "Ajouter",
     "modeReplace": "Remplacer",
     "fileExists": "Existe",

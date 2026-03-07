@@ -620,5 +620,6 @@
   "saRem.gateway.control_ui.insecure_auth": "gateway.controlUi.allowInsecureAuth अक्षम करें",
   "saRem.gateway.control_ui.device_auth_disabled": "gateway.controlUi.dangerouslyDisableDeviceAuth हटाएं",
   "saRem.config.secrets.gateway_password_in_config": "प्लेनटेक्स्ट मानों के बजाय सीक्रेट संदर्भ उपयोग करें",
-  "saRem.fs.synced_dir": "स्टेट/कॉन्फ़िग डायरेक्टरी को सिंक फोल्डर से बाहर ले जाएं"
+  "saRem.fs.synced_dir": "स्टेट/कॉन्फ़िग डायरेक्टरी को सिंक फोल्डर से बाहर ले जाएं",
+  "relatedFaq": "संबंधित FAQ"
 }

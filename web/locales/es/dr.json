@@ -620,5 +620,6 @@
   "saRem.gateway.control_ui.insecure_auth": "Deshabilite gateway.controlUi.allowInsecureAuth",
   "saRem.gateway.control_ui.device_auth_disabled": "Elimine gateway.controlUi.dangerouslyDisableDeviceAuth",
   "saRem.config.secrets.gateway_password_in_config": "Use referencias secretas en lugar de valores en texto plano",
-  "saRem.fs.synced_dir": "Mueva el directorio de estado/configuración fuera de las carpetas sincronizadas"
+  "saRem.fs.synced_dir": "Mueva el directorio de estado/configuración fuera de las carpetas sincronizadas",
+  "relatedFaq": "FAQ relacionadas"
 }

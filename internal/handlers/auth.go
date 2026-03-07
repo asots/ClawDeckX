@@ -367,7 +367,11 @@ func (h *AuthHandler) NeedsSetup(w http.ResponseWriter, r *http.Request) {
 		"needs_setup": count == 0,
 	}
 	if count > 0 {
-		resp["login_hint"] = h.userRepo.FirstUsername()
+		firstUser := h.userRepo.FirstUsername()
+		// Only expose default usernames as login hint to avoid leaking custom usernames
+		if firstUser == "admin" || firstUser == "Admin" {
+			resp["login_hint"] = firstUser
+		}
 	}
 	web.OK(w, r, resp)
 }

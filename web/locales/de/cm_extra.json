@@ -1,7 +1,7 @@
 {
   "fileApply": {
     "title": "Anwendung bestätigen",
-    "affectedFiles": "Folgende Dateien werden geändert",
+    "affectedFiles": "Dateien ändern (Anhängen/Ersetzen umschalten)",
     "modeAppend": "Anhängen",
     "modeReplace": "Ersetzen",
     "fileExists": "Vorhanden",

@@ -48,6 +48,20 @@
       "subcategories": [
         { "id": "personas", "name": "Personas", "icon": "person" }
       ]
+    },
+    {
+      "id": "knowledge",
+      "name": "Knowledge Hub",
+      "description": "Recipes, tips, snippets, and FAQs for mastering OpenClaw",
+      "path": "official/knowledge",
+      "version": "1.0.0",
+      "templateCount": 0,
+      "subcategories": [
+        { "id": "recipes", "name": "Recipes", "icon": "menu_book" },
+        { "id": "tips", "name": "Tips & Tricks", "icon": "lightbulb" },
+        { "id": "snippets", "name": "Config Snippets", "icon": "code" },
+        { "id": "faq", "name": "FAQ", "icon": "help" }
+      ]
     }
   ],
   "languages": ["en", "zh", "zh-TW", "ja", "ko", "es", "pt-BR", "de", "fr", "ru", "ar", "hi", "id"],

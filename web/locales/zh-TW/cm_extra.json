@@ -1,7 +1,7 @@
 {
   "fileApply": {
     "title": "確認應用",
-    "affectedFiles": "以下檔案將被修改",
+    "affectedFiles": "以下檔案將被修改，可切換追加/覆蓋模式",
     "modeAppend": "追加",
     "modeReplace": "覆蓋",
     "fileExists": "已存在",

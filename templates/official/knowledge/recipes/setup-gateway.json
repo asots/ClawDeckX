@@ -1,0 +1,41 @@
+{
+  "id": "recipe-quickstart",
+  "type": "recipe",
+  "version": "1.1.0",
+  "metadata": {
+    "name": "快速开始配置",
+    "description": "通过 ClawDeckX 可视化界面完成首次配置，5 分钟上手",
+    "category": "setup",
+    "tags": ["quickstart", "setup", "beginner"],
+    "difficulty": "easy",
+    "featured": true,
+    "i18n": {
+      "en": {
+        "name": "Quick Start Guide",
+        "description": "Complete first-time setup through ClawDeckX visual interface in 5 minutes"
+      }
+    }
+  },
+  "content": {
+    "body": "通过 ClawDeckX 的可视化界面完成首次配置，无需手动编辑配置文件。",
+    "steps": [
+      {
+        "title": "运行安装向导",
+        "description": "打开 ClawDeckX → 点击桌面上的「安装向导」图标，按提示完成基础配置（选择 AI 提供商、填写 API Key）。"
+      },
+      {
+        "title": "配置模型",
+        "description": "前往「配置中心 → 模型」，选择主模型。推荐使用 gpt-4o 或 claude-sonnet 作为入门模型。"
+      },
+      {
+        "title": "添加频道",
+        "description": "前往「配置中心 → 频道」，添加你要使用的消息频道（Telegram、Discord、WhatsApp 等），填入对应的 Bot Token。"
+      },
+      {
+        "title": "启动并验证",
+        "description": "回到仪表盘，点击「启动网关」。启动后打开「健康中心」运行诊断，确认所有项目通过。"
+      }
+    ],
+    "editorSection": "models"
+  }
+}

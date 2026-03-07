@@ -330,6 +330,14 @@ class TemplateI18nManager {
           promises.push(this.loadTranslations(category, sub, lang));
         }
       }
+
+      // Load subcategory translations for knowledge
+      if (category === 'knowledge') {
+        const subcategories = ['recipes', 'tips', 'snippets', 'faq'];
+        for (const sub of subcategories) {
+          promises.push(this.loadTranslations(category, sub, lang));
+        }
+      }
     }
 
     await Promise.allSettled(promises);

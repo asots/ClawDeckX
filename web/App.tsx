@@ -34,6 +34,7 @@ const loadSettings = () => import('./windows/Settings');
 const loadNodes = () => import('./windows/Nodes');
 const loadSetupWizard = () => import('./windows/SetupWizard');
 const loadUsageWizard = () => import('./windows/UsageWizard');
+const loadKnowledge = () => import('./windows/Knowledge');
 
 const WINDOW_LOADERS: Record<WindowID, () => Promise<unknown>> = {
   dashboard: loadDashboard,
@@ -51,6 +52,7 @@ const WINDOW_LOADERS: Record<WindowID, () => Promise<unknown>> = {
   nodes: loadNodes,
   setup_wizard: loadSetupWizard,
   usage_wizard: loadUsageWizard,
+  knowledge: loadKnowledge,
 };
 
 const PRIORITY_WARMUP_LOADERS: Array<() => Promise<unknown>> = [
@@ -88,6 +90,7 @@ const Settings = React.lazy(loadSettings);
 const Nodes = React.lazy(loadNodes);
 const SetupWizard = React.lazy(loadSetupWizard);
 const UsageWizard = React.lazy(loadUsageWizard);
+const Knowledge = React.lazy(loadKnowledge);
 
 const WINDOW_IDS: { id: WindowID; openByDefault?: boolean }[] = [
   { id: 'dashboard', openByDefault: true },
@@ -103,6 +106,7 @@ const WINDOW_IDS: { id: WindowID; openByDefault?: boolean }[] = [
   { id: 'scheduler' },
   { id: 'settings' },
   { id: 'nodes' },
+  { id: 'knowledge' },
   { id: 'setup_wizard' },
   { id: 'usage_wizard' },
 ];
@@ -342,13 +346,17 @@ const App: React.FC = () => {
   }, [maxZ]);
 
   const [pendingEditorSection, setPendingEditorSection] = useState<string | null>(null);
+  const [pendingExpandItem, setPendingExpandItem] = useState<string | null>(null);
   useEffect(() => {
     const handler = (evt: Event) => {
-      const ce = evt as CustomEvent<{ id?: WindowID; section?: string }>;
+      const ce = evt as CustomEvent<{ id?: WindowID; section?: string; expandItem?: string }>;
       const id = ce?.detail?.id;
       if (!id) return;
       if (id === 'editor' && ce?.detail?.section) {
         setPendingEditorSection(ce.detail.section);
+      }
+      if (id === 'knowledge' && ce?.detail?.expandItem) {
+        setPendingExpandItem(ce.detail.expandItem);
       }
       openWindow(id);
     };
@@ -473,6 +481,7 @@ const App: React.FC = () => {
                     {w.id === 'scheduler' && <Scheduler language={language} />}
                     {w.id === 'settings' && <Settings language={language} onLogout={logout} />}
                     {w.id === 'nodes' && <Nodes language={language} />}
+                    {w.id === 'knowledge' && <Knowledge language={language} pendingExpandItem={pendingExpandItem} onExpandItemConsumed={() => setPendingExpandItem(null)} />}
                     {w.id === 'setup_wizard' && (
                       <SetupWizard
                         language={language}

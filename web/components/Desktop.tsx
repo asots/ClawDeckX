@@ -37,20 +37,26 @@ interface AppGroup {
 }
 
 // 移到组件外部，避免每次渲染重新创建
+// Sorted by usage frequency: high → medium → low.
+// Layout is column-first (fills rows top-to-bottom, then next column).
 const ALL_DESKTOP_APPS: AppInfo[] = [
+  // — High frequency —
   { id: 'dashboard', titleKey: 'dashboard', icon: 'dashboard', gradient: 'from-[#2DA9FF] to-[#007AFF]' },
+  { id: 'editor', titleKey: 'editor', icon: 'code_blocks', gradient: 'from-[#14B8A6] to-[#0D9488]' },
+  { id: 'gateway', titleKey: 'gateway', icon: 'router', gradient: 'from-[#34C759] to-[#248A3D]' },
+  { id: 'sessions', titleKey: 'sessions', icon: 'forum', gradient: 'from-[#818CF8] to-[#4F46E5]' },
+  { id: 'activity', titleKey: 'activity', icon: 'query_stats', gradient: 'from-[#AF52DE] to-[#8944AB]' },
+  { id: 'skills', titleKey: 'skills', icon: 'extension', gradient: 'from-[#FF9500] to-[#E67E00]' },
+  // — Medium frequency —
+  { id: 'knowledge', titleKey: 'knowledge', icon: 'auto_awesome', gradient: 'from-[#8B5CF6] to-[#6D28D9]' },
+  { id: 'usage', titleKey: 'usage', icon: 'analytics', gradient: 'from-[#F472B6] to-[#DB2777]' },
+  { id: 'alerts', titleKey: 'alerts', icon: 'approval', gradient: 'from-[#FF453A] to-[#C33B32]' },
+  { id: 'agents', titleKey: 'agents', icon: 'robot_2', gradient: 'from-[#5856D6] to-[#3634A3]' },
+  { id: 'scheduler', titleKey: 'scheduler', icon: 'event_repeat', gradient: 'from-[#FF375F] to-[#BF2A47]' },
+  // — Low frequency —
+  { id: 'maintenance', titleKey: 'maintenance', icon: 'health_and_safety', gradient: 'from-[#22C55E] to-[#15803D]' },
   { id: 'setup_wizard', titleKey: 'setup_wizard', icon: 'rocket_launch', gradient: 'from-[#FF6B6B] to-[#FF3D3D]' },
   { id: 'usage_wizard', titleKey: 'usage_wizard', icon: 'auto_fix_high', gradient: 'from-[#A855F7] to-[#7C3AED]' },
-  { id: 'editor', titleKey: 'editor', icon: 'code_blocks', gradient: 'from-[#14B8A6] to-[#0D9488]' },
-  { id: 'skills', titleKey: 'skills', icon: 'extension', gradient: 'from-[#FF9500] to-[#E67E00]' },
-  { id: 'alerts', titleKey: 'alerts', icon: 'approval', gradient: 'from-[#FF453A] to-[#C33B32]' },
-  { id: 'gateway', titleKey: 'gateway', icon: 'router', gradient: 'from-[#34C759] to-[#248A3D]' },
-  { id: 'activity', titleKey: 'activity', icon: 'query_stats', gradient: 'from-[#AF52DE] to-[#8944AB]' },
-  { id: 'maintenance', titleKey: 'maintenance', icon: 'health_and_safety', gradient: 'from-[#22C55E] to-[#15803D]' },
-  { id: 'usage', titleKey: 'usage', icon: 'analytics', gradient: 'from-[#F472B6] to-[#DB2777]' },
-  { id: 'sessions', titleKey: 'sessions', icon: 'forum', gradient: 'from-[#818CF8] to-[#4F46E5]' },
-  { id: 'scheduler', titleKey: 'scheduler', icon: 'event_repeat', gradient: 'from-[#FF375F] to-[#BF2A47]' },
-  { id: 'agents', titleKey: 'agents', icon: 'robot_2', gradient: 'from-[#5856D6] to-[#3634A3]' },
   { id: 'settings', titleKey: 'settings', icon: 'settings', gradient: 'from-[#8E8E93] to-[#636366]' },
   { id: 'nodes', titleKey: 'nodes', icon: 'hub', gradient: 'from-[#10B981] to-[#059669]' },
 ];
@@ -87,6 +93,7 @@ const DOCK_GROUPS: AppGroup[] = [
     apps: [
       { id: 'editor', icon: 'code_blocks', color: 'bg-slate-700' },
       { id: 'skills', icon: 'extension', color: 'bg-amber-600' },
+      { id: 'knowledge', icon: 'auto_awesome', color: 'bg-violet-500' },
       { id: 'usage', icon: 'analytics', color: 'bg-cyan-500' },
       { id: 'usage_wizard', icon: 'auto_fix_high', color: 'bg-violet-600' },
     ]

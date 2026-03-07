@@ -491,15 +491,17 @@ const (
 	MsgServiceCommandFailed             = "service.command_failed"
 
 	// Service messages
-	MsgServiceRuntimeSystemd            = "service.runtime_systemd"
-	MsgServiceRuntimeDockerNotFound     = "service.runtime_docker_not_found"
-	MsgServiceRuntimeDockerContainer    = "service.runtime_docker_container"
-	MsgServiceRuntimeProcess            = "service.runtime_process"
-	MsgServiceRuntimeUnknown            = "service.runtime_unknown"
-	MsgServiceRuntimeRunning            = "service.runtime_running"
-	MsgServiceRemoteGatewayUnreachable  = "service.remote_gateway_unreachable"
-	MsgServiceRemoteGatewayTcpReachable = "service.remote_gateway_tcp_reachable"
-	MsgServiceRemoteGatewayHttpOk       = "service.remote_gateway_http_ok"
+	MsgServiceRuntimeSystemd             = "service.runtime_systemd"
+	MsgServiceRuntimeDockerNotFound      = "service.runtime_docker_not_found"
+	MsgServiceRuntimeDockerContainer     = "service.runtime_docker_container"
+	MsgServiceRuntimeProcess             = "service.runtime_process"
+	MsgServiceRuntimeUnknown             = "service.runtime_unknown"
+	MsgServiceRuntimeRunning             = "service.runtime_running"
+	MsgServiceRemoteGatewayUnreachable   = "service.remote_gateway_unreachable"
+	MsgServiceRemoteGatewayTcpReachable  = "service.remote_gateway_tcp_reachable"
+	MsgServiceRemoteGatewayHttpOk        = "service.remote_gateway_http_ok"
+	MsgServiceRemoteGatewayTcpOnlyNoHttp = "service.remote_gateway_tcp_only_no_http"
+	MsgServiceRemoteGatewayHttpError     = "service.remote_gateway_http_error"
 
 	// GWClient messages
 	MsgGwclientUnknownError         = "gwclient.unknown_error"
@@ -702,6 +704,7 @@ const (
 	MsgLogGwTokenReadFailed          = "log.gw_token_read_failed"
 	MsgLogRemoteGatewayMode          = "log.remote_gateway_mode"
 	MsgLogBindNonLoopbackWarning     = "log.bind_non_loopback_warning"
+	MsgDefaultLocalGatewayName       = "gateway.default_local_name"
 )
 
 // Success messages

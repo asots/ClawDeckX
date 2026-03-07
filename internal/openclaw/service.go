@@ -174,21 +174,32 @@ func (s *Service) remoteStatus() Status {
 	}
 	conn.Close()
 
-	detail := i18n.T(i18n.MsgServiceRemoteGatewayTcpReachable, map[string]interface{}{"Addr": addr})
+	// TCP reachable — now verify HTTP /health to confirm gateway is actually responding
 	client := &http.Client{Timeout: 3 * time.Second}
-	url := fmt.Sprintf("http://%s/health", addr)
-	resp, err := client.Get(url)
-	if err == nil {
-		resp.Body.Close()
-		if resp.StatusCode < 500 {
-			detail = i18n.T(i18n.MsgServiceRemoteGatewayHttpOk, map[string]interface{}{"Addr": addr, "Code": resp.StatusCode})
+	healthURL := fmt.Sprintf("http://%s/health", addr)
+	resp, err := client.Get(healthURL)
+	if err != nil {
+		// TCP open but HTTP failed (EOF / connection reset) — port is occupied but gateway not responding
+		return Status{
+			Runtime: RuntimeProcess,
+			Running: false,
+			Detail:  i18n.T(i18n.MsgServiceRemoteGatewayTcpOnlyNoHttp, map[string]interface{}{"Addr": addr, "Error": err.Error()}),
+		}
+	}
+	resp.Body.Close()
+
+	if resp.StatusCode >= 500 {
+		return Status{
+			Runtime: RuntimeProcess,
+			Running: false,
+			Detail:  i18n.T(i18n.MsgServiceRemoteGatewayHttpError, map[string]interface{}{"Addr": addr, "Code": resp.StatusCode}),
 		}
 	}
 
 	return Status{
 		Runtime: RuntimeProcess,
 		Running: true,
-		Detail:  detail,
+		Detail:  i18n.T(i18n.MsgServiceRemoteGatewayHttpOk, map[string]interface{}{"Addr": addr, "Code": resp.StatusCode}),
 	}
 }
 
@@ -218,21 +229,19 @@ func (s *Service) Start() error {
 		}
 
 		port := defaultGatewayPort
-		bind := "loopback"
 		cfgPath := ResolveConfigPath()
 		if cfgPath != "" {
 			if p := configGatewayPort(cfgPath); p != "" {
 				port = p
 			}
-			if b := configGatewayBind(cfgPath); b != "" {
-				bind = b
-			}
 		}
 
 		if runtime.GOOS == "windows" {
-			return s.startWindowsGateway(cmdName, bind, port)
+			return s.startWindowsGateway(cmdName, port)
 		}
-		return runCommand("sh", "-c", fmt.Sprintf("nohup %s gateway run --bind %s --port %s > /tmp/openclaw-gateway.log 2>&1 &", cmdName, bind, port))
+		// Do NOT pass --bind here; let OpenClaw read gateway.bind from config file.
+		// This ensures that config center changes to bind mode take effect on restart.
+		return runCommand("sh", "-c", fmt.Sprintf("nohup %s gateway run --port %s > /tmp/openclaw-gateway.log 2>&1 &", cmdName, port))
 	default:
 		return errors.New(i18n.T(i18n.MsgErrUnknownRuntimeStart))
 	}
@@ -521,7 +530,7 @@ func configGatewayBind(path string) string {
 	return ""
 }
 
-func (s *Service) startWindowsGateway(cmdName, bind, port string) error {
+func (s *Service) startWindowsGateway(cmdName, port string) error {
 	stateDir := ResolveStateDir()
 	if stateDir == "" {
 		stateDir = filepath.Join(os.TempDir(), ".openclaw")
@@ -535,7 +544,8 @@ func (s *Service) startWindowsGateway(cmdName, bind, port string) error {
 		logFile, _ = os.Open(os.DevNull)
 	}
 
-	c := exec.Command(cmdName, "gateway", "run", "--bind", bind, "--port", port)
+	// Do NOT pass --bind here; let OpenClaw read gateway.bind from config file.
+	c := exec.Command(cmdName, "gateway", "run", "--port", port)
 	c.Stdout = logFile
 	c.Stderr = logFile
 	c.Stdin = nil
@@ -916,23 +926,21 @@ func (s *Service) daemonInstallSystemd() error {
 	}
 
 	port := defaultGatewayPort
-	bind := "loopback"
 	if cfgPath := ResolveConfigPath(); cfgPath != "" {
 		if p := configGatewayPort(cfgPath); p != "" {
 			port = p
 		}
-		if b := configGatewayBind(cfgPath); b != "" {
-			bind = b
-		}
 	}
 
+	// Do NOT pass --bind here; let OpenClaw read gateway.bind from config file.
+	// This ensures that config center changes to bind mode take effect on restart.
 	unit := fmt.Sprintf(`[Unit]
 Description=OpenClaw Gateway
 After=network-online.target
 Wants=network-online.target
 
 [Service]
-ExecStart=%s gateway run --bind %s --port %s
+ExecStart=%s gateway run --port %s
 Restart=always
 RestartSec=5
 KillMode=control-group
@@ -940,7 +948,7 @@ WorkingDirectory=%s
 
 [Install]
 WantedBy=default.target
-`, absCmd, bind, port, filepath.Dir(absCmd))
+`, absCmd, port, filepath.Dir(absCmd))
 
 	if useSystemLevel {
 		return s.installSystemLevelSystemd(unit, absCmd)
@@ -1100,13 +1108,9 @@ func (s *Service) daemonInstallLaunchd() error {
 	}
 
 	port := defaultGatewayPort
-	bind := "loopback"
 	if cfgPath := ResolveConfigPath(); cfgPath != "" {
 		if p := configGatewayPort(cfgPath); p != "" {
 			port = p
-		}
-		if b := configGatewayBind(cfgPath); b != "" {
-			bind = b
 		}
 	}
 
@@ -1114,6 +1118,8 @@ func (s *Service) daemonInstallLaunchd() error {
 	logPath := filepath.Join(stateDir, "logs", "gateway.log")
 	errPath := filepath.Join(stateDir, "logs", "gateway-err.log")
 
+	// Do NOT pass --bind here; let OpenClaw read gateway.bind from config file.
+	// This ensures that config center changes to bind mode take effect on restart.
 	content := fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -1125,8 +1131,6 @@ func (s *Service) daemonInstallLaunchd() error {
     <string>%s</string>
     <string>gateway</string>
     <string>run</string>
-    <string>--bind</string>
-    <string>%s</string>
     <string>--port</string>
     <string>%s</string>
   </array>
@@ -1140,7 +1144,7 @@ func (s *Service) daemonInstallLaunchd() error {
   <string>%s</string>
 </dict>
 </plist>
-`, launchdLabel, absCmd, bind, port, logPath, errPath)
+`, launchdLabel, absCmd, port, logPath, errPath)
 
 	os.MkdirAll(filepath.Dir(plistPath), 0755)
 	os.MkdirAll(filepath.Dir(logPath), 0755)
@@ -1274,13 +1278,9 @@ func (s *Service) daemonInstallWindows() error {
 	}
 
 	port := defaultGatewayPort
-	bind := "loopback"
 	if cfgPath := ResolveConfigPath(); cfgPath != "" {
 		if p := configGatewayPort(cfgPath); p != "" {
 			port = p
-		}
-		if b := configGatewayBind(cfgPath); b != "" {
-			bind = b
 		}
 	}
 
@@ -1289,9 +1289,10 @@ func (s *Service) daemonInstallWindows() error {
 		_ = copyFile(scriptPath, scriptPath+".bak")
 	}
 
-	// Generate gateway.cmd wrapper script
-	script := fmt.Sprintf("@echo off\r\nrem OpenClaw Gateway\r\ncd /d \"%s\"\r\n\"%s\" gateway run --bind %s --port %s\r\n",
-		filepath.Dir(absCmd), absCmd, bind, port)
+	// Do NOT pass --bind here; let OpenClaw read gateway.bind from config file.
+	// This ensures that config center changes to bind mode take effect on restart.
+	script := fmt.Sprintf("@echo off\r\nrem OpenClaw Gateway\r\ncd /d \"%s\"\r\n\"%s\" gateway run --port %s\r\n",
+		filepath.Dir(absCmd), absCmd, port)
 
 	os.MkdirAll(filepath.Dir(scriptPath), 0755)
 	if err := os.WriteFile(scriptPath, []byte(script), 0644); err != nil {

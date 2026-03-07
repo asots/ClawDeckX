@@ -1355,8 +1355,8 @@ const UsageWizard: React.FC<UsageWizardProps> = ({ language, onOpenEditor, onOpe
               )}
               {/* Action row */}
               <div className="flex items-center gap-2 mt-3 pt-3 border-t border-slate-100 dark:border-white/[0.04]">
-                {!status.ok && onOpenEditor && (
-                  <button onClick={onOpenEditor}
+                {!status.ok && (
+                  <button onClick={() => openEditorSection(tip.editorSection)}
                     className="text-[10px] px-2.5 py-1 rounded-lg bg-primary text-white font-bold hover:bg-primary/90 transition-colors flex items-center gap-1">
                     <span className="material-symbols-outlined text-[12px]">settings</span>
                     {o?.tipGoSetup}

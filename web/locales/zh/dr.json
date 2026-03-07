@@ -620,5 +620,6 @@
   "saRem.fs.synced_dir": "将状态/配置目录移出同步文件夹",
   "securityAuditGuideDismiss": "知道了",
   "securityAuditViewAll": "查看全部",
-  "securityAuditCollapse": "收起"
+  "securityAuditCollapse": "收起",
+  "relatedFaq": "相关 FAQ"
 }

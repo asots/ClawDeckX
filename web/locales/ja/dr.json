@@ -620,5 +620,6 @@
   "saRem.gateway.control_ui.insecure_auth": "gateway.controlUi.allowInsecureAuthを無効にしてください",
   "saRem.gateway.control_ui.device_auth_disabled": "gateway.controlUi.dangerouslyDisableDeviceAuthを削除してください",
   "saRem.config.secrets.gateway_password_in_config": "プレーンテキスト値の代わりにシークレット参照を使用してください",
-  "saRem.fs.synced_dir": "状態/設定ディレクトリを同期フォルダから移動してください"
+  "saRem.fs.synced_dir": "状態/設定ディレクトリを同期フォルダから移動してください",
+  "relatedFaq": "関連 FAQ"
 }

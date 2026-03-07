@@ -426,6 +426,8 @@
   "service.remote_gateway_unreachable": "Remote Gateway {{.Addr}} unreachable: {{.Error}}",
   "service.remote_gateway_tcp_reachable": "Remote Gateway {{.Addr}} (TCP reachable)",
   "service.remote_gateway_http_ok": "Remote Gateway {{.Addr}} (HTTP OK, status {{.Code}})",
+  "service.remote_gateway_tcp_only_no_http": "Remote Gateway {{.Addr}} — port open but gateway not responding ({{.Error}})",
+  "service.remote_gateway_http_error": "Remote Gateway {{.Addr}} — HTTP error (status {{.Code}})",
 
   "gwclient.unknown_error": "Unknown error",
 
@@ -605,6 +607,7 @@
   "log.gw_token_read_failed": "Failed to read gateway auth token from openclaw.json (see DEBUG logs above)",
   "log.remote_gateway_mode": "Remote Gateway mode",
   "log.bind_non_loopback_warning": "⚠️  Web service bound to non-loopback address, ensure firewall rules are configured",
+  "gateway.default_local_name": "Local Gateway",
 
   "success.applied": "Applied successfully",
   "success.saved": "Saved successfully",

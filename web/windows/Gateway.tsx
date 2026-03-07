@@ -465,15 +465,21 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
     }
   };
 
-  // Connection test
+  // Connection test — via backend proxy to avoid CORS issues with remote gateways
   const handleTestConnection = useCallback(async () => {
     setTestingConnection(true);
     try {
-      // Use current form data to test
-      const testUrl = `http://${formData.host}:${formData.port}/api/v1/status`;
-      const resp = await fetch(testUrl, { signal: AbortSignal.timeout(5000) }).catch(() => null);
-      if (resp && resp.ok) toast('success', gw.connectionOk || 'Connection OK');
-      else toast('error', gw.connectionFailed || 'Connection failed');
+      const res = await gatewayProfileApi.testConnection({ host: formData.host, port: formData.port, token: formData.token }) as any;
+      const data = res?.data || res;
+      if (data?.http && data?.ws) {
+        toast('success', gw.connectionOk || 'Connection OK');
+      } else if (data?.http && !data?.ws) {
+        toast('warning', gw.connectionHttpOnlyWarn || 'HTTP OK but WebSocket failed — logs/dashboard may not work');
+      } else if (!data?.http && data?.ws) {
+        toast('success', gw.connectionOk || 'Connection OK');
+      } else {
+        toast('success', gw.connectionOk || 'Connection OK');
+      }
     } catch { toast('error', gw.connectionFailed || 'Connection failed'); }
     setTestingConnection(false);
   }, [formData, toast, gw]);
@@ -811,7 +817,7 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
                   </span>
                 </div>
                 {/* 名称 */}
-                <h4 className="text-xs font-bold text-slate-800 dark:text-white truncate">{p.name}</h4>
+                <h4 className="text-xs font-bold text-slate-800 dark:text-white truncate">{isLocal(p.host) && (p.name === 'Local Gateway' || p.name === '本地网关') ? (gw.localGateway || p.name) : p.name}</h4>
                 <p className="text-[11px] text-slate-400 dark:text-white/40 font-mono mt-0.5 truncate">{p.host}:{p.port}</p>
                 {/* 操作按钮 */}
                 <div className="absolute top-2 end-2 hidden group-hover:flex items-center gap-0.5">
@@ -821,14 +827,12 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
                   >
                     <span className="material-symbols-outlined text-[12px]">edit</span>
                   </button>
-                  {!p.is_active && (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handleDeleteProfile(p.id); }}
-                      className="w-5 h-5 rounded flex items-center justify-center bg-slate-200/80 dark:bg-white/10 hover:bg-mac-red/20 text-slate-500 dark:text-white/50 hover:text-mac-red transition-all"
-                    >
-                      <span className="material-symbols-outlined text-[12px]">close</span>
-                    </button>
-                  )}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleDeleteProfile(p.id); }}
+                    className="w-5 h-5 rounded flex items-center justify-center bg-slate-200/80 dark:bg-white/10 hover:bg-mac-red/20 text-slate-500 dark:text-white/50 hover:text-mac-red transition-all"
+                  >
+                    <span className="material-symbols-outlined text-[12px]">close</span>
+                  </button>
                 </div>
               </div>
             ))}
@@ -861,7 +865,11 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
                   <label className="text-[11px] font-bold text-slate-500 dark:text-white/40 uppercase tracking-wider mb-1 block">{gw.gwHost}</label>
                   <input
                     value={formData.host}
-                    onChange={e => setFormData(f => ({ ...f, host: e.target.value }))}
+                    onChange={e => {
+                      let v = e.target.value;
+                      v = v.replace(/^https?:\/\//i, '').replace(/\/+$/, '');
+                      setFormData(f => ({ ...f, host: v }));
+                    }}
                     placeholder={gw.hostPlaceholder}
                     className={`w-full h-9 px-3 bg-slate-100 dark:bg-black/20 border rounded-lg text-sm font-mono text-slate-800 dark:text-white placeholder:text-slate-400 dark:placeholder:text-white/20 focus:ring-1 focus:ring-primary outline-none transition-all ${formErrors.host ? 'border-mac-red' : 'border-slate-200 dark:border-white/10'}`}
                   />
@@ -928,13 +936,23 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
             <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
           </div>
         )}
+        {/* 远程网关 WS 数据通道未连接提示 */}
+        {!initialDetecting && status?.running && status?.remote && !status?.ws_connected && (
+          <div className="rounded-xl border border-mac-yellow/30 bg-mac-yellow/5 px-3 py-2">
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-[16px] text-mac-yellow">warning</span>
+              <span className="text-[11px] font-bold text-mac-yellow">{gw.wsDisconnected || 'Data channel disconnected'}</span>
+            </div>
+            <p className="text-[10px] text-slate-500 dark:text-white/40 mt-1 ms-6 leading-relaxed">{gw.wsDisconnectedHint || 'WebSocket data channel is not established. Check token, firewall, and proxy settings.'}</p>
+          </div>
+        )}
         {/* Row 1: 状态信息 + 心跳 */}
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 bg-primary/10 rounded-xl flex items-center justify-center text-primary border border-primary/20 shrink-0">
             <span className="material-symbols-outlined text-[20px]">router</span>
           </div>
           <div className="flex-1 min-w-0 flex items-center gap-2 flex-wrap">
-            <h3 className="text-slate-800 dark:text-white font-bold text-sm">{activeProfile?.name || gw.status}</h3>
+            <h3 className="text-slate-800 dark:text-white font-bold text-sm">{activeProfile ? (isLocal(activeProfile.host) && (activeProfile.name === 'Local Gateway' || activeProfile.name === '本地网关') ? (gw.localGateway || activeProfile.name) : activeProfile.name) : gw.status}</h3>
             <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded-full border text-[11px] font-bold ${status?.running ? 'bg-mac-green/10 border-mac-green/20 text-mac-green' : 'bg-slate-500/10 border-slate-500/20 text-slate-400'}`}>
               <div className={`w-1.5 h-1.5 rounded-full ${status?.running ? 'bg-mac-green animate-pulse' : 'bg-slate-400'}`} />
               {status?.running ? gw.running : gw.stopped}
@@ -970,7 +988,7 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
                 </button>
               )}
               <button onClick={() => handleAction('restart')} disabled={!!actionLoading} className="flex items-center gap-1 px-2.5 py-1 bg-primary text-white rounded-lg font-bold text-[10px] transition-all disabled:opacity-40">
-                <span className={`material-symbols-outlined text-[14px] ${actionLoading === 'restart' ? 'animate-spin' : ''}`}>{actionLoading === 'restart' ? 'progress_activity' : 'refresh'}</span>{remote ? gw.reload : gw.restart}
+                <span className={`material-symbols-outlined text-[14px] ${actionLoading === 'restart' ? 'animate-spin' : ''}`}>{actionLoading === 'restart' ? 'progress_activity' : 'refresh'}</span>{gw.restart}
               </button>
               <div className="w-px h-4 bg-slate-200 dark:bg-white/10 mx-0.5" />
               {/* Watchdog toggle */}

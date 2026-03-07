@@ -1,7 +1,7 @@
 {
   "fileApply": {
     "title": "Konfirmasi Terapkan",
-    "affectedFiles": "File berikut akan dimodifikasi",
+    "affectedFiles": "File yang akan dimodifikasi (alihkan tambah/ganti)",
     "modeAppend": "Tambahkan",
     "modeReplace": "Ganti",
     "fileExists": "Ada",

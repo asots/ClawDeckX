@@ -13,7 +13,7 @@
  */
 
 import { Language } from '../types';
-import { templateManagerV2, ScenarioTemplate, MultiAgentTemplate, AgentTemplate } from './template-manager-v2';
+import { templateManagerV2, ScenarioTemplate, MultiAgentTemplate, AgentTemplate, KnowledgeItem, KnowledgeItemType } from './template-manager-v2';
 import { templateSourceManager, TemplateSource } from './template-sources';
 import { templateCache } from './template-loaders';
 import { templateApi } from './api';
@@ -23,6 +23,9 @@ export type {
   ScenarioTemplate, 
   MultiAgentTemplate, 
   AgentTemplate,
+  KnowledgeItem,
+  KnowledgeItemType,
+  RecipeStep,
   SkillConfig,
   CronJobConfig,
   IntegrationConfig,
@@ -312,6 +315,54 @@ class TemplateSystem {
 
   async searchAll(query: string, language: Language) {
     return templateManagerV2.searchTemplates(query, language);
+  }
+
+  // =========================================================================
+  // 知识库（直接访问）
+  // =========================================================================
+
+  async getKnowledgeItems(language: Language): Promise<KnowledgeItem[]> {
+    return templateManagerV2.loadKnowledgeItems(language);
+  }
+
+  async getKnowledgeByType(language: Language, type: KnowledgeItemType): Promise<KnowledgeItem[]> {
+    const all = await templateManagerV2.loadKnowledgeItems(language);
+    return all.filter(item => item.type === type);
+  }
+
+  async getGroupedKnowledge(language: Language): Promise<Record<KnowledgeItemType, KnowledgeItem[]>> {
+    const all = await templateManagerV2.loadKnowledgeItems(language);
+    const groups: Record<string, KnowledgeItem[]> = {
+      recipe: [],
+      tip: [],
+      snippet: [],
+      faq: [],
+    };
+    all.forEach(item => {
+      if (groups[item.type]) {
+        groups[item.type].push(item);
+      }
+    });
+    return groups as Record<KnowledgeItemType, KnowledgeItem[]>;
+  }
+
+  /**
+   * Build a reverse index: doctorCheckId → matching FAQ items.
+   * Used by Doctor to recommend relevant FAQs for failing checks.
+   */
+  async getDoctorFaqIndex(language: Language): Promise<Map<string, KnowledgeItem[]>> {
+    const all = await templateManagerV2.loadKnowledgeItems(language);
+    const index = new Map<string, KnowledgeItem[]>();
+    for (const item of all) {
+      if (item.type !== 'faq') continue;
+      const checks = item.content.relatedDoctorChecks || [];
+      for (const checkId of checks) {
+        const list = index.get(checkId) || [];
+        list.push(item);
+        index.set(checkId, list);
+      }
+    }
+    return index;
   }
 
   // =========================================================================

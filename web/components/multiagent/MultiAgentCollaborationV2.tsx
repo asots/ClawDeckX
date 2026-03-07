@@ -537,11 +537,11 @@ ${blockEnd}
           language={language}
           onClose={() => {
             setDeployWizardTemplate(null);
-            onDeploy?.(deployWizardTemplate);
           }}
           onDeployed={() => {
             // Don't close the wizard here - let user see the result page
             // The wizard will be closed when user clicks "Done"
+            onDeploy?.(deployWizardTemplate);
           }}
         />
       )}

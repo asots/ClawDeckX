@@ -24,6 +24,33 @@
 
 <br>
 
+## 📸 Screenshots | 界面预览
+
+<div align="center">
+  <img src="assets/screenshots/dashboard.png" width="800" alt="Dashboard Overview" />
+  <p><sub>Dashboard Overview | 仪表盘总览</sub></p>
+</div>
+
+<br>
+
+<div align="center">
+  <img src="assets/screenshots/scenarios.png" width="390" alt="Scenario Templates" />
+  &nbsp;
+  <img src="assets/screenshots/multi-agent.png" width="390" alt="Multi-Agent Workflow" />
+  <p><sub>Scenario Templates &amp; Multi-Agent Workflow | 场景模板列表 &amp; 多智能体工作流</sub></p>
+</div>
+
+<br>
+
+<div align="center">
+  <img src="assets/screenshots/config.png" width="390" alt="Configuration Center" />
+  &nbsp;
+  <img src="assets/screenshots/skills.png" width="390" alt="Skills Center" />
+  <p><sub>Configuration Center &amp; Skills Center | 配置中心 &amp; 技能中心</sub></p>
+</div>
+
+<br>
+
 ## ✨ Why ClawDeckX?
 
 ### macOS-Grade Visual Experience | macOS 级视觉体验
@@ -74,33 +101,6 @@ Seamlessly manage both local and remote OpenClaw gateways. Switch between gatewa
 
 同时支持本地网关与远程网关管理。一键切换网关配置档案，轻松应对开发、测试、生产等多环境部署场景。
 
-<br>
-
-## 📸 Screenshots | 界面预览
-
-<div align="center">
-  <img src="assets/screenshots/dashboard.png" width="800" alt="Dashboard Overview" />
-  <p><sub>Dashboard Overview | 仪表盘总览</sub></p>
-</div>
-
-<br>
-
-<div align="center">
-  <img src="assets/screenshots/scenarios.png" width="390" alt="Scenario Templates" />
-  &nbsp;
-  <img src="assets/screenshots/multi-agent.png" width="390" alt="Multi-Agent Workflow" />
-  <p><sub>Scenario Templates &amp; Multi-Agent Workflow | 场景模板列表 &amp; 多智能体工作流</sub></p>
-</div>
-
-<br>
-
-<div align="center">
-  <img src="assets/screenshots/config.png" width="390" alt="Configuration Center" />
-  &nbsp;
-  <img src="assets/screenshots/skills.png" width="390" alt="Skills Center" />
-  <p><sub>Configuration Center &amp; Skills Center | 配置中心 &amp; 技能中心</sub></p>
-</div>
-
 ## 🚀 Quick Start
 
 ### One-Click Install | 一键安装
@@ -144,6 +144,11 @@ Download the binary from [Releases](https://github.com/ClawDeckX/ClawDeckX/relea
 | `--user` | `-u` | Initial admin username (first run only) | 初始管理员用户名（仅首次） |
 | `--pass` | | Initial admin password (min 6 chars) | 初始管理员密码（至少 6 位） |
 | `--debug` | | Enable debug logging | 启用调试日志 |
+
+> [!IMPORTANT]
+> **Security Reminder:** On first run, if no `--user` and `--pass` are provided, the auto-generated admin credentials will be printed to the console. Please change your username and password in the settings page immediately after logging in.
+>
+> **安全提示：** 首次运行时，若未指定 `--user` 和 `--pass`，系统会自动生成管理员账户，凭据将打印到控制台。请在登录后立即前往系统设置/账户安全页面修改用户名和密码。
 
 <br>
 

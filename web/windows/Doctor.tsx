@@ -8,6 +8,8 @@ import { TestCenterPanel } from '../components/maintenance';
 import { subscribeManagerWS } from '../services/manager-ws';
 import CustomSelect from '../components/CustomSelect';
 import { saTranslate } from '../utils/saTranslate';
+import { templateSystem } from '../services/template-system';
+import type { KnowledgeItem } from '../services/template-system';
 import type { ManagerWSStatus } from '../services/manager-ws';
 
 type TabId = 'diagnose' | 'testing';
@@ -298,6 +300,7 @@ const Doctor: React.FC<DoctorProps> = ({ language }) => {
     { newIds: new Set(), fixedIds: new Set() }
   );
   const [sourceFilter, setSourceFilter] = useState<SummarySourceKey>('all');
+  const [doctorFaqIndex, setDoctorFaqIndex] = useState<Map<string, KnowledgeItem[]>>(new Map());
   const summaryRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const summaryBucketsRef = useRef<SummaryWindowBuckets>({ medium: [], high: [], critical: [], hour: [], day: [] });
 
@@ -305,6 +308,11 @@ const Doctor: React.FC<DoctorProps> = ({ language }) => {
     if (typeof window === 'undefined') return;
     window.localStorage.setItem(TIME_RANGE_STORAGE_KEY, timeRange);
   }, [timeRange]);
+
+  // Load Doctor ↔ FAQ reverse index
+  useEffect(() => {
+    templateSystem.getDoctorFaqIndex(language).then(idx => setDoctorFaqIndex(idx)).catch(() => {});
+  }, [language]);
 
   // Security audit history comparison
   useEffect(() => {
@@ -2179,6 +2187,8 @@ const Doctor: React.FC<DoctorProps> = ({ language }) => {
                 <div className="space-y-2">
                   {localizedItems.map((item, idx) => {
                     const st = item.status === 'ok' ? text.ok : item.status === 'warn' ? text.warn : text.error;
+                    const checkId = item.id || item.code || '';
+                    const relatedFaqs = item.status !== 'ok' ? (doctorFaqIndex.get(checkId) || []) : [];
                     return (
                       <div key={`${item.name}-${idx}`} className="rounded-lg border border-slate-200 dark:border-white/10 p-2.5 bg-slate-50 dark:bg-white/[0.02]">
                         <div className="flex items-start justify-between gap-2">
@@ -2196,6 +2206,24 @@ const Doctor: React.FC<DoctorProps> = ({ language }) => {
                             <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${statusClass(item.status)}`}>{st}</span>
                           </div>
                         </div>
+                        {relatedFaqs.length > 0 && (
+                          <div className="mt-1.5 pt-1.5 border-t border-slate-100 dark:border-white/5">
+                            <div className="flex items-center gap-1 flex-wrap">
+                              <span className="material-symbols-outlined text-[11px] text-indigo-400">menu_book</span>
+                              <span className="text-[9px] text-indigo-400 font-bold uppercase tracking-wider">{text.relatedFaq || 'Related FAQ'}</span>
+                              {relatedFaqs.map(faq => (
+                                <button
+                                  key={faq.id}
+                                  onClick={() => window.dispatchEvent(new CustomEvent('clawdeck:open-window', { detail: { id: 'knowledge', expandItem: faq.id } }))}
+                                  className="text-[10px] text-indigo-500 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 hover:underline underline-offset-2 flex items-center gap-0.5"
+                                >
+                                  <span className="material-symbols-outlined text-[10px]">help_outline</span>
+                                  {faq.content.question || faq.metadata.name}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     );
                   })}

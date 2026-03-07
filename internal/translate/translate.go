@@ -37,7 +37,7 @@ type ConfigResolver func() map[string]interface{}
 type ModelPreference func() string
 
 // Translator provides text translation with multi-engine fallback:
-// LLM (user-configured, best quality) → Lingva → MyMemory → Google Translate.
+// Free APIs first (Lingva → DeepLX → LibreTranslate → MyMemory → Google) → LLM (last resort).
 type Translator struct {
 	client              *http.Client
 	mu                  sync.Mutex
@@ -752,19 +752,6 @@ func (t *Translator) TranslateWithEngine(ctx context.Context, text, source, targ
 		return text, "", nil
 	}
 
-	// Auto-resolve LLM config from user's openclaw.json (once)
-	t.resolveLLMConfig()
-
-	// Engine 0: LLM translation (highest priority, best quality, no rate limiting needed)
-	if t.llmConfig != nil {
-		result, err := t.llmTranslate(ctx, text, source, target)
-		if err == nil && result != "" {
-			logger.Log.Debug().Str("engine", "llm").Str("provider", t.llmConfig.Provider).Msg("LLM translation succeeded")
-			return result, EngineLLM, nil
-		}
-		logger.Log.Debug().Err(err).Str("engine", "llm").Msg("LLM translation failed, falling back to free APIs")
-	}
-
 	// Acquire semaphore (concurrency limit for free APIs)
 	select {
 	case t.sem <- struct{}{}:
@@ -839,7 +826,7 @@ func (t *Translator) TranslateWithEngine(ctx context.Context, text, source, targ
 		logger.Log.Debug().Err(err).Int("attempt", attempt+1).Str("engine", "mymemory").Msg("translation attempt failed")
 	}
 
-	// Engine 5: Google Translate direct (fallback, blocked in China)
+	// Engine 5: Google Translate direct (blocked in China)
 	for attempt := 0; attempt < 2; attempt++ {
 		if attempt > 0 {
 			backoff := time.Duration(1<<attempt) * time.Second
@@ -853,7 +840,18 @@ func (t *Translator) TranslateWithEngine(ctx context.Context, text, source, targ
 		if err == nil && result != "" {
 			return result, EngineFree, nil
 		}
-		logger.Log.Debug().Err(err).Int("attempt", attempt+1).Str("engine", "google").Msg("fallback attempt failed")
+		logger.Log.Debug().Err(err).Int("attempt", attempt+1).Str("engine", "google").Msg("google attempt failed")
+	}
+
+	// Engine 6: LLM (last resort, uses user's configured API key)
+	t.resolveLLMConfig()
+	if t.llmConfig != nil {
+		logger.Log.Debug().Str("engine", "llm").Str("provider", t.llmConfig.Provider).Msg("all free engines failed, trying LLM as last resort")
+		result, err := t.llmTranslate(ctx, text, source, target)
+		if err == nil && result != "" {
+			return result, EngineLLM, nil
+		}
+		logger.Log.Debug().Err(err).Str("engine", "llm").Msg("LLM translation also failed")
 	}
 
 	logger.Log.Warn().Err(err).Str("target", target).Str("text", truncate(text, 60)).Msg("all translation engines failed after retries")

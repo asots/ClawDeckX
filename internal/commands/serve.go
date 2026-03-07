@@ -13,7 +13,6 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
 	"syscall"
@@ -30,7 +29,6 @@ import (
 	"ClawDeckX/internal/openclaw"
 	"ClawDeckX/internal/proclock"
 	"ClawDeckX/internal/sentinel"
-	"ClawDeckX/internal/service"
 	"ClawDeckX/internal/tray"
 	"ClawDeckX/internal/version"
 	"ClawDeckX/internal/web"
@@ -92,16 +90,6 @@ func RunServe(args []string) int {
 	logger.Init(cfg.Log)
 	logger.Log.Info().Str("version", version.Version).Msg(i18n.T(i18n.MsgLogServeStarting))
 
-	// Auto-install system service on first run
-	if !service.IsInstalled() && (runtime.GOOS == "linux" || runtime.GOOS == "darwin") {
-		logger.Log.Info().Msg("Installing ClawDeckX system service...")
-		if err := service.Install(cfg.Server.Port); err != nil {
-			logger.Log.Warn().Err(err).Msg("Failed to install system service (non-fatal)")
-		} else {
-			logger.Log.Info().Msg("System service installed successfully")
-		}
-	}
-
 	// Init database
 	if err := database.Init(cfg.Database, cfg.IsDebug()); err != nil {
 		logger.Log.Fatal().Err(err).Msg(i18n.T(i18n.MsgLogDbInitFailed))
@@ -145,6 +133,30 @@ func RunServe(args []string) int {
 	gwToken := cfg.OpenClaw.GatewayToken
 	{
 		profileRepo := database.NewGatewayProfileRepo()
+		// Load user language preference before creating default profile
+		if lang, err := database.NewSettingRepo().Get("language"); err == nil && lang != "" {
+			i18n.SetLanguage(lang)
+		}
+		// Auto-create default local gateway profile on first launch
+		if profiles, err := profileRepo.List(); err == nil && len(profiles) == 0 {
+			defaultPort := gwPort
+			if defaultPort == 0 {
+				defaultPort = 18789
+			}
+			localProfile := &database.GatewayProfile{
+				Name:     i18n.T(i18n.MsgDefaultLocalGatewayName),
+				Host:     "127.0.0.1",
+				Port:     defaultPort,
+				Token:    gwToken,
+				IsActive: true,
+			}
+			if err := profileRepo.Create(localProfile); err == nil {
+				logger.Log.Info().
+					Str("name", localProfile.Name).
+					Int("port", localProfile.Port).
+					Msg("auto-created default local gateway profile")
+			}
+		}
 		if activeProfile, err := profileRepo.GetActive(); err == nil && activeProfile != nil {
 			gwHost = activeProfile.Host
 			gwPort = activeProfile.Port
@@ -289,6 +301,7 @@ func RunServe(args []string) int {
 	selfUpdateHandler := handlers.NewSelfUpdateHandler()
 	selfUpdateHandler.SetGWClient(gwClient)
 	serverConfigHandler := handlers.NewServerConfigHandler()
+	recipeHandler := handlers.NewRecipeHandler()
 	badgeHandler := handlers.NewBadgeHandler()
 
 	router := web.NewRouter()
@@ -379,6 +392,8 @@ func RunServe(args []string) int {
 	router.GET("/api/v1/doctor/overview", doctorHandler.Overview)
 	router.POST("/api/v1/doctor/fix", doctorHandler.Fix)
 
+	router.POST("/api/v1/recipe/apply-step", web.RequireAdmin(recipeHandler.ApplyStep))
+
 	router.GET("/api/v1/llm/models-status", llmHealthHandler.ModelsStatus)
 	router.GET("/api/v1/llm/auth-health", llmHealthHandler.AuthHealth)
 	router.POST("/api/v1/llm/probe", llmHealthHandler.Probe)
@@ -432,6 +447,7 @@ func RunServe(args []string) int {
 	router.PUT("/api/v1/gateway/profiles", gwProfileHandler.Update)
 	router.DELETE("/api/v1/gateway/profiles", gwProfileHandler.Delete)
 	router.POST("/api/v1/gateway/profiles/activate", gwProfileHandler.Activate)
+	router.POST("/api/v1/gateway/profiles/test", gwProfileHandler.TestConnection)
 
 	gwProxy := handlers.NewGWProxyHandler(gwClient)
 	router.GET("/api/v1/gw/status", gwProxy.Status)

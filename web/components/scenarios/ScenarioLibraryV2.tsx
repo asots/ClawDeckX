@@ -5,6 +5,7 @@ import { templateSystem, ScenarioTemplate } from '../../services/template-system
 import { scenarioApi } from '../../services/api';
 import { useToast } from '../Toast';
 import { FileApplyConfirm, FileApplyRequest } from '../FileApplyConfirm';
+import AgentPickerModal from '../AgentPickerModal';
 
 interface ScenarioLibraryProps {
   language: Language;
@@ -37,6 +38,7 @@ const ScenarioLibraryV2: React.FC<ScenarioLibraryProps> = ({ language, defaultAg
   const [previewScenario, setPreviewScenario] = useState<ScenarioTemplate | null>(null);
   const [settingUp, setSettingUp] = useState<string | null>(null);
   const [applyRequest, setApplyRequest] = useState<FileApplyRequest | null>(null);
+  const [pendingScenario, setPendingScenario] = useState<ScenarioTemplate | null>(null);
 
   // Load scenarios
   useEffect(() => {
@@ -114,16 +116,9 @@ const ScenarioLibraryV2: React.FC<ScenarioLibraryProps> = ({ language, defaultAg
     return 'bg-slate-500/10 text-slate-500';
   }, []);
 
-  const handleQuickSetup = useCallback(
-    (scenario: ScenarioTemplate) => {
-      if (!defaultAgentId) {
-        toast('error', s.noAgentSelected || 'No agent selected');
-        return;
-      }
-
-      // Build file apply request
+  const buildApplyRequest = useCallback(
+    (scenario: ScenarioTemplate, agentId: string): FileApplyRequest | null => {
       const files = [];
-      
       const blockId = `scenario:${scenario.id}`;
 
       if (scenario.content.soulSnippet) {
@@ -180,25 +175,38 @@ const ScenarioLibraryV2: React.FC<ScenarioLibraryProps> = ({ language, defaultAg
         } as any);
       }
 
-      if (files.length === 0) {
-        toast('error', 'No content to apply');
-        return;
-      }
+      if (files.length === 0) return null;
 
-      setApplyRequest({
-        agentId: defaultAgentId,
+      return {
+        agentId,
         files,
         title: scenario.metadata.name,
         description: scenario.metadata.description,
-        // Pass advanced features for post-apply processing
         advancedFeatures: {
           skills: (scenario as any).skills,
           cronJobs: (scenario as any).cronJobs,
           integrations: (scenario as any).integrations,
         },
-      });
+      };
     },
-    [defaultAgentId, s, toast]
+    []
+  );
+
+  const handleQuickSetup = useCallback(
+    (scenario: ScenarioTemplate) => {
+      if (!defaultAgentId) {
+        setPendingScenario(scenario);
+        return;
+      }
+
+      const req = buildApplyRequest(scenario, defaultAgentId);
+      if (!req) {
+        toast('error', 'No content to apply');
+        return;
+      }
+      setApplyRequest(req);
+    },
+    [defaultAgentId, toast, buildApplyRequest]
   );
 
   const handleApplyDone = useCallback(() => {
@@ -604,6 +612,19 @@ const ScenarioLibraryV2: React.FC<ScenarioLibraryProps> = ({ language, defaultAg
             </div>
           </div>
         </div>
+      )}
+
+      {/* Agent Picker */}
+      {pendingScenario && (
+        <AgentPickerModal
+          locale={(t as any).agentPicker || {}}
+          onSelect={(agentId) => {
+            const req = buildApplyRequest(pendingScenario, agentId);
+            if (req) setApplyRequest(req);
+            setPendingScenario(null);
+          }}
+          onCancel={() => setPendingScenario(null)}
+        />
       )}
 
       {/* File Apply Confirmation Dialog */}

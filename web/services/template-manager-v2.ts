@@ -19,6 +19,10 @@ export interface TemplateMetadata {
   newbie?: boolean;
   costTier?: 'low' | 'medium' | 'high';
   source?: string; // Source ID
+  relatedTemplates?: string[];
+  updateFrequency?: 'static' | 'occasional' | 'frequent';
+  featured?: boolean;
+  lastUpdated?: string; // ISO 8601
 }
 
 export interface TemplateRequirements {
@@ -127,7 +131,40 @@ export interface AgentTemplate {
   };
 }
 
-export type Template = ScenarioTemplate | MultiAgentTemplate | AgentTemplate;
+export interface RecipeStep {
+  title: string;
+  description?: string;
+  code?: string;
+  file?: string;
+  language?: string;
+  action?: 'copy' | 'append' | 'replace' | 'command';
+  target?: string;
+  confirm?: boolean;
+}
+
+export type KnowledgeItemType = 'recipe' | 'tip' | 'snippet' | 'faq';
+
+export interface KnowledgeItem {
+  id: string;
+  type: KnowledgeItemType;
+  version: string;
+  metadata: TemplateMetadata;
+  requirements?: TemplateRequirements;
+  content: {
+    body?: string;
+    steps?: RecipeStep[];
+    snippet?: string;
+    snippetLanguage?: string;
+    targetFile?: string;
+    question?: string;
+    answer?: string;
+    examples?: string[];
+    relatedDoctorChecks?: string[];
+    editorSection?: string;
+  };
+}
+
+export type Template = ScenarioTemplate | MultiAgentTemplate | AgentTemplate | KnowledgeItem;
 
 interface TemplateLoadResult<T> {
   data: T | null;
@@ -139,6 +176,7 @@ class TemplateManagerV2 {
   private scenarioCache = new Map<string, ScenarioTemplate[]>();
   private multiAgentCache = new Map<string, MultiAgentTemplate[]>();
   private agentCache = new Map<string, AgentTemplate[]>();
+  private knowledgeCache = new Map<string, KnowledgeItem[]>();
   private manifestCache: TemplateManifest | null = null;
 
   /**
@@ -158,7 +196,7 @@ class TemplateManagerV2 {
 
   // Load templates from multiple sources with fallback
   private async loadFromSources<T>(
-    type: 'scenarios' | 'multi-agent' | 'agents',
+    type: 'scenarios' | 'multi-agent' | 'agents' | 'knowledge',
     loader: (source: TemplateSource) => Promise<T>
   ): Promise<TemplateLoadResult<T>> {
     const sources = templateSourceManager.getEnabledSources();
@@ -341,6 +379,56 @@ class TemplateManagerV2 {
     return localized;
   }
 
+  // Load knowledge items
+  async loadKnowledgeItems(language: Language): Promise<KnowledgeItem[]> {
+    const cacheKey = language;
+    if (this.knowledgeCache.has(cacheKey)) {
+      return this.knowledgeCache.get(cacheKey)!;
+    }
+
+    const result = await this.loadFromSources<KnowledgeItem[]>(
+      'knowledge',
+      async (source) => {
+        let items: KnowledgeItem[] = [];
+
+        if (source.type === 'local') {
+          items = await this.loadLocalKnowledge();
+        } else if (source.type === 'cdn') {
+          const index = await cdnLoader.loadIndex(source, 'knowledge');
+          items = await Promise.all(
+            index.templates.map((path: string) =>
+              cdnLoader.load(source, `knowledge/${path}`)
+            )
+          );
+        } else if (source.type === 'github') {
+          const manifest = await this.prefetchManifest(source);
+          items = await githubLoader.loadCategoryTemplates(source, 'knowledge', manifest || undefined);
+        }
+
+        items.forEach(t => {
+          t.metadata.source = source.id;
+        });
+
+        return items;
+      }
+    );
+
+    // Knowledge items may be empty (no content yet), that's OK
+    const data = result.data || [];
+
+    // Apply i18n
+    const subcategories = [...new Set(data.map(t => t.metadata.category))];
+    await Promise.all(
+      subcategories.map(subcat => templateI18n.loadTranslations('knowledge', subcat, language))
+    );
+    const localized = data.map((item) => {
+      return templateI18n.getLocalizedTemplate(item, 'knowledge', item.metadata.category, language);
+    });
+
+    this.knowledgeCache.set(cacheKey, localized);
+    return localized;
+  }
+
   // Local loaders (existing implementation)
   private async loadLocalScenarios(): Promise<ScenarioTemplate[]> {
     const loaders: Record<string, () => Promise<any>> = {
@@ -421,15 +509,33 @@ class TemplateManagerV2 {
     return templates;
   }
 
+  private async loadLocalKnowledge(): Promise<KnowledgeItem[]> {
+    try {
+      const modules = import.meta.glob('../../templates/official/knowledge/**/*.json', { eager: true }) as Record<string, { default?: KnowledgeItem } & KnowledgeItem>;
+      const items: KnowledgeItem[] = [];
+      for (const [path, mod] of Object.entries(modules)) {
+        if (path.endsWith('index.json')) continue;
+        const item = (mod as any).default || mod;
+        if (item && item.id && item.type) {
+          items.push(item as KnowledgeItem);
+        }
+      }
+      return items;
+    } catch {
+      return [];
+    }
+  }
+
   // Search across all templates
   async searchTemplates(query: string, language: Language): Promise<Template[]> {
-    const [scenarios, multiAgent, agents] = await Promise.all([
+    const [scenarios, multiAgent, agents, knowledge] = await Promise.all([
       this.loadScenarioTemplates(language),
       this.loadMultiAgentTemplates(language),
       this.loadAgentTemplates(language),
+      this.loadKnowledgeItems(language),
     ]);
 
-    const allTemplates: Template[] = [...scenarios, ...multiAgent, ...agents];
+    const allTemplates: Template[] = [...scenarios, ...multiAgent, ...agents, ...knowledge];
     const lowerQuery = query.toLowerCase();
 
     return allTemplates.filter(
@@ -445,6 +551,7 @@ class TemplateManagerV2 {
     this.scenarioCache.clear();
     this.multiAgentCache.clear();
     this.agentCache.clear();
+    this.knowledgeCache.clear();
     this.manifestCache = null;
     templateCache.clear();
     githubLoader.clearVersionCache();
@@ -457,6 +564,7 @@ class TemplateManagerV2 {
       this.loadScenarioTemplates(language),
       this.loadMultiAgentTemplates(language),
       this.loadAgentTemplates(language),
+      this.loadKnowledgeItems(language),
     ]);
   }
 }

@@ -34,6 +34,8 @@
   "noProfiles": "暂无网关配置，点击添加",
   "local": "本地",
   "remote": "远程",
+  "localGateway": "本地网关",
+  "connectionHttpOnlyWarn": "HTTP 可达但 WebSocket 连接失败 — 日志和仪表盘可能无法使用",
   "heartbeatAutoRestart": "守护模式",
   "heartbeatDesc": "看门狗连续 3 次探测失败后自动重启网关",
   "heartbeatOK": "心跳正常",
@@ -176,5 +178,7 @@
   "daemonUninstallFailed": "服务卸载失败",
   "daemonStatusFailed": "无法查询服务状态",
   "daemonRemoteHint": "远程网关已经以服务方式运行，Daemon 管理仅适用于本地网关。",
-  "daemonAlreadyManaged": "已由系统服务管理"
+  "daemonAlreadyManaged": "已由系统服务管理",
+  "wsDisconnected": "数据通道未连接",
+  "wsDisconnectedHint": "网关端口可达但 WebSocket 数据通道未建立，日志和仪表盘数据将不可用。请检查：1) 密钥是否正确 2) 远程服务器防火墙是否允许 WebSocket 连接 3) 是否有反向代理阻断了 WebSocket 升级"
 }

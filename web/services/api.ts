@@ -159,6 +159,8 @@ export const gatewayProfileApi = {
     put(`/api/v1/gateway/profiles?id=${id}`, data),
   remove: (id: number) => del(`/api/v1/gateway/profiles?id=${id}`),
   activate: (id: number) => post(`/api/v1/gateway/profiles/activate?id=${id}`),
+  testConnection: (data: { host: string; port: number; token: string }) =>
+    post('/api/v1/gateway/profiles/test', data),
 };
 
 // ==================== 活动流 ====================
@@ -452,6 +454,12 @@ export const doctorApi = {
     actions: Array<{ id: string; title: string; target: string; priority: 'high' | 'medium' | 'low' }>;
   }>('/api/v1/doctor/overview', ttlMs, force),
   fix: (checks?: string[]) => post('/api/v1/doctor/fix', checks && checks.length > 0 ? { checks } : {}),
+};
+
+// ==================== Recipe 步骤操作 ====================
+export const recipeApi = {
+  applyStep: (data: { action: 'append' | 'replace'; file: string; content: string; target?: string }) =>
+    post<{ success: boolean; backupPath?: string; message: string }>('/api/v1/recipe/apply-step', data),
 };
 
 // ==================== LLM 供应商健康 ====================

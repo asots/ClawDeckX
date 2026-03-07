@@ -38,24 +38,30 @@ func NewGatewayHandler(svc *openclaw.Service, wsHub *web.WSHub) *GatewayHandler 
 
 // GatewayStatusResponse is the gateway status response.
 type GatewayStatusResponse struct {
-	Running bool   `json:"running"`
-	Runtime string `json:"runtime"`
-	Detail  string `json:"detail"`
-	Host    string `json:"host,omitempty"`
-	Port    int    `json:"port,omitempty"`
-	Remote  bool   `json:"remote"`
+	Running     bool   `json:"running"`
+	Runtime     string `json:"runtime"`
+	Detail      string `json:"detail"`
+	Host        string `json:"host,omitempty"`
+	Port        int    `json:"port,omitempty"`
+	Remote      bool   `json:"remote"`
+	WsConnected bool   `json:"ws_connected"`
 }
 
 // Status returns gateway running status.
 func (h *GatewayHandler) Status(w http.ResponseWriter, r *http.Request) {
 	st := h.svc.Status()
+	wsConnected := false
+	if h.gwClient != nil {
+		wsConnected = h.gwClient.IsConnected()
+	}
 	web.OK(w, r, GatewayStatusResponse{
-		Running: st.Running,
-		Runtime: string(st.Runtime),
-		Detail:  st.Detail,
-		Host:    h.svc.GatewayHost,
-		Port:    h.svc.GatewayPort,
-		Remote:  h.svc.IsRemote(),
+		Running:     st.Running,
+		Runtime:     string(st.Runtime),
+		Detail:      st.Detail,
+		Host:        h.svc.GatewayHost,
+		Port:        h.svc.GatewayPort,
+		Remote:      h.svc.IsRemote(),
+		WsConnected: wsConnected,
 	})
 }
 

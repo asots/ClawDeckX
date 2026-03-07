@@ -223,7 +223,6 @@ const Dashboard: React.FC<DashboardProps> = ({ language }) => {
   const [showAllDisks, setShowAllDisks] = useState(false);
   const [chartTooltip, setChartTooltip] = useState<{ x: number; y: number; label: string } | null>(null);
   const [refreshCountdown, setRefreshCountdown] = useState(FAST_INTERVAL / 1000);
-  const [diagnosing, setDiagnosing] = useState(false);
   const [hasFirstDashboardData, setHasFirstDashboardData] = useState(!!cachedFast?.data || !!cachedFast?.gwStatus);
 
   const { data, gwStatus, sessions, models, skills, agents, cronStatus, channels, usageCost, health, instances, hostInfo, userConfig } = ds;
@@ -424,17 +423,6 @@ const Dashboard: React.FC<DashboardProps> = ({ language }) => {
     } catch (e: any) { toast('error', String(e?.message || e)); }
     setGwAction('idle');
   }, [gwAction, confirm, d, toast, fetchFast]);
-
-  // Run diagnostics
-  const handleDiagnose = useCallback(async () => {
-    if (diagnosing) return;
-    setDiagnosing(true);
-    try {
-      const res = await gatewayApi.diagnose();
-      if (res) toast('success', `${d.diagnoseResult}: ${res.summary || 'OK'}`);
-    } catch (e: any) { toast('error', String(e?.message || e)); }
-    setDiagnosing(false);
-  }, [diagnosing, d, toast]);
 
   const loading = initialLoading || refreshing;
 
@@ -734,23 +722,6 @@ const Dashboard: React.FC<DashboardProps> = ({ language }) => {
             </div>
           </button>
         )}
-
-        {/* Quick Actions Bar */}
-        <div className="flex flex-wrap gap-2">
-          {[
-            { icon: 'add_comment', label: d.actionNewChat, target: 'sessions', action: null },
-            { icon: 'stethoscope', label: d.actionDiagnose, target: null, action: handleDiagnose },
-            { icon: 'settings', label: d.actionConfig, target: 'editor', action: null },
-            { icon: 'description', label: d.actionViewLogs, target: 'gateway', extra: { tab: 'events' }, action: null },
-            { icon: 'backup', label: d.actionBackup, target: 'settings', extra: { tab: 'snapshot' }, action: null },
-          ].map((qa, i) => (
-            <button key={i} onClick={() => qa.action ? qa.action() : qa.target && openWindow(qa.target, (qa as any).extra)} disabled={qa.action === handleDiagnose && diagnosing}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200/60 dark:border-white/[0.06] bg-white dark:bg-white/[0.02] text-[10px] font-bold text-slate-600 dark:text-white/60 hover:border-primary/30 hover:text-primary hover:bg-primary/5 transition-all disabled:opacity-40">
-              <span className="material-symbols-outlined text-[14px]">{qa.icon}</span>
-              {qa.action === handleDiagnose && diagnosing ? d.diagnosing : qa.label}
-            </button>
-          ))}
-        </div>
 
         {/* Host Info Card - refactored with GaugeCard */}
         {(() => {

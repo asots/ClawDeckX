@@ -532,6 +532,7 @@ export const TemplatesSectionV2: React.FC<TemplatesSectionV2Props> = ({ language
           onCancel={() => setPendingApply(null)}
         />
       )}
+
     </div>
   );
 };

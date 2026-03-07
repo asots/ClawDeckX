@@ -1,0 +1,23 @@
+{
+  "id": "faq-gateway-not-running",
+  "type": "faq",
+  "version": "1.1.0",
+  "metadata": {
+    "name": "网关无法启动",
+    "description": "排查网关无法启动或无法连接的常见问题",
+    "category": "troubleshooting",
+    "tags": ["gateway", "troubleshooting", "startup"],
+    "i18n": {
+      "en": {
+        "name": "Gateway Not Running",
+        "description": "Troubleshoot when the gateway is not running or unreachable"
+      }
+    }
+  },
+  "content": {
+    "question": "网关无法启动或连接不上怎么办？",
+    "answer": "## 常见原因\n\n1. **网关进程未启动** — 打开 ClawDeckX 仪表盘，点击顶部的「启动网关」按钮一键启动。\n\n2. **端口冲突** — 默认端口 18789 可能被占用。前往 **配置中心 → 网关** 修改端口号。\n\n3. **进程残留** — 上次异常退出可能留下残留文件。打开 **健康中心**，点击「一键修复」自动清理。\n\n4. **配置文件缺失** — 首次使用请先运行 **安装向导**（桌面图标），它会自动生成所需配置。\n\n## 快速修复\n\n打开 **健康中心**（桌面图标），运行诊断后点击「一键修复」，可自动解决常见问题。",
+    "relatedDoctorChecks": ["gateway.status", "pid.lock", "config.file", "port.default"],
+    "editorSection": "gateway"
+  }
+}

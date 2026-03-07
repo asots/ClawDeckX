@@ -1,0 +1,20 @@
+{
+  "id": "tip-efficient-workflow",
+  "type": "tip",
+  "version": "1.1.0",
+  "metadata": {
+    "name": "高效使用技巧",
+    "description": "掌握这些技巧，让 ClawDeckX 用起来更顺手",
+    "category": "productivity",
+    "tags": ["tips", "productivity", "workflow"],
+    "i18n": {
+      "en": {
+        "name": "Efficient Workflow Tips",
+        "description": "Master these tips to get the most out of ClawDeckX"
+      }
+    }
+  },
+  "content": {
+    "body": "## 桌面导航\n\n- **双击桌面空白处** — 快速回到仪表盘\n- **拖拽窗口标题栏** — 自由调整窗口位置和大小\n- **Dock 栏** — 底部常驻快捷入口，一键打开常用功能\n\n## 配置中心\n\n- **实时预览** — 修改配置后即时看到效果，无需手动重启\n- **配置对比** — 切换到「对比视图」查看你的修改与默认值的差异\n- **导入导出** — 在「系统 → 备份」中一键导出所有配置，方便迁移\n\n## 健康中心\n\n- **定期诊断** — 建议每次更新配置后运行一次诊断\n- **一键修复** — 大部分常见问题可以自动修复\n- **了解更多** — 每个诊断项都有对应的知识库文章，点击即可跳转\n\n## 使用向导\n\n- **进度追踪** — 使用向导会显示你的配置完成度\n- **去设置** — 每个待完成项都有直达按钮，跳转到对应配置页面"
+  }
+}

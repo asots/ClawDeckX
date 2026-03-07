@@ -15,7 +15,22 @@
           "properties": {
             "soulSnippet": { "type": "string" },
             "heartbeatSnippet": { "type": "string" },
-            "examples": { "type": "array", "items": { "type": "string" } }
+            "examples": { "type": "array", "items": { "type": "string" } },
+            "body": { "type": "string", "description": "Translated markdown body for knowledge items" },
+            "steps": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "title": { "type": "string" },
+                  "description": { "type": "string" }
+                }
+              },
+              "description": "Translated recipe steps (title + description only, code stays original)"
+            },
+            "snippet": { "type": "string", "description": "Translated snippet (rare, most snippets are language-neutral)" },
+            "question": { "type": "string", "description": "Translated FAQ question" },
+            "answer": { "type": "string", "description": "Translated FAQ answer" }
           }
         },
         "agents": {

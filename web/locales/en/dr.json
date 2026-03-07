@@ -608,5 +608,6 @@
   "saRem.gateway.control_ui.insecure_auth": "Disable gateway.controlUi.allowInsecureAuth",
   "saRem.gateway.control_ui.device_auth_disabled": "Remove gateway.controlUi.dangerouslyDisableDeviceAuth",
   "saRem.config.secrets.gateway_password_in_config": "Use secret references instead of plaintext values",
-  "saRem.fs.synced_dir": "Move state/config directory out of synced folders"
+  "saRem.fs.synced_dir": "Move state/config directory out of synced folders",
+  "relatedFaq": "Related FAQ"
 }

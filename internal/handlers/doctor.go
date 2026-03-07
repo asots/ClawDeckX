@@ -16,6 +16,7 @@ import (
 	"ClawDeckX/internal/database"
 	"ClawDeckX/internal/logger"
 	"ClawDeckX/internal/openclaw"
+	"ClawDeckX/internal/service"
 	"ClawDeckX/internal/web"
 )
 
@@ -273,6 +274,8 @@ func (h *DoctorHandler) Run(w http.ResponseWriter, r *http.Request) {
 	items = append(items, h.checkPIDLock())
 	items = append(items, h.checkPort())
 	items = append(items, h.checkDisk())
+	items = append(items, h.checkOpenClawService())
+	items = append(items, h.checkClawDeckXService())
 	items = append(items, h.gatewayDiagnoseChecks()...)
 	items = append(items, h.securityAuditChecks()...)
 
@@ -1034,6 +1037,63 @@ func (h *DoctorHandler) checkDisk() CheckItem {
 	}
 }
 
+func (h *DoctorHandler) checkOpenClawService() CheckItem {
+	svc := openclaw.NewService()
+	status := svc.DaemonStatus()
+	if status.Installed {
+		detail := status.Platform + " service installed"
+		if status.Enabled {
+			detail += ", auto-start enabled"
+		}
+		if status.Active {
+			detail += ", running"
+		}
+		return CheckItem{
+			ID:       "service.openclaw",
+			Code:     "service.openclaw",
+			Name:     "OpenClaw Service",
+			Category: "service",
+			Severity: "info",
+			Status:   "ok",
+			Detail:   detail,
+		}
+	}
+	return CheckItem{
+		ID:         "service.openclaw",
+		Code:       "service.openclaw",
+		Name:       "OpenClaw Service",
+		Category:   "service",
+		Severity:   "info",
+		Status:     "warn",
+		Detail:     "system service not installed, gateway requires manual start",
+		Suggestion: "install the system service in Settings → Update → System Service for auto-start on boot",
+	}
+}
+
+func (h *DoctorHandler) checkClawDeckXService() CheckItem {
+	if service.IsInstalled() {
+		return CheckItem{
+			ID:       "service.clawdeckx",
+			Code:     "service.clawdeckx",
+			Name:     "ClawDeckX Service",
+			Category: "service",
+			Severity: "info",
+			Status:   "ok",
+			Detail:   "system service installed, auto-start enabled",
+		}
+	}
+	return CheckItem{
+		ID:         "service.clawdeckx",
+		Code:       "service.clawdeckx",
+		Name:       "ClawDeckX Service",
+		Category:   "service",
+		Severity:   "info",
+		Status:     "warn",
+		Detail:     "system service not installed, ClawDeckX requires manual start",
+		Suggestion: "install the system service in Settings → Update → System Service for auto-start on boot",
+	}
+}
+
 func (h *DoctorHandler) collectChecks() []CheckItem {
 	items := []CheckItem{
 		h.checkInstalled(),
@@ -1042,6 +1102,8 @@ func (h *DoctorHandler) collectChecks() []CheckItem {
 		h.checkPIDLock(),
 		h.checkPort(),
 		h.checkDisk(),
+		h.checkOpenClawService(),
+		h.checkClawDeckXService(),
 	}
 	items = append(items, h.gatewayDiagnoseChecks()...)
 	items = append(items, h.securityAuditChecks()...)
