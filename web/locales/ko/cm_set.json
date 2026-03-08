@@ -284,7 +284,8 @@
     "notifySaveFail": "저장 실패",
     "notifyActive": "활성 채널",
     "notifyReuse": "OpenClaw 채널 재사용",
-    "notifyReuseHint": "OpenClaw 설정에서 Telegram이 감지되었습니다. Bot Token을 재사용할 수 있습니다. Chat ID만 입력하세요."
+    "notifyReuseHint": "OpenClaw 설정에서 Telegram이 감지되었습니다. Bot Token을 재사용할 수 있습니다. Chat ID만 입력하세요.",
+    "notifyEventsTitle": "알림 이벤트"
     ,"serviceManagement": "시스템 서비스 관리"
     ,"serviceInstalled": "설치됨"
     ,"serviceNotInstalled": "설치되지 않음"

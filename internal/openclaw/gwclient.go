@@ -101,6 +101,7 @@ type GWClient struct {
 	stopCh    chan struct{}
 	onEvent   GWEventHandler
 	lastError string // last connection/auth error for diagnostics
+	gwVersion string // gateway version fetched after connect
 
 	reconnectCount int
 	backoffMs      int
@@ -115,8 +116,9 @@ type GWClient struct {
 	healthGraceUntil time.Time     // skip health checks until this time (post-restart grace period)
 	healthStopCh     chan struct{}
 	healthRunning    bool
-	onRestart        func() error // restart callback (injected externally)
-	onNotify         func(string) // notify callback (injected externally)
+	onRestart        func() error                      // restart callback (injected externally)
+	onNotify         func(string)                      // notify callback (injected externally)
+	onLifecycle      func(event string, detail string) // lifecycle event callback
 }
 
 func NewGWClient(cfg GWClientConfig) *GWClient {
@@ -145,6 +147,12 @@ func (c *GWClient) SetNotifyCallback(fn func(string)) {
 	c.healthMu.Lock()
 	defer c.healthMu.Unlock()
 	c.onNotify = fn
+}
+
+func (c *GWClient) SetLifecycleCallback(fn func(event string, detail string)) {
+	c.healthMu.Lock()
+	defer c.healthMu.Unlock()
+	c.onLifecycle = fn
 }
 
 func (c *GWClient) SetHealthCheckEnabled(enabled bool) {
@@ -423,6 +431,7 @@ func (c *GWClient) ConnectionStatus() map[string]interface{} {
 		"interval_sec":    intervalSec,
 		"last_ok":         lastOK,
 		"grace_until":     graceStr,
+		"version":         c.gwVersion,
 	}
 }
 
@@ -608,7 +617,9 @@ func (c *GWClient) dial() error {
 func (c *GWClient) readLoop(conn *websocket.Conn) error {
 	defer func() {
 		c.mu.Lock()
+		wasConnected := c.connected
 		c.connected = false
+		c.gwVersion = ""
 		if c.conn == conn {
 			c.conn = nil
 		}
@@ -616,8 +627,18 @@ func (c *GWClient) readLoop(conn *websocket.Conn) error {
 			close(ch)
 			delete(c.pending, id)
 		}
+		lastErr := c.lastError
 		c.mu.Unlock()
 		conn.Close()
+		// Fire lifecycle callback for unexpected disconnection
+		if wasConnected {
+			c.healthMu.Lock()
+			lcFn := c.onLifecycle
+			c.healthMu.Unlock()
+			if lcFn != nil {
+				go lcFn("disconnected", lastErr)
+			}
+		}
 	}()
 
 	connectNonce := ""
@@ -820,6 +841,15 @@ func (c *GWClient) sendConnect(conn *websocket.Conn, nonce string) {
 				Str("host", c.cfg.Host).
 				Int("port", c.cfg.Port).
 				Msg(i18n.T(i18n.MsgLogGatewayWsConnected))
+			// Fetch gateway version after connect
+			go c.fetchGatewayVersion()
+			// Fire lifecycle callback for successful connection
+			c.healthMu.Lock()
+			lcFn := c.onLifecycle
+			c.healthMu.Unlock()
+			if lcFn != nil {
+				go lcFn("connected", "")
+			}
 		} else {
 			msg := i18n.T(i18n.MsgGwclientUnknownError)
 			if resp != nil && resp.Error != nil {
@@ -869,4 +899,20 @@ func readGatewayTokenFromConfig() string {
 	}
 	token, _ := auth["token"].(string)
 	return token
+}
+
+// fetchGatewayVersion calls the "status" RPC to retrieve the gateway version and caches it.
+func (c *GWClient) fetchGatewayVersion() {
+	data, err := c.Request("status", nil)
+	if err != nil {
+		return
+	}
+	var status struct {
+		Version string `json:"version"`
+	}
+	if err := json.Unmarshal(data, &status); err == nil && status.Version != "" {
+		c.mu.Lock()
+		c.gwVersion = status.Version
+		c.mu.Unlock()
+	}
 }

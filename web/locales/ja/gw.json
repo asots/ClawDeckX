@@ -208,5 +208,19 @@
   "unitSec": "秒",
   "unitMin": "分",
   "unitHr": "時",
-  "unitDay": "日"
+  "unitDay": "日",
+
+  "lifecycleTitle": "ゲートウェイ稼働記録",
+  "lifecycleEmpty": "ライフサイクルイベントなし",
+  "lifecycleShowMore": "もっと見る",
+  "lifecycleStarted": "ゲートウェイ起動",
+  "lifecycleShutdown": "ゲートウェイ停止",
+  "lifecycleCrashed": "ゲートウェイクラッシュ",
+  "lifecycleUnreachable": "ゲートウェイ到達不能",
+  "lifecycleRecovered": "ゲートウェイ復旧",
+  "lifecycleUptime": "稼働時間",
+  "lifecycleReason": "理由",
+  "lifecycleError": "エラー",
+  "lifecycleNotifyShutdown": "停止通知",
+  "lifecycleNotifyShutdownHint": "ゲートウェイ停止時に通知を送信"
 }

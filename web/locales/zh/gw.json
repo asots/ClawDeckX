@@ -209,5 +209,19 @@
   "unitSec": "秒",
   "unitMin": "分",
   "unitHr": "时",
-  "unitDay": "天"
+  "unitDay": "天",
+
+  "lifecycleTitle": "网关运行记录",
+  "lifecycleEmpty": "暂无生命周期事件",
+  "lifecycleShowMore": "查看更多",
+  "lifecycleStarted": "网关启动",
+  "lifecycleShutdown": "网关关闭",
+  "lifecycleCrashed": "网关崩溃",
+  "lifecycleUnreachable": "网关不可达",
+  "lifecycleRecovered": "网关恢复",
+  "lifecycleUptime": "在线时长",
+  "lifecycleReason": "原因",
+  "lifecycleError": "错误",
+  "lifecycleNotifyShutdown": "关停通知",
+  "lifecycleNotifyShutdownHint": "网关关闭时发送通知"
 }

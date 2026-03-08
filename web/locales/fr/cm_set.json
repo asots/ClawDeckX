@@ -284,7 +284,8 @@
     "notifySaveFail": "Échec de l'enregistrement",
     "notifyActive": "Canaux actifs",
     "notifyReuse": "Réutiliser le canal OpenClaw",
-    "notifyReuseHint": "Telegram détecté dans la config OpenClaw. Vous pouvez réutiliser le token du bot — entrez simplement un Chat ID."
+    "notifyReuseHint": "Telegram détecté dans la config OpenClaw. Vous pouvez réutiliser le token du bot — entrez simplement un Chat ID.",
+    "notifyEventsTitle": "Événements de notification"
     ,"serviceManagement": "Gestion des services système"
     ,"serviceInstalled": "Installé"
     ,"serviceNotInstalled": "Non installé"

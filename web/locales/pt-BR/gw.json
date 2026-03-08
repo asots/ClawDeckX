@@ -208,5 +208,19 @@
   "unitSec": "s",
   "unitMin": "m",
   "unitHr": "h",
-  "unitDay": "d"
+  "unitDay": "d",
+
+  "lifecycleTitle": "Histórico do Gateway",
+  "lifecycleEmpty": "Nenhum evento de ciclo de vida",
+  "lifecycleShowMore": "Ver mais",
+  "lifecycleStarted": "Gateway iniciado",
+  "lifecycleShutdown": "Gateway encerrado",
+  "lifecycleCrashed": "Gateway travou",
+  "lifecycleUnreachable": "Gateway inacessível",
+  "lifecycleRecovered": "Gateway recuperado",
+  "lifecycleUptime": "Tempo ativo",
+  "lifecycleReason": "Motivo",
+  "lifecycleError": "Erro",
+  "lifecycleNotifyShutdown": "Notificar desligamento",
+  "lifecycleNotifyShutdownHint": "Enviar notificação ao desligar o gateway"
 }

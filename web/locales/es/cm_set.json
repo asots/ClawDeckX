@@ -284,7 +284,8 @@
     "notifySaveFail": "Error al guardar",
     "notifyActive": "Canales activos",
     "notifyReuse": "Reutilizar canal de OpenClaw",
-    "notifyReuseHint": "Se detectó Telegram en la configuración de OpenClaw. Puede reutilizar el Token del Bot — solo introduzca un Chat ID."
+    "notifyReuseHint": "Se detectó Telegram en la configuración de OpenClaw. Puede reutilizar el Token del Bot — solo introduzca un Chat ID.",
+    "notifyEventsTitle": "Eventos de notificación"
     ,"serviceManagement": "Gestión de servicios del sistema"
     ,"serviceInstalled": "Instalado"
     ,"serviceNotInstalled": "No instalado"

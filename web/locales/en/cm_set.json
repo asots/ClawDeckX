@@ -286,6 +286,7 @@
     "notifyActive": "Active channels",
     "notifyReuse": "Reuse OpenClaw channel",
     "notifyReuseHint": "Detected Telegram in OpenClaw config. You can reuse the Bot Token — just enter a Chat ID.",
+    "notifyEventsTitle": "Notification Events",
     "serviceManagement": "System Service Management",
     "serviceInstalled": "Installed",
     "serviceNotInstalled": "Not installed",

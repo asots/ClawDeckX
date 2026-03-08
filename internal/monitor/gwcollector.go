@@ -26,6 +26,8 @@ type GWCollector struct {
 	// Log analysis: cursor-based incremental log fetching.
 	logCursor    int // file byte offset for incremental reads; -1 = not initialized
 	logPollCount int
+
+	lifecycleRecorder *LifecycleRecorder
 }
 
 type sessionSnapshot struct {
@@ -48,6 +50,11 @@ func NewGWCollector(client *openclaw.GWClient, wsHub *web.WSHub, intervalSec int
 		lastSessions: make(map[string]sessionSnapshot),
 		logCursor:    -1,
 	}
+}
+
+// SetLifecycleRecorder injects the lifecycle recorder for gateway event tracking.
+func (c *GWCollector) SetLifecycleRecorder(lr *LifecycleRecorder) {
+	c.lifecycleRecorder = lr
 }
 
 func (c *GWCollector) Start() {
@@ -110,6 +117,8 @@ func (c *GWCollector) handleEvent(event string, payload json.RawMessage) {
 		c.handleChatStreamEvent(payload)
 	case strings.HasPrefix(event, "tool."):
 		c.handleToolEvent(event, payload)
+	case event == "shutdown":
+		c.handleShutdownEvent(payload)
 	case event == "error":
 		c.handleErrorEvent(payload)
 	case strings.HasPrefix(event, "cron."):
@@ -120,6 +129,23 @@ func (c *GWCollector) handleEvent(event string, payload json.RawMessage) {
 
 	// Unified log analysis: check payload for error/warn indicators
 	c.analyzePayloadForErrors(event, payload)
+}
+
+func (c *GWCollector) handleShutdownEvent(payload json.RawMessage) {
+	var data struct {
+		Reason            string `json:"reason"`
+		RestartExpectedMs int    `json:"restartExpectedMs"`
+	}
+	_ = json.Unmarshal(payload, &data)
+
+	reason := data.Reason
+	if reason == "" {
+		reason = "shutdown"
+	}
+
+	if c.lifecycleRecorder != nil {
+		c.lifecycleRecorder.RecordShutdown(reason)
+	}
 }
 
 func (c *GWCollector) handleChatStreamEvent(payload json.RawMessage) {

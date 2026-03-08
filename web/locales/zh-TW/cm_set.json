@@ -284,7 +284,8 @@
     "notifySaveFail": "儲存失敗",
     "notifyActive": "已啟用渠道",
     "notifyReuse": "複用 OpenClaw 頻道",
-    "notifyReuseHint": "已檢測到 OpenClaw 配置了 Telegram，可直接複用 Bot Token，只需填寫接收 Chat ID"
+    "notifyReuseHint": "已檢測到 OpenClaw 配置了 Telegram，可直接複用 Bot Token，只需填寫接收 Chat ID",
+    "notifyEventsTitle": "通知事件"
     ,"serviceManagement": "系統服務管理"
     ,"serviceInstalled": "已安裝"
     ,"serviceNotInstalled": "未安裝"

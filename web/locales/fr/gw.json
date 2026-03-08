@@ -208,5 +208,19 @@
   "unitSec": "s",
   "unitMin": "m",
   "unitHr": "h",
-  "unitDay": "j"
+  "unitDay": "j",
+
+  "lifecycleTitle": "Historique de la passerelle",
+  "lifecycleEmpty": "Aucun événement de cycle de vie",
+  "lifecycleShowMore": "Voir plus",
+  "lifecycleStarted": "Passerelle démarrée",
+  "lifecycleShutdown": "Passerelle arrêtée",
+  "lifecycleCrashed": "Passerelle plantée",
+  "lifecycleUnreachable": "Passerelle inaccessible",
+  "lifecycleRecovered": "Passerelle restaurée",
+  "lifecycleUptime": "Durée de fonctionnement",
+  "lifecycleReason": "Raison",
+  "lifecycleError": "Erreur",
+  "lifecycleNotifyShutdown": "Notifier l'arrêt",
+  "lifecycleNotifyShutdownHint": "Envoyer une notification lors de l'arrêt de la passerelle"
 }

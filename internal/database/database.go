@@ -81,6 +81,7 @@ func autoMigrate() error {
 		&ConnectionLog{},
 		&SkillHash{},
 		&GatewayProfile{},
+		&GatewayLifecycle{},
 		&Template{},
 		&SkillTranslation{},
 		&ReleaseNotesTranslation{},

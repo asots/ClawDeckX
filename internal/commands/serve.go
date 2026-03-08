@@ -265,7 +265,45 @@ func RunServe(args []string) int {
 		notifyMgr.Send(msg)
 	})
 
+	lifecycleRecorder := monitor.NewLifecycleRecorder(wsHub)
+	lifecycleRecorder.SetGatewayInfo(svc.GatewayHost, svc.GatewayPort, "", svc.IsRemote())
+	lifecycleRecorder.SetNotifyCallback(func(msg string) {
+		notifyMgr.Send(msg)
+	})
+	// Inject local process detection for crash vs unreachable distinction
+	lifecycleRecorder.SetLocalProcessAliveCallback(func() bool {
+		return openclaw.IsGatewayProcessAlive()
+	})
+	// Load lifecycle notification settings from DB
+	if val, err := database.NewSettingRepo().Get("lifecycle_notify_shutdown"); err == nil && val == "true" {
+		lifecycleRecorder.SetNotifyShutdown(true)
+	}
+	// Start periodic cleanup: keep 90 days, max 5000 records, check every 6 hours
+	lifecycleRecorder.StartCleanupLoop(90*24*time.Hour, 5000, 6*time.Hour)
+	defer lifecycleRecorder.StopCleanupLoop()
+
+	gwClient.SetLifecycleCallback(func(event, detail string) {
+		switch event {
+		case "connected":
+			lifecycleRecorder.RecordStarted("ws_connected")
+		case "disconnected":
+			if svc.IsRemote() {
+				lifecycleRecorder.RecordUnreachable(detail)
+			} else {
+				// Local gateway: check if process is still alive
+				if lifecycleRecorder.IsLocalProcessAlive() {
+					// Process alive but WS disconnected — unreachable (WS issue, not crash)
+					lifecycleRecorder.RecordUnreachable(detail)
+				} else {
+					// Process gone — genuine crash
+					lifecycleRecorder.RecordCrashed(detail)
+				}
+			}
+		}
+	})
+
 	gwCollector := monitor.NewGWCollector(gwClient, wsHub, cfg.Monitor.IntervalSeconds)
+	gwCollector.SetLifecycleRecorder(lifecycleRecorder)
 	go gwCollector.Start()
 	defer gwCollector.Stop()
 
@@ -274,6 +312,7 @@ func RunServe(args []string) int {
 	authHandler := handlers.NewAuthHandler(&cfg)
 	gatewayHandler := handlers.NewGatewayHandler(svc, wsHub)
 	gatewayHandler.SetGWClient(gwClient)
+	gatewayHandler.SetLifecycleRecorder(lifecycleRecorder)
 	dashboardHandler := handlers.NewDashboardHandler(svc)
 	activityHandler := handlers.NewActivityHandler()
 	eventsHandler := handlers.NewEventsHandler()
@@ -314,6 +353,9 @@ func RunServe(args []string) int {
 	gwProfileHandler := handlers.NewGatewayProfileHandler()
 	gwProfileHandler.SetGWClient(gwClient)
 	gwProfileHandler.SetGWService(svc)
+	gwProfileHandler.SetProfileSwitchCallback(func(host string, port int, name string, isRemote bool) {
+		lifecycleRecorder.SetGatewayInfo(host, port, name, isRemote)
+	})
 	hostInfoHandler := handlers.NewHostInfoHandler()
 	selfUpdateHandler := handlers.NewSelfUpdateHandler()
 	selfUpdateHandler.SetGWClient(gwClient)
@@ -458,6 +500,10 @@ func RunServe(args []string) int {
 
 	router.GET("/api/v1/gateway/health-check", gatewayHandler.GetHealthCheck)
 	router.PUT("/api/v1/gateway/health-check", web.RequireAdmin(gatewayHandler.SetHealthCheck))
+
+	router.GET("/api/v1/gateway/lifecycle", gatewayHandler.Lifecycle)
+	router.GET("/api/v1/gateway/lifecycle/notify-config", gatewayHandler.GetLifecycleNotifyConfig)
+	router.PUT("/api/v1/gateway/lifecycle/notify-config", web.RequireAdmin(gatewayHandler.SetLifecycleNotifyConfig))
 
 	router.POST("/api/v1/gateway/diagnose", gwDiagnoseHandler.Diagnose)
 

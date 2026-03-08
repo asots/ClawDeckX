@@ -822,21 +822,32 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
                 }`}
                 onClick={() => !p.is_active && handleActivateProfile(p.id)}
               >
-                {/* 状态指示 */}
+                {/* 状态指示 + WS + 远程/本地 + 进程 */}
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-1.5">
                     <div className={`w-2 h-2 rounded-full ${p.is_active && status?.running ? 'bg-mac-green animate-pulse' : p.is_active ? 'bg-mac-yellow animate-pulse' : 'bg-slate-300 dark:bg-white/20'}`}></div>
                     <span className={`text-[11px] font-bold uppercase ${p.is_active && status?.running ? 'text-mac-green' : p.is_active ? 'text-mac-yellow' : 'text-slate-400 dark:text-white/40'}`}>
                       {p.is_active ? (status?.running ? gw.running : gw.stopped) : gw.inactive}
                     </span>
+                    {p.is_active && status?.running && gwWsConnected !== null && (
+                      <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold flex items-center gap-0.5 ${gwWsConnected ? 'bg-mac-green/10 text-mac-green' : 'bg-mac-red/10 text-mac-red'}`}>
+                        <span className={`w-1 h-1 rounded-full ${gwWsConnected ? 'bg-mac-green' : 'bg-mac-red'}`} />
+                        WS
+                      </span>
+                    )}
                   </div>
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${
-                    isLocal(p.host)
-                      ? 'bg-blue-500/10 text-blue-500'
-                      : 'bg-purple-500/10 text-purple-500'
-                  }`}>
-                    {isLocal(p.host) ? gw.local : gw.remote}
-                  </span>
+                  <div className="flex items-center gap-1">
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${
+                      isLocal(p.host)
+                        ? 'bg-blue-500/10 text-blue-500'
+                        : 'bg-purple-500/10 text-purple-500'
+                    }`}>
+                      {isLocal(p.host) ? gw.local : gw.remote}
+                    </span>
+                    {p.is_active && status?.running && status?.runtime && (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-white/35">{(gw as any)[`runtime${status.runtime.charAt(0).toUpperCase()}${status.runtime.slice(1)}`] || status.runtime}</span>
+                    )}
+                  </div>
                 </div>
                 {/* 名称 */}
                 <h4 className="text-xs font-bold text-slate-800 dark:text-white truncate">{isLocal(p.host) && (p.name === 'Local Gateway' || p.name === '本地网关') ? (gw.localGateway || p.name) : p.name}</h4>
@@ -978,23 +989,17 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
           </div>
           <div className="flex-1 min-w-0 flex items-center gap-2 flex-wrap">
             <h3 className="text-slate-800 dark:text-white font-bold text-sm">{activeProfile ? (isLocal(activeProfile.host) && (activeProfile.name === 'Local Gateway' || activeProfile.name === '本地网关') ? (gw.localGateway || activeProfile.name) : activeProfile.name) : gw.status}</h3>
-            <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded-full border text-[11px] font-bold ${status?.running ? 'bg-mac-green/10 border-mac-green/20 text-mac-green' : 'bg-slate-500/10 border-slate-500/20 text-slate-400'}`}>
-              <div className={`w-1.5 h-1.5 rounded-full ${status?.running ? 'bg-mac-green animate-pulse' : 'bg-slate-400'}`} />
-              {status?.running ? gw.running : gw.stopped}
-            </div>
-            {activeProfile && <span className="text-[10px] text-slate-400 dark:text-white/40 font-mono">{activeProfile.host}:{activeProfile.port}</span>}
-            {status?.runtime && <span className="text-[10px] text-slate-400 dark:text-white/40">{gw.runtimeMode}: <span className="font-mono text-slate-600 dark:text-white/60">{(gw as any)[`runtime${status.runtime.charAt(0).toUpperCase()}${status.runtime.slice(1)}`] || status.runtime}</span></span>}
+            {/* 看门狗探测状态 */}
+            {status?.running && (
+              <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full border border-slate-200/60 dark:border-white/[0.06] bg-white dark:bg-white/[0.02]">
+                {(() => {
+                  if (!healthStatus?.last_ok) return <><span className="material-symbols-outlined text-[12px] text-mac-yellow animate-spin">progress_activity</span><span className="text-[11px] text-slate-400 dark:text-white/40">{gw.hbProbing}</span></>;
+                  if (healthStatus.fail_count > 0) return <><span className="material-symbols-outlined text-[12px] text-mac-red">heart_broken</span><span className="text-[11px] font-bold text-mac-red">{gw.hbUnhealthy} ({healthStatus.fail_count})</span></>;
+                  return <><span className="material-symbols-outlined text-[12px] text-mac-green animate-pulse">favorite</span><span className="text-[11px] font-bold text-mac-green">{gw.hbHealthy}</span></>;
+                })()}
+              </div>
+            )}
           </div>
-          {/* 看门狗探测状态 */}
-          {status?.running && (
-            <div className="flex items-center gap-1.5 shrink-0 px-2 py-0.5 rounded-full border border-slate-200/60 dark:border-white/[0.06] bg-white dark:bg-white/[0.02]">
-              {(() => {
-                if (!healthStatus?.last_ok) return <><span className="material-symbols-outlined text-[12px] text-mac-yellow animate-spin">progress_activity</span><span className="text-[11px] text-slate-400 dark:text-white/40">{gw.hbProbing}</span></>;
-                if (healthStatus.fail_count > 0) return <><span className="material-symbols-outlined text-[12px] text-mac-red">heart_broken</span><span className="text-[11px] font-bold text-mac-red">{gw.hbUnhealthy} ({healthStatus.fail_count})</span></>;
-                return <><span className="material-symbols-outlined text-[12px] text-mac-green animate-pulse">favorite</span><span className="text-[11px] font-bold text-mac-green">{gw.hbHealthy}</span></>;
-              })()}
-            </div>
-          )}
         </div>
 
         {/* Row 2: 操作按钮 — 单行紧凑 */}

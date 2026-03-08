@@ -208,5 +208,19 @@
   "unitSec": "से",
   "unitMin": "मि",
   "unitHr": "घं",
-  "unitDay": "दि"
+  "unitDay": "दि",
+
+  "lifecycleTitle": "गेटवे इतिहास",
+  "lifecycleEmpty": "कोई जीवनचक्र इवेंट नहीं",
+  "lifecycleShowMore": "और देखें",
+  "lifecycleStarted": "गेटवे शुरू हुआ",
+  "lifecycleShutdown": "गेटवे बंद हुआ",
+  "lifecycleCrashed": "गेटवे क्रैश हुआ",
+  "lifecycleUnreachable": "गेटवे अगम्य",
+  "lifecycleRecovered": "गेटवे पुनर्प्राप्त",
+  "lifecycleUptime": "अपटाइम",
+  "lifecycleReason": "कारण",
+  "lifecycleError": "त्रुटि",
+  "lifecycleNotifyShutdown": "शटडाउन सूचना",
+  "lifecycleNotifyShutdownHint": "गेटवे बंद होने पर सूचना भेजें"
 }

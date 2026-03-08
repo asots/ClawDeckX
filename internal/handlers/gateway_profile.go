@@ -20,10 +20,16 @@ import (
 
 // GatewayProfileHandler manages multi-gateway profiles.
 type GatewayProfileHandler struct {
-	repo      *database.GatewayProfileRepo
-	auditRepo *database.AuditLogRepo
-	gwClient  *openclaw.GWClient
-	gwService *openclaw.Service
+	repo            *database.GatewayProfileRepo
+	auditRepo       *database.AuditLogRepo
+	gwClient        *openclaw.GWClient
+	gwService       *openclaw.Service
+	onProfileSwitch func(host string, port int, name string, isRemote bool)
+}
+
+// SetProfileSwitchCallback sets a callback invoked after a profile is activated/switched.
+func (h *GatewayProfileHandler) SetProfileSwitchCallback(fn func(host string, port int, name string, isRemote bool)) {
+	h.onProfileSwitch = fn
 }
 
 func NewGatewayProfileHandler() *GatewayProfileHandler {
@@ -209,6 +215,9 @@ func (h *GatewayProfileHandler) Delete(w http.ResponseWriter, r *http.Request) {
 					Port: 18789,
 				})
 			}
+			if h.onProfileSwitch != nil {
+				h.onProfileSwitch("127.0.0.1", 18789, "Local Gateway", false)
+			}
 		}
 	}
 
@@ -341,8 +350,9 @@ func (h *GatewayProfileHandler) TestConnection(w http.ResponseWriter, r *http.Re
 	}
 }
 
-// applyProfile applies the profile to GWClient and Service.
+// applyProfile applies the profile to GWClient and Service, and notifies lifecycle recorder.
 func (h *GatewayProfileHandler) applyProfile(p *database.GatewayProfile) {
+	isRemote := !isLocalHost(p.Host)
 	if h.gwService != nil {
 		h.gwService.GatewayHost = p.Host
 		h.gwService.GatewayPort = p.Port
@@ -355,4 +365,12 @@ func (h *GatewayProfileHandler) applyProfile(p *database.GatewayProfile) {
 			Token: p.Token,
 		})
 	}
+	if h.onProfileSwitch != nil {
+		h.onProfileSwitch(p.Host, p.Port, p.Name, isRemote)
+	}
+}
+
+func isLocalHost(host string) bool {
+	h := strings.TrimSpace(host)
+	return h == "" || h == "127.0.0.1" || h == "localhost" || h == "::1"
 }

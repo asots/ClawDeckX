@@ -208,5 +208,19 @@
   "unitSec": "초",
   "unitMin": "분",
   "unitHr": "시",
-  "unitDay": "일"
+  "unitDay": "일",
+
+  "lifecycleTitle": "게이트웨이 기록",
+  "lifecycleEmpty": "라이프사이클 이벤트 없음",
+  "lifecycleShowMore": "더 보기",
+  "lifecycleStarted": "게이트웨이 시작",
+  "lifecycleShutdown": "게이트웨이 종료",
+  "lifecycleCrashed": "게이트웨이 충돌",
+  "lifecycleUnreachable": "게이트웨이 접근 불가",
+  "lifecycleRecovered": "게이트웨이 복구",
+  "lifecycleUptime": "가동 시간",
+  "lifecycleReason": "사유",
+  "lifecycleError": "오류",
+  "lifecycleNotifyShutdown": "종료 알림",
+  "lifecycleNotifyShutdownHint": "게이트웨이 종료 시 알림 전송"
 }

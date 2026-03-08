@@ -285,6 +285,7 @@
     "notifyActive": "已激活渠道",
     "notifyReuse": "复用 OpenClaw 频道",
     "notifyReuseHint": "已检测到 OpenClaw 配置了 Telegram，可直接复用 Bot Token，只需填写接收 Chat ID",
+    "notifyEventsTitle": "通知事件",
     "serviceManagement": "系统服务管理",
     "serviceInstalled": "已安装",
     "serviceNotInstalled": "未安装",

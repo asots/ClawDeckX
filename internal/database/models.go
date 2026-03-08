@@ -142,6 +142,21 @@ type ReleaseNotesTranslation struct {
 	UpdatedAt  time.Time `json:"updated_at"`
 }
 
+// GatewayLifecycle records gateway process lifecycle events (started, shutdown, crashed, unreachable, recovered).
+type GatewayLifecycle struct {
+	ID          uint      `gorm:"primaryKey" json:"id"`
+	Timestamp   time.Time `gorm:"index" json:"timestamp"`
+	EventType   string    `gorm:"index;not null" json:"event_type"` // started, shutdown, crashed, unreachable, recovered
+	GatewayHost string    `json:"gateway_host"`
+	GatewayPort int       `json:"gateway_port"`
+	ProfileName string    `json:"profile_name"`
+	IsRemote    bool      `json:"is_remote"`
+	Reason      string    `json:"reason"`
+	ErrorDetail string    `gorm:"type:text" json:"error_detail,omitempty"`
+	UptimeSec   int64     `json:"uptime_sec"` // how long the gateway was up before this event (for shutdown/crash/unreachable)
+	CreatedAt   time.Time `json:"created_at"`
+}
+
 type Template struct {
 	ID         uint      `gorm:"primaryKey" json:"id"`
 	TemplateID string    `gorm:"uniqueIndex;not null" json:"template_id"`

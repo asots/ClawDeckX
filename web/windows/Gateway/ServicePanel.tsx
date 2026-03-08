@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { gatewayApi, gwApi } from '../../services/api';
+import { subscribeManagerWS } from '../../services/manager-ws';
 
 interface DaemonState {
   platform: string;
@@ -49,12 +50,63 @@ const PLATFORM_ICONS: Record<string, string> = {
   unsupported: 'block',
 };
 
+interface LifecycleRecord {
+  id: number;
+  timestamp: string;
+  event_type: string;
+  gateway_host: string;
+  gateway_port: number;
+  profile_name: string;
+  is_remote: boolean;
+  reason: string;
+  error_detail: string;
+  uptime_sec: number;
+}
+
+const LIFECYCLE_ICON: Record<string, string> = {
+  started: 'play_circle',
+  recovered: 'restart_alt',
+  shutdown: 'stop_circle',
+  crashed: 'error',
+  unreachable: 'cloud_off',
+};
+
+const LIFECYCLE_COLOR: Record<string, string> = {
+  started: 'text-mac-green',
+  recovered: 'text-mac-green',
+  shutdown: 'text-slate-400 dark:text-white/40',
+  crashed: 'text-mac-red',
+  unreachable: 'text-mac-yellow',
+};
+
+const LIFECYCLE_BG: Record<string, string> = {
+  started: 'bg-mac-green/10 border-mac-green/20',
+  recovered: 'bg-mac-green/10 border-mac-green/20',
+  shutdown: 'bg-white/[0.04] border-white/[0.06]',
+  crashed: 'bg-mac-red/5 border-mac-red/20',
+  unreachable: 'bg-mac-yellow/5 border-mac-yellow/20',
+};
+
+function fmtLifecycleUptime(sec: number): string {
+  if (sec <= 0) return '';
+  if (sec < 60) return `${sec}s`;
+  const m = Math.floor(sec / 60);
+  if (m < 60) return `${m}m ${sec % 60}s`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ${m % 60}m`;
+  const d = Math.floor(h / 24);
+  return `${d}d ${h % 24}h`;
+}
+
 const ServicePanel: React.FC<ServicePanelProps> = ({ status, healthCheckEnabled, healthStatus, gw, onCopy, toast, remote }) => {
   const [daemon, setDaemon] = useState<DaemonState | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<'install' | 'uninstall' | null>(null);
   const [wsStatus, setWsStatus] = useState<WsStatus | null>(null);
   const [reconnecting, setReconnecting] = useState(false);
+  const [lifecycleRecords, setLifecycleRecords] = useState<LifecycleRecord[]>([]);
+  const [lifecycleExpanded, setLifecycleExpanded] = useState(false);
+  const lifecycleLoadedRef = useRef(false);
 
   const fetchDaemonStatus = useCallback(() => {
     setLoading(true);
@@ -68,12 +120,35 @@ const ServicePanel: React.FC<ServicePanelProps> = ({ status, healthCheckEnabled,
     gwApi.status().then((data: any) => setWsStatus(data)).catch(() => {});
   }, []);
 
-  useEffect(() => { fetchDaemonStatus(); fetchWsStatus(); }, [fetchDaemonStatus, fetchWsStatus]);
+  const fetchLifecycle = useCallback((limit = 20) => {
+    gatewayApi.lifecycle({ page_size: limit }).then((data: any) => {
+      if (data?.records) setLifecycleRecords(data.records);
+      lifecycleLoadedRef.current = true;
+    }).catch(() => {});
+  }, []);
+
+  useEffect(() => { fetchDaemonStatus(); fetchWsStatus(); fetchLifecycle(); }, [fetchDaemonStatus, fetchWsStatus, fetchLifecycle]);
 
   useEffect(() => {
     const timer = setInterval(fetchWsStatus, 6000);
     return () => clearInterval(timer);
   }, [fetchWsStatus]);
+
+  // Real-time lifecycle event subscription
+  useEffect(() => {
+    return subscribeManagerWS((msg: any) => {
+      if (msg.type === 'gw_lifecycle') {
+        const rec = msg.data as LifecycleRecord;
+        if (rec?.event_type) {
+          setLifecycleRecords(prev => {
+            const updated = [rec, ...prev];
+            if (updated.length > 50) updated.length = 50;
+            return updated;
+          });
+        }
+      }
+    });
+  }, []);
 
   const handleReconnect = useCallback(async () => {
     setReconnecting(true);
@@ -389,6 +464,79 @@ const ServicePanel: React.FC<ServicePanelProps> = ({ status, healthCheckEnabled,
             <p className="text-[10px] text-white/40">
               {gw.wdRemoteHint || 'Remote mode: watchdog will only reconnect, never restart the remote gateway.'}
             </p>
+          </div>
+        )}
+      </div>
+
+      {/* Gateway Lifecycle Timeline */}
+      <div className="space-y-2">
+        <h4 className="text-[11px] font-bold uppercase tracking-wider text-white/40 flex items-center gap-1.5">
+          <span className="material-symbols-outlined text-[14px]">history</span>
+          {gw.lifecycleTitle || 'Gateway History'}
+        </h4>
+
+        {lifecycleRecords.length === 0 ? (
+          <div className="px-3 py-4 rounded-lg bg-white/[0.02] border border-white/[0.06] text-center">
+            <span className="material-symbols-outlined text-[24px] text-white/10 mb-1">timeline</span>
+            <p className="text-[11px] text-white/30">{gw.lifecycleEmpty || 'No lifecycle events yet'}</p>
+          </div>
+        ) : (
+          <div className="space-y-0">
+            {(lifecycleExpanded ? lifecycleRecords : lifecycleRecords.slice(0, 8)).map((rec, idx) => {
+              const eventLabel = (gw as any)[`lifecycle${rec.event_type.charAt(0).toUpperCase()}${rec.event_type.slice(1)}`] || rec.event_type;
+              const color = LIFECYCLE_COLOR[rec.event_type] || 'text-white/50';
+              const icon = LIFECYCLE_ICON[rec.event_type] || 'radio_button_checked';
+              const bg = LIFECYCLE_BG[rec.event_type] || 'bg-white/[0.04] border-white/[0.06]';
+              const ts = new Date(rec.timestamp);
+              const timeStr = ts.toLocaleString(undefined, { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+              const uptimeStr = fmtLifecycleUptime(rec.uptime_sec);
+
+              return (
+                <div key={rec.id || idx} className="flex items-start gap-0 group">
+                  {/* Timeline line + dot */}
+                  <div className="flex flex-col items-center w-6 shrink-0">
+                    <div className={`w-0.5 ${idx === 0 ? 'h-2' : 'h-3'} ${idx === 0 ? 'bg-transparent' : 'bg-white/10'}`} />
+                    <span className={`material-symbols-outlined text-[14px] ${color}`}>{icon}</span>
+                    <div className={`w-0.5 flex-1 ${idx === (lifecycleExpanded ? lifecycleRecords.length : Math.min(lifecycleRecords.length, 8)) - 1 ? 'bg-transparent' : 'bg-white/10'}`} />
+                  </div>
+
+                  {/* Content */}
+                  <div className={`flex-1 min-w-0 px-2.5 py-1.5 my-0.5 rounded-lg border transition-all ${bg}`}>
+                    <div className="flex items-center justify-between gap-2">
+                      <p className={`text-[11px] font-bold ${color}`}>{eventLabel}</p>
+                      <span className="text-[9px] text-white/25 font-mono shrink-0">{timeStr}</span>
+                    </div>
+                    <div className="flex items-center gap-3 mt-0.5 flex-wrap">
+                      {uptimeStr && (
+                        <span className="text-[9px] text-white/30">
+                          {gw.lifecycleUptime || 'Uptime'}: <span className="font-mono text-white/50">{uptimeStr}</span>
+                        </span>
+                      )}
+                      {rec.reason && (
+                        <span className="text-[9px] text-white/30 truncate max-w-[180px]" title={rec.reason}>
+                          {rec.reason}
+                        </span>
+                      )}
+                    </div>
+                    {rec.error_detail && (
+                      <p className="text-[9px] font-mono text-mac-red/70 mt-0.5 break-all leading-relaxed">{rec.error_detail}</p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+
+            {lifecycleRecords.length > 8 && (
+              <button
+                onClick={() => setLifecycleExpanded(v => !v)}
+                className="w-full mt-1 py-1.5 text-[10px] font-bold text-primary/70 hover:text-primary rounded-lg hover:bg-primary/5 transition-all flex items-center justify-center gap-1"
+              >
+                <span className="material-symbols-outlined text-[12px]">
+                  {lifecycleExpanded ? 'expand_less' : 'expand_more'}
+                </span>
+                {lifecycleExpanded ? '' : (gw.lifecycleShowMore || 'Show more')} ({lifecycleRecords.length})
+              </button>
+            )}
           </div>
         )}
       </div>

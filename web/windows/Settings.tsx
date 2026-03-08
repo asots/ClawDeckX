@@ -1,7 +1,7 @@
 ﻿import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Language } from '../types';
 import { getTranslation } from '../locales';
-import { authApi, auditApi, notifyApi, serverConfigApi } from '../services/api';
+import { authApi, auditApi, notifyApi, serverConfigApi, gatewayApi } from '../services/api';
 import type { ServerConfig } from '../services/api';
 import { useToast } from '../components/Toast';
 import { useConfirm } from '../components/ConfirmDialog';
@@ -74,6 +74,7 @@ const Settings: React.FC<SettingsProps> = ({ language, onLogout }) => {
   const [notifyDirty, setNotifyDirty] = useState(false);
   const [notifySaving, setNotifySaving] = useState(false);
   const [notifyTesting, setNotifyTesting] = useState(false);
+  const [notifyShutdown, setNotifyShutdown] = useState(false);
 
   // ── 访问安全 ──
   const [srvCfg, setSrvCfg] = useState<ServerConfig>({ bind: '0.0.0.0', port: 18791, cors_origins: [] });
@@ -162,6 +163,9 @@ const Settings: React.FC<SettingsProps> = ({ language, onLogout }) => {
       setNotifyActive(data?.active_channels || []);
       setNotifyAvailable(data?.available_channels || []);
       setNotifyDirty(false);
+    }).catch(() => { });
+    gatewayApi.lifecycleNotifyConfig().then((data: any) => {
+      if (data?.notify_shutdown !== undefined) setNotifyShutdown(data.notify_shutdown);
     }).catch(() => { });
   }, []);
 
@@ -554,6 +558,38 @@ const Settings: React.FC<SettingsProps> = ({ language, onLogout }) => {
                   rowClassName={rowCls}
                 />
               ))}
+
+              {/* 通知事件配置 */}
+              <div className="rounded-2xl border border-slate-200/60 dark:border-white/[0.06] bg-white dark:bg-white/[0.02] overflow-hidden">
+                <div className="px-5 py-3 border-b border-slate-100 dark:border-white/[0.06] flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[18px] text-amber-500">tune</span>
+                  <span className="text-[13px] font-bold text-slate-700 dark:text-white/80">{s.notifyEventsTitle || 'Notification Events'}</span>
+                </div>
+                <div className="px-5 py-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <span className="material-symbols-outlined text-[16px] text-slate-400 dark:text-white/30">power_settings_new</span>
+                      <div>
+                        <p className="text-[12px] font-medium text-slate-700 dark:text-white/70">{t.gw?.lifecycleNotifyShutdown || 'Notify shutdown'}</p>
+                        <p className="text-[10px] text-slate-400 dark:text-white/30">{t.gw?.lifecycleNotifyShutdownHint || 'Send notification when gateway shuts down'}</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        const next = !notifyShutdown;
+                        setNotifyShutdown(next);
+                        gatewayApi.setLifecycleNotifyConfig({ notify_shutdown: next }).catch(() => {
+                          setNotifyShutdown(!next);
+                          toast('error', s.notifySaveFail || 'Failed to save');
+                        });
+                      }}
+                      className={`relative w-9 h-5 rounded-full transition-colors shrink-0 ${notifyShutdown ? 'bg-primary' : 'bg-slate-300 dark:bg-white/15'}`}
+                    >
+                      <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${notifyShutdown ? 'translate-x-4' : ''}`} />
+                    </button>
+                  </div>
+                </div>
+              </div>
 
               {/* Save button at bottom */}
               <div className="flex justify-end pt-2">

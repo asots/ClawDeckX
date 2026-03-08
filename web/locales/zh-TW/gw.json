@@ -208,5 +208,19 @@
   "unitSec": "秒",
   "unitMin": "分",
   "unitHr": "時",
-  "unitDay": "天"
+  "unitDay": "天",
+
+  "lifecycleTitle": "閘道器運行記錄",
+  "lifecycleEmpty": "暫無生命週期事件",
+  "lifecycleShowMore": "查看更多",
+  "lifecycleStarted": "閘道器啟動",
+  "lifecycleShutdown": "閘道器關閉",
+  "lifecycleCrashed": "閘道器崩潰",
+  "lifecycleUnreachable": "閘道器不可達",
+  "lifecycleRecovered": "閘道器恢復",
+  "lifecycleUptime": "在線時長",
+  "lifecycleReason": "原因",
+  "lifecycleError": "錯誤",
+  "lifecycleNotifyShutdown": "關停通知",
+  "lifecycleNotifyShutdownHint": "閘道器關閉時傳送通知"
 }

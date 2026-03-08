@@ -284,7 +284,8 @@
     "notifySaveFail": "Gagal menyimpan",
     "notifyActive": "Channel aktif",
     "notifyReuse": "Gunakan ulang channel OpenClaw",
-    "notifyReuseHint": "Telegram terdeteksi di konfigurasi OpenClaw. Anda dapat menggunakan ulang Token Bot — cukup masukkan Chat ID."
+    "notifyReuseHint": "Telegram terdeteksi di konfigurasi OpenClaw. Anda dapat menggunakan ulang Token Bot — cukup masukkan Chat ID.",
+    "notifyEventsTitle": "Peristiwa Notifikasi"
     ,"serviceManagement": "Manajemen Layanan Sistem"
     ,"serviceInstalled": "Terinstal"
     ,"serviceNotInstalled": "Tidak terinstal"

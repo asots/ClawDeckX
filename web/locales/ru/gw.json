@@ -208,5 +208,19 @@
   "unitSec": "с",
   "unitMin": "м",
   "unitHr": "ч",
-  "unitDay": "д"
+  "unitDay": "д",
+
+  "lifecycleTitle": "История шлюза",
+  "lifecycleEmpty": "Нет событий жизненного цикла",
+  "lifecycleShowMore": "Показать ещё",
+  "lifecycleStarted": "Шлюз запущен",
+  "lifecycleShutdown": "Шлюз остановлен",
+  "lifecycleCrashed": "Шлюз аварийно завершён",
+  "lifecycleUnreachable": "Шлюз недоступен",
+  "lifecycleRecovered": "Шлюз восстановлен",
+  "lifecycleUptime": "Время работы",
+  "lifecycleReason": "Причина",
+  "lifecycleError": "Ошибка",
+  "lifecycleNotifyShutdown": "Уведомление об остановке",
+  "lifecycleNotifyShutdownHint": "Отправлять уведомление при остановке шлюза"
 }

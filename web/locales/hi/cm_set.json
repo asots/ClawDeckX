@@ -284,7 +284,8 @@
     "notifySaveFail": "सहेजना विफल",
     "notifyActive": "सक्रिय चैनल",
     "notifyReuse": "OpenClaw चैनल पुनः उपयोग करें",
-    "notifyReuseHint": "OpenClaw कॉन्फ़िग में Telegram पाया गया। आप Bot Token पुनः उपयोग कर सकते हैं — बस Chat ID दर्ज करें।"
+    "notifyReuseHint": "OpenClaw कॉन्फ़िग में Telegram पाया गया। आप Bot Token पुनः उपयोग कर सकते हैं — बस Chat ID दर्ज करें।",
+    "notifyEventsTitle": "सूचना इवेंट"
     ,"serviceManagement": "सिस्टम सेवा प्रबंधन"
     ,"serviceInstalled": "स्थापित"
     ,"serviceNotInstalled": "स्थापित नहीं"

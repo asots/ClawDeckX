@@ -17,15 +17,29 @@ import (
 
 // GatewayHandler manages gateway lifecycle.
 type GatewayHandler struct {
-	svc       *openclaw.Service
-	auditRepo *database.AuditLogRepo
-	wsHub     *web.WSHub
-	gwClient  *openclaw.GWClient
+	svc               *openclaw.Service
+	auditRepo         *database.AuditLogRepo
+	wsHub             *web.WSHub
+	gwClient          *openclaw.GWClient
+	lifecycleRecorder interface {
+		Recent(limit int) ([]database.GatewayLifecycle, error)
+		List(filter database.GatewayLifecycleFilter) ([]database.GatewayLifecycle, int64, error)
+		SetNotifyShutdown(enabled bool)
+	}
 }
 
 // SetGWClient injects the Gateway client reference.
 func (h *GatewayHandler) SetGWClient(client *openclaw.GWClient) {
 	h.gwClient = client
+}
+
+// SetLifecycleRecorder injects the lifecycle recorder for gateway event history.
+func (h *GatewayHandler) SetLifecycleRecorder(lr interface {
+	Recent(limit int) ([]database.GatewayLifecycle, error)
+	List(filter database.GatewayLifecycleFilter) ([]database.GatewayLifecycle, int64, error)
+	SetNotifyShutdown(enabled bool)
+}) {
+	h.lifecycleRecorder = lr
 }
 
 func NewGatewayHandler(svc *openclaw.Service, wsHub *web.WSHub) *GatewayHandler {
@@ -362,5 +376,87 @@ func (h *GatewayHandler) LastRestart(w http.ResponseWriter, r *http.Request) {
 		"trigger":     info.Trigger,
 		"timestamp":   info.Timestamp,
 		"extra":       info.Extra,
+	})
+}
+
+// GetLifecycleNotifyConfig returns the lifecycle notification settings.
+func (h *GatewayHandler) GetLifecycleNotifyConfig(w http.ResponseWriter, r *http.Request) {
+	settingRepo := database.NewSettingRepo()
+	notifyShutdown, _ := settingRepo.Get("lifecycle_notify_shutdown")
+	web.OK(w, r, map[string]interface{}{
+		"notify_shutdown": notifyShutdown == "true",
+	})
+}
+
+// SetLifecycleNotifyConfig updates the lifecycle notification settings.
+func (h *GatewayHandler) SetLifecycleNotifyConfig(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		NotifyShutdown bool `json:"notify_shutdown"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		web.FailErr(w, r, web.ErrInvalidBody)
+		return
+	}
+
+	settingRepo := database.NewSettingRepo()
+	val := "false"
+	if req.NotifyShutdown {
+		val = "true"
+	}
+	settingRepo.Set("lifecycle_notify_shutdown", val)
+
+	if h.lifecycleRecorder != nil {
+		h.lifecycleRecorder.SetNotifyShutdown(req.NotifyShutdown)
+	}
+
+	h.writeAudit(r, constants.ActionSettingsUpdate, "success",
+		"lifecycle notify_shutdown: "+val)
+
+	web.OK(w, r, map[string]interface{}{
+		"notify_shutdown": req.NotifyShutdown,
+	})
+}
+
+// Lifecycle returns gateway lifecycle event history (started/shutdown/crashed/unreachable/recovered).
+func (h *GatewayHandler) Lifecycle(w http.ResponseWriter, r *http.Request) {
+	if h.lifecycleRecorder == nil {
+		web.OK(w, r, map[string]interface{}{"records": []interface{}{}, "total": 0})
+		return
+	}
+
+	q := r.URL.Query()
+	page, _ := strconv.Atoi(q.Get("page"))
+	pageSize, _ := strconv.Atoi(q.Get("page_size"))
+	if page <= 0 {
+		page = 1
+	}
+	if pageSize <= 0 {
+		pageSize = 20
+	}
+	if pageSize > 100 {
+		pageSize = 100
+	}
+
+	filter := database.GatewayLifecycleFilter{
+		Page:        page,
+		PageSize:    pageSize,
+		EventType:   q.Get("event_type"),
+		GatewayHost: q.Get("gateway_host"),
+		Since:       q.Get("since"),
+		Until:       q.Get("until"),
+	}
+
+	records, total, err := h.lifecycleRecorder.List(filter)
+	if err != nil {
+		logger.Gateway.Error().Err(err).Msg("failed to list lifecycle events")
+		web.OK(w, r, map[string]interface{}{"records": []interface{}{}, "total": 0})
+		return
+	}
+
+	web.OK(w, r, map[string]interface{}{
+		"records":   records,
+		"total":     total,
+		"page":      page,
+		"page_size": pageSize,
 	})
 }

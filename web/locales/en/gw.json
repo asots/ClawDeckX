@@ -209,5 +209,19 @@
   "unitSec": "s",
   "unitMin": "m",
   "unitHr": "h",
-  "unitDay": "d"
+  "unitDay": "d",
+
+  "lifecycleTitle": "Gateway History",
+  "lifecycleEmpty": "No lifecycle events yet",
+  "lifecycleShowMore": "Show more",
+  "lifecycleStarted": "Gateway started",
+  "lifecycleShutdown": "Gateway shutdown",
+  "lifecycleCrashed": "Gateway crashed",
+  "lifecycleUnreachable": "Gateway unreachable",
+  "lifecycleRecovered": "Gateway recovered",
+  "lifecycleUptime": "Uptime",
+  "lifecycleReason": "Reason",
+  "lifecycleError": "Error",
+  "lifecycleNotifyShutdown": "Notify shutdown",
+  "lifecycleNotifyShutdownHint": "Send notification when gateway shuts down"
 }

@@ -208,5 +208,19 @@
   "unitSec": "d",
   "unitMin": "m",
   "unitHr": "j",
-  "unitDay": "h"
+  "unitDay": "h",
+
+  "lifecycleTitle": "Riwayat Gateway",
+  "lifecycleEmpty": "Belum ada peristiwa siklus hidup",
+  "lifecycleShowMore": "Lihat lebih",
+  "lifecycleStarted": "Gateway dimulai",
+  "lifecycleShutdown": "Gateway dihentikan",
+  "lifecycleCrashed": "Gateway crash",
+  "lifecycleUnreachable": "Gateway tidak terjangkau",
+  "lifecycleRecovered": "Gateway pulih",
+  "lifecycleUptime": "Waktu aktif",
+  "lifecycleReason": "Alasan",
+  "lifecycleError": "Kesalahan",
+  "lifecycleNotifyShutdown": "Notifikasi shutdown",
+  "lifecycleNotifyShutdownHint": "Kirim notifikasi saat gateway dimatikan"
 }

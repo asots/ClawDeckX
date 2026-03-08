@@ -405,6 +405,11 @@ func findDockerContainer() string {
 	return ""
 }
 
+// IsGatewayProcessAlive checks if a gateway (node/openclaw) process is currently running.
+func IsGatewayProcessAlive() bool {
+	return processExists()
+}
+
 func processExists() bool {
 	if runtime.GOOS == "windows" {
 		return processExistsWindows()

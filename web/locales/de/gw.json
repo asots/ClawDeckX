@@ -208,5 +208,19 @@
   "unitSec": "s",
   "unitMin": "m",
   "unitHr": "h",
-  "unitDay": "T"
+  "unitDay": "T",
+
+  "lifecycleTitle": "Gateway-Verlauf",
+  "lifecycleEmpty": "Keine Lebenszyklus-Ereignisse",
+  "lifecycleShowMore": "Mehr anzeigen",
+  "lifecycleStarted": "Gateway gestartet",
+  "lifecycleShutdown": "Gateway heruntergefahren",
+  "lifecycleCrashed": "Gateway abgestürzt",
+  "lifecycleUnreachable": "Gateway nicht erreichbar",
+  "lifecycleRecovered": "Gateway wiederhergestellt",
+  "lifecycleUptime": "Laufzeit",
+  "lifecycleReason": "Grund",
+  "lifecycleError": "Fehler",
+  "lifecycleNotifyShutdown": "Shutdown-Benachrichtigung",
+  "lifecycleNotifyShutdownHint": "Benachrichtigung senden, wenn das Gateway heruntergefahren wird"
 }

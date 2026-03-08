@@ -4,6 +4,7 @@ import { Language } from '../types';
 import { getTranslation } from '../locales';
 import { dashboardApi, gwApi, gatewayApi, hostInfoApi, configApi, doctorApi } from '../services/api';
 import { useGatewayEvents } from '../hooks/useGatewayEvents';
+import { subscribeManagerWS } from '../services/manager-ws';
 import { useToast } from '../components/Toast';
 import { useConfirm } from '../components/ConfirmDialog';
 import { parseEventTitle } from '../utils/parseEventText';
@@ -390,6 +391,27 @@ const Dashboard: React.FC<DashboardProps> = ({ language }) => {
     };
   }, [fetchFast, fetchHostInfo, fetchSlow]);
 
+  // Lifecycle events for dashboard summary
+  const [recentLifecycle, setRecentLifecycle] = useState<Array<{ event_type: string; timestamp: string; uptime_sec: number; error_detail?: string }>>([]);
+  useEffect(() => {
+    gatewayApi.lifecycle({ page_size: 5 }).then((data: any) => {
+      if (data?.records) setRecentLifecycle(data.records);
+    }).catch(() => {});
+  }, []);
+
+  // Real-time lifecycle WS subscription
+  useEffect(() => {
+    return subscribeManagerWS((msg: any) => {
+      if (msg.type === 'gw_lifecycle' && msg.data?.event_type) {
+        setRecentLifecycle(prev => {
+          const updated = [msg.data, ...prev];
+          if (updated.length > 5) updated.length = 5;
+          return updated;
+        });
+      }
+    });
+  }, []);
+
   // Gateway events
   useGatewayEvents(useMemo(() => ({
     shutdown: () => {
@@ -614,11 +636,32 @@ const Dashboard: React.FC<DashboardProps> = ({ language }) => {
                   <span className={`text-[10px] font-bold uppercase ${gwRunning ? 'text-mac-green' : 'text-slate-400'}`}>{gwRunning ? d.running : d.stopped}</span>
                 </div>
                 {gwStatus?.version && <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-white/40 font-mono">v{gwStatus.version}</span>}
+                {recentLifecycle.length > 0 && (() => {
+                  const ev = recentLifecycle[0];
+                  const colors: Record<string, string> = { started: 'bg-emerald-500/15 text-emerald-600 dark:text-mac-green', recovered: 'bg-emerald-500/15 text-emerald-600 dark:text-mac-green', shutdown: 'bg-slate-200/60 dark:bg-white/10 text-slate-500 dark:text-white/40', crashed: 'bg-red-500/15 text-red-500', unreachable: 'bg-amber-500/15 text-amber-600 dark:text-amber-400' };
+                  const label = gwL?.[`lifecycle${ev.event_type.charAt(0).toUpperCase()}${ev.event_type.slice(1)}`] || ev.event_type;
+                  const ts = new Date(ev.timestamp);
+                  const ago = Math.floor((Date.now() - ts.getTime()) / 60000);
+                  const agoStr = ago < 1 ? '<1m' : ago < 60 ? `${ago}m` : ago < 1440 ? `${Math.floor(ago / 60)}h` : `${Math.floor(ago / 1440)}d`;
+                  return (
+                    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold ${colors[ev.event_type] || 'bg-slate-100 dark:bg-white/5 text-slate-500'}`}>
+                      {label}
+                      <span className="opacity-60">{agoStr}</span>
+                    </span>
+                  );
+                })()}
               </div>
               <div className="flex flex-wrap gap-x-5 gap-y-1 mt-1.5 text-[11px]">
                 {uptimeMs > 0 && <span className="text-slate-500 dark:text-white/50">{d.uptime}: <b className="text-slate-700 dark:text-white/70 font-mono">{fmtUptime(uptimeMs, uptimeUnits)}</b></span>}
                 {tickMs > 0 && <span className="text-slate-500 dark:text-white/50">{d.tickLabel}: <b className="text-slate-700 dark:text-white/70 font-mono">{tickMs}{d.unitMillisecond}</b></span>}
                 {gwStatus?.runtime && <span className="text-slate-500 dark:text-white/50">{d.runtimeLabel}: <b className="text-slate-700 dark:text-white/70 font-mono">{gwL?.[`runtime${gwStatus.runtime.charAt(0).toUpperCase()}${gwStatus.runtime.slice(1)}`] || gwStatus.runtime}</b></span>}
+                {gwStatus?.host && <span className="text-slate-500 dark:text-white/50 font-mono">{gwStatus.host}:{gwStatus.port}</span>}
+                {gwStatus?.connected !== undefined && (
+                  <span className={`flex items-center gap-1 ${gwStatus.connected ? 'text-emerald-600 dark:text-mac-green' : 'text-red-500 dark:text-mac-red'}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${gwStatus.connected ? 'bg-emerald-500' : 'bg-red-500'}`} />
+                    WS {gwStatus.connected ? (gwL?.svcWsConnected || 'Connected') : (gwL?.svcWsDisconnected || 'Disconnected')}
+                  </span>
+                )}
               </div>
             </div>
             <div className="flex flex-col items-end gap-2 shrink-0">

@@ -148,6 +148,34 @@ export const gatewayApi = {
     summary: string;
     message: string;
   }>('/api/v1/gateway/diagnose'),
+  lifecycle: (params?: { page?: number; page_size?: number; event_type?: string; since?: string; until?: string }) => {
+    const qs = new URLSearchParams();
+    if (params?.page) qs.set('page', String(params.page));
+    if (params?.page_size) qs.set('page_size', String(params.page_size));
+    if (params?.event_type) qs.set('event_type', params.event_type);
+    if (params?.since) qs.set('since', params.since);
+    if (params?.until) qs.set('until', params.until);
+    return get<{
+      records: Array<{
+        id: number;
+        timestamp: string;
+        event_type: string;
+        gateway_host: string;
+        gateway_port: number;
+        profile_name: string;
+        is_remote: boolean;
+        reason: string;
+        error_detail: string;
+        uptime_sec: number;
+      }>;
+      total: number;
+      page: number;
+      page_size: number;
+    }>(`/api/v1/gateway/lifecycle?${qs.toString()}`);
+  },
+  lifecycleNotifyConfig: () => get<{ notify_shutdown: boolean }>('/api/v1/gateway/lifecycle/notify-config'),
+  setLifecycleNotifyConfig: (config: { notify_shutdown: boolean }) =>
+    put<{ notify_shutdown: boolean }>('/api/v1/gateway/lifecycle/notify-config', config),
 };
 
 // ==================== 网关配置档案（多网关管理） ====================

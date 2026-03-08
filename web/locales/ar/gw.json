@@ -208,5 +208,19 @@
   "unitSec": "ث",
   "unitMin": "د",
   "unitHr": "س",
-  "unitDay": "ي"
+  "unitDay": "ي",
+
+  "lifecycleTitle": "سجل البوابة",
+  "lifecycleEmpty": "لا توجد أحداث دورة حياة",
+  "lifecycleShowMore": "عرض المزيد",
+  "lifecycleStarted": "بدء البوابة",
+  "lifecycleShutdown": "إيقاف البوابة",
+  "lifecycleCrashed": "تعطل البوابة",
+  "lifecycleUnreachable": "البوابة غير قابلة للوصول",
+  "lifecycleRecovered": "استعادة البوابة",
+  "lifecycleUptime": "وقت التشغيل",
+  "lifecycleReason": "السبب",
+  "lifecycleError": "خطأ",
+  "lifecycleNotifyShutdown": "إشعار الإيقاف",
+  "lifecycleNotifyShutdownHint": "إرسال إشعار عند إيقاف البوابة"
 }

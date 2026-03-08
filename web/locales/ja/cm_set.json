@@ -285,6 +285,7 @@
     "notifyActive": "アクティブチャンネル",
     "notifyReuse": "OpenClaw チャンネルを再利用",
     "notifyReuseHint": "OpenClaw 設定に Telegram を検出しました。Bot Token を再利用できます — Chat ID を入力するだけです。",
+    "notifyEventsTitle": "通知イベント",
     "serviceManagement": "システムサービス管理",
     "serviceInstalled": "インストール済み",
     "serviceNotInstalled": "未インストール",
