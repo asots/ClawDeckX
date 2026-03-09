@@ -808,9 +808,8 @@ func (i *Installer) UpdateOpenClaw(ctx context.Context) error {
 		return fmt.Errorf("npm is not available, cannot update")
 	}
 
-	sc := NewStreamCommand(i.emitter, "update", "update-openclaw")
-	i.emitter.EmitLog("Running: npm update -g openclaw@latest")
-	if err := sc.Run(ctx, "npm", "install", "-g", "openclaw@latest"); err != nil {
+	i.emitter.EmitLog("Updating OpenClaw via npm global install...")
+	if err := i.installViaNpmWithOptions(ctx, "openclaw", ""); err != nil {
 		return fmt.Errorf("npm update failed: %w", err)
 	}
 
