@@ -677,13 +677,13 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
 
   const fmtUptime = (ms: number): string => {
     const s = Math.floor(ms / 1000);
-    if (s < 60) return `${s}s`;
+    if (s < 60) return `${s}${gw.unitSec}`;
     const m = Math.floor(s / 60);
-    if (m < 60) return `${m}m`;
+    if (m < 60) return `${m}${gw.unitMin}`;
     const h = Math.floor(m / 60);
-    if (h < 24) return `${h}h ${m % 60}m`;
+    if (h < 24) return `${h}${gw.unitHr} ${m % 60}${gw.unitMin}`;
     const d = Math.floor(h / 24);
-    return `${d}d ${h % 24}h`;
+    return `${d}${gw.unitDay} ${h % 24}${gw.unitHr}`;
   };
 
   // 解析 JSON 格式日志行（tslog / zerolog / pino 等）
@@ -866,7 +866,12 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
                   </div>
                 </div>
                 {/* 名称 */}
-                <h4 className="text-xs font-bold text-slate-800 dark:text-white truncate">{isLocal(p.host) && (p.name === 'Local Gateway' || p.name === '本地网关') ? (gw.localGateway || p.name) : p.name}</h4>
+                <div className="flex items-center gap-1.5">
+                  <h4 className="text-xs font-bold text-slate-800 dark:text-white truncate">{isLocal(p.host) && (p.name === 'Local Gateway' || p.name === '本地网关') ? (gw.localGateway || p.name) : p.name}</h4>
+                  {p.is_active && status?.running && displayUptimeMs > 0 && (
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-mac-green font-mono font-bold">{fmtUptime(displayUptimeMs)}</span>
+                  )}
+                </div>
                 <p className="text-[11px] text-slate-400 dark:text-white/40 font-mono mt-0.5 truncate">{p.host}:{p.port}</p>
                 {/* 操作按钮 */}
                 <div className="absolute top-2 end-2 hidden group-hover:flex items-center gap-0.5">
@@ -1005,7 +1010,6 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
           </div>
           <div className="flex-1 min-w-0 flex items-center gap-2 flex-wrap">
             <h3 className="text-slate-800 dark:text-white font-bold text-sm">{activeProfile ? (isLocal(activeProfile.host) && (activeProfile.name === 'Local Gateway' || activeProfile.name === '本地网关') ? (gw.localGateway || activeProfile.name) : activeProfile.name) : gw.status}</h3>
-            {displayUptimeMs > 0 && <span className="text-[11px] text-slate-500 dark:text-white/50 font-mono">{fmtUptime(displayUptimeMs)}</span>}
             {/* 看门狗探测状态 */}
             {status?.running && (
               <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full border border-slate-200/60 dark:border-white/[0.06] bg-white dark:bg-white/[0.02]">
