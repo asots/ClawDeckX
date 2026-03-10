@@ -54,7 +54,7 @@ const PROVIDER_DEFAULT_PARAMS: Record<string, ProviderDefaultParams> = {
   groq: { apiType: 'openai-completions', baseUrl: 'https://api.groq.com/openai/v1' },
   cerebras: { apiType: 'openai-completions', baseUrl: 'https://api.cerebras.ai/v1' },
   mistral: { apiType: 'openai-completions', baseUrl: 'https://api.mistral.ai/v1' },
-  minimax: { apiType: 'anthropic-messages', baseUrl: 'https://api.minimax.io/anthropic' },
+  minimax: { apiType: 'anthropic-messages', baseUrl: 'https://api.minimaxi.com/anthropic' },
   nvidia: { apiType: 'openai-completions', baseUrl: 'https://integrate.api.nvidia.com/v1' },
   xiaomi: { apiType: 'anthropic-messages', baseUrl: 'https://api.xiaomimimo.com/anthropic' },
   together: { apiType: 'openai-completions', baseUrl: 'https://api.together.xyz/v1' },
@@ -791,6 +791,18 @@ export const ModelsSection: React.FC<SectionProps> = ({ config, setField, getFie
                   </button>
                 }
               >
+                {name === 'minimax' && (
+                  <SelectField
+                    label={es.region || 'Region'}
+                    value={cfg.baseUrl?.includes('minimaxi.com') ? 'cn' : 'global'}
+                    onChange={v => setField(['models', 'providers', name, 'baseUrl'], v === 'cn' ? 'https://api.minimaxi.com/anthropic' : 'https://api.minimax.io/anthropic')}
+                    options={[
+                      { value: 'global', label: es.regionGlobal || 'Global (api.minimax.io)' },
+                      { value: 'cn', label: es.regionCN || 'China (api.minimaxi.com)' }
+                    ]}
+                    tooltip={es.regionTip || 'Select your region for optimal connectivity'}
+                  />
+                )}
                 <TextField label={es.lblBaseUrl} value={cfg.baseUrl || ''} onChange={v => setField(['models', 'providers', name, 'baseUrl'], v)} placeholder={es.phOpenAIBaseUrl} tooltip={es.baseUrlTip} />
                 <PasswordField label={es.lblApiKey} value={cfg.apiKey || ''} onChange={v => setField(['models', 'providers', name, 'apiKey'], v)} placeholder={es.phApiKeySk} tooltip={es.apiKeyTip} />
                 <SelectField label={es.lblApi} value={cfg.api || 'openai-completions'} onChange={v => setField(['models', 'providers', name, 'api'], v)} options={API_OPTIONS} tooltip={es.apiTypeTip} />
@@ -1167,6 +1179,21 @@ export const ModelsSection: React.FC<SectionProps> = ({ config, setField, getFie
                           {o.label}
                         </button>
                       ))}
+                    </div>
+                  </div>
+                )}
+                {preset.id === 'minimax' && (
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500 mb-1 block">{es.region}</label>
+                    <div className="flex gap-1.5">
+                      <button onClick={() => setWizBaseUrl('https://api.minimax.io/anthropic')}
+                        className={`flex-1 px-2.5 py-1.5 rounded-lg text-[10px] font-medium border-2 transition-all ${wizBaseUrl.includes('minimax.io') ? 'border-primary bg-primary/5 text-primary' : 'border-slate-200 dark:border-white/10 text-slate-500'}`}>
+                        {es.regionGlobal}
+                      </button>
+                      <button onClick={() => setWizBaseUrl('https://api.minimaxi.com/anthropic')}
+                        className={`flex-1 px-2.5 py-1.5 rounded-lg text-[10px] font-medium border-2 transition-all ${wizBaseUrl.includes('minimaxi.com') ? 'border-primary bg-primary/5 text-primary' : 'border-slate-200 dark:border-white/10 text-slate-500'}`}>
+                        {es.regionCN}
+                      </button>
                     </div>
                   </div>
                 )}
