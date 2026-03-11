@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { Language } from '../types';
 import { getTranslation } from '../locales';
-import { skillHubApi, SkillHubSkill, SkillHubData } from '../services/api';
+import { skillHubApi, SkillHubSkill, SkillHubData, gwApi } from '../services/api';
 import { useToast } from '../components/Toast';
 import EmptyState from '../components/EmptyState';
 import CustomSelect from '../components/CustomSelect';
@@ -378,7 +378,10 @@ const SkillHub: React.FC<SkillHubProps> = ({ language }) => {
     } else {
       checkCLI();
     }
-    fetchData();
+    // Only fetch if no cache exists (initialCache is null)
+    if (!initialCache) {
+      fetchData();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run once on mount
 
@@ -457,6 +460,9 @@ const SkillHub: React.FC<SkillHubProps> = ({ language }) => {
       handleCopyCLI(skill);
     }
   }, [cliStatus, handleCopyCLI]);
+
+  // Get installed skills status (placeholder for future implementation)
+  const [installedSkills, setInstalledSkills] = useState<Set<string>>(new Set());
 
   // Install skill via API (called after confirmation)
   const handleInstallSkill = useCallback(async (skill: SkillHubSkill) => {
