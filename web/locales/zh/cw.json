@@ -150,7 +150,7 @@
   "feishuPitfall": "⚠️ 常见踩坑：1) 必须在「事件与回调」添加 im.message.receive_v1 事件，否则机器人能发消息但收不到消息；2) 事件订阅方式必须与 connectionMode 匹配：长连接 → websocket（推荐），请求地址 → webhook；3) 每次修改权限/配置后必须重新「创建版本并发布」才能生效；4) 机器人没有自己的云空间根目录，需手动分享文件夹给机器人才能使用云空间工具；5) Windows 安装失败可手动下载 tgz：飞书插件已内置于 openclaw，直接运行 openclaw plugins install @openclaw/feishu 即可",
   "feishuHelpUrl": "https://open.feishu.cn/app",
   "dingtalkPrep": [
-    "安装钉钉插件：openclaw plugins install @openclaw-china/dingtalk（或安装全渠道包 @openclaw-china/channels）",
+    "安装钉钉插件：openclaw plugins install @openclaw-china/dingtalk",
     "在钉钉右上角「创建或加入企业」→ 创建企业（无需任何材料，5 分钟完成）",
     "登录钉钉开放平台 open-dev.dingtalk.com → 切换到刚创建的企业 → 创建应用",
     "在「应用能力」中添加「机器人」能力，消息接收模式必须选择 Stream 模式（无需公网 IP）",
@@ -173,7 +173,7 @@
   "wecomPitfall": "⚠️ 常见踩坑：1) 必须选择「长连接」创建方式，不要选 Webhook；2) Bot ID 和 Secret 由系统自动生成，不要手动修改；3) 配对密钥直接复制粘贴即可；4) 长连接模式无需公网地址和端口配置",
   "wecomHelpUrl": "https://open.work.weixin.qq.com/help/wap/detail?docid=21657",
   "wecom_kfPrep": [
-    "安装企微自建应用插件：openclaw plugins install @wecom/wecom-openclaw-plugin-app",
+    "安装企微自建应用插件：openclaw plugins install @openclaw-china/wecom-app",
     "登录企业微信管理后台 work.weixin.qq.com",
     "在「应用管理」→「自建」中创建应用，获取 AgentId 和 Secret（即 corpSecret）",
     "在「我的企业」页获取企业 ID（corpId）",
@@ -184,7 +184,7 @@
   ],
   "wecom_kfPitfall": "⚠️ 常见踩坑：1) 必须先配置好 OpenClaw 并启动网关，再回企微后台点「保存」，否则回调校验失败；2) 必须在「企业可信 IP」中添加服务器 IP，否则发送消息失败；3) Token 和 EncodingAESKey 需与企微后台一致；4) 支持在个人微信中通过工作台入口使用",
   "qqPrep": [
-    "安装 QQ 插件：openclaw plugins install @openclaw-china/qqbot（或安装全渠道包 @openclaw-china/channels）",
+    "安装 QQ 插件：openclaw plugins install @openclaw-china/qqbot",
     "访问 QQ 开放平台 q.qq.com → 注册开发者账号并完成审核",
     "创建「机器人」应用（注意不是小程序或游戏）",
     "在应用详情页获取 AppID 和 AppSecret",

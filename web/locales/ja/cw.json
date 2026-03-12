@@ -150,7 +150,7 @@
   "feishuPitfall": "⚠️ よくある落とし穴：1) im.message.receive_v1イベントを追加しないとBotはメッセージを送信できても受信できません；2) イベント購読方式はconnectionModeと一致させる必要があります：長接続→websocket（推奨）、リクエストアドレス→webhook；3) 権限/設定変更後は毎回「バージョン作成して公開」が必要；4) Botには独自のクラウドスペースルートディレクトリがないため、フォルダを手動でBotに共有する必要があります",
   "feishuHelpUrl": "https://open.feishu.cn/app",
   "dingtalkPrep": [
-    "DingTalkプラグインをインストール：openclaw plugins install @openclaw-china/dingtalk（またはフルバンドル @openclaw-china/channels）",
+    "DingTalkプラグインをインストール：openclaw plugins install @openclaw-china/dingtalk",
     "DingTalkで\"組織を作成または参加\" → 作成（書類不要、5分）",
     "DingTalk Open Platform open-dev.dingtalk.comにログイン → 新しい組織に切り替え → アプリを作成",
     "App CapabilitiesでBot機能を追加、メッセージ受信モードはStream必須（パブリックIP不要）",
@@ -161,7 +161,7 @@
   "dingtalkPitfall": "⚠️ よくある落とし穴：1) メッセージ受信モードはStreamモードを選択する必要があります。そうしないとパブリックIPが必要；2) アプリ作成後は「バージョン公開」しないとDingTalkでBotが見つかりません；3) DingTalk APIには頻度制限があり、ストリーム更新でスロットリングが発生しやすい；4) AI Card権限未開通でも通常の会話には影響せず、システムは通常メッセージにフォールバックします",
   "dingtalkHelpUrl": "https://open-dev.dingtalk.com",
   "wecomPrep": [
-    "WeComプラグインをインストール：openclaw plugins install @wecom/wecom-openclaw-plugin（またはフルバンドル @openclaw-china/channels）",
+    "WeComプラグインをインストール：openclaw plugins install @wecom/wecom-openclaw-plugin",
     "work.weixin.qq.comで登録し、WeCom管理コンソールにログイン",
     "アプリ管理 → スマートBotでBotを作成",
     "コールバックURLを設定：http://<あなたのIPまたはドメイン>:18789/wecom（ポート18789がアクセス可能なことを確認）",
@@ -183,7 +183,7 @@
   ],
   "wecom_kfPitfall": "⚠️ よくある落とし穴：1) OpenClawの設定とゲートウェイ起動を先に完了してから、WeCom管理画面で「保存」をクリック。そうしないとコールバック検証失敗；2) 「企業信頼IP」にサーバーIPを追加しないとメッセージ送信失敗；3) TokenとEncodingAESKeyはWeCom管理画面と一致させる必要があります；4) 個人WeChatからワークベンチ経由での使用に対応",
   "qqPrep": [
-    "QQプラグインをインストール：openclaw plugins install @openclaw-china/qqbot（またはフルバンドル @openclaw-china/channels）",
+    "QQプラグインをインストール：openclaw plugins install @openclaw-china/qqbot",
     "QQ Open Platform q.qq.comにアクセス → 開発者アカウントを登録し審査を完了",
     "Botアプリケーションを作成（ミニプログラムやゲームではない）",
     "アプリ詳細ページからAppIDとAppSecretを取得",

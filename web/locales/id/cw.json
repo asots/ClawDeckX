@@ -150,7 +150,7 @@
   "feishuPitfall": "⚠️ Kesalahan umum: 1) Harus tambahkan event im.message.receive_v1 di Events & Callbacks, atau bot bisa mengirim tapi tidak menerima pesan; 2) Metode subscription event harus cocok dengan connectionMode: Long Connection → websocket (direkomendasikan), Request URL → webhook; 3) Harus buat dan terbitkan versi baru setelah setiap perubahan izin/konfigurasi; 4) Bot tidak memiliki root penyimpanan cloud — Anda harus berbagi folder ke bot secara manual agar drive tools berfungsi; 5) Kegagalan instal Windows: unduh tgz manual dan instal secara lokal",
   "feishuHelpUrl": "https://open.feishu.cn/app",
   "dingtalkPrep": [
-    "Instal plugin DingTalk: openclaw plugins install @openclaw-china/dingtalk (atau bundle lengkap @openclaw-china/channels)",
+    "Instal plugin DingTalk: openclaw plugins install @openclaw-china/dingtalk",
     "Di DingTalk, ketuk \"Buat atau Gabung Organisasi\" → Buat satu (tidak perlu dokumen, 5 menit)",
     "Masuk ke DingTalk Open Platform open-dev.dingtalk.com → Beralih ke organisasi baru → Buat app",
     "Tambahkan kemampuan Bot di App Capabilities, mode terima pesan HARUS Stream (tidak perlu IP publik)",
@@ -161,7 +161,7 @@
   "dingtalkPitfall": "⚠️ Kesalahan umum: 1) Mode terima pesan harus Stream, jika tidak IP publik diperlukan; 2) Harus terbitkan versi sebelum bot muncul di pencarian DingTalk; 3) API DingTalk memiliki batas kecepatan — pembaruan streaming bisa memicu pembatasan; 4) Izin AI Card opsional — sistem fallback ke pesan biasa jika tidak diaktifkan",
   "dingtalkHelpUrl": "https://open-dev.dingtalk.com",
   "wecomPrep": [
-    "Instal plugin WeCom: openclaw plugins install @wecom/wecom-openclaw-plugin (atau bundle lengkap @openclaw-china/channels)",
+    "Instal plugin WeCom: openclaw plugins install @wecom/wecom-openclaw-plugin",
     "Kunjungi work.weixin.qq.com untuk mendaftar dan masuk ke konsol admin WeCom",
     "Di App Management → Smart Bot, buat bot",
     "Atur URL callback: http://<ip-atau-domain-anda>:18789/wecom (pastikan port 18789 dapat diakses)",
@@ -183,7 +183,7 @@
   ],
   "wecom_kfPitfall": "⚠️ Kesalahan umum: 1) Harus konfigurasikan OpenClaw dan mulai gateway terlebih dahulu, lalu klik \"Simpan\" di WeCom — jika tidak verifikasi callback gagal; 2) Harus tambahkan IP server ke daftar IP Terpercaya, jika tidak pengiriman pesan gagal; 3) Token dan EncodingAESKey harus cocok dengan konsol WeCom; 4) Dapat diakses dari WeChat personal melalui entry Work",
   "qqPrep": [
-    "Instal plugin QQ: openclaw plugins install @openclaw-china/qqbot (atau bundle lengkap @openclaw-china/channels)",
+    "Instal plugin QQ: openclaw plugins install @openclaw-china/qqbot",
     "Kunjungi QQ Open Platform q.qq.com → Daftar akun pengembang dan selesaikan review",
     "Buat aplikasi Bot (bukan mini-program atau game)",
     "Dapatkan AppID dan AppSecret dari halaman detail app",

@@ -150,7 +150,7 @@
   "feishuPitfall": "⚠️ 주의: 1) im.message.receive_v1 이벤트를 추가하지 않으면 Bot이 메시지를 보낼 수 있지만 받을 수 없음; 2) 이벤트 구독 방식은 connectionMode와 일치 필요: 장기 연결→websocket(권장), 요청 주소→webhook; 3) 권한/설정 변경 후 매번 '버전 생성 및 게시' 필요; 4) Bot에는 자체 클라우드 스페이스 루트 디렉터리가 없어 폴더를 수동 공유 필요",
   "feishuHelpUrl": "https://open.feishu.cn/app",
   "dingtalkPrep": [
-    "DingTalk 플러그인 설치: openclaw plugins install @openclaw-china/dingtalk (또는 전체 번들 @openclaw-china/channels)",
+    "DingTalk 플러그인 설치: openclaw plugins install @openclaw-china/dingtalk",
     "DingTalk에서 '조직 만들기 또는 참여' → 하나 생성하세요 (서류 불필요, 5분 소요)",
     "DingTalk 오픈 플랫폼 open-dev.dingtalk.com에 로그인 → 새 조직으로 전환 → 앱 생성",
     "앱 기능에서 Bot 기능을 추가, 메시지 수신 모드는 반드시 Stream 선택 (공인 IP 불필요)",
@@ -161,7 +161,7 @@
   "dingtalkPitfall": "⚠️ 주의: 1) 메시지 수신 모드는 Stream 선택 필수, 아니면 공인 IP 필요; 2) 앱 생성 후 '버전 게시'해야 DingTalk에서 Bot 검색 가능; 3) DingTalk API 빈도 제한 있음, 스트림 업데이트 시 스로틀링 발생 가능; 4) AI Card 권한 미개통도 일반 대화에 영향 없음",
   "dingtalkHelpUrl": "https://open-dev.dingtalk.com",
   "wecomPrep": [
-    "WeCom 플러그인 설치: openclaw plugins install @wecom/wecom-openclaw-plugin (또는 전체 번들 @openclaw-china/channels)",
+    "WeCom 플러그인 설치: openclaw plugins install @wecom/wecom-openclaw-plugin",
     "work.weixin.qq.com에 접속하여 WeCom 관리 콘솔에 등록 및 로그인하세요",
     "앱 관리 → 스마트 Bot에서 Bot을 생성하세요",
     "콜백 URL 설정: http://<IP 또는 도메인>:18789/wecom (18789 포트 접근 가능 확인)",
@@ -183,7 +183,7 @@
   ],
   "wecom_kfPitfall": "⚠️ 주의: 1) OpenClaw 설정 및 게이트웨이 시작 후 WeCom에서 '저장' 클릭, 아니면 콜백 검증 실패; 2) '기업 신뢰 IP'에 서버 IP 추가 필수, 아니면 메시지 전송 실패; 3) Token과 EncodingAESKey는 WeCom 관리 화면과 일치 필요",
   "qqPrep": [
-    "QQ 플러그인 설치: openclaw plugins install @openclaw-china/qqbot (또는 전체 번들 @openclaw-china/channels)",
+    "QQ 플러그인 설치: openclaw plugins install @openclaw-china/qqbot",
     "QQ 오픈 플랫폼 q.qq.com에 접속 → 개발자 계정을 등록하고 심사를 완료하세요",
     "Bot 애플리케이션을 생성하세요 (미니프로그램이나 게임이 아님)",
     "앱 상세 페이지에서 AppID와 AppSecret을 받으세요",

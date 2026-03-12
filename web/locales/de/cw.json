@@ -150,7 +150,7 @@
   "feishuPitfall": "⚠️ Häufige Fehler: 1) Ohne im.message.receive_v1 sendet Bot aber empfängt nicht; 2) Event-Modus muss zu connectionMode passen; 3) Nach jeder Änderung neue Version veröffentlichen; 4) Bot hat kein eigenes Cloud-Verzeichnis",
   "feishuHelpUrl": "https://open.feishu.cn/app",
   "dingtalkPrep": [
-    "DingTalk-Plugin installieren: openclaw plugins install @openclaw-china/dingtalk (oder Gesamtpaket @openclaw-china/channels)",
+    "DingTalk-Plugin installieren: openclaw plugins install @openclaw-china/dingtalk",
     "In DingTalk auf 'Organisation erstellen oder beitreten' tippen → Eine erstellen (keine Dokumente nötig, 5 Minuten)",
     "Bei DingTalk Open Platform open-dev.dingtalk.com anmelden → Zur neuen Organisation wechseln → App erstellen",
     "Bot-Fähigkeit in App-Fähigkeiten hinzufügen, Nachrichtenempfangsmodus MUSS Stream sein (keine öffentliche IP nötig)",
@@ -161,7 +161,7 @@
   "dingtalkPitfall": "⚠️ Häufige Fehler: 1) Empfangsmodus muss Stream sein; 2) Version nach App-Erstellung veröffentlichen; 3) API hat Frequenzlimits; 4) Ohne AI Card normale Nachrichten",
   "dingtalkHelpUrl": "https://open-dev.dingtalk.com",
   "wecomPrep": [
-    "WeCom-Plugin installieren: openclaw plugins install @wecom/wecom-openclaw-plugin (oder Gesamtpaket @openclaw-china/channels)",
+    "WeCom-Plugin installieren: openclaw plugins install @wecom/wecom-openclaw-plugin",
     "work.weixin.qq.com besuchen, um sich bei der WeCom-Administrationskonsole zu registrieren und anzumelden",
     "In App-Verwaltung → Smart Bot einen Bot erstellen",
     "Callback-URL setzen: http://<Ihre-IP-oder-Domain>:18789/wecom (Port 18789 muss erreichbar sein)",
@@ -172,7 +172,7 @@
   "wecomPitfall": "⚠️ Häufige Fehler: 1) Callback-URL muss öffentlich sein: http://IP:18789/wecom; 2) Erst OpenClaw konfigurieren; 3) encodingAESKey = 43 Zeichen; 4) Port 18789 freigeben",
   "wecomHelpUrl": "https://open.work.weixin.qq.com/help/wap/detail?docid=21657",
   "wecom_kfPrep": [
-    "WeCom App-Plugin installieren: openclaw plugins install @wecom/wecom-openclaw-plugin-app",
+    "WeCom App-Plugin installieren: openclaw plugins install @openclaw-china/wecom-app",
     "Bei WeCom-Administrationskonsole work.weixin.qq.com anmelden",
     "In App-Verwaltung → Selbst erstellt eine App erstellen, AgentId und Secret (corpSecret) holen",
     "Corp-ID von der Seite 'Mein Unternehmen' holen",
@@ -183,7 +183,7 @@
   ],
   "wecom_kfPitfall": "⚠️ Häufige Fehler: 1) Erst OpenClaw konfigurieren; 2) Server-IP zu vertrauenswürdigen IPs hinzufügen; 3) Token und EncodingAESKey müssen übereinstimmen",
   "qqPrep": [
-    "QQ-Plugin installieren: openclaw plugins install @openclaw-china/qqbot (oder Gesamtpaket @openclaw-china/channels)",
+    "QQ-Plugin installieren: openclaw plugins install @openclaw-china/qqbot",
     "QQ Open Platform q.qq.com besuchen → Entwicklerkonto registrieren und Prüfung abschließen",
     "Eine Bot-Anwendung erstellen (kein Mini-Programm oder Spiel)",
     "AppID und AppSecret von der App-Detailseite holen",

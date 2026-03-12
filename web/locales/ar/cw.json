@@ -150,7 +150,7 @@
   "feishuPitfall": "تأكد من نشر التطبيق وتمكين أذونات الأحداث",
   "feishuHelpUrl": "دليل إعداد Feishu",
   "dingtalkPrep": [
-    "Install DingTalk plugin: openclaw plugins install @openclaw-china/dingtalk (or full bundle @openclaw-china/channels)",
+    "Install DingTalk plugin: openclaw plugins install @openclaw-china/dingtalk",
     "In DingTalk, tap \"Create or Join Organization\" → Create one (no documents needed, 5 minutes)",
     "Sign in to DingTalk Open Platform open-dev.dingtalk.com → Switch to the new org → Create app",
     "Add Bot capability in App Capabilities, message receive mode MUST be Stream (no public IP needed)",
@@ -183,7 +183,7 @@
   ],
   "wecom_kfPitfall": "يتطلب إذن مسؤول المؤسسة لإنشاء التطبيق",
   "qqPrep": [
-    "Install QQ plugin: openclaw plugins install @openclaw-china/qqbot (or full bundle @openclaw-china/channels)",
+    "Install QQ plugin: openclaw plugins install @openclaw-china/qqbot",
     "Visit QQ Open Platform q.qq.com → Register developer account and complete review",
     "Create a Bot application (not mini-program or game)",
     "Get AppID and AppSecret from app details page",

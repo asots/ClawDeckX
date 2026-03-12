@@ -150,7 +150,7 @@
   "feishuPitfall": "⚠️ Erros comuns: 1) Sem im.message.receive_v1 o Bot envia mas não recebe; 2) Modo evento deve coincidir com connectionMode; 3) Publicar nova versão após cada alteração; 4) Bot não tem diretório raiz na nuvem",
   "feishuHelpUrl": "https://open.feishu.cn/app",
   "dingtalkPrep": [
-    "Instale o plugin DingTalk: openclaw plugins install @openclaw-china/dingtalk (ou pacote completo @openclaw-china/channels)",
+    "Instale o plugin DingTalk: openclaw plugins install @openclaw-china/dingtalk",
     "No DingTalk, toque em \"Criar ou Entrar em Organização\" → Crie uma (sem documentos necessários, 5 minutos)",
     "Faça login na DingTalk Open Platform open-dev.dingtalk.com → Mude para a nova org → Crie um app",
     "Adicione a capacidade Bot em App Capabilities, modo de recepção de mensagens DEVE ser Stream (sem IP público necessário)",
@@ -161,7 +161,7 @@
   "dingtalkPitfall": "⚠️ Erros comuns: 1) Modo recepção deve ser Stream; 2) Publicar versão após criar app; 3) API tem limites de frequência; 4) Sem AI Card usa mensagens normais",
   "dingtalkHelpUrl": "https://open-dev.dingtalk.com",
   "wecomPrep": [
-    "Instale o plugin WeCom: openclaw plugins install @wecom/wecom-openclaw-plugin (ou pacote completo @openclaw-china/channels)",
+    "Instale o plugin WeCom: openclaw plugins install @wecom/wecom-openclaw-plugin",
     "Visite work.weixin.qq.com para registrar e fazer login no console admin do WeCom",
     "Em Gerenciamento de Apps → Smart Bot, crie um bot",
     "Defina a URL de callback: http://<seu-ip-ou-domínio>:18789/wecom (certifique-se de que a porta 18789 está acessível)",
@@ -183,7 +183,7 @@
   ],
   "wecom_kfPitfall": "⚠️ Erros comuns: 1) Configure OpenClaw primeiro; 2) Adicione IP do servidor aos IPs confiáveis; 3) Token e EncodingAESKey devem coincidir",
   "qqPrep": [
-    "Instale o plugin QQ: openclaw plugins install @openclaw-china/qqbot (ou pacote completo @openclaw-china/channels)",
+    "Instale o plugin QQ: openclaw plugins install @openclaw-china/qqbot",
     "Visite QQ Open Platform q.qq.com → Registre conta de desenvolvedor e complete a revisão",
     "Crie um aplicativo Bot (não mini-programa ou jogo)",
     "Obtenha AppID e AppSecret da página de detalhes do app",
