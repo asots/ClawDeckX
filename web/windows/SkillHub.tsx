@@ -221,9 +221,6 @@ const CLIBanner: React.FC<{
                 <>{sk.oneClickInstall || 'One-Click Install'}</>
               )}
             </button>
-            <a href="https://skillhub.ai/docs" target="_blank" rel="noopener noreferrer" className="h-7 px-3 bg-white dark:bg-white/10 text-amber-700 dark:text-amber-300 text-xs font-bold rounded-lg border border-amber-300 dark:border-amber-500/30 hover:bg-amber-50 dark:hover:bg-white/20 flex items-center">
-              {sk.viewDocs || 'View Docs'}
-            </a>
             <button onClick={onDismiss} className="h-7 px-3 text-amber-600 dark:text-amber-400 text-xs font-bold hover:underline">
               {sk.close || 'Close'}
             </button>
