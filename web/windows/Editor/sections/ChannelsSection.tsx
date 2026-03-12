@@ -313,7 +313,7 @@ export const ChannelsSection: React.FC<SectionProps> = ({ config, setField, getF
     const pluginSpecs: Record<string, string> = {
       feishu: '@openclaw/feishu',
       dingtalk: '@openclaw-china/dingtalk',
-      wecom: '@openclaw-china/wecom',
+      wecom: '@wecom/wecom-openclaw-plugin',
       wecom_kf: '@openclaw-china/wecom-app',
       qq: '@openclaw-china/qqbot',
       msteams: '@openclaw/msteams',
@@ -1606,7 +1606,7 @@ export const ChannelsSection: React.FC<SectionProps> = ({ config, setField, getF
                     {chId && ['feishu', 'dingtalk', 'qq', 'msteams', 'zalo', 'voicecall', 'matrix', 'wecom', 'wecom_kf'].includes(chId) && (() => {
                       const pluginSpec = chId === 'feishu' ? '@openclaw/feishu' :
                         chId === 'dingtalk' ? '@openclaw-china/dingtalk' :
-                          chId === 'wecom' ? '@openclaw-china/wecom' :
+                          chId === 'wecom' ? '@wecom/wecom-openclaw-plugin' :
                             chId === 'wecom_kf' ? '@openclaw-china/wecom-app' :
                               chId === 'qq' ? '@openclaw-china/qqbot' :
                                 chId === 'msteams' ? '@openclaw/msteams' :

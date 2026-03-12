@@ -161,7 +161,7 @@
   "dingtalkPitfall": "⚠️ 주의: 1) 메시지 수신 모드는 Stream 선택 필수, 아니면 공인 IP 필요; 2) 앱 생성 후 '버전 게시'해야 DingTalk에서 Bot 검색 가능; 3) DingTalk API 빈도 제한 있음, 스트림 업데이트 시 스로틀링 발생 가능; 4) AI Card 권한 미개통도 일반 대화에 영향 없음",
   "dingtalkHelpUrl": "https://open-dev.dingtalk.com",
   "wecomPrep": [
-    "WeCom 플러그인 설치: openclaw plugins install @openclaw-china/wecom (또는 전체 번들 @openclaw-china/channels)",
+    "WeCom 플러그인 설치: openclaw plugins install @wecom/wecom-openclaw-plugin (또는 전체 번들 @openclaw-china/channels)",
     "work.weixin.qq.com에 접속하여 WeCom 관리 콘솔에 등록 및 로그인하세요",
     "앱 관리 → 스마트 Bot에서 Bot을 생성하세요",
     "콜백 URL 설정: http://<IP 또는 도메인>:18789/wecom (18789 포트 접근 가능 확인)",

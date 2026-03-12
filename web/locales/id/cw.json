@@ -161,7 +161,7 @@
   "dingtalkPitfall": "⚠️ Kesalahan umum: 1) Mode terima pesan harus Stream, jika tidak IP publik diperlukan; 2) Harus terbitkan versi sebelum bot muncul di pencarian DingTalk; 3) API DingTalk memiliki batas kecepatan — pembaruan streaming bisa memicu pembatasan; 4) Izin AI Card opsional — sistem fallback ke pesan biasa jika tidak diaktifkan",
   "dingtalkHelpUrl": "https://open-dev.dingtalk.com",
   "wecomPrep": [
-    "Instal plugin WeCom: openclaw plugins install @openclaw-china/wecom (atau bundle lengkap @openclaw-china/channels)",
+    "Instal plugin WeCom: openclaw plugins install @wecom/wecom-openclaw-plugin (atau bundle lengkap @openclaw-china/channels)",
     "Kunjungi work.weixin.qq.com untuk mendaftar dan masuk ke konsol admin WeCom",
     "Di App Management → Smart Bot, buat bot",
     "Atur URL callback: http://<ip-atau-domain-anda>:18789/wecom (pastikan port 18789 dapat diakses)",

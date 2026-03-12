@@ -161,7 +161,7 @@
   "dingtalkPitfall": "⚠️ Häufige Fehler: 1) Empfangsmodus muss Stream sein; 2) Version nach App-Erstellung veröffentlichen; 3) API hat Frequenzlimits; 4) Ohne AI Card normale Nachrichten",
   "dingtalkHelpUrl": "https://open-dev.dingtalk.com",
   "wecomPrep": [
-    "WeCom-Plugin installieren: openclaw plugins install @openclaw-china/wecom (oder Gesamtpaket @openclaw-china/channels)",
+    "WeCom-Plugin installieren: openclaw plugins install @wecom/wecom-openclaw-plugin (oder Gesamtpaket @openclaw-china/channels)",
     "work.weixin.qq.com besuchen, um sich bei der WeCom-Administrationskonsole zu registrieren und anzumelden",
     "In App-Verwaltung → Smart Bot einen Bot erstellen",
     "Callback-URL setzen: http://<Ihre-IP-oder-Domain>:18789/wecom (Port 18789 muss erreichbar sein)",

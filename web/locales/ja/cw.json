@@ -161,7 +161,7 @@
   "dingtalkPitfall": "⚠️ よくある落とし穴：1) メッセージ受信モードはStreamモードを選択する必要があります。そうしないとパブリックIPが必要；2) アプリ作成後は「バージョン公開」しないとDingTalkでBotが見つかりません；3) DingTalk APIには頻度制限があり、ストリーム更新でスロットリングが発生しやすい；4) AI Card権限未開通でも通常の会話には影響せず、システムは通常メッセージにフォールバックします",
   "dingtalkHelpUrl": "https://open-dev.dingtalk.com",
   "wecomPrep": [
-    "WeComプラグインをインストール：openclaw plugins install @openclaw-china/wecom（またはフルバンドル @openclaw-china/channels）",
+    "WeComプラグインをインストール：openclaw plugins install @wecom/wecom-openclaw-plugin（またはフルバンドル @openclaw-china/channels）",
     "work.weixin.qq.comで登録し、WeCom管理コンソールにログイン",
     "アプリ管理 → スマートBotでBotを作成",
     "コールバックURLを設定：http://<あなたのIPまたはドメイン>:18789/wecom（ポート18789がアクセス可能なことを確認）",
