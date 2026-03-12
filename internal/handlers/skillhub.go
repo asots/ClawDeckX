@@ -601,6 +601,7 @@ type slimSkill struct {
 	DescriptionZH string   `json:"description_zh,omitempty"`
 	Stars         int      `json:"stars"`
 	Downloads     int      `json:"downloads"`
+	Installs      int      `json:"installs"`
 	Tags          []string `json:"tags"`
 	UpdatedAt     int64    `json:"updated_at"`
 }
@@ -614,6 +615,7 @@ func toSlim(s skillHubSkill) slimSkill {
 		DescriptionZH: s.DescriptionZH,
 		Stars:         s.Stars,
 		Downloads:     s.Downloads,
+		Installs:      s.Installs,
 		Tags:          s.Tags,
 		UpdatedAt:     s.UpdatedAt,
 	}
