@@ -2,6 +2,7 @@ package setup
 
 import (
 	"ClawDeckX/internal/i18n"
+	"ClawDeckX/internal/netutil"
 	"ClawDeckX/internal/openclaw"
 	"context"
 	"encoding/json"
@@ -347,24 +348,76 @@ func (i *Installer) installViaNpm(ctx context.Context) error {
 }
 
 func (i *Installer) installViaNpmWithOptions(ctx context.Context, version string, registry string) error {
-	sc := i.newSC("install", "install-"+version)
-
 	pkgName := version + "@latest"
 	i.emitter.EmitLog(i18n.T(i18n.MsgInstallerInstallingPackage, map[string]interface{}{"Package": version}))
 
-	cmd := "npm install -g " + pkgName
+	// Build ordered list of registries to try: user-selected first, then fallbacks
+	registries := buildRegistryFallbackList(registry)
 
-	if registry != "" {
-		cmd += " --registry=" + registry
-		i.emitter.EmitLog(i18n.T(i18n.MsgInstallerUsingRegistry, map[string]interface{}{"Registry": registry}))
+	var lastErr error
+	for idx, reg := range registries {
+		sc := i.newSC("install", "install-"+version)
+
+		cmd := "npm install -g " + pkgName
+		if reg != "" {
+			cmd += " --registry=" + reg
+			if idx == 0 {
+				i.emitter.EmitLog(i18n.T(i18n.MsgInstallerUsingRegistry, map[string]interface{}{"Registry": reg}))
+			} else {
+				i.emitter.EmitLog(fmt.Sprintf("⟳ Retrying with fallback registry: %s", reg))
+			}
+		}
+
+		// On Unix systems, use sudo for global npm install if not running as root
+		if runtime.GOOS != "windows" && !isRunningAsRoot() {
+			cmd = "sudo " + cmd
+		}
+
+		lastErr = sc.RunShell(ctx, cmd)
+		if lastErr == nil {
+			return nil
+		}
+
+		// Log failure and try next registry
+		if idx < len(registries)-1 {
+			i.emitter.EmitLog(fmt.Sprintf("⚠ Registry %s failed: %v", registryDisplayName(reg), lastErr))
+		}
 	}
 
-	// On Unix systems, use sudo for global npm install if not running as root
-	if runtime.GOOS != "windows" && !isRunningAsRoot() {
-		cmd = "sudo " + cmd
+	return lastErr
+}
+
+// buildRegistryFallbackList returns an ordered list of registry URLs to try.
+// The user-selected registry is first; remaining mirrors follow in priority order.
+func buildRegistryFallbackList(selected string) []string {
+	var list []string
+	list = append(list, selected)
+
+	for _, m := range netutil.NPMRegistryMirrors {
+		url := m.URL
+		// npm Official uses empty string (npm default)
+		if m.Priority == 1 {
+			url = ""
+		}
+		if url != selected {
+			list = append(list, url)
+		}
 	}
 
-	return sc.RunShell(ctx, cmd)
+	return list
+}
+
+// registryDisplayName returns a human-friendly name for a registry URL.
+func registryDisplayName(url string) string {
+	if url == "" {
+		return "npm Official"
+	}
+	for _, m := range netutil.NPMRegistryMirrors {
+		if m.URL == url {
+			return m.Name
+		}
+	}
+	return url
 }
 
 func (i *Installer) ConfigureOpenClaw(ctx context.Context, config InstallConfig) error {

@@ -441,8 +441,12 @@ func RunServe(args []string) int {
 	router.GET("/api/v1/config/get-key", configHandler.GetKey)
 
 	router.GET("/api/v1/snapshots", snapshotHandler.List)
+	router.GET("/api/v1/snapshots/stats", snapshotHandler.Stats)
 	router.POST("/api/v1/snapshots", web.RequireAdmin(snapshotHandler.Create))
 	router.POST("/api/v1/snapshots/import", web.RequireAdmin(snapshotHandler.Import))
+	router.POST("/api/v1/snapshots/import-openclaw", web.RequireAdmin(snapshotHandler.ImportOpenClaw))
+	router.POST("/api/v1/snapshots/batch-delete", web.RequireAdmin(snapshotHandler.BatchDelete))
+	router.POST("/api/v1/snapshots/prune", web.RequireAdmin(snapshotHandler.PruneKeepN))
 	router.GET("/api/v1/snapshots/schedule", snapshotHandler.GetSchedule)
 	router.PUT("/api/v1/snapshots/schedule", web.RequireAdmin(snapshotHandler.UpdateSchedule))
 	router.GET("/api/v1/snapshots/schedule/status", snapshotHandler.GetScheduleStatus)
@@ -496,6 +500,11 @@ func RunServe(args []string) int {
 
 	router.GET("/api/v1/pairing/list", wizardHandler.ListPairingRequests)
 	router.POST("/api/v1/pairing/approve", web.RequireAdmin(wizardHandler.ApprovePairingRequest))
+
+	networkHandler := handlers.NewNetworkHandler()
+	router.GET("/api/v1/network/test-mirror", networkHandler.TestMirror)
+	router.GET("/api/v1/network/mirrors", networkHandler.GetMirrors)
+	router.GET("/api/v1/network/test-all", networkHandler.TestAllMirrors)
 
 	router.GET("/api/v1/monitor/config", monConfigHandler.GetConfig)
 	router.PUT("/api/v1/monitor/config", web.RequireAdmin(monConfigHandler.UpdateConfig))

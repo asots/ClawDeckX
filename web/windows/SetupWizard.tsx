@@ -632,7 +632,7 @@ const SetupWizard: React.FC<SetupWizardProps> = ({ language, onClose, onOpenEdit
                           {/* npm 镜像源 */}
                           <div>
                             <label className="text-xs text-slate-500 dark:text-white/50 mb-2 block">{sw.npmRegistry}</label>
-                            <div className="grid grid-cols-3 gap-2">
+                            <div className="grid grid-cols-2 gap-2">
                               {NPM_REGISTRY_MIRRORS.map(mirror => {
                                 const mirrorUrl = mirror.priority === 1 ? '' : mirror.url;
                                 const isFastest = autoDetectedRegistry === mirror.url;

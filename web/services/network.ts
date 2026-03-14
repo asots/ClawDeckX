@@ -26,8 +26,9 @@ export const GITHUB_MIRRORS: MirrorSource[] = [
 // npm Registry mirrors
 export const NPM_REGISTRY_MIRRORS: MirrorSource[] = [
   { name: 'npm Official', url: 'https://registry.npmjs.org', priority: 1 },
-  { name: 'Tencent Cloud', url: 'https://mirrors.cloud.tencent.com/npm/', priority: 2 },
-  { name: 'Huawei Cloud', url: 'https://repo.huaweicloud.com/repository/npm/', priority: 3 },
+  { name: 'npmmirror', url: 'https://registry.npmmirror.com', priority: 2 },
+  { name: 'Tencent Cloud', url: 'https://mirrors.cloud.tencent.com/npm', priority: 3 },
+  { name: 'Huawei Cloud', url: 'https://repo.huaweicloud.com/repository/npm', priority: 4 },
 ];
 
 // Cache for best mirrors
@@ -43,16 +44,19 @@ async function testMirror(source: MirrorSource, testPath: string, timeout: numbe
 
   const startTime = Date.now();
   try {
-    const response = await fetch(`${source.url}${testPath}`, {
-      method: 'HEAD',
+    // Use backend proxy to test mirrors accurately — direct browser fetch with
+    // mode:'no-cors' returns opaque responses that always appear fast, giving
+    // misleading latency results (e.g. Tencent Cloud always wins but actually
+    // fails during real npm install).
+    const response = await fetch(`/api/v1/network/test-mirror?url=${encodeURIComponent(source.url + testPath)}`, {
+      method: 'GET',
       signal: controller.signal,
       cache: 'no-cache',
-      mode: 'no-cors',
+      credentials: 'include',
     });
     clearTimeout(timeoutId);
 
-    // mode: 'no-cors' returns opaque response (status 0), treat as reachable
-    if (response.ok || response.type === 'opaque') {
+    if (response.ok) {
       return {
         source,
         latency: Date.now() - startTime,
@@ -60,9 +64,23 @@ async function testMirror(source: MirrorSource, testPath: string, timeout: numbe
       };
     }
     return { source, latency: 0, success: false, error: `HTTP ${response.status}` };
-  } catch (err) {
+  } catch {
     clearTimeout(timeoutId);
-    return { source, latency: 0, success: false };
+    // Fallback: try direct fetch if backend proxy is unavailable (e.g. dev mode)
+    try {
+      const startFallback = Date.now();
+      const resp = await fetch(`${source.url}${testPath}`, {
+        method: 'HEAD',
+        signal: AbortSignal.timeout(timeout),
+        cache: 'no-cache',
+      });
+      if (resp.ok) {
+        return { source, latency: Date.now() - startFallback, success: true };
+      }
+      return { source, latency: 0, success: false, error: `HTTP ${resp.status}` };
+    } catch {
+      return { source, latency: 0, success: false };
+    }
   }
 }
 

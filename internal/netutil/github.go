@@ -22,6 +22,7 @@ var NPMRegistryMirrors = []MirrorSource{
 	{Name: "npm Official", URL: "https://registry.npmjs.org", Priority: 1},
 	{Name: "npmmirror (China)", URL: "https://registry.npmmirror.com", Priority: 2},
 	{Name: "Tencent (China)", URL: "https://mirrors.cloud.tencent.com/npm", Priority: 3},
+	{Name: "Huawei (China)", URL: "https://repo.huaweicloud.com/repository/npm", Priority: 4},
 }
 
 var (
