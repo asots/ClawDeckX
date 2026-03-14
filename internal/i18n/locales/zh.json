@@ -436,6 +436,7 @@
   "scanner.node_manual_install": "# 请访问 https://nodejs.org/en/download/ 下载安装 Node.js",
   "scanner.git_manual_install": "# 请访问 https://git-scm.com/downloads 下载安装 Git",
   "scanner.warn_node_version_low": "Node.js 版本 {{.Version}} 过低，OpenClaw 需要 Node.js 22+",
+  "scanner.warn_node_minor_low": "检测到 Node.js {{.Version}}，但 OpenClaw 需要 >= 22.16.0。请升级 Node.js: https://nodejs.org/en/download",
   "scanner.warn_root_user": "不建议以 root 用户运行 OpenClaw",
   "scanner.warn_no_internet": "无法访问互联网，安装可能失败",
   "scanner.warn_disk_space_low": "磁盘剩余空间不足 ({{.FreeGB}} GB)，建议至少 1 GB",

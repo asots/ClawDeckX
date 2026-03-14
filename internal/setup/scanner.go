@@ -1196,9 +1196,11 @@ func generateWarnings(report *EnvironmentReport) []string {
 	if report.Tools["node"].Installed {
 		version := report.Tools["node"].Version
 		if version != "" {
-			major := extractMajorVersion(version)
+			major, minor := extractMajorMinorVersion(version)
 			if major > 0 && major < 22 {
 				warnings = append(warnings, i18n.T(i18n.MsgScannerWarnNodeVersionLow, map[string]interface{}{"Version": version}))
+			} else if major == 22 && minor < 16 {
+				warnings = append(warnings, i18n.T(i18n.MsgScannerWarnNodeMinorLow, map[string]interface{}{"Version": version}))
 			}
 		}
 	}
@@ -1230,6 +1232,19 @@ func extractMajorVersion(version string) int {
 		return major
 	}
 	return 0
+}
+
+func extractMajorMinorVersion(version string) (int, int) {
+	version = strings.TrimPrefix(version, "v")
+	parts := strings.Split(version, ".")
+	var major, minor int
+	if len(parts) > 0 {
+		major, _ = strconv.Atoi(parts[0])
+	}
+	if len(parts) > 1 {
+		minor, _ = strconv.Atoi(parts[1])
+	}
+	return major, minor
 }
 
 // fetchLatestVersion fetches the latest version of openclaw from npm.

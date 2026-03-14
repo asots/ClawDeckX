@@ -436,6 +436,7 @@
   "scanner.node_manual_install": "# Please visit https://nodejs.org/en/download/ to download and install Node.js",
   "scanner.git_manual_install": "# Please visit https://git-scm.com/downloads to download and install Git",
   "scanner.warn_node_version_low": "Node.js version {{.Version}} is too low, OpenClaw requires Node.js 22+",
+  "scanner.warn_node_minor_low": "Node.js {{.Version}} detected, but OpenClaw requires >= 22.16.0. Please upgrade Node.js: https://nodejs.org/en/download",
   "scanner.warn_root_user": "Not recommended to run OpenClaw as root user",
   "scanner.warn_no_internet": "Cannot access internet, installation may fail",
   "scanner.warn_disk_space_low": "Disk space is low ({{.FreeGB}} GB), recommend at least 1 GB",

@@ -512,6 +512,7 @@ const (
 	MsgScannerNodeManualInstall         = "scanner.node_manual_install"
 	MsgScannerGitManualInstall          = "scanner.git_manual_install"
 	MsgScannerWarnNodeVersionLow        = "scanner.warn_node_version_low"
+	MsgScannerWarnNodeMinorLow          = "scanner.warn_node_minor_low"
 	MsgScannerWarnRootUser              = "scanner.warn_root_user"
 	MsgScannerWarnNoInternet            = "scanner.warn_no_internet"
 	MsgScannerWarnDiskSpaceLow          = "scanner.warn_disk_space_low"
