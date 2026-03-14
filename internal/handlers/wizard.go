@@ -21,6 +21,12 @@ import (
 	"ClawDeckX/internal/web"
 )
 
+// probeHTTPClient is a dedicated HTTP client for model/channel probe requests
+// with a hard timeout to prevent hanging when DNS/TLS stalls.
+var probeHTTPClient = &http.Client{
+	Timeout: 20 * time.Second,
+}
+
 // WizardHandler handles model/channel config wizard APIs.
 type WizardHandler struct {
 	auditRepo *database.AuditLogRepo
@@ -241,7 +247,7 @@ func (h *WizardHandler) probeModel(req TestModelRequest) (map[string]interface{}
 	}
 
 	start := time.Now()
-	resp, err := http.DefaultClient.Do(httpReq)
+	resp, err := probeHTTPClient.Do(httpReq)
 	latencyMs := time.Since(start).Milliseconds()
 	if err != nil {
 		if ctx.Err() == context.DeadlineExceeded {
@@ -497,7 +503,7 @@ func doJSONRequest(method, endpoint string, headers map[string]string, body []by
 		req.Header.Set(k, v)
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := probeHTTPClient.Do(req)
 	if err != nil {
 		if ctx.Err() == context.DeadlineExceeded {
 			return nil, fmt.Errorf("request timeout: %s", endpoint)
@@ -1210,7 +1216,7 @@ func (h *WizardHandler) testDiscordToken(token string) (map[string]interface{}, 
 	}
 	req.Header.Set("Authorization", "Bot "+normalizedToken)
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := probeHTTPClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("Discord API request failed: %v", err)
 	}
@@ -1258,7 +1264,7 @@ func (h *WizardHandler) testTelegramToken(token string) (map[string]interface{},
 		return nil, fmt.Errorf("failed to create request: %v", err)
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := probeHTTPClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("Telegram API request failed: %v", err)
 	}

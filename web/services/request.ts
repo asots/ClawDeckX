@@ -173,10 +173,11 @@ export function getCached<T = any>(url: string, ttlMs = 5000, force = false): Pr
   return inflight;
 }
 
-export function post<T = any>(url: string, body?: any): Promise<T> {
+export function post<T = any>(url: string, body?: any, opts?: { signal?: AbortSignal }): Promise<T> {
   return request<T>(url, {
     method: 'POST',
     body: body !== undefined ? JSON.stringify(body) : undefined,
+    signal: opts?.signal,
   });
 }
 

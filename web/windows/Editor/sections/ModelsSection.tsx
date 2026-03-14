@@ -586,7 +586,7 @@ export const ModelsSection: React.FC<SectionProps> = ({ config, setField, getFie
         baseUrl: wizBaseUrl,
         model: wizFinalModel,
         apiType: wizApiType,
-      });
+      }, { signal: AbortSignal.timeout(25000) });
       if (result?.status === 'warning') {
         setTestStatus('warning');
         toast('warning', result.message || es.connected);
@@ -596,7 +596,8 @@ export const ModelsSection: React.FC<SectionProps> = ({ config, setField, getFie
       }
     } catch (err: any) {
       setTestStatus('fail');
-      toast('error', formatFriendlyError(err, es) || es.failed);
+      const msg = err?.name === 'TimeoutError' ? 'Connection timeout' : formatFriendlyError(err, es) || es.failed;
+      toast('error', msg);
     }
     setTimeout(() => setTestStatus('idle'), 3000);
   }, [selectedProvider, wizApiKey, wizBaseUrl, wizFinalModel, toast, es]);
@@ -612,7 +613,7 @@ export const ModelsSection: React.FC<SectionProps> = ({ config, setField, getFie
         baseUrl: cfg.baseUrl || '',
         model: firstModel,
         apiType: cfg.api || 'openai-completions',
-      });
+      }, { signal: AbortSignal.timeout(25000) });
       if (result?.status === 'warning') {
         setProviderTestStatus(prev => ({ ...prev, [providerName]: 'warning' }));
         toast('warning', result.message || es.connected);
@@ -622,7 +623,8 @@ export const ModelsSection: React.FC<SectionProps> = ({ config, setField, getFie
       }
     } catch (err: any) {
       setProviderTestStatus(prev => ({ ...prev, [providerName]: 'fail' }));
-      toast('error', formatFriendlyError(err, es) || es.failed);
+      const msg = err?.name === 'TimeoutError' ? 'Connection timeout' : formatFriendlyError(err, es) || es.failed;
+      toast('error', msg);
     }
     setTimeout(() => setProviderTestStatus(prev => ({ ...prev, [providerName]: 'idle' })), 3000);
   }, [toast, es]);

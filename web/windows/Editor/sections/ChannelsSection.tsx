@@ -261,7 +261,7 @@ export const ChannelsSection: React.FC<SectionProps> = ({ config, setField, getF
           if (typeof v === 'string' && v && k !== 'enabled') tokenMap[k] = v;
         }
       }
-      const res = await post<any>('/api/v1/setup/test-channel', { channel: chId, tokens: tokenMap });
+      const res = await post<any>('/api/v1/setup/test-channel', { channel: chId, tokens: tokenMap }, { signal: AbortSignal.timeout(25000) });
       if (res?.status === 'ok') {
         setWizTestStatus('ok');
         setWizTestMsg(res?.message || '');
@@ -271,7 +271,7 @@ export const ChannelsSection: React.FC<SectionProps> = ({ config, setField, getF
       }
     } catch (err: any) {
       setWizTestStatus('fail');
-      setWizTestMsg(err?.message || es.chSendFailed);
+      setWizTestMsg(err?.name === 'TimeoutError' ? 'Connection timeout' : (err?.message || es.chSendFailed));
     }
     setTimeout(() => { setWizTestStatus('idle'); setWizTestMsg(''); }, 5000);
   }, [channels, es]);
