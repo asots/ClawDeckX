@@ -1,63 +1,63 @@
-## 📋 变更描述
+## 📋 Description
 
-<!-- 简要描述这个 PR 做了什么 -->
+<!-- Briefly describe what this PR does -->
 
-## 🎯 变更类型
+## 🎯 Change Type
 
-<!-- 请勾选适用的类型 -->
+<!-- Check the applicable type(s) -->
 
-- [ ] ✨ 新功能 (feat)
-- [ ] 🐛 Bug 修复 (fix)
-- [ ] 📝 文档更新 (docs)
-- [ ] 💄 代码格式 (style)
-- [ ] ♻️ 重构 (refactor)
-- [ ] ⚡ 性能优化 (perf)
-- [ ] ✅ 测试 (test)
-- [ ] 🔧 构建/工具 (chore)
+- [ ] ✨ New feature (feat)
+- [ ] 🐛 Bug fix (fix)
+- [ ] 📝 Documentation (docs)
+- [ ] 💄 Code style (style)
+- [ ] ♻️ Refactor (refactor)
+- [ ] ⚡ Performance (perf)
+- [ ] ✅ Test (test)
+- [ ] 🔧 Build/tooling (chore)
 - [ ] 🚀 CI/CD (ci)
 
-## 🔍 变更详情
+## 🔍 Details
 
-### 新增功能
-<!-- 列出新增的功能 -->
+### Added
+<!-- List new features -->
 - 
 
-### 修复问题
-<!-- 列出修复的 bug -->
+### Fixed
+<!-- List bug fixes -->
 - 
 
-### 破坏性变更
-<!-- 如果有不兼容的变更，请说明 -->
-- [ ] 此 PR 包含破坏性变更
+### Breaking Changes
+<!-- Describe any incompatible changes if applicable -->
+- [ ] This PR contains breaking changes
 
-## 📸 截图/演示
+## 📸 Screenshots / Demo
 
-<!-- 如果有 UI 变更，请提供截图或 GIF -->
+<!-- Provide screenshots or GIFs if there are UI changes -->
 
-## ✅ 检查清单
+## ✅ Checklist
 
-- [ ] 代码已通过 `go fmt ./...` 格式化
-- [ ] 代码已通过 `go build ./...` 编译
-- [ ] 前端已通过 `npm run build` 构建
-- [ ] Commit 消息符合规范
-- [ ] 已更新相关文档
-- [ ] 已测试功能正常工作
-- [ ] 无调试代码残留
+- [ ] Code formatted with `go fmt ./...`
+- [ ] Code compiles with `go build ./...`
+- [ ] Frontend builds with `npm run build`
+- [ ] Commit messages follow convention
+- [ ] Related documentation updated
+- [ ] Changes tested and working
+- [ ] No debug code left behind
 
-## 📚 相关链接
+## 📚 Related Links
 
-<!-- 关联的 Issue 或其他 PR -->
+<!-- Related issues or other PRs -->
 - Closes #
 - Related to #
 
-## 🧪 测试说明
+## 🧪 Testing Instructions
 
-<!-- 如何测试这个 PR 的变更 -->
+<!-- How to test the changes in this PR -->
 
 1. 
 2. 
 3. 
 
-## 💬 备注
+## 💬 Notes
 
-<!-- 其他需要说明的内容 -->
+<!-- Any additional context -->
