@@ -212,6 +212,7 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
   const [error, setError] = useState<string | null>(null);
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
   const pendingRunRef = useRef<{ runId: string; beforeCount: number; startedAt: number } | null>(null);
+  const finalizedAtRef = useRef<number>(0);
   // Dedup guard: track recently added message fingerprints to prevent React batching duplicates
   const recentAddedRef = useRef<Set<string>>(new Set());
 
@@ -509,7 +510,7 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
 
     const unsubscribe = subscribeManagerWS((msg: any) => {
       try {
-        if (msg.type === 'chat' || msg.type === 'session.message') {
+        if (msg.type === 'chat') {
           handleChatEventRef.current(msg.data);
         } else if (msg.type === 'agent') {
           handleAgentEventRef.current(msg.data);
@@ -561,10 +562,12 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
     const eventSessionKey = payload.sessionKey || payload.key;
     if (eventSessionKey && eventSessionKey !== sessionKeyRef.current) return;
 
-    // session.message style payload (without state)
+    // session.message style payload (without state) — e.g. re-broadcast from backend
     if (!payload.state && (payload.role || payload.message?.role)) {
       // Skip during active streaming — state:'final' will handle the message
       if (pendingRunRef.current) return;
+      // Skip if we just finalized — the re-broadcast of session.message arrives shortly after
+      if (finalizedAtRef.current && Date.now() - finalizedAtRef.current < 3000) return;
       const msg = payload.message || payload;
       const text = extractText(msg?.content ?? msg);
       if (text.trim()) {
@@ -615,6 +618,7 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
           }, recentAddedRef));
         }
       }
+      finalizedAtRef.current = Date.now();
       setStream(null);
       setRunId(null);
       setRunPhase('idle');
@@ -2655,7 +2659,7 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
         }}
         onModelChange={async (model) => {
           try {
-            await gwApi.sessionsPatch(sessionKey, { model } as any);
+            await gwApi.sessionsPatch(sessionKey, { model: model || null });
             setSessions(prev => prev.map(s => s.key === sessionKey ? { ...s, model: model || '' } as GwSession : s));
             toast('info', `Model → ${model || 'inherit'}`, 2000);
           } catch (e: any) {
