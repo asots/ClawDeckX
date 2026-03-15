@@ -601,7 +601,7 @@ func (i *Installer) writeMinimalConfig(config InstallConfig) error {
 			"apiKey": config.APIKey,
 			"api":    "openai-completions",
 			"models": []map[string]interface{}{
-				{"id": model, "name": model},
+				{"id": model, "name": model, "input": []string{"text", "image"}},
 			},
 		}
 

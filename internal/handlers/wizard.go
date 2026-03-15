@@ -965,7 +965,7 @@ func (h *WizardHandler) buildModelConfig(req ModelWizardRequest) map[string]inte
 			}
 		}
 		providerCfg["models"] = []map[string]interface{}{
-			{"id": req.Model, "name": req.Model},
+			{"id": req.Model, "name": req.Model, "input": []string{"text", "image"}},
 		}
 
 		config["models"] = map[string]interface{}{
