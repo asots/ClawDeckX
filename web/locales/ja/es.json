@@ -150,6 +150,8 @@
   "wakeMode": "ウェイクモード",
   "heartbeatModel": "ハートビートモデル",
   "heartbeatModelDesc": "ハートビート用モデル。コスト節約のために低コストモデルを使用",
+  "imageModel": "画像モデル",
+  "imageModelDesc": "画像処理用モデル。画像を含むメッセージはこのマルチモーダルモデルに自動ルーティングされます",
   "sandbox": "サンドボックス",
   "configApplyOk": "設定を適用しました",
   "configApplyFailed": "適用に失敗しました",

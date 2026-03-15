@@ -150,6 +150,8 @@
   "wakeMode": "唤醒模式",
   "heartbeatModel": "心跳模型",
   "heartbeatModelDesc": "心跳使用的模型，建议用廉价模型节省成本",
+  "imageModel": "图片模型",
+  "imageModelDesc": "处理图片的模型；含图消息将自动路由到此多模态模型",
   "sandbox": "沙箱配置",
   "configApplyOk": "配置已应用",
   "configApplyFailed": "应用失败",

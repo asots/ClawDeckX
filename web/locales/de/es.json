@@ -150,6 +150,8 @@
   "wakeMode": "Aufwachmodus",
   "heartbeatModel": "Heartbeat-Modell",
   "heartbeatModelDesc": "Modell für Heartbeat; verwenden Sie ein günstiges Modell zur Kosteneinsparung",
+  "imageModel": "Bildmodell",
+  "imageModelDesc": "Modell für Bildverarbeitung; Nachrichten mit Bildern werden automatisch an dieses multimodale Modell weitergeleitet",
   "sandbox": "Sandbox",
   "configApplyOk": "Konfiguration angewendet",
   "configApplyFailed": "Anwendung fehlgeschlagen",

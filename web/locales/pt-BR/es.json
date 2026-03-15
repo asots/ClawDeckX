@@ -150,6 +150,8 @@
   "wakeMode": "Modo de Despertar",
   "heartbeatModel": "Modelo de Heartbeat",
   "heartbeatModelDesc": "Modelo para heartbeat; use um modelo barato para economizar custos",
+  "imageModel": "Modelo de Imagem",
+  "imageModelDesc": "Modelo para processar imagens; mensagens com imagens são roteadas automaticamente para este modelo multimodal",
   "sandbox": "Sandbox",
   "configApplyOk": "Config aplicada",
   "configApplyFailed": "Falha ao aplicar",

@@ -150,6 +150,8 @@
   "wakeMode": "Mode Bangun",
   "heartbeatModel": "Model Heartbeat",
   "heartbeatModelDesc": "Model untuk heartbeat; gunakan model murah untuk menghemat biaya",
+  "imageModel": "Model Gambar",
+  "imageModelDesc": "Model untuk memproses gambar; pesan berisi gambar akan otomatis diarahkan ke model multimodal ini",
   "sandbox": "Sandbox",
   "configApplyOk": "Konfigurasi diterapkan",
   "configApplyFailed": "Gagal menerapkan",

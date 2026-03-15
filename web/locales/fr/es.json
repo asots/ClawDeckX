@@ -150,6 +150,8 @@
   "wakeMode": "Mode de réveil",
   "heartbeatModel": "Modèle heartbeat",
   "heartbeatModelDesc": "Modèle pour le heartbeat ; utilisez un modèle économique pour réduire les coûts",
+  "imageModel": "Modèle d'image",
+  "imageModelDesc": "Modèle pour le traitement d'images ; les messages contenant des images sont automatiquement routés vers ce modèle multimodal",
   "sandbox": "Bac à sable",
   "configApplyOk": "Config appliquée",
   "configApplyFailed": "Échec de l'application",

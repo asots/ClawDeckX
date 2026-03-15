@@ -1370,6 +1370,20 @@ export const ModelsSection: React.FC<SectionProps> = ({ config, setField, getFie
                   placeholder={es.phProviderModelId}
                 />
               </div>
+
+              {/* 图片模型 */}
+              <div className="space-y-1 pt-1 border-t border-slate-100 dark:border-white/[0.04]">
+                <div className="flex items-start gap-1.5">
+                  <label className="text-[10px] font-bold text-slate-500 whitespace-nowrap shrink-0">{es.imageModel}</label>
+                  {es.imageModelDesc && <span className="text-[11px] text-slate-400 leading-4 min-w-0">— {es.imageModelDesc}</span>}
+                </div>
+                <ModelPathSearch
+                  value={getField(['agents', 'defaults', 'imageModel', 'primary']) || ''}
+                  onChange={v => setField(['agents', 'defaults', 'imageModel', 'primary'], v)}
+                  options={allModelPaths}
+                  placeholder={es.phProviderModelId}
+                />
+              </div>
             </div>
           );
         })()}
