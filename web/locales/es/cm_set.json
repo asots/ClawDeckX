@@ -341,7 +341,9 @@
     "serviceUninstalled": "Servicio desinstalado",
     "serviceAutoStartDesc": "Registrar como servicio del sistema para iniciar automáticamente al arrancar. Una vez instalado, el gateway se ejecutará en segundo plano sin intervención manual.",
     "serviceAutoStartEnabled": "Inicio automático activado",
-    "serviceAutoStartDisabled": "No registrado, inicio manual requerido"
+    "serviceAutoStartDisabled": "No registrado, inicio manual requerido",
+    "serviceDockerManaged": "Gestionado por Docker",
+    "serviceDockerDesc": "Se ejecuta dentro de un contenedor Docker. El inicio automático está gestionado por la política de reinicio de Docker y el script de entrada del contenedor. No es necesario registrar un servicio del sistema."
   },
   "hi": {
     "title": "Info del host",

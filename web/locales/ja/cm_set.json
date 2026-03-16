@@ -341,7 +341,9 @@
     "serviceUninstalled": "サービスをアンインストールしました",
     "serviceAutoStartDesc": "システムサービスとして登録し、起動時に自動開始します。インストール後、ゲートウェイはバックグラウンドで自動実行されます。",
     "serviceAutoStartEnabled": "自動起動が有効",
-    "serviceAutoStartDisabled": "未登録、手動起動が必要"
+    "serviceAutoStartDisabled": "未登録、手動起動が必要",
+    "serviceDockerManaged": "Docker により管理",
+    "serviceDockerDesc": "Docker コンテナ内で実行中です。自動起動は Docker の再起動ポリシーとコンテナエントリポイントスクリプトで管理されています。システムサービスの登録は不要です。"
   },
   "hi": {
     "title": "ホスト情報",

@@ -341,7 +341,9 @@
     "serviceUninstalled": "Dienst deinstalliert",
     "serviceAutoStartDesc": "Als Systemdienst registrieren, um beim Hochfahren automatisch zu starten. Nach der Installation läuft das Gateway im Hintergrund ohne manuelles Eingreifen.",
     "serviceAutoStartEnabled": "Autostart aktiviert",
-    "serviceAutoStartDisabled": "Nicht registriert, manueller Start erforderlich"
+    "serviceAutoStartDisabled": "Nicht registriert, manueller Start erforderlich",
+    "serviceDockerManaged": "Von Docker verwaltet",
+    "serviceDockerDesc": "Läuft in einem Docker-Container. Der automatische Start wird durch die Docker-Neustartrichtlinie und das Container-Einstiegsskript verwaltet. Eine Systemdienst-Registrierung ist nicht erforderlich."
   },
   "hi": {
     "title": "Hostinformationen",

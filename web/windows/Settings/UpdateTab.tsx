@@ -58,7 +58,7 @@ const UpdateTab: React.FC<UpdateTabProps> = ({ s, language, inputCls, rowCls }) 
   const [ocNotesExpanded, setOcNotesExpanded] = useState(false);
 
   // ── 服务状态 ──
-  const [serviceStatus, setServiceStatus] = useState<{ openclaw_installed: boolean; clawdeckx_installed: boolean } | null>(null);
+  const [serviceStatus, setServiceStatus] = useState<{ openclaw_installed: boolean; clawdeckx_installed: boolean; is_docker?: boolean } | null>(null);
   const [serviceLoading, setServiceLoading] = useState(false);
 
   // Markdown-like rendering for release notes (sanitized)
@@ -829,6 +829,17 @@ const UpdateTab: React.FC<UpdateTabProps> = ({ s, language, inputCls, rowCls }) 
           </p>
 
           {serviceStatus ? (
+            serviceStatus.is_docker ? (
+            <div className="flex items-center gap-3 px-3 py-3 rounded-lg bg-emerald-50 dark:bg-mac-green/5 border border-emerald-200 dark:border-mac-green/20">
+              <span className="material-symbols-outlined text-[20px] text-emerald-500 dark:text-mac-green">check_circle</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-[12px] font-bold text-emerald-700 dark:text-mac-green">{s.serviceDockerManaged || 'Managed by Docker'}</p>
+                <p className="text-[10px] text-slate-400 dark:text-white/30 mt-0.5 leading-relaxed">
+                  {s.serviceDockerDesc || 'Running inside a Docker container. Auto-start is managed by Docker restart policy and the container entrypoint script. No system service registration is needed.'}
+                </p>
+              </div>
+            </div>
+            ) : (
             <div className="space-y-2">
               {/* OpenClaw Service */}
               <div className={`flex items-center gap-3 px-3 py-2.5 rounded-lg border transition-colors ${
@@ -906,6 +917,7 @@ const UpdateTab: React.FC<UpdateTabProps> = ({ s, language, inputCls, rowCls }) 
                 </div>
               </div>
             </div>
+            )
           ) : (
             <div className="flex items-center gap-2 px-3 py-3 rounded-lg bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/[0.06]">
               <span className="material-symbols-outlined text-[14px] text-slate-300 dark:text-white/20 animate-spin">progress_activity</span>

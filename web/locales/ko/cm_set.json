@@ -342,6 +342,8 @@
     ,"serviceAutoStartDesc": "시스템 서비스로 등록하여 부팅 시 자동 시작합니다. 설치 후 게이트웨이가 백그라운드에서 자동 실행됩니다."
     ,"serviceAutoStartEnabled": "자동 시작 활성화됨"
     ,"serviceAutoStartDisabled": "미등록, 수동 시작 필요"
+    ,"serviceDockerManaged": "Docker에서 관리"
+    ,"serviceDockerDesc": "Docker 컨테이너 내에서 실행 중입니다. 자동 시작은 Docker 재시작 정책과 컨테이너 엔트리포인트 스크립트에 의해 관리됩니다. 시스템 서비스 등록이 필요하지 않습니다."
   },
   "hi": {
     "title": "호스트 정보",

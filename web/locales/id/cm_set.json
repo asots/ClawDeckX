@@ -341,7 +341,9 @@
     "uninstallService": "Hapus Layanan",
     "serviceAutoStartDesc": "Mulai otomatis saat boot sistem",
     "serviceAutoStartEnabled": "Mulai otomatis aktif",
-    "serviceAutoStartDisabled": "Mulai otomatis nonaktif"
+    "serviceAutoStartDisabled": "Mulai otomatis nonaktif",
+    "serviceDockerManaged": "Dikelola oleh Docker",
+    "serviceDockerDesc": "Berjalan di dalam kontainer Docker. Mulai otomatis dikelola oleh kebijakan restart Docker dan skrip entrypoint kontainer. Tidak perlu registrasi layanan sistem."
   },
   "hi": {
     "title": "Info Host",

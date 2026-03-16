@@ -341,7 +341,9 @@
     "serviceUninstalled": "服务已卸载",
     "serviceAutoStartDesc": "注册为系统服务，实现开机自启。安装后网关将在后台自动运行，无需手动干预。",
     "serviceAutoStartEnabled": "已启用开机自启",
-    "serviceAutoStartDisabled": "未注册，需手动启动"
+    "serviceAutoStartDisabled": "未注册，需手动启动",
+    "serviceDockerManaged": "由 Docker 管理",
+    "serviceDockerDesc": "当前运行在 Docker 容器中。自动启动由 Docker 重启策略和容器入口脚本管理，无需注册系统服务。"
   },
   "hi": {
     "title": "宿主机信息",

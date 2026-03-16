@@ -341,7 +341,9 @@
     "serviceUninstalled": "Service désinstallé",
     "serviceAutoStartDesc": "Enregistrer comme service système pour démarrer automatiquement au démarrage. Une fois installée, la passerelle s'exécutera en arrière-plan sans intervention manuelle.",
     "serviceAutoStartEnabled": "Démarrage automatique activé",
-    "serviceAutoStartDisabled": "Non enregistré, démarrage manuel requis"
+    "serviceAutoStartDisabled": "Non enregistré, démarrage manuel requis",
+    "serviceDockerManaged": "Géré par Docker",
+    "serviceDockerDesc": "Exécution dans un conteneur Docker. Le démarrage automatique est géré par la politique de redémarrage Docker et le script d'entrée du conteneur. Aucune inscription de service système n'est nécessaire."
   },
   "hi": {
     "title": "Infos hôte",

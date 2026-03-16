@@ -341,7 +341,9 @@
     "serviceUninstalled": "تم إلغاء تثبيت الخدمة",
     "serviceAutoStartDesc": "التسجيل كخدمة نظام للبدء تلقائيًا عند التشغيل. بعد التثبيت، سيعمل البوابة في الخلفية دون تدخل يدوي.",
     "serviceAutoStartEnabled": "التشغيل التلقائي مفعّل",
-    "serviceAutoStartDisabled": "غير مسجّل، يتطلب تشغيلاً يدويًا"
+    "serviceAutoStartDisabled": "غير مسجّل، يتطلب تشغيلاً يدويًا",
+    "serviceDockerManaged": "مُدار بواسطة Docker",
+    "serviceDockerDesc": "يعمل داخل حاوية Docker. يتم إدارة التشغيل التلقائي بواسطة سياسة إعادة تشغيل Docker وسكريبت نقطة الدخول. لا حاجة لتسجيل خدمة النظام."
   },
   "hi": {
     "title": "معلومات المضيف",

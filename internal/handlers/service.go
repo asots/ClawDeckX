@@ -2,6 +2,8 @@ package handlers
 
 import (
 	"net/http"
+	"os"
+	"strings"
 
 	"ClawDeckX/internal/constants"
 	"ClawDeckX/internal/database"
@@ -32,18 +34,35 @@ func (h *ServiceHandler) writeAudit(r *http.Request, action, result, detail stri
 }
 
 type serviceStatusResponse struct {
-	OpenClawInstalled bool `json:"openclaw_installed"`
+	OpenClawInstalled  bool `json:"openclaw_installed"`
 	ClawDeckXInstalled bool `json:"clawdeckx_installed"`
+	IsDocker           bool `json:"is_docker"`
 }
 
 func (h *ServiceHandler) Status(w http.ResponseWriter, r *http.Request) {
 	svc := openclaw.NewService()
 	status := svc.DaemonStatus()
+	isDocker := isDockerEnvironment()
 
 	web.OK(w, r, serviceStatusResponse{
-		OpenClawInstalled: status.Installed,
+		OpenClawInstalled:  status.Installed,
 		ClawDeckXInstalled: service.IsInstalled(),
+		IsDocker:           isDocker,
 	})
+}
+
+func isDockerEnvironment() bool {
+	if _, err := os.Stat("/.dockerenv"); err == nil {
+		return true
+	}
+	data, err := os.ReadFile("/proc/1/cgroup")
+	if err == nil {
+		s := string(data)
+		if strings.Contains(s, "docker") || strings.Contains(s, "containerd") {
+			return true
+		}
+	}
+	return false
 }
 
 func (h *ServiceHandler) InstallOpenClaw(w http.ResponseWriter, r *http.Request) {
