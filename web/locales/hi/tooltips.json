@@ -241,5 +241,9 @@
   "talk.outputFormat": "Talk मोड ऑडियो आउटपुट प्रारूप। जैसे mp3, pcm_44100, opus",
   "web.reconnect.initialMs": "वेब क्लाइंट पुनः कनेक्ट प्रारंभिक प्रतीक्षा समय (ms)",
   "web.reconnect.maxMs": "वेब क्लाइंट पुनः कनेक्ट अधिकतम प्रतीक्षा समय (ms)। पुनः प्रयास अंतराल इस सीमा तक घातीय रूप से बढ़ता है",
-  "web.reconnect.maxAttempts": "वेब क्लाइंट अधिकतम पुनः कनेक्ट प्रयास। 0 = असीमित पुनः प्रयास"
+  "web.reconnect.maxAttempts": "वेब क्लाइंट अधिकतम पुनः कनेक्ट प्रयास। 0 = असीमित पुनः प्रयास",
+  "media.ttlHours": "Optional retention window in hours for persisted inbound media cleanup across the full media tree. Leave unset to preserve legacy behavior, or set values like 24 (1 day) or 168 (7 days) when you want automatic cleanup",
+  "talk.silenceTimeoutMs": "Milliseconds of user silence before Talk mode finalizes and sends the current transcript. Leave unset to keep the platform default pause window (700 ms on macOS and Android, 900 ms on iOS)",
+  "gateway.push.apns.relay.baseUrl": "Base HTTPS URL for the external APNs relay service used by official/TestFlight iOS builds. Keep this aligned with the relay URL baked into the iOS build so registration and send traffic hit the same deployment",
+  "gateway.push.apns.relay.timeoutMs": "Timeout in milliseconds for relay send requests from the gateway to the APNs relay (default: 10000). Increase for slower relays or networks, or lower to fail wake attempts faster"
 }

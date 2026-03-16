@@ -287,6 +287,7 @@
     "pluginPathSource": "로컬 경로",
     "pluginArchiveSource": "아카이브",
     "pluginLocalOnlyAction": "이 작업은 로컬 게이트웨이에서만 가능",
-    "pluginClose": "닫기"
+    "pluginClose": "닫기",
+    "cliNotInstalled": "OpenClaw CLI not installed"
   }
 }

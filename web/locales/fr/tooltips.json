@@ -170,7 +170,6 @@
   "env.shellEnv": "Type d'environnement shell, ex. bash, zsh. Affecte le shell utilisé pour l'exécution des commandes",
   "env.vars": "Variables d'environnement personnalisées. Injectées dans l'environnement lorsque l'IA exécute des commandes",
   "media.preserveFilenames": "Préserver les noms de fichiers média originaux. Si désactivé, des noms aléatoires sont utilisés",
-
   "gateway.customBindHost": "Adresse de liaison personnalisée (uniquement quand bind=custom). ex. 0.0.0.0 ou une IP spécifique",
   "gateway.channelHealthCheckMinutes": "Intervalle de vérification de santé des canaux (minutes). Vérifie périodiquement le statut des canaux et redémarre auto les canaux en échec. 0 = désactivé, défaut 5",
   "gateway.allowRealIpFallback": "Autoriser l'en-tête x-real-ip comme solution de repli pour l'IP client (uniquement si x-forwarded-for est absent). Désactivé par défaut pour la sécurité",
@@ -192,7 +191,6 @@
   "gateway.nodes.denyCommands": "Commandes refusées via node.invoke (même si dans les défauts ou revendiquées par le nœud)",
   "gateway.remote.password": "Mot de passe pour le gateway distant (quand il utilise l'auth. par mot de passe)",
   "gateway.remote.tlsFingerprint": "Empreinte SHA-256 du certificat TLS du gateway distant. Vérifie l'identité distante pour prévenir les attaques MITM",
-
   "logging.maxFileBytes": "Taille max du fichier de log en octets. Rotation automatique en cas de dépassement. ex. 10485760 (10 Mo)",
   "logging.redactSensitive": "Masquage des données sensibles. off = pas de masquage ; tools = masquer les données sensibles dans les appels d'outils",
   "logging.redactPatterns": "Motifs regex de masquage personnalisés. Le contenu correspondant est remplacé par [REDACTED]",
@@ -211,7 +209,6 @@
   "diagnostics.cacheTrace.includeMessages": "Inclure le contenu complet des messages dans les traces de cache",
   "diagnostics.cacheTrace.includePrompt": "Inclure le prompt complet dans les traces de cache",
   "diagnostics.cacheTrace.includeSystem": "Inclure les messages système dans les traces de cache",
-
   "browser.evaluateEnabled": "Autoriser l'IA à exécuter du code JavaScript dans les pages du navigateur",
   "browser.remoteCdpTimeoutMs": "Délai de connexion CDP distant (ms). Temps d'attente max pour se connecter à une instance de navigateur en cours",
   "browser.remoteCdpHandshakeTimeoutMs": "Délai de poignée de main WebSocket CDP distant (ms)",
@@ -221,7 +218,6 @@
   "browser.defaultProfile": "Chemin du profil utilisateur par défaut du navigateur. Préserve l'état de connexion et les cookies",
   "browser.ssrfPolicy.allowPrivateNetwork": "Autoriser le navigateur à accéder aux adresses réseau privées (ex. 192.168.x.x, 10.x.x.x). ⚠️ Risque SSRF",
   "browser.ssrfPolicy.hostnameAllowlist": "Liste autorisée de noms d'hôte de la politique SSRF du navigateur. Seuls les hôtes listés sont accessibles",
-
   "session.store": "Backend de stockage de session. ex. file, memory. file = persister sur disque ; memory = en mémoire uniquement (perdu au redémarrage)",
   "session.mainKey": "Clé d'identifiant de session principale. Utilisée pour distinguer différents espaces de session",
   "session.typingIntervalSeconds": "Intervalle de mise à jour de l'indicateur de saisie (secondes). Envoie périodiquement le statut 'en cours de saisie' pendant le traitement IA",
@@ -235,19 +231,19 @@
   "session.maintenance.maxEntries": "Entrées max de stockage de session. Les plus anciennes sont élaguées en cas de dépassement",
   "session.maintenance.rotateBytes": "Seuil de rotation de taille des fichiers de session. ex. 50mb",
   "session.maintenance.maxDiskBytes": "Utilisation disque max pour le stockage de session. ex. 500mb",
-
   "update.auto.enabled": "Activer la mise à jour auto. Télécharge et installe automatiquement les nouvelles versions",
   "update.auto.stableDelayHours": "Délai d'installation de la version stable (heures). Attend après la publication avant la mise à jour auto pour éviter les bugs précoces",
   "update.auto.stableJitterHours": "Gigue du temps de mise à jour stable (heures). Randomise le moment de la mise à jour pour éviter les mises à jour simultanées",
   "update.auto.betaCheckIntervalHours": "Intervalle de vérification de version bêta (heures). Fréquence de vérification des nouvelles versions bêta",
-
   "env.shellEnv.enabled": "Activer l'héritage des variables d'environnement shell depuis la session shell actuelle",
   "env.shellEnv.timeoutMs": "Délai de sondage de l'environnement shell (ms). Temps d'attente max pour lire les variables d'environnement shell",
-
   "talk.provider": "Fournisseur TTS pour le mode Talk. ex. elevenlabs, openai, azure",
   "talk.outputFormat": "Format de sortie audio du mode Talk. ex. mp3, pcm_44100, opus",
-
   "web.reconnect.initialMs": "Temps d'attente initial de reconnexion du client web (ms)",
   "web.reconnect.maxMs": "Temps d'attente max de reconnexion du client web (ms). L'intervalle de réessai croît exponentiellement jusqu'à ce plafond",
-  "web.reconnect.maxAttempts": "Tentatives max de reconnexion du client web. 0 = réessais illimités"
+  "web.reconnect.maxAttempts": "Tentatives max de reconnexion du client web. 0 = réessais illimités",
+  "media.ttlHours": "Optional retention window in hours for persisted inbound media cleanup across the full media tree. Leave unset to preserve legacy behavior, or set values like 24 (1 day) or 168 (7 days) when you want automatic cleanup",
+  "talk.silenceTimeoutMs": "Milliseconds of user silence before Talk mode finalizes and sends the current transcript. Leave unset to keep the platform default pause window (700 ms on macOS and Android, 900 ms on iOS)",
+  "gateway.push.apns.relay.baseUrl": "Base HTTPS URL for the external APNs relay service used by official/TestFlight iOS builds. Keep this aligned with the relay URL baked into the iOS build so registration and send traffic hit the same deployment",
+  "gateway.push.apns.relay.timeoutMs": "Timeout in milliseconds for relay send requests from the gateway to the APNs relay (default: 10000). Increase for slower relays or networks, or lower to fail wake attempts faster"
 }

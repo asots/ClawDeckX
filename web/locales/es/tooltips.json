@@ -170,7 +170,6 @@
   "env.shellEnv": "Tipo de entorno Shell, p. ej. bash, zsh. Afecta qué shell se usa para ejecución de comandos",
   "env.vars": "Variables de entorno personalizadas. Se inyectan en el entorno cuando la IA ejecuta comandos",
   "media.preserveFilenames": "Preservar nombres de archivo multimedia originales. Si está desactivado, se usan nombres aleatorios",
-
   "gateway.customBindHost": "Dirección de enlace personalizada (solo cuando bind=custom). p. ej. 0.0.0.0 o una IP específica",
   "gateway.channelHealthCheckMinutes": "Intervalo de verificación de salud del canal (minutos). Verifica periódicamente el estado del canal y reinicia automáticamente canales no saludables. 0 = desactivado, predeterminado 5",
   "gateway.allowRealIpFallback": "Permitir encabezado x-real-ip como fallback para IP del cliente (solo cuando falta x-forwarded-for). Desactivado por defecto por seguridad",
@@ -192,7 +191,6 @@
   "gateway.nodes.denyCommands": "Comandos denegados vía node.invoke (incluso si están en predeterminados o reclamados por el nodo)",
   "gateway.remote.password": "Contraseña para el gateway remoto (cuando usa auth por contraseña)",
   "gateway.remote.tlsFingerprint": "Huella SHA-256 del certificado TLS del gateway remoto. Verifica la identidad remota para prevenir ataques MITM",
-
   "logging.maxFileBytes": "Tamaño máx. de archivo de registro en bytes. Rota automáticamente al exceder. p. ej. 10485760 (10MB)",
   "logging.redactSensitive": "Ocultación de datos sensibles. off = sin ocultación; tools = ocultar datos sensibles en llamadas de herramientas",
   "logging.redactPatterns": "Patrones regex de ocultación personalizados. El contenido coincidente se reemplaza con [REDACTED]",
@@ -211,7 +209,6 @@
   "diagnostics.cacheTrace.includeMessages": "Incluir contenido completo de mensajes en trazas de caché",
   "diagnostics.cacheTrace.includePrompt": "Incluir prompt completo en trazas de caché",
   "diagnostics.cacheTrace.includeSystem": "Incluir mensajes del sistema en trazas de caché",
-
   "browser.evaluateEnabled": "Permitir a la IA ejecutar código JavaScript en páginas del navegador",
   "browser.remoteCdpTimeoutMs": "Tiempo límite de conexión CDP remota (ms). Tiempo máx. de espera para conectar a una instancia de navegador en ejecución",
   "browser.remoteCdpHandshakeTimeoutMs": "Tiempo límite de handshake WebSocket CDP remoto (ms)",
@@ -221,7 +218,6 @@
   "browser.defaultProfile": "Ruta del perfil de usuario del navegador predeterminado. Preserva estado de inicio de sesión y cookies",
   "browser.ssrfPolicy.allowPrivateNetwork": "Permitir al navegador acceder a direcciones de red privada (p. ej. 192.168.x.x, 10.x.x.x). ⚠️ Riesgo SSRF",
   "browser.ssrfPolicy.hostnameAllowlist": "Lista de hosts permitidos en la política SSRF del navegador. Solo los hosts listados pueden accederse",
-
   "session.store": "Backend de almacenamiento de sesión. p. ej. file, memory. file = persistir en disco; memory = solo en memoria (se pierde al reiniciar)",
   "session.mainKey": "Clave identificadora de sesión principal. Se usa para distinguir diferentes espacios de sesión",
   "session.typingIntervalSeconds": "Intervalo de actualización del indicador de escritura (segundos). Envía periódicamente estado 'escribiendo' mientras la IA procesa",
@@ -235,19 +231,19 @@
   "session.maintenance.maxEntries": "Máx. entradas de almacenamiento de sesión. Las sesiones más antiguas se podan cuando se excede",
   "session.maintenance.rotateBytes": "Umbral de tamaño de rotación de archivo de sesión. p. ej. 50mb",
   "session.maintenance.maxDiskBytes": "Máx. uso de disco para almacenamiento de sesión. p. ej. 500mb",
-
   "update.auto.enabled": "Activar actualización automática. Descarga e instala automáticamente nuevas versiones",
   "update.auto.stableDelayHours": "Retraso de instalación de versión estable (horas). Espera después del lanzamiento antes de actualizar para evitar errores tempranos",
   "update.auto.stableJitterHours": "Jitter de tiempo de actualización estable (horas). Aleatoriza el momento de actualización para evitar actualizaciones simultáneas",
   "update.auto.betaCheckIntervalHours": "Intervalo de verificación de versión beta (horas). Con qué frecuencia verificar nuevas versiones beta",
-
   "env.shellEnv.enabled": "Activar herencia de variables de entorno Shell de la sesión Shell actual",
   "env.shellEnv.timeoutMs": "Tiempo límite de sondeo de entorno Shell (ms). Tiempo máx. de espera para leer variables de entorno Shell",
-
   "talk.provider": "Proveedor TTS para modo Talk. p. ej. elevenlabs, openai, azure",
   "talk.outputFormat": "Formato de salida de audio del modo Talk. p. ej. mp3, pcm_44100, opus",
-
   "web.reconnect.initialMs": "Tiempo de espera inicial de reconexión del cliente web (ms)",
   "web.reconnect.maxMs": "Tiempo máx. de espera de reconexión del cliente web (ms). El intervalo de reintento crece exponencialmente hasta este tope",
-  "web.reconnect.maxAttempts": "Máx. intentos de reconexión del cliente web. 0 = reintentos ilimitados"
+  "web.reconnect.maxAttempts": "Máx. intentos de reconexión del cliente web. 0 = reintentos ilimitados",
+  "media.ttlHours": "Optional retention window in hours for persisted inbound media cleanup across the full media tree. Leave unset to preserve legacy behavior, or set values like 24 (1 day) or 168 (7 days) when you want automatic cleanup",
+  "talk.silenceTimeoutMs": "Milliseconds of user silence before Talk mode finalizes and sends the current transcript. Leave unset to keep the platform default pause window (700 ms on macOS and Android, 900 ms on iOS)",
+  "gateway.push.apns.relay.baseUrl": "Base HTTPS URL for the external APNs relay service used by official/TestFlight iOS builds. Keep this aligned with the relay URL baked into the iOS build so registration and send traffic hit the same deployment",
+  "gateway.push.apns.relay.timeoutMs": "Timeout in milliseconds for relay send requests from the gateway to the APNs relay (default: 10000). Increase for slower relays or networks, or lower to fail wake attempts faster"
 }

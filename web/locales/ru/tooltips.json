@@ -170,7 +170,6 @@
   "env.shellEnv": "Тип оболочки, напр. bash, zsh. Влияет на используемую оболочку для выполнения команд",
   "env.vars": "Пользовательские переменные окружения. Внедряются при выполнении команд AI",
   "media.preserveFilenames": "Сохранять оригинальные имена медиафайлов. Если выкл., используются случайные имена",
-
   "gateway.customBindHost": "Пользовательский адрес привязки (только при bind=custom). Напр. 0.0.0.0 или конкретный IP",
   "gateway.channelHealthCheckMinutes": "Интервал проверки здоровья каналов (мин.). Периодически проверяет статус и перезапускает неисправные. 0 = отключено, по умолчанию 5",
   "gateway.allowRealIpFallback": "Разрешить x-real-ip как резервный IP клиента (при отсутствии x-forwarded-for). По умолчанию выкл. для безопасности",
@@ -192,7 +191,6 @@
   "gateway.nodes.denyCommands": "Команды, запрещённые через node.invoke (даже если в дефолтах или объявлениях узла)",
   "gateway.remote.password": "Пароль удалённого шлюза (при парольной авторизации)",
   "gateway.remote.tlsFingerprint": "SHA-256 отпечаток TLS-сертификата удалённого шлюза. Защищает от MITM-атак",
-
   "logging.maxFileBytes": "Макс. размер файла логов в байтах. Авторотация при превышении. Напр. 10485760 (10МБ)",
   "logging.redactSensitive": "Редактирование конфиденциальных данных. off = без редактирования; tools = скрывать в вызовах инструментов",
   "logging.redactPatterns": "Пользовательские regex-шаблоны скрытия. Совпадающее заменяется на [REDACTED]",
@@ -211,7 +209,6 @@
   "diagnostics.cacheTrace.includeMessages": "Включить полное содержимое сообщений в трассировку кэша",
   "diagnostics.cacheTrace.includePrompt": "Включить полный промпт в трассировку кэша",
   "diagnostics.cacheTrace.includeSystem": "Включить системные сообщения в трассировку кэша",
-
   "browser.evaluateEnabled": "Разрешить AI выполнять JavaScript на страницах браузера",
   "browser.remoteCdpTimeoutMs": "Таймаут подключения CDP (мс). Макс. время ожидания подключения к запущенному браузеру",
   "browser.remoteCdpHandshakeTimeoutMs": "Таймаут рукопожатия WebSocket CDP (мс)",
@@ -221,7 +218,6 @@
   "browser.defaultProfile": "Путь профиля браузера по умолчанию. Сохраняет состояние входа и cookie",
   "browser.ssrfPolicy.allowPrivateNetwork": "Разрешить браузеру доступ к частным сетевым адресам (напр. 192.168.x.x, 10.x.x.x). ⚠️ Риск SSRF",
   "browser.ssrfPolicy.hostnameAllowlist": "Белый список хостов SSRF-политики браузера. Доступны только указанные",
-
   "session.store": "Бэкенд хранилища сессий. file = сохранение на диск; memory = только в памяти (теряется при перезапуске)",
   "session.mainKey": "Основной ключ идентификатора сессии. Для различения разных пространств сессий",
   "session.typingIntervalSeconds": "Интервал обновления индикатора набора (сек.). Периодически отправляет статус набора при обработке AI",
@@ -235,19 +231,19 @@
   "session.maintenance.maxEntries": "Макс. записей хранилища сессий. Старые сессии удаляются при превышении",
   "session.maintenance.rotateBytes": "Порог ротации файла сессии. Напр. 50mb",
   "session.maintenance.maxDiskBytes": "Макс. использование диска для хранилища сессий. Напр. 500mb",
-
   "update.auto.enabled": "Включить автообновление. Автоматически скачивает и устанавливает новые версии",
   "update.auto.stableDelayHours": "Задержка установки стабильного релиза (часы). Ожидание после выпуска перед обновлением для избежания ранних ошибок",
   "update.auto.stableJitterHours": "Джиттер обновления (часы). Рандомизация времени обновления для избежания одновременных обновлений",
   "update.auto.betaCheckIntervalHours": "Интервал проверки бета-версий (часы). Как часто проверять новые бета-релизы",
-
   "env.shellEnv.enabled": "Включить наследование переменных окружения из текущей сессии оболочки",
   "env.shellEnv.timeoutMs": "Таймаут зондирования оболочки (мс). Макс. время чтения переменных окружения",
-
   "talk.provider": "Провайдер TTS для режима разговора. Напр. elevenlabs, openai, azure",
   "talk.outputFormat": "Формат аудиовывода режима разговора. Напр. mp3, pcm_44100, opus",
-
   "web.reconnect.initialMs": "Начальное время ожидания переподключения веб-клиента (мс)",
   "web.reconnect.maxMs": "Макс. время ожидания переподключения веб-клиента (мс). Интервал растёт экспоненциально до этого предела",
-  "web.reconnect.maxAttempts": "Макс. попыток переподключения веб-клиента. 0 = без ограничений"
+  "web.reconnect.maxAttempts": "Макс. попыток переподключения веб-клиента. 0 = без ограничений",
+  "media.ttlHours": "Optional retention window in hours for persisted inbound media cleanup across the full media tree. Leave unset to preserve legacy behavior, or set values like 24 (1 day) or 168 (7 days) when you want automatic cleanup",
+  "talk.silenceTimeoutMs": "Milliseconds of user silence before Talk mode finalizes and sends the current transcript. Leave unset to keep the platform default pause window (700 ms on macOS and Android, 900 ms on iOS)",
+  "gateway.push.apns.relay.baseUrl": "Base HTTPS URL for the external APNs relay service used by official/TestFlight iOS builds. Keep this aligned with the relay URL baked into the iOS build so registration and send traffic hit the same deployment",
+  "gateway.push.apns.relay.timeoutMs": "Timeout in milliseconds for relay send requests from the gateway to the APNs relay (default: 10000). Increase for slower relays or networks, or lower to fail wake attempts faster"
 }

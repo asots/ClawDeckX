@@ -170,7 +170,6 @@
   "env.shellEnv": "Shell 환경 유형, 예: bash, zsh. 명령 실행에 사용할 셸에 영향을 줍니다",
   "env.vars": "커스텀 환경 변수. AI가 명령을 실행할 때 환경에 주입됩니다",
   "media.preserveFilenames": "원본 미디어 파일명을 유지합니다. 꺼져 있으면 랜덤 파일명이 사용됩니다",
-
   "gateway.customBindHost": "커스텀 바인드 주소 (bind=custom일 때만). 예: 0.0.0.0 또는 특정 IP",
   "gateway.channelHealthCheckMinutes": "채널 상태 점검 간격 (분). 주기적으로 채널 상태를 확인하고 비정상 채널을 자동 재시작합니다. 0 = 비활성화, 기본값 5",
   "gateway.allowRealIpFallback": "x-forwarded-for가 없을 때 x-real-ip 헤더를 클라이언트 IP 대체로 허용합니다. 보안상 기본값 꺼짐",
@@ -192,7 +191,6 @@
   "gateway.nodes.denyCommands": "node.invoke를 통해 거부되는 명령 (기본값이나 노드 선언에 있어도 거부)",
   "gateway.remote.password": "원격 게이트웨이 비밀번호 (비밀번호 인증 사용 시)",
   "gateway.remote.tlsFingerprint": "원격 게이트웨이 TLS 인증서의 SHA-256 지문. MITM 공격 방지를 위해 원격 신원을 검증합니다",
-
   "logging.maxFileBytes": "최대 로그 파일 크기 (바이트). 초과 시 자동 로테이션됩니다. 예: 10485760 (10MB)",
   "logging.redactSensitive": "민감 데이터 삭제. off = 삭제 안 함; tools = 도구 호출에서 민감 데이터 삭제",
   "logging.redactPatterns": "커스텀 삭제 정규식 패턴. 일치하는 내용이 [REDACTED]로 대체됩니다",
@@ -211,7 +209,6 @@
   "diagnostics.cacheTrace.includeMessages": "캐시 추적에 전체 메시지 내용을 포함합니다",
   "diagnostics.cacheTrace.includePrompt": "캐시 추적에 전체 프롬프트를 포함합니다",
   "diagnostics.cacheTrace.includeSystem": "캐시 추적에 시스템 메시지를 포함합니다",
-
   "browser.evaluateEnabled": "AI가 브라우저 페이지에서 JavaScript 코드를 실행할 수 있도록 허용합니다",
   "browser.remoteCdpTimeoutMs": "원격 CDP 연결 타임아웃 (ms). 실행 중인 브라우저 인스턴스에 연결하기 위한 최대 대기 시간",
   "browser.remoteCdpHandshakeTimeoutMs": "원격 CDP WebSocket 핸드셰이크 타임아웃 (ms)",
@@ -221,7 +218,6 @@
   "browser.defaultProfile": "기본 브라우저 사용자 프로필 경로. 로그인 상태와 쿠키가 유지됩니다",
   "browser.ssrfPolicy.allowPrivateNetwork": "브라우저가 사설 네트워크 주소에 접근하도록 허용합니다 (예: 192.168.x.x, 10.x.x.x). ⚠️ SSRF 위험",
   "browser.ssrfPolicy.hostnameAllowlist": "브라우저 SSRF 정책 호스트명 허용 목록. 나열된 호스트만 접근할 수 있습니다",
-
   "session.store": "세션 저장소 백엔드. 예: file, memory. file = 디스크에 저장; memory = 메모리 내 전용 (재시작 시 손실)",
   "session.mainKey": "메인 세션 식별 키. 서로 다른 세션 공간을 구분하는 데 사용됩니다",
   "session.typingIntervalSeconds": "타이핑 표시 업데이트 간격 (초). AI 처리 중 주기적으로 '입력 중' 상태를 전송합니다",
@@ -235,19 +231,19 @@
   "session.maintenance.maxEntries": "최대 세션 저장 항목 수. 초과 시 가장 오래된 세션이 정리됩니다",
   "session.maintenance.rotateBytes": "세션 파일 로테이션 크기 임계값. 예: 50mb",
   "session.maintenance.maxDiskBytes": "세션 저장소의 최대 디스크 사용량. 예: 500mb",
-
   "update.auto.enabled": "자동 업데이트를 활성화합니다. 새 버전을 자동으로 다운로드하고 설치합니다",
   "update.auto.stableDelayHours": "안정 릴리스 설치 지연 시간 (시간). 초기 버그를 피하기 위해 릴리스 후 대기합니다",
   "update.auto.stableJitterHours": "안정 업데이트 시간 지터 (시간). 동시 업데이트를 피하기 위해 업데이트 타이밍을 무작위화합니다",
   "update.auto.betaCheckIntervalHours": "베타 버전 확인 간격 (시간). 새 베타 릴리스를 확인하는 빈도입니다",
-
   "env.shellEnv.enabled": "현재 셸 세션에서 환경 변수 상속을 활성화합니다",
   "env.shellEnv.timeoutMs": "Shell 환경 탐색 타임아웃 (ms). 셸 환경 변수를 읽기 위한 최대 대기 시간",
-
   "talk.provider": "Talk 모드의 TTS 공급자. 예: elevenlabs, openai, azure",
   "talk.outputFormat": "Talk 모드 오디오 출력 형식. 예: mp3, pcm_44100, opus",
-
   "web.reconnect.initialMs": "웹 클라이언트 재연결 초기 대기 시간 (ms)",
   "web.reconnect.maxMs": "웹 클라이언트 재연결 최대 대기 시간 (ms). 재시도 간격이 이 상한까지 지수적으로 증가합니다",
-  "web.reconnect.maxAttempts": "웹 클라이언트 최대 재연결 시도 횟수. 0 = 무제한 재시도"
+  "web.reconnect.maxAttempts": "웹 클라이언트 최대 재연결 시도 횟수. 0 = 무제한 재시도",
+  "media.ttlHours": "Optional retention window in hours for persisted inbound media cleanup across the full media tree. Leave unset to preserve legacy behavior, or set values like 24 (1 day) or 168 (7 days) when you want automatic cleanup",
+  "talk.silenceTimeoutMs": "Milliseconds of user silence before Talk mode finalizes and sends the current transcript. Leave unset to keep the platform default pause window (700 ms on macOS and Android, 900 ms on iOS)",
+  "gateway.push.apns.relay.baseUrl": "Base HTTPS URL for the external APNs relay service used by official/TestFlight iOS builds. Keep this aligned with the relay URL baked into the iOS build so registration and send traffic hit the same deployment",
+  "gateway.push.apns.relay.timeoutMs": "Timeout in milliseconds for relay send requests from the gateway to the APNs relay (default: 10000). Increase for slower relays or networks, or lower to fail wake attempts faster"
 }
