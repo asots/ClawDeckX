@@ -232,6 +232,18 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
   const gwReadyRef = useRef(gwReady);
   gwReadyRef.current = gwReady;
 
+  // Debounced gwReady: goes true immediately, delays 3s before going false.
+  // Prevents brief connectivity blips from unmounting the entire chat UI.
+  const [gwReadyStable, setGwReadyStable] = useState(gwReady);
+  useEffect(() => {
+    if (gwReady) {
+      setGwReadyStable(true);
+      return;
+    }
+    const timer = setTimeout(() => setGwReadyStable(false), 3000);
+    return () => clearTimeout(timer);
+  }, [gwReady]);
+
   // Sessions — restore from sessionStorage for instant display
   const [sessions, setSessions] = useState<GwSession[]>(() => {
     try {
@@ -1751,7 +1763,7 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
 
   // Not connected state: only block UI when gateway itself is unreachable
   // AND we've actually checked (avoid flashing disconnected before first REST check).
-  if (!gwReady && !wsConnecting && gwChecked) {
+  if (!gwReadyStable && !wsConnecting && gwChecked) {
     return (
       <div className="flex-1 flex items-center justify-center bg-white dark:bg-[#0d1117]">
         <div className="text-center max-w-sm px-6">
