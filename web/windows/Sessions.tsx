@@ -229,6 +229,8 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
   const cRef = useRef(c);
   cRef.current = c;
   const { ready: gwReady, checked: gwChecked, refresh: gwRefresh } = useGatewayStatus();
+  const gwReadyRef = useRef(gwReady);
+  gwReadyRef.current = gwReady;
 
   // Sessions — restore from sessionStorage for instant display
   const [sessions, setSessions] = useState<GwSession[]>(() => {
@@ -518,12 +520,12 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
   // Sync wsError with gateway status from shared hook
   useEffect(() => {
     if (gwChecked && !gwReady) {
-      setWsError(c.configMissing);
+      setWsError(cRef.current.configMissing);
       setWsConnecting(false);
     } else if (gwReady) {
       setWsError(null);
     }
-  }, [gwChecked, gwReady, c.configMissing]);
+  }, [gwChecked, gwReady]);
 
   // Subscribe to shared Manager WS for real-time chat streaming events
   useEffect(() => {
@@ -779,7 +781,7 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
 
   // Load sessions list (via REST proxy)
   const loadSessions = useCallback(async () => {
-    if (!gwReady) return;
+    if (!gwReadyRef.current) return;
     const requestSeq = ++sessionsRequestSeqRef.current;
     setSessionsLoading(true);
     try {
@@ -828,7 +830,7 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
         setSessionsLoading(false);
       }
     }
-  }, [gwReady]);
+  }, []);
 
   // Track message count via ref to avoid loadHistory dependency on messages array
   const messagesLenRef = useRef(0);
@@ -836,7 +838,7 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
 
   // Load chat history (via REST proxy)
   const loadHistory = useCallback(async (opts?: { silent?: boolean }) => {
-    if (!gwReady) return;
+    if (!gwReadyRef.current) return;
     const requestSeq = ++historyRequestSeqRef.current;
     const targetSessionKey = sessionKey;
     // Only show loading spinner on first load (no existing messages)
@@ -908,7 +910,8 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
         setIsSwitchingSession(false);
       }
     }
-  }, [gwReady, sessionKey]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionKey]);
 
   // On ready: load history first (user-visible), then sessions list (sidebar has cache).
   useEffect(() => {
@@ -956,7 +959,8 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
       if (timer) clearInterval(timer);
       document.removeEventListener('visibilitychange', onVisibility);
     };
-  }, [gwReady, loadSessions, loadHistory]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gwReady]);
 
   // Load chat history only when selected session changes.
   useEffect(() => {
@@ -1314,8 +1318,8 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
     } catch (err: any) {
       clearStream();
       setRunPhase('error');
-      setError(err?.message || c.error);
-      setMessages(prev => [...prev, { role: 'assistant', content: [{ type: 'text', text: 'Error: ' + (err?.message || c.error) }], timestamp: Date.now() }]);
+      setError(err?.message || cRef.current.error);
+      setMessages(prev => [...prev, { role: 'assistant', content: [{ type: 'text', text: 'Error: ' + (err?.message || cRef.current.error) }], timestamp: Date.now() }]);
       pendingRunRef.current = null;
       // If gateway connection just flapped, force a status refresh sooner.
       gwRefresh();
@@ -1323,7 +1327,8 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
       sendingRef.current = false;
       setSending(false);
     }
-  }, [gwReady, input, sending, isStreaming, sessionKey, messages.length, c.error, pendingAttachments, ensureSessionPresent, loadSessions]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [input, sending, isStreaming, sessionKey, messages.length, pendingAttachments, ensureSessionPresent]);
 
   // Abort (via REST proxy)
   const handleAbort = useCallback(async () => {

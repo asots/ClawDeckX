@@ -79,6 +79,19 @@ class GatewayStatusBus {
     const next = { ...this.snapshot, ...patch };
     // Derive ready from connected/running
     next.ready = next.connected || next.running;
+    // Only emit if something actually changed (avoids unnecessary React re-renders)
+    const prev = this.snapshot;
+    if (
+      prev.connected === next.connected &&
+      prev.running === next.running &&
+      prev.ready === next.ready &&
+      prev.checked === next.checked &&
+      prev.runtime === next.runtime
+    ) {
+      // Update lastCheckAt silently without triggering re-renders
+      this.snapshot = next;
+      return;
+    }
     this.snapshot = next;
     this.emit();
   }
