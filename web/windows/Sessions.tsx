@@ -185,6 +185,32 @@ function getMessageRenderKey(msg: ChatMsg, idx: number): string {
   return [msg.role, msg.timestamp || 0, msg.model || '', toolId, text, idx].join(':');
 }
 
+function areSessionsEquivalent(a: GwSession[], b: GwSession[]): boolean {
+  if (a.length !== b.length) return false;
+  return a.every((session, idx) => {
+    const next = b[idx];
+    if (!next) return false;
+    return session.key === next.key &&
+      session.label === next.label &&
+      session.kind === next.kind &&
+      session.lastActiveAt === next.lastActiveAt &&
+      session.totalTokens === next.totalTokens &&
+      session.lastMessagePreview === next.lastMessagePreview &&
+      session.model === next.model &&
+      session.modelProvider === next.modelProvider &&
+      session.inputTokens === next.inputTokens &&
+      session.outputTokens === next.outputTokens &&
+      session.thinkingLevel === next.thinkingLevel &&
+      session.verboseLevel === next.verboseLevel &&
+      session.reasoningLevel === next.reasoningLevel &&
+      session.sendPolicy === next.sendPolicy &&
+      session.derivedTitle === next.derivedTitle &&
+      session.maxContextTokens === next.maxContextTokens &&
+      session.compacted === next.compacted &&
+      session.fastMode === next.fastMode;
+  });
+}
+
 const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSessionKeyConsumed }) => {
   const t = useMemo(() => getTranslation(language), [language]);
   const c = t.chat as any;
@@ -826,9 +852,14 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
         compacted: !!s.compacted,
         fastMode: s.fastMode ?? undefined,
       }));
-      setSessions(mapped);
-      // Persist to sessionStorage for instant display on next window open
-      try { sessionStorage.setItem('clawdeck-sessions-cache', JSON.stringify(mapped)); } catch { /* ignore */ }
+      setSessions(prev => {
+        if (areSessionsEquivalent(prev, mapped)) {
+          return prev;
+        }
+        // Persist to sessionStorage for instant display on next window open
+        try { sessionStorage.setItem('clawdeck-sessions-cache', JSON.stringify(mapped)); } catch { /* ignore */ }
+        return mapped;
+      });
     } catch { /* ignore */ }
     finally {
       if (sessionsRequestSeqRef.current === requestSeq) {
@@ -1061,6 +1092,40 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
     return draftsRef.current[key] || '';
   }, []);
 
+  const ensureSessionPresent = useCallback((key: string) => {
+    setSessions(prev => {
+      if (!key || prev.some(s => s.key === key)) return prev;
+      return [{
+        key,
+        label: key,
+        kind: '',
+        lastActiveAt: new Date().toISOString(),
+        totalTokens: 0,
+        lastMessagePreview: '',
+        model: '',
+        modelProvider: '',
+        inputTokens: 0,
+        outputTokens: 0,
+        thinkingLevel: '',
+        verboseLevel: '',
+        reasoningLevel: '',
+        sendPolicy: '',
+        derivedTitle: key,
+        maxContextTokens: 0,
+        compacted: false,
+        fastMode: undefined,
+      }, ...prev];
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!gwReady || !sessionKey) return;
+    if (!sessions.some(s => s.key === sessionKey)) {
+      ensureSessionPresent(sessionKey);
+      loadSessions();
+    }
+  }, [gwReady, sessionKey, sessions, ensureSessionPresent, loadSessions]);
+
   // Reconnect banner
   useEffect(() => {
     if (gwReady) {
@@ -1222,6 +1287,7 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
     const attachments_ = pendingAttachments || [];
     if (!msg && attachments_.length === 0) return;
     sendingRef.current = true;
+    ensureSessionPresent(sessionKey);
 
     // Track input history for ↑ recall
     if (msg) {
@@ -1277,6 +1343,7 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
       setRunId(nextRunId);
       setRunPhase('waiting');
       setError(null);
+      void loadSessions();
       pendingRunRef.current = {
         runId: nextRunId,
         beforeCount: messages.length + 1,
@@ -1296,7 +1363,7 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
       sendingRef.current = false;
       setSending(false);
     }
-  }, [gwReady, input, sending, isStreaming, sessionKey, messages.length, c.error, pendingAttachments]);
+  }, [gwReady, input, sending, isStreaming, sessionKey, messages.length, c.error, pendingAttachments, ensureSessionPresent, loadSessions]);
 
   // Abort (via REST proxy)
   const handleAbort = useCallback(async () => {
@@ -1451,6 +1518,7 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
     }
     // Save current draft before switching
     saveDraft(sessionKey, input);
+    ensureSessionPresent(key);
     setIsSwitchingSession(true);
     setSessionKey(key);
     clearStream();
@@ -1464,11 +1532,12 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
     // Clear unread
     setUnreadMap(prev => { const next = { ...prev }; delete next[key]; return next; });
     setExpandedMsgs(new Set());
-  }, [sessionKey, input, saveDraft, loadDraft, clearStream]);
+  }, [sessionKey, input, saveDraft, loadDraft, clearStream, ensureSessionPresent]);
 
   // New session
   const handleNewSession = useCallback(() => {
     const key = `web-${Date.now()}`;
+    ensureSessionPresent(key);
     setIsSwitchingSession(true);
     setSessionKey(key);
     clearStream();
@@ -1476,7 +1545,8 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
     setRunPhase('idle');
     pendingRunRef.current = null;
     setBtwMessage(null);
-  }, [clearStream]);
+    void loadSessions();
+  }, [clearStream, ensureSessionPresent, loadSessions]);
 
   // Rename session
   const openRenameDialog = useCallback((key: string, currentLabel: string) => {
