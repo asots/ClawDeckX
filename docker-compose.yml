@@ -2,13 +2,16 @@ services:
   clawdeckx:
     image: knowhunters/clawdeckx:latest
     container_name: clawdeckx
+    init: true
     restart: unless-stopped
     ports:
       - "18791:18791"
     volumes:
       - clawdeckx-data:/data
     environment:
-      # OpenClaw Gateway 连接配置
+      # OpenClaw Gateway connection config
+      # If Gateway runs on host, use host.docker.internal (Mac/Windows)
+      # or host's real IP (Linux)
       # 如果 Gateway 运行在宿主机，使用 host.docker.internal（Mac/Windows）
       # 或使用宿主机实际 IP（Linux）
       OCD_OPENCLAW_GATEWAY_HOST: host.docker.internal
@@ -16,6 +19,12 @@ services:
       # OCD_OPENCLAW_GATEWAY_TOKEN: your_token_here
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:18791/api/v1/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
 
 volumes:
   clawdeckx-data:
