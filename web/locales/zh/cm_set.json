@@ -345,6 +345,24 @@
     "serviceDockerManaged": "由 Docker 管理",
     "serviceDockerDesc": "当前运行在 Docker 容器中。自动启动由 Docker 重启策略和容器入口脚本管理，无需注册系统服务。"
   },
+  "pref": {
+    "title": "功能设置",
+    "windowControls": "窗口按钮位置",
+    "windowControlsDesc": "选择关闭、最小化和最大化按钮在窗口中的显示位置。",
+    "windowControlsLeft": "左侧 (macOS)",
+    "windowControlsRight": "右侧 (Windows)",
+    "wallpaper": "桌面壁纸",
+    "wallpaperSource": "来源",
+    "wallpaperGradient": "默认渐变",
+    "wallpaperPicsum": "随机图片",
+    "wallpaperCustom": "自定义 URL",
+    "wallpaperUrl": "图片 URL",
+    "wallpaperPreview": "预览",
+    "wallpaperRefresh": "刷新",
+    "wallpaperClickRefresh": "点击刷新加载壁纸",
+    "wallpaperCacheHint": "壁纸已缓存到本地，每 24 小时自动刷新一次。",
+    "wallpaperFetchFail": "壁纸加载失败"
+  },
   "hi": {
     "title": "宿主机信息",
     "hostname": "主机名",

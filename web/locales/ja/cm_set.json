@@ -345,6 +345,24 @@
     "serviceDockerManaged": "Docker により管理",
     "serviceDockerDesc": "Docker コンテナ内で実行中です。自動起動は Docker の再起動ポリシーとコンテナエントリポイントスクリプトで管理されています。システムサービスの登録は不要です。"
   },
+  "pref": {
+    "title": "機能設定",
+    "windowControls": "ウィンドウボタンの位置",
+    "windowControlsDesc": "閉じる・最小化・最大化ボタンの表示位置を選択します。",
+    "windowControlsLeft": "左側 (macOS)",
+    "windowControlsRight": "右側 (Windows)",
+    "wallpaper": "デスクトップ壁紙",
+    "wallpaperSource": "ソース",
+    "wallpaperGradient": "デフォルトグラデーション",
+    "wallpaperPicsum": "ランダム写真",
+    "wallpaperCustom": "カスタム URL",
+    "wallpaperUrl": "画像 URL",
+    "wallpaperPreview": "プレビュー",
+    "wallpaperRefresh": "更新",
+    "wallpaperClickRefresh": "更新をクリックして壁紙を読み込み",
+    "wallpaperCacheHint": "壁紙はローカルにキャッシュされ、24時間ごとに自動更新されます。",
+    "wallpaperFetchFail": "壁紙の読み込みに失敗しました"
+  },
   "hi": {
     "title": "ホスト情報",
     "hostname": "ホスト名",

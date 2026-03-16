@@ -1,6 +1,7 @@
 ﻿
 import React, { ReactNode, useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import { WindowState, WindowBounds, Language } from '../types';
+import type { WindowControlsPosition } from '../utils/preferences';
 import { getTranslation } from '../locales';
 import { useWindowDrag, getSnapBounds, SnapZone } from '../hooks/useWindowDrag';
 import { useWindowResize, ResizeEdge, CURSOR_MAP } from '../hooks/useWindowResize';
@@ -10,6 +11,7 @@ interface WindowFrameProps {
   language: Language;
   isFocused: boolean;
   dockHidden?: boolean;
+  controlsPosition?: WindowControlsPosition;
   onClose: () => void;
   onMinimize: () => void;
   onMaximize: () => void;
@@ -36,6 +38,7 @@ const WindowFrame: React.FC<WindowFrameProps> = ({
   language,
   isFocused,
   dockHidden = false,
+  controlsPosition = 'left',
   onClose,
   onMinimize,
   onMaximize,
@@ -136,8 +139,8 @@ const WindowFrame: React.FC<WindowFrameProps> = ({
       >
         <div className="mac-window-shadow bg-slate-50 dark:bg-[#1a1c20] overflow-hidden flex flex-col w-full h-full rounded-2xl border-0 transition-colors duration-300">
           <header className="flex items-center justify-between px-2.5 py-2.5 border-b border-slate-200 dark:border-white/5 bg-white/50 dark:bg-white/5 backdrop-blur-md shrink-0 select-none min-h-[44px]">
-            <div className="flex items-center gap-1.5 min-w-0 flex-1">
-              <div className="flex gap-[7px] shrink-0 group/traffic">
+            <div className={`flex items-center gap-1.5 min-w-0 flex-1 ${controlsPosition === 'right' ? 'flex-row-reverse' : ''}`}>
+              <div className={`flex gap-[7px] shrink-0 group/traffic ${controlsPosition === 'right' ? 'flex-row-reverse' : ''}`}>
                 <button onClick={(e) => { e.stopPropagation(); onClose(); }} className="w-3 h-3 rounded-full bg-mac-red border border-black/10 dark:border-black/20 flex items-center justify-center hover:brightness-110 active:brightness-90 transition-all">
                   <svg className="w-[6px] h-[6px] opacity-0 group-hover/traffic:opacity-100 transition-opacity" viewBox="0 0 6 6" fill="none" stroke="rgba(0,0,0,0.45)" strokeWidth="1.2" strokeLinecap="round"><line x1="0.5" y1="0.5" x2="5.5" y2="5.5"/><line x1="5.5" y1="0.5" x2="0.5" y2="5.5"/></svg>
                 </button>
@@ -145,7 +148,7 @@ const WindowFrame: React.FC<WindowFrameProps> = ({
                   <svg className="w-[6px] h-[6px] opacity-0 group-hover/traffic:opacity-100 transition-opacity" viewBox="0 0 6 6" fill="none" stroke="rgba(0,0,0,0.45)" strokeWidth="1.1" strokeLinecap="round"><path d="M0.5 3.5L3 0.5 5.5 3.5 3 5.5z"/></svg>
                 </button>
               </div>
-              <div className="ms-1 flex items-center gap-1.5 text-slate-500 dark:text-white/50 min-w-0 max-w-full">
+              <div className={`${controlsPosition === 'right' ? 'me-1 flex-1' : 'ms-1'} flex items-center gap-1.5 text-slate-500 dark:text-white/50 min-w-0 max-w-full`}>
                 <span className="text-[11px] font-bold uppercase tracking-tight truncate">{win.title}</span>
               </div>
             </div>
@@ -208,9 +211,9 @@ const WindowFrame: React.FC<WindowFrameProps> = ({
             onPointerDown={(e) => { if (!isMax) { onFocus(); onTitlePointerDown(e); } }}
             onDoubleClick={(e) => { e.stopPropagation(); onMaximize(); }}
           >
-            <div className="flex items-center gap-2 min-w-0 flex-1">
-              {/* macOS traffic lights */}
-              <div className="flex gap-2 shrink-0 group/traffic">
+            <div className={`flex items-center gap-2 min-w-0 flex-1 ${controlsPosition === 'right' ? 'flex-row-reverse' : ''}`}>
+              {/* Traffic light controls */}
+              <div className={`flex gap-2 shrink-0 group/traffic ${controlsPosition === 'right' ? 'flex-row-reverse' : ''}`}>
                 <button onClick={(e) => { e.stopPropagation(); onClose(); }} className="w-3 h-3 rounded-full bg-mac-red border border-black/10 dark:border-black/20 flex items-center justify-center hover:brightness-110 active:brightness-90 transition-all">
                   <svg className="w-[6px] h-[6px] opacity-0 group-hover/traffic:opacity-100 transition-opacity" viewBox="0 0 6 6" fill="none" stroke="rgba(0,0,0,0.45)" strokeWidth="1.2" strokeLinecap="round"><line x1="0.5" y1="0.5" x2="5.5" y2="5.5"/><line x1="5.5" y1="0.5" x2="0.5" y2="5.5"/></svg>
                 </button>
@@ -227,7 +230,7 @@ const WindowFrame: React.FC<WindowFrameProps> = ({
               </div>
 
               {/* Title */}
-              <div className="ms-4 flex items-center gap-2 text-slate-500 dark:text-white/50 min-w-0 max-w-full">
+              <div className={`${controlsPosition === 'right' ? 'me-4 flex-1' : 'ms-4'} flex items-center gap-2 text-slate-500 dark:text-white/50 min-w-0 max-w-full`}>
                 <span className="material-symbols-outlined text-[18px] hidden xs:inline shrink-0">terminal</span>
                 <span className="text-xs font-bold uppercase tracking-widest truncate text-glow-cyan">{win.title}</span>
               </div>

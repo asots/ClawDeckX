@@ -1,6 +1,8 @@
 ﻿
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { WindowID, WindowState, Language } from '../types';
+import type { WallpaperConfig } from '../utils/preferences';
+import { getCachedWallpaper, isWallpaperCacheStale, fetchWallpaperUrl, fetchAndCacheWallpaper, updatePreferences } from '../utils/preferences';
 import { getTranslation } from '../locales';
 import Badge from './Badge';
 import LanguageSwitcher from './LanguageSwitcher';
@@ -19,6 +21,7 @@ interface DesktopProps {
   onChangeLanguage: (lang: Language) => void;
   badges?: Record<WindowID, number>;
   dockAutoHide?: boolean;
+  wallpaper?: WallpaperConfig;
 }
 
 interface AppInfo {
@@ -123,10 +126,42 @@ const Desktop: React.FC<DesktopProps> = ({
   language,
   onChangeLanguage,
   badges = {},
-  dockAutoHide = false
+  dockAutoHide = false,
+  wallpaper,
 }) => {
   const [time, setTime] = useState(new Date());
   const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
+  const [bgImage, setBgImage] = useState<string>('');
+
+  // Load wallpaper from cache or fetch
+  useEffect(() => {
+    if (!wallpaper?.enabled || wallpaper.source === 'gradient') {
+      setBgImage('');
+      return;
+    }
+    const cached = getCachedWallpaper();
+    if (cached) {
+      setBgImage(cached);
+      // Refresh in background if stale
+      if (isWallpaperCacheStale(wallpaper.cachedAt)) {
+        fetchWallpaperUrl(wallpaper.source, wallpaper.customUrl).then(url => {
+          if (!url) return;
+          fetchAndCacheWallpaper(url).then(dataUrl => {
+            setBgImage(dataUrl);
+            updatePreferences({ wallpaper: { ...wallpaper, cachedUrl: dataUrl, cachedAt: Date.now() } });
+          }).catch(() => {});
+        });
+      }
+    } else {
+      fetchWallpaperUrl(wallpaper.source, wallpaper.customUrl).then(url => {
+        if (!url) return;
+        fetchAndCacheWallpaper(url).then(dataUrl => {
+          setBgImage(dataUrl);
+          updatePreferences({ wallpaper: { ...wallpaper, cachedUrl: dataUrl, cachedAt: Date.now() } });
+        }).catch(() => {});
+      });
+    }
+  }, [wallpaper?.enabled, wallpaper?.source, wallpaper?.customUrl]);
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
   const [isTrashCleaning, setIsTrashCleaning] = useState(false);
   const [dockPeeking, setDockPeeking] = useState(false);
@@ -266,9 +301,11 @@ const Desktop: React.FC<DesktopProps> = ({
   return (
     <div className={`relative h-screen w-screen bg-cover bg-center overflow-hidden flex flex-col transition-all duration-700`}
       style={{
-        backgroundImage: theme === 'dark'
-          ? "linear-gradient(135deg, #0f1923 0%, #1a3a5f 50%, #2e4b6b 100%)"
-          : "linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%)"
+        backgroundImage: bgImage
+          ? `url(${bgImage})`
+          : theme === 'dark'
+            ? "linear-gradient(135deg, #0f1923 0%, #1a3a5f 50%, #2e4b6b 100%)"
+            : "linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%)"
       }}>
 
       {/* 菜单栏 (MenuBar) - 交互升级 */}

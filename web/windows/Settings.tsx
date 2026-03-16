@@ -11,17 +11,21 @@ import NotifyChannelCard from '../components/NotifyChannelCard';
 import type { NotifyChannelDef } from '../components/NotifyChannelCard';
 import SnapshotTab from './Settings/SnapshotTab';
 import UpdateTab from './Settings/UpdateTab';
+import PreferencesTab from './Settings/PreferencesTab';
+import type { Preferences } from '../utils/preferences';
+import { loadPreferences } from '../utils/preferences';
 
-type SettingsTab = 'account' | 'notify' | 'snapshot' | 'audit' | 'update' | 'donate' | 'about';
+type SettingsTab = 'account' | 'notify' | 'snapshot' | 'preferences' | 'audit' | 'update' | 'donate' | 'about';
 
 interface SettingsProps {
   language: Language;
   onLogout?: () => void | Promise<void>;
   pendingTab?: string | null;
   onTabConsumed?: () => void;
+  onPrefsChange?: (prefs: Preferences) => void;
 }
 
-const Settings: React.FC<SettingsProps> = ({ language, onLogout, pendingTab, onTabConsumed }) => {
+const Settings: React.FC<SettingsProps> = ({ language, onLogout, pendingTab, onTabConsumed, onPrefsChange }) => {
   const t = useMemo(() => getTranslation(language), [language]);
   const s = t.set;
   const { toast } = useToast();
@@ -30,7 +34,14 @@ const Settings: React.FC<SettingsProps> = ({ language, onLogout, pendingTab, onT
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   // 支持从外部跳转时预设 tab（如仪表盘的"备份"快捷操作）
-  const VALID_TABS: SettingsTab[] = useMemo(() => ['account', 'notify', 'snapshot', 'audit', 'update', 'donate', 'about'], []);
+  const [prefs, setPrefs] = useState<Preferences>(loadPreferences);
+
+  const handlePrefsChange = useCallback((next: Preferences) => {
+    setPrefs(next);
+    onPrefsChange?.(next);
+  }, [onPrefsChange]);
+
+  const VALID_TABS: SettingsTab[] = useMemo(() => ['account', 'notify', 'snapshot', 'preferences', 'audit', 'update', 'donate', 'about'], []);
   useEffect(() => {
     if (pendingTab && VALID_TABS.includes(pendingTab as SettingsTab)) {
       setActiveTab(pendingTab as SettingsTab);
@@ -97,6 +108,7 @@ const Settings: React.FC<SettingsProps> = ({ language, onLogout, pendingTab, onT
     { id: 'account', icon: 'shield_person', label: s.account, color: 'bg-blue-500' },
     { id: 'notify', icon: 'notifications_active', label: s.notify, color: 'bg-amber-500' },
     { id: 'snapshot', icon: 'backup', label: s.snapshotTitle || s.backup, color: 'bg-emerald-500' },
+    { id: 'preferences', icon: 'tune', label: (t as any).pref?.title || 'Preferences', color: 'bg-violet-500' },
     { id: 'audit', icon: 'assignment', label: s.auditLog, color: 'bg-orange-500' },
     { id: 'update', icon: 'system_update', label: s.system || 'Software Update', color: 'bg-cyan-500' },
     { id: 'donate', icon: 'favorite', label: s.donate, color: 'bg-pink-500' },
@@ -613,6 +625,11 @@ const Settings: React.FC<SettingsProps> = ({ language, onLogout, pendingTab, onT
           {/* 配置快照 */}
           {activeTab === 'snapshot' && (
             <SnapshotTab s={s} inputCls={inputCls} labelCls={labelCls} rowCls={rowCls} />
+          )}
+
+          {/* 功能设置 */}
+          {activeTab === 'preferences' && (
+            <PreferencesTab s={s} pref={(t as any).pref || {}} prefs={prefs} onPrefsChange={handlePrefsChange} inputCls={inputCls} rowCls={rowCls} />
           )}
 
           {/* 审计日志 */}

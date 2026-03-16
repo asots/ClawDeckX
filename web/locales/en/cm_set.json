@@ -346,6 +346,24 @@
     "serviceDockerManaged": "Managed by Docker",
     "serviceDockerDesc": "Running inside a Docker container. Auto-start is managed by Docker restart policy and the container entrypoint script. No system service registration is needed."
   },
+  "pref": {
+    "title": "Preferences",
+    "windowControls": "Window Controls Position",
+    "windowControlsDesc": "Choose where the close, minimize, and maximize buttons appear on windows.",
+    "windowControlsLeft": "Left (macOS)",
+    "windowControlsRight": "Right (Windows)",
+    "wallpaper": "Desktop Wallpaper",
+    "wallpaperSource": "Source",
+    "wallpaperGradient": "Default Gradient",
+    "wallpaperPicsum": "Random Photo",
+    "wallpaperCustom": "Custom URL",
+    "wallpaperUrl": "Image URL",
+    "wallpaperPreview": "Preview",
+    "wallpaperRefresh": "Refresh",
+    "wallpaperClickRefresh": "Click Refresh to load wallpaper",
+    "wallpaperCacheHint": "Wallpaper is cached locally. It refreshes automatically every 24 hours.",
+    "wallpaperFetchFail": "Failed to load wallpaper"
+  },
   "hi": {
     "title": "Host Info",
     "hostname": "Hostname",

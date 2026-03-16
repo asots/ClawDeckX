@@ -345,6 +345,24 @@
     "serviceDockerManaged": "مُدار بواسطة Docker",
     "serviceDockerDesc": "يعمل داخل حاوية Docker. يتم إدارة التشغيل التلقائي بواسطة سياسة إعادة تشغيل Docker وسكريبت نقطة الدخول. لا حاجة لتسجيل خدمة النظام."
   },
+  "pref": {
+    "title": "التفضيلات",
+    "windowControls": "موضع أزرار النافذة",
+    "windowControlsDesc": "اختر مكان ظهور أزرار الإغلاق والتصغير والتكبير في النوافذ.",
+    "windowControlsLeft": "يسار (macOS)",
+    "windowControlsRight": "يمين (Windows)",
+    "wallpaper": "خلفية سطح المكتب",
+    "wallpaperSource": "المصدر",
+    "wallpaperGradient": "تدرج افتراضي",
+    "wallpaperPicsum": "صورة عشوائية",
+    "wallpaperCustom": "رابط مخصص",
+    "wallpaperUrl": "رابط الصورة",
+    "wallpaperPreview": "معاينة",
+    "wallpaperRefresh": "تحديث",
+    "wallpaperClickRefresh": "انقر على تحديث لتحميل الخلفية",
+    "wallpaperCacheHint": "يتم تخزين الخلفية محليًا وتحديثها تلقائيًا كل 24 ساعة.",
+    "wallpaperFetchFail": "فشل تحميل الخلفية"
+  },
   "hi": {
     "title": "معلومات المضيف",
     "hostname": "اسم المضيف",

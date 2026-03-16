@@ -345,6 +345,24 @@
     ,"serviceDockerManaged": "由 Docker 管理"
     ,"serviceDockerDesc": "目前運行在 Docker 容器中。自動啟動由 Docker 重啟策略和容器入口腳本管理，無需註冊系統服務。"
   },
+  "pref": {
+    "title": "功能設定",
+    "windowControls": "視窗按鈕位置",
+    "windowControlsDesc": "選擇關閉、最小化和最大化按鈕在視窗中的顯示位置。",
+    "windowControlsLeft": "左側 (macOS)",
+    "windowControlsRight": "右側 (Windows)",
+    "wallpaper": "桌面桌布",
+    "wallpaperSource": "來源",
+    "wallpaperGradient": "預設漸層",
+    "wallpaperPicsum": "隨機圖片",
+    "wallpaperCustom": "自訂 URL",
+    "wallpaperUrl": "圖片 URL",
+    "wallpaperPreview": "預覽",
+    "wallpaperRefresh": "重新整理",
+    "wallpaperClickRefresh": "點擊重新整理以載入桌布",
+    "wallpaperCacheHint": "桌布已快取至本機，每 24 小時自動重新整理。",
+    "wallpaperFetchFail": "桌布載入失敗"
+  },
   "hi": {
     "title": "宿主機資訊",
     "hostname": "主機名",

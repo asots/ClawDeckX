@@ -11,6 +11,8 @@ import { get } from './services/request';
 import { authApi, settingsApi } from './services/api';
 import { useBadgeCounts } from './hooks/useBadgeCounts';
 import ErrorBoundary from './components/ErrorBoundary';
+import type { Preferences } from './utils/preferences';
+import { loadPreferences } from './utils/preferences';
 
 const idle = (cb: () => void) => {
   const ric = (window as any).requestIdleCallback as ((fn: () => void, opts?: { timeout: number }) => number) | undefined;
@@ -345,6 +347,12 @@ const App: React.FC = () => {
     setMaxZ(p => p + 1);
   }, [maxZ]);
 
+  const [prefs, setPrefs] = useState<Preferences>(loadPreferences);
+
+  const handlePrefsChange = useCallback((next: Preferences) => {
+    setPrefs(next);
+  }, []);
+
   const [pendingEditorSection, setPendingEditorSection] = useState<string | null>(null);
   const [pendingExpandItem, setPendingExpandItem] = useState<string | null>(null);
   const [pendingSettingsTab, setPendingSettingsTab] = useState<string | null>(null);
@@ -454,6 +462,7 @@ const App: React.FC = () => {
             onChangeLanguage={changeLanguage}
             badges={badges}
             dockAutoHide={windows.some(w => w.isOpen && w.isMaximized && !w.isMinimized)}
+            wallpaper={prefs.wallpaper}
           />
           {windows.filter(w => w.isOpen).map(w => {
             const topZ = Math.max(...windows.filter(o => o.isOpen && !o.isMinimized).map(o => o.zIndex));
@@ -464,6 +473,7 @@ const App: React.FC = () => {
                 language={language}
                 isFocused={w.zIndex === topZ}
                 dockHidden={windows.some(o => o.isOpen && o.isMaximized && !o.isMinimized)}
+                controlsPosition={prefs.windowControlsPosition}
                 onClose={() => closeWindow(w.id)}
                 onMinimize={() => minimizeWindow(w.id)}
                 onMaximize={() => maximizeWindow(w.id)}
@@ -483,7 +493,7 @@ const App: React.FC = () => {
                     {w.id === 'agents' && <Agents language={language} />}
                     {w.id === 'maintenance' && <Doctor language={language} />}
                     {w.id === 'scheduler' && <Scheduler language={language} />}
-                    {w.id === 'settings' && <Settings language={language} onLogout={logout} pendingTab={pendingSettingsTab} onTabConsumed={() => setPendingSettingsTab(null)} />}
+                    {w.id === 'settings' && <Settings language={language} onLogout={logout} pendingTab={pendingSettingsTab} onTabConsumed={() => setPendingSettingsTab(null)} onPrefsChange={handlePrefsChange} />}
                     {w.id === 'nodes' && <Nodes language={language} />}
                     {w.id === 'knowledge' && <Knowledge language={language} pendingExpandItem={pendingExpandItem} onExpandItemConsumed={() => setPendingExpandItem(null)} />}
                     {w.id === 'setup_wizard' && (

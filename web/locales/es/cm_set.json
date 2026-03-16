@@ -345,6 +345,24 @@
     "serviceDockerManaged": "Gestionado por Docker",
     "serviceDockerDesc": "Se ejecuta dentro de un contenedor Docker. El inicio automático está gestionado por la política de reinicio de Docker y el script de entrada del contenedor. No es necesario registrar un servicio del sistema."
   },
+  "pref": {
+    "title": "Preferencias",
+    "windowControls": "Posición de controles de ventana",
+    "windowControlsDesc": "Elige dónde aparecen los botones de cerrar, minimizar y maximizar en las ventanas.",
+    "windowControlsLeft": "Izquierda (macOS)",
+    "windowControlsRight": "Derecha (Windows)",
+    "wallpaper": "Fondo de escritorio",
+    "wallpaperSource": "Fuente",
+    "wallpaperGradient": "Degradado predeterminado",
+    "wallpaperPicsum": "Foto aleatoria",
+    "wallpaperCustom": "URL personalizada",
+    "wallpaperUrl": "URL de imagen",
+    "wallpaperPreview": "Vista previa",
+    "wallpaperRefresh": "Actualizar",
+    "wallpaperClickRefresh": "Haz clic en Actualizar para cargar el fondo",
+    "wallpaperCacheHint": "El fondo se almacena localmente y se actualiza automáticamente cada 24 horas.",
+    "wallpaperFetchFail": "Error al cargar el fondo"
+  },
   "hi": {
     "title": "Info del host",
     "hostname": "Nombre de host",

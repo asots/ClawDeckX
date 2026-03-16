@@ -345,6 +345,24 @@
     ,"serviceDockerManaged": "Docker에서 관리"
     ,"serviceDockerDesc": "Docker 컨테이너 내에서 실행 중입니다. 자동 시작은 Docker 재시작 정책과 컨테이너 엔트리포인트 스크립트에 의해 관리됩니다. 시스템 서비스 등록이 필요하지 않습니다."
   },
+  "pref": {
+    "title": "기능 설정",
+    "windowControls": "창 버튼 위치",
+    "windowControlsDesc": "닫기, 최소화, 최대화 버튼의 표시 위치를 선택합니다.",
+    "windowControlsLeft": "왼쪽 (macOS)",
+    "windowControlsRight": "오른쪽 (Windows)",
+    "wallpaper": "바탕화면 배경",
+    "wallpaperSource": "소스",
+    "wallpaperGradient": "기본 그라데이션",
+    "wallpaperPicsum": "랜덤 사진",
+    "wallpaperCustom": "사용자 지정 URL",
+    "wallpaperUrl": "이미지 URL",
+    "wallpaperPreview": "미리보기",
+    "wallpaperRefresh": "새로고침",
+    "wallpaperClickRefresh": "새로고침을 클릭하여 배경화면 로드",
+    "wallpaperCacheHint": "배경화면은 로컬에 캐시되며 24시간마다 자동으로 새로고침됩니다.",
+    "wallpaperFetchFail": "배경화면 로드 실패"
+  },
   "hi": {
     "title": "호스트 정보",
     "hostname": "호스트 이름",

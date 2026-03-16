@@ -345,6 +345,24 @@
     "serviceDockerManaged": "Управляется Docker",
     "serviceDockerDesc": "Работает внутри контейнера Docker. Автозапуск управляется политикой перезапуска Docker и скриптом точки входа контейнера. Регистрация системной службы не требуется."
   },
+  "pref": {
+    "title": "Настройки",
+    "windowControls": "Расположение кнопок окна",
+    "windowControlsDesc": "Выберите, где отображаются кнопки закрытия, сворачивания и разворачивания окон.",
+    "windowControlsLeft": "Слева (macOS)",
+    "windowControlsRight": "Справа (Windows)",
+    "wallpaper": "Обои рабочего стола",
+    "wallpaperSource": "Источник",
+    "wallpaperGradient": "Градиент по умолчанию",
+    "wallpaperPicsum": "Случайное фото",
+    "wallpaperCustom": "Пользовательский URL",
+    "wallpaperUrl": "URL изображения",
+    "wallpaperPreview": "Предпросмотр",
+    "wallpaperRefresh": "Обновить",
+    "wallpaperClickRefresh": "Нажмите Обновить для загрузки обоев",
+    "wallpaperCacheHint": "Обои кэшируются локально и автоматически обновляются каждые 24 часа.",
+    "wallpaperFetchFail": "Не удалось загрузить обои"
+  },
   "hi": {
     "title": "Информация о хосте",
     "hostname": "Имя хоста",

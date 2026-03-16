@@ -345,6 +345,24 @@
     "serviceDockerManaged": "Von Docker verwaltet",
     "serviceDockerDesc": "Läuft in einem Docker-Container. Der automatische Start wird durch die Docker-Neustartrichtlinie und das Container-Einstiegsskript verwaltet. Eine Systemdienst-Registrierung ist nicht erforderlich."
   },
+  "pref": {
+    "title": "Einstellungen",
+    "windowControls": "Position der Fenstersteuerung",
+    "windowControlsDesc": "Wählen Sie, wo die Schließen-, Minimieren- und Maximieren-Schaltflächen angezeigt werden.",
+    "windowControlsLeft": "Links (macOS)",
+    "windowControlsRight": "Rechts (Windows)",
+    "wallpaper": "Desktop-Hintergrund",
+    "wallpaperSource": "Quelle",
+    "wallpaperGradient": "Standard-Verlauf",
+    "wallpaperPicsum": "Zufälliges Foto",
+    "wallpaperCustom": "Benutzerdefinierte URL",
+    "wallpaperUrl": "Bild-URL",
+    "wallpaperPreview": "Vorschau",
+    "wallpaperRefresh": "Aktualisieren",
+    "wallpaperClickRefresh": "Klicken Sie auf Aktualisieren, um das Hintergrundbild zu laden",
+    "wallpaperCacheHint": "Das Hintergrundbild wird lokal zwischengespeichert und alle 24 Stunden automatisch aktualisiert.",
+    "wallpaperFetchFail": "Hintergrundbild konnte nicht geladen werden"
+  },
   "hi": {
     "title": "Hostinformationen",
     "hostname": "Hostname",
