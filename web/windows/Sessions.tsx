@@ -583,6 +583,8 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
         }, recentAddedRef));
         if ((msg.role || 'assistant') === 'assistant') {
           setRunId(null);
+          if (streamRafRef.current !== null) { cancelAnimationFrame(streamRafRef.current); streamRafRef.current = null; }
+          streamTextRef.current = '';
           setStream(null);
           setRunPhase('idle');
           setError(null);
@@ -619,6 +621,8 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
         }
       }
       finalizedAtRef.current = Date.now();
+      if (streamRafRef.current !== null) { cancelAnimationFrame(streamRafRef.current); streamRafRef.current = null; }
+      streamTextRef.current = '';
       setStream(null);
       setRunId(null);
       setRunPhase('idle');
@@ -628,22 +632,25 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
       pendingRunRef.current = null;
     } else if (payload.state === 'aborted') {
       // If there was partial stream text, keep it as a message
-      setStream(prev => {
-        if (prev) {
-          setMessages(msgs => appendMessageDedup(msgs, {
-            role: 'assistant',
-            content: [{ type: 'text', text: prev }],
-            timestamp: Date.now(),
-          }, recentAddedRef));
-        }
-        return null;
-      });
+      const partialText = streamTextRef.current;
+      if (partialText) {
+        setMessages(msgs => appendMessageDedup(msgs, {
+          role: 'assistant',
+          content: [{ type: 'text', text: partialText }],
+          timestamp: Date.now(),
+        }, recentAddedRef));
+      }
+      if (streamRafRef.current !== null) { cancelAnimationFrame(streamRafRef.current); streamRafRef.current = null; }
+      streamTextRef.current = '';
+      setStream(null);
       setRunId(null);
       setRunPhase('idle');
       setError(null);
       setLiveToolCalls(new Map());
       pendingRunRef.current = null;
     } else if (payload.state === 'error') {
+      if (streamRafRef.current !== null) { cancelAnimationFrame(streamRafRef.current); streamRafRef.current = null; }
+      streamTextRef.current = '';
       setStream(null);
       setRunId(null);
       setRunPhase('error');
@@ -919,11 +926,15 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
         const hasAssistantAfterUser = lastUserIdx >= 0 && lastIdx > lastUserIdx && latest?.role === 'assistant';
         if (hasAssistantAfterUser) {
           setRunId(null);
+          if (streamRafRef.current !== null) { cancelAnimationFrame(streamRafRef.current); streamRafRef.current = null; }
+          streamTextRef.current = '';
           setStream(null);
           setRunPhase('idle');
           pendingRunRef.current = null;
         } else if (Date.now() - pending.startedAt > 90000) {
           setRunId(null);
+          if (streamRafRef.current !== null) { cancelAnimationFrame(streamRafRef.current); streamRafRef.current = null; }
+          streamTextRef.current = '';
           setStream(null);
           setRunPhase('error');
           pendingRunRef.current = null;
@@ -940,15 +951,14 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
   useEffect(() => {
     if (stream !== '' || runPhase !== 'streaming') return;
     const timer = setTimeout(() => {
-      setStream(prev => {
-        if (prev === '') {
-          setRunPhase('idle');
-          setRunId(null);
-          pendingRunRef.current = null;
-          return null;
-        }
-        return prev;
-      });
+      if (streamTextRef.current === '' || streamTextRef.current == null) {
+        if (streamRafRef.current !== null) { cancelAnimationFrame(streamRafRef.current); streamRafRef.current = null; }
+        streamTextRef.current = '';
+        setStream(null);
+        setRunPhase('idle');
+        setRunId(null);
+        pendingRunRef.current = null;
+      }
     }, 8000);
     return () => clearTimeout(timer);
   }, [stream, runPhase]);
@@ -1054,6 +1064,17 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
         streamRafRef.current = null;
       });
     }
+  }, []);
+
+  // Cancel any pending throttled stream update and clear stream state.
+  // Must be called instead of bare setStream(null) to prevent RAF race condition.
+  const clearStream = useCallback(() => {
+    if (streamRafRef.current !== null) {
+      cancelAnimationFrame(streamRafRef.current);
+      streamRafRef.current = null;
+    }
+    streamTextRef.current = '';
+    setStream(null);
   }, []);
 
   // Read file as data URL (for attachments)
@@ -1195,7 +1216,7 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
         startedAt: Date.now(),
       };
     } catch (err: any) {
-      setStream(null);
+      clearStream();
       setRunPhase('error');
       setError(err?.message || c.error);
       setMessages(prev => [...prev, { role: 'assistant', content: [{ type: 'text', text: 'Error: ' + (err?.message || c.error) }], timestamp: Date.now() }]);
@@ -1216,11 +1237,11 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
       await gwApi.proxy('chat.abort', { sessionKey, runId: runId || undefined });
     } catch { /* ignore */ }
     setRunId(null);
-    setStream(null);
+    clearStream();
     setRunPhase('idle');
     setError(null);
     pendingRunRef.current = null;
-  }, [gwReady, sessionKey, runId]);
+  }, [gwReady, sessionKey, runId, clearStream]);
 
   // Copy message
   const handleCopy = useCallback((idx: number, text: string) => {
@@ -1360,7 +1381,7 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
     saveDraft(sessionKey, input);
     setSessionKey(key);
     setMessages([]);
-    setStream(null);
+    clearStream();
     setRunId(null);
     setRunPhase('idle');
     pendingRunRef.current = null;
@@ -1371,19 +1392,19 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
     // Clear unread
     setUnreadMap(prev => { const next = { ...prev }; delete next[key]; return next; });
     setExpandedMsgs(new Set());
-  }, [sessionKey, input, saveDraft, loadDraft]);
+  }, [sessionKey, input, saveDraft, loadDraft, clearStream]);
 
   // New session
   const handleNewSession = useCallback(() => {
     const key = `web-${Date.now()}`;
     setSessionKey(key);
     setMessages([]);
-    setStream(null);
+    clearStream();
     setRunId(null);
     setRunPhase('idle');
     pendingRunRef.current = null;
     setBtwMessage(null);
-  }, []);
+  }, [clearStream]);
 
   // Rename session
   const openRenameDialog = useCallback((key: string, currentLabel: string) => {
