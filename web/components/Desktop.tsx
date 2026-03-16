@@ -142,26 +142,35 @@ const Desktop: React.FC<DesktopProps> = ({
       setBgImage('');
       return;
     }
+
+    const refreshWallpaper = (resolved: { url: string; provider: 'picsum' | 'unsplash' | 'custom' }) => {
+      fetchAndCacheWallpaper(resolved.url).then(dataUrl => {
+        setBgImage(dataUrl);
+        updatePreferences({
+          wallpaper: {
+            ...wallpaper,
+            cachedUrl: dataUrl,
+            cachedAt: Date.now(),
+            resolvedSource: resolved.provider,
+          },
+        });
+      }).catch(() => {});
+    };
+
     const cached = getCachedWallpaper();
     if (cached) {
       setBgImage(cached);
       // Refresh in background if stale
       if (isWallpaperCacheStale(wallpaper.cachedAt)) {
-        fetchWallpaperUrl(wallpaper.source, wallpaper.customUrl).then(url => {
-          if (!url) return;
-          fetchAndCacheWallpaper(url).then(dataUrl => {
-            setBgImage(dataUrl);
-            updatePreferences({ wallpaper: { ...wallpaper, cachedUrl: dataUrl, cachedAt: Date.now() } });
-          }).catch(() => {});
+        fetchWallpaperUrl(wallpaper.source, wallpaper.customUrl).then(resolved => {
+          if (!resolved) return;
+          refreshWallpaper(resolved);
         });
       }
     } else {
-      fetchWallpaperUrl(wallpaper.source, wallpaper.customUrl).then(url => {
-        if (!url) return;
-        fetchAndCacheWallpaper(url).then(dataUrl => {
-          setBgImage(dataUrl);
-          updatePreferences({ wallpaper: { ...wallpaper, cachedUrl: dataUrl, cachedAt: Date.now() } });
-        }).catch(() => {});
+      fetchWallpaperUrl(wallpaper.source, wallpaper.customUrl).then(resolved => {
+        if (!resolved) return;
+        refreshWallpaper(resolved);
       });
     }
   }, [wallpaper?.imageEnabled, wallpaper?.source, wallpaper?.customUrl, wallpaper?.cachedAt]);

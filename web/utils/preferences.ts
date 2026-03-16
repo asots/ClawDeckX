@@ -2,7 +2,8 @@
 import { readStorage, writeStorage } from './storage';
 
 export type WindowControlsPosition = 'left' | 'right';
-export type WallpaperSource = 'picsum' | 'custom';
+export type WallpaperSource = 'random' | 'picsum' | 'unsplash' | 'custom';
+export type WallpaperProvider = 'picsum' | 'unsplash' | 'custom';
 
 export interface WallpaperConfig {
   gradientEnabled: boolean;
@@ -11,6 +12,7 @@ export interface WallpaperConfig {
   customUrl: string;
   cachedUrl: string;
   cachedAt: number;
+  resolvedSource?: WallpaperProvider;
 }
 
 export interface Preferences {
@@ -23,10 +25,11 @@ const PREFS_KEY = 'clawdeck-preferences';
 const DEFAULT_WALLPAPER: WallpaperConfig = {
   gradientEnabled: true,
   imageEnabled: false,
-  source: 'picsum',
+  source: 'random',
   customUrl: '',
   cachedUrl: '',
   cachedAt: 0,
+  resolvedSource: 'picsum',
 };
 
 const DEFAULT_PREFS: Preferences = {
@@ -57,7 +60,16 @@ export function loadPreferences(): Preferences {
     imageEnabled: typeof rawWallpaper?.imageEnabled === 'boolean'
       ? rawWallpaper.imageEnabled
       : Boolean(legacyWallpaper?.enabled && legacySource && legacySource !== 'gradient'),
-    source: legacySource === 'custom' ? 'custom' : 'picsum',
+    source:
+      legacySource === 'custom'
+        ? 'custom'
+        : legacySource === 'picsum' || legacySource === 'unsplash' || legacySource === 'random'
+          ? legacySource
+          : 'random',
+    resolvedSource:
+      rawWallpaper?.resolvedSource === 'unsplash' || rawWallpaper?.resolvedSource === 'custom'
+        ? rawWallpaper.resolvedSource
+        : 'picsum',
   };
 
   return {
@@ -100,13 +112,43 @@ export function isWallpaperCacheStale(cachedAt: number): boolean {
   return Date.now() - cachedAt > CACHE_TTL;
 }
 
-export async function fetchWallpaperUrl(source: WallpaperSource, customUrl: string): Promise<string> {
-  if (source === 'custom' && customUrl) return customUrl;
-  if (source === 'picsum') {
-    // Picsum returns a random image; add cache-busting timestamp
-    return `https://picsum.photos/1920/1080?t=${Date.now()}`;
+export function getWallpaperProviderLabel(provider: WallpaperProvider): string {
+  switch (provider) {
+    case 'picsum':
+      return 'Picsum';
+    case 'unsplash':
+      return 'Unsplash';
+    case 'custom':
+      return 'Custom URL';
   }
-  return '';
+}
+
+export async function fetchWallpaperUrl(
+  source: WallpaperSource,
+  customUrl: string,
+): Promise<{ url: string; provider: WallpaperProvider } | null> {
+  if (source === 'custom' && customUrl) {
+    return { url: customUrl, provider: 'custom' };
+  }
+
+  const provider: WallpaperProvider =
+    source === 'random'
+      ? (Math.random() < 0.5 ? 'picsum' : 'unsplash')
+      : source === 'unsplash'
+        ? 'unsplash'
+        : 'picsum';
+
+  if (provider === 'picsum') {
+    return {
+      url: `https://picsum.photos/1920/1080?t=${Date.now()}`,
+      provider,
+    };
+  }
+
+  return {
+    url: `https://source.unsplash.com/random/1920x1080/?wallpaper,landscape&t=${Date.now()}`,
+    provider,
+  };
 }
 
 export async function fetchAndCacheWallpaper(url: string): Promise<string> {
