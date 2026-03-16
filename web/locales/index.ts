@@ -147,8 +147,8 @@ export function getTranslation(lang: Language): TranslationMap {
 }
 
 export function getTooltip(key: string, lang: Language): string {
-  const map = tooltipMap[lang] || tooltipMap['en'];
-  return map[key] || '';
+  const map = tooltipMap[lang];
+  return (map && map[key]) || tooltipMap['en']?.[key] || '';
 }
 
 /** Language codes that have translations: 'en' (static) + all dynamic loaders */
