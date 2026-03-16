@@ -170,6 +170,10 @@
   "env.shellEnv": "Shell 环境类型，如 bash, zsh。影响命令执行时的 shell 选择",
   "env.vars": "自定义环境变量。这些变量会在 AI 执行命令时注入到环境中",
   "media.preserveFilenames": "保留媒体文件原始文件名。关闭则使用随机文件名",
+  "media.retentionTTLHours": "媒体文件保留时间（小时）。设置后将自动清理超过该时长的入站媒体文件。留空保持默认行为（永不清理），常用值如 24（1 天）或 168（7 天）",
+  "talk.silenceTimeoutMs": "用户静默多久后 Talk 模式自动结束并发送当前语音转录（毫秒）。留空使用平台默认值（macOS/Android 为 700 ms，iOS 为 900 ms）",
+  "gateway.apnsRelay.baseUrl": "APNs 中继服务的基础 HTTPS URL，用于官方/TestFlight iOS 构建的推送唤醒。需与 iOS 构建中内置的中继 URL 保持一致",
+  "gateway.apnsRelay.timeoutMs": "网关向 APNs 中继发送请求的超时时间（毫秒），默认 10000。网络较慢时可增大，或降低以更快放弃唤醒尝试",
 
   "gateway.customBindHost": "自定义绑定地址（仅 bind=custom 时生效）。如 0.0.0.0 或具体 IP",
   "gateway.channelHealthCheckMinutes": "频道健康检查间隔（分钟）。定期检测频道状态并自动重启异常频道。0 = 禁用，默认 5",
