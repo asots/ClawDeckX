@@ -190,16 +190,25 @@ export function pushWallpaperHistoryEntry(wallpaper: WallpaperConfig, url: strin
   };
 }
 
+function getCurrentWallpaperHistoryIndex(wallpaper: WallpaperConfig): number {
+  if (!wallpaper.history.length) return -1;
+  const currentUrl = wallpaper.cachedUrl.trim();
+  const matchedIndex = currentUrl ? wallpaper.history.indexOf(currentUrl) : -1;
+  if (matchedIndex >= 0) return matchedIndex;
+  if (wallpaper.historyIndex >= 0 && wallpaper.historyIndex < wallpaper.history.length) return wallpaper.historyIndex;
+  return wallpaper.history.length - 1;
+}
+
 export function getWallpaperHistoryUrl(wallpaper: WallpaperConfig, direction: -1 | 1): string | null {
   if (!wallpaper.history.length) return null;
-  const nextIndex = wallpaper.historyIndex + direction;
+  const nextIndex = getCurrentWallpaperHistoryIndex(wallpaper) + direction;
   if (nextIndex < 0 || nextIndex >= wallpaper.history.length) return null;
   return wallpaper.history[nextIndex] || null;
 }
 
 export function stepWallpaperHistory(wallpaper: WallpaperConfig, direction: -1 | 1): WallpaperConfig {
   if (!wallpaper.history.length) return wallpaper;
-  const nextIndex = wallpaper.historyIndex + direction;
+  const nextIndex = getCurrentWallpaperHistoryIndex(wallpaper) + direction;
   if (nextIndex < 0 || nextIndex >= wallpaper.history.length) return wallpaper;
   return {
     ...wallpaper,
