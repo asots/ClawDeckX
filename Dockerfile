@@ -50,11 +50,18 @@ RUN npm install -g "openclaw@${OPENCLAW_VERSION}" && \
     find /opt/openclaw -name '*.md' -o -name '*.map' -o -name 'LICENSE*' -o -name 'CHANGELOG*' | xargs rm -f 2>/dev/null || true
 
 # Stage 4: Runtime (no build tools)
-FROM openclaw-builder
+FROM ubuntu:22.04
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && \
+    apt-get install -y --no-install-recommends ca-certificates curl git gnupg && \
+    mkdir -p /etc/apt/keyrings && \
+    curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key \
+        | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg && \
+    echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_22.x nodistro main" \
+        > /etc/apt/sources.list.d/nodesource.list && \
+    apt-get update && \
     apt-get install -y --no-install-recommends \
-        tzdata tini wget git jq ripgrep procps lsof ffmpeg golang && \
+        nodejs python3 make tzdata tini wget jq ripgrep procps lsof ffmpeg golang && \
     rm -rf /var/lib/apt/lists/* && \
     # Install uv via official standalone installer (no pip needed)
     curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=/usr/local/bin sh
@@ -79,6 +86,8 @@ LABEL org.opencontainers.image.title="ClawDeckX" \
       ai.clawdeckx.openclaw.compat="${OPENCLAW_COMPAT}"
 
 WORKDIR /app
+COPY --from=openclaw-builder /opt/openclaw /opt/openclaw
+COPY --from=openclaw-builder /usr/local/bin/openclaw /usr/local/bin/openclaw
 COPY --from=backend /clawdeckx ./clawdeckx
 COPY docker-entrypoint.sh /app/docker-entrypoint.sh
 RUN mkdir -p /data/clawdeckx /data/openclaw/npm /data/openclaw/state /data/openclaw/logs /data/openclaw/bootstrap && \
