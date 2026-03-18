@@ -94,12 +94,14 @@ ensure_default_openclaw_config() {
 OCEOF
     chmod 600 "$OPENCLAW_CONFIG"
     echo "[docker-entrypoint] Minimal OpenClaw config written to $OPENCLAW_CONFIG"
+    OPENCLAW_CONFIG_CREATED=1
     return 0
 }
 
 # Start OpenClaw Gateway in background if installed
 OPENCLAW_BIN=""
 OPENCLAW_VER=""
+OPENCLAW_CONFIG_CREATED=0
 if command -v openclaw &>/dev/null; then
     OPENCLAW_BIN="$(command -v openclaw)"
     OPENCLAW_VER="$(openclaw --version 2>/dev/null || echo 'unknown')"
@@ -115,9 +117,14 @@ if command -v openclaw &>/dev/null; then
         echo "[docker-entrypoint] Starting OpenClaw gateway..."
         nohup openclaw gateway run --port "$GATEWAY_PORT" > "$GATEWAY_LOG" 2>&1 &
         GATEWAY_PID=$!
-        # Wait for gateway to be ready (up to 15s)
+        GATEWAY_WAIT_SECONDS=15
+        if [ "$OPENCLAW_CONFIG_CREATED" = "1" ]; then
+            GATEWAY_WAIT_SECONDS=45
+        fi
+        echo "[docker-entrypoint] Waiting up to ${GATEWAY_WAIT_SECONDS}s for OpenClaw gateway readiness..."
+        # Wait for gateway to be ready
         GATEWAY_STARTED=false
-        for i in $(seq 1 15); do
+        for i in $(seq 1 "$GATEWAY_WAIT_SECONDS"); do
             if curl -sf "http://127.0.0.1:${GATEWAY_PORT}/health" &>/dev/null; then
                 echo "[docker-entrypoint] OpenClaw gateway started successfully (pid=$GATEWAY_PID)"
                 GATEWAY_STARTED=true
@@ -135,10 +142,10 @@ if command -v openclaw &>/dev/null; then
         if [ "$GATEWAY_STARTED" = true ]; then
             write_bootstrap "running" "gateway started successfully" "$GATEWAY_PID" "$OPENCLAW_BIN" "$OPENCLAW_VER"
         elif kill -0 "$GATEWAY_PID" 2>/dev/null; then
-            echo "[docker-entrypoint] WARNING: OpenClaw gateway not ready within 15s (pid=$GATEWAY_PID)" >&2
+            echo "[docker-entrypoint] WARNING: OpenClaw gateway not ready within ${GATEWAY_WAIT_SECONDS}s (pid=$GATEWAY_PID)" >&2
             echo "[docker-entrypoint] Last gateway log lines:" >&2
             tail -10 "$GATEWAY_LOG" 2>/dev/null >&2 || true
-            write_bootstrap "timeout" "gateway not ready within 15s" "$GATEWAY_PID" "$OPENCLAW_BIN" "$OPENCLAW_VER"
+            write_bootstrap "timeout" "gateway not ready within ${GATEWAY_WAIT_SECONDS}s" "$GATEWAY_PID" "$OPENCLAW_BIN" "$OPENCLAW_VER"
         fi
     else
         write_bootstrap "failed" "failed to generate initial config at ${OPENCLAW_CONFIG}" 0 "$OPENCLAW_BIN" "$OPENCLAW_VER"
