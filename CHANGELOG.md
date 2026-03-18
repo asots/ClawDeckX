@@ -1,4 +1,21 @@
-﻿# v0.0.17
+﻿# v0.0.18
+
+_2026-03-19_
+
+## What's Changed
+
+### 🐛 Bug Fixes / 修复
+
+- replace openclaw onboard with pure shell minimal config write for reliable Docker startup
+- unify default port to 18788 across entire codebase
+
+### 🔧 Maintenance / 维护
+
+- bump openclawCompat to >=2026.3.13
+
+---
+
+# v0.0.17
 
 _2026-03-18_
 
