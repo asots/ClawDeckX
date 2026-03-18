@@ -13,7 +13,7 @@ BOOTSTRAP_FILE="${BOOTSTRAP_DIR}/gateway-bootstrap.json"
 
 mkdir -p "$CLAWDECKX_DATA_DIR" "$OPENCLAW_DATA_DIR" "$OPENCLAW_STATE_DIR" "$OPENCLAW_DATA_DIR/logs" "$NPM_CONFIG_PREFIX" "$BOOTSTRAP_DIR"
 export NPM_CONFIG_PREFIX
-export PATH="$NPM_CONFIG_PREFIX/bin:$PATH"
+export PATH="$NPM_CONFIG_PREFIX/bin:$HOME/.local/bin:$HOME/bin:$PATH"
 export OPENCLAW_STATE_DIR
 export OPENCLAW_CONFIG_PATH="$OPENCLAW_CONFIG"
 
@@ -32,6 +32,70 @@ write_bootstrap() {
     BOOTSTRAP_GATEWAY_PORT="$GATEWAY_PORT" \
     BOOTSTRAP_TIMESTAMP="$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
     node -e 'const fs = require("fs"); const payload = { status: process.env.BOOTSTRAP_STATUS, reason: process.env.BOOTSTRAP_REASON, gatewayPid: Number(process.env.BOOTSTRAP_PID || "0"), gatewayPort: Number(process.env.BOOTSTRAP_GATEWAY_PORT || "0"), openclawBin: process.env.BOOTSTRAP_OPENCLAW_BIN || "", openclawVersion: process.env.BOOTSTRAP_OPENCLAW_VERSION || "", configPath: process.env.BOOTSTRAP_CONFIG_PATH || "", stateDir: process.env.BOOTSTRAP_STATE_DIR || "", gatewayLog: process.env.BOOTSTRAP_GATEWAY_LOG || "", timestamp: process.env.BOOTSTRAP_TIMESTAMP || "" }; fs.writeFileSync(process.env.BOOTSTRAP_FILE, JSON.stringify(payload, null, 2));'
+}
+
+ensure_default_clawhub() {
+    if command -v clawhub &>/dev/null; then
+        return 0
+    fi
+
+    if ! command -v npm &>/dev/null; then
+        echo "[docker-entrypoint] npm not found, skipping ClawHub CLI auto-install" >&2
+        return 1
+    fi
+
+    echo "[docker-entrypoint] Installing ClawHub CLI..."
+    if npm install -g clawhub --prefix "$NPM_CONFIG_PREFIX" >/tmp/clawhub-install.log 2>&1; then
+        echo "[docker-entrypoint] ClawHub CLI installed"
+        return 0
+    fi
+
+    echo "[docker-entrypoint] WARNING: Failed to install ClawHub CLI" >&2
+    tail -20 /tmp/clawhub-install.log 2>/dev/null >&2 || true
+    return 1
+}
+
+ensure_default_skillhub() {
+    if command -v skillhub &>/dev/null; then
+        return 0
+    fi
+
+    if ! command -v curl &>/dev/null || ! command -v tar &>/dev/null || ! command -v bash &>/dev/null; then
+        echo "[docker-entrypoint] Missing curl/tar/bash, skipping SkillHub CLI auto-install" >&2
+        return 1
+    fi
+
+    local tmp_dir installer
+    tmp_dir="$(mktemp -d)"
+    trap 'rm -rf "$tmp_dir"' RETURN
+
+    echo "[docker-entrypoint] Installing SkillHub CLI..."
+    if ! curl -fsSL "https://skillhub-1251783334.cos.ap-guangzhou.myqcloud.com/install/latest.tar.gz" -o "$tmp_dir/latest.tar.gz" >/tmp/skillhub-install.log 2>&1; then
+        echo "[docker-entrypoint] WARNING: Failed to download SkillHub CLI installer" >&2
+        tail -20 /tmp/skillhub-install.log 2>/dev/null >&2 || true
+        return 1
+    fi
+
+    if ! tar -xzf "$tmp_dir/latest.tar.gz" -C "$tmp_dir" >>/tmp/skillhub-install.log 2>&1; then
+        echo "[docker-entrypoint] WARNING: Failed to extract SkillHub CLI installer" >&2
+        tail -20 /tmp/skillhub-install.log 2>/dev/null >&2 || true
+        return 1
+    fi
+
+    installer="$tmp_dir/cli/install.sh"
+    if [ ! -f "$installer" ]; then
+        echo "[docker-entrypoint] WARNING: SkillHub installer not found at $installer" >&2
+        return 1
+    fi
+
+    if bash "$installer" >>/tmp/skillhub-install.log 2>&1; then
+        echo "[docker-entrypoint] SkillHub CLI installed"
+        return 0
+    fi
+
+    echo "[docker-entrypoint] WARNING: Failed to install SkillHub CLI" >&2
+    tail -20 /tmp/skillhub-install.log 2>/dev/null >&2 || true
+    return 1
 }
 
 ensure_default_openclaw_config() {
@@ -65,6 +129,9 @@ if command -v openclaw &>/dev/null; then
     echo "[docker-entrypoint] State dir: $OPENCLAW_STATE_DIR"
     echo "[docker-entrypoint] Config path: $OPENCLAW_CONFIG"
     echo "[docker-entrypoint] Gateway log: $GATEWAY_LOG"
+
+    ensure_default_clawhub || true
+    ensure_default_skillhub || true
 
     if ensure_default_openclaw_config; then
         echo "[docker-entrypoint] Starting OpenClaw gateway..."
