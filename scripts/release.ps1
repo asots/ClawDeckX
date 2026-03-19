@@ -10,6 +10,7 @@
     [switch]$Clean,
 
     [Parameter()]
+    [Alias("d")]
     [switch]$NoDocker
 )
 
@@ -241,10 +242,11 @@ if (-not $Version) {
     Write-Host "用法: .\scripts\release.ps1 <版本号> [-r] | -Clean" -ForegroundColor Yellow
     Write-Host ""
     Write-Host "示例:"
-    Write-Host "  .\scripts\release.ps1 0.0.5              # 新版本发布（含 Docker）"
-    Write-Host "  .\scripts\release.ps1 0.0.5 -NoDocker    # 新版本发布（跳过 Docker）"
-    Write-Host "  .\scripts\release.ps1 0.0.4 -r           # 替换已有版本"
-    Write-Host "  .\scripts\release.ps1 -Clean             # 删除所有 Release"
+    Write-Host "  .\scripts\release.ps1 0.0.5        # 新版本发布（含 Docker）"
+    Write-Host "  .\scripts\release.ps1 0.0.5 -d     # 新版本发布（跳过 Docker）"
+    Write-Host "  .\scripts\release.ps1 0.0.4 -r     # 替换已有版本"
+    Write-Host "  .\scripts\release.ps1 0.0.4 -r -d  # 替换版本（跳过 Docker）"
+    Write-Host "  .\scripts\release.ps1 -Clean       # 删除所有 Release"
     exit 1
 }
 
