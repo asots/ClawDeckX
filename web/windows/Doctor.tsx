@@ -1661,34 +1661,44 @@ const Doctor: React.FC<DoctorProps> = ({ language }) => {
                     </p>
                   </button>
                   {/* Memory System Status Card */}
-                  <div className="rounded-xl bg-white/80 dark:bg-white/[0.03] border border-slate-200/70 dark:border-white/10 p-3 text-start">
-                    <p className="text-[10px] text-slate-400 dark:text-white/35 uppercase tracking-wider flex items-center gap-1">
-                      <span className="material-symbols-outlined text-[10px]">psychology</span>
-                      {text.memoryTitle || 'Memory'}
-                    </p>
-                    {memoryLoading ? (
-                      <div className="flex items-center gap-1 mt-1">
-                        <span className="material-symbols-outlined text-[12px] animate-spin text-slate-400">progress_activity</span>
-                      </div>
-                    ) : memoryStatus ? (
-                      <>
-                        <div className="flex items-center gap-1.5 mt-1">
-                          <p className={`text-[12px] font-bold ${memoryStatus.embedding.ok ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
-                            {memoryStatus.embedding.ok ? (text.memoryEmbeddingOk || 'OK') : (text.memoryEmbeddingFail || 'Unavailable')}
-                          </p>
-                          <span className={`material-symbols-outlined text-[12px] ${memoryStatus.embedding.ok ? 'text-emerald-500' : 'text-amber-500'}`}>
-                            {memoryStatus.embedding.ok ? 'check_circle' : 'warning'}
-                          </span>
-                        </div>
-                        <p className="text-[10px] text-slate-500 dark:text-white/40 mt-1 truncate">
-                          {memoryStatus.provider || 'none'}
-                          {memoryStatus.embedding.error && !memoryStatus.embedding.ok ? ` · ${memoryStatus.embedding.error}` : ''}
+                  {(() => {
+                    const memoryClickable = !memoryLoading && (!memoryStatus || !memoryStatus.embedding.ok);
+                    const Tag = memoryClickable ? 'button' as const : 'div' as const;
+                    return (
+                      <Tag
+                        type={memoryClickable ? 'button' : undefined}
+                        onClick={memoryClickable ? () => jumpToWindow('editor', { section: 'memory' }) : undefined}
+                        className={`rounded-xl bg-white/80 dark:bg-white/[0.03] border border-slate-200/70 dark:border-white/10 p-3 text-start${memoryClickable ? ' hover:border-primary/30 transition-colors cursor-pointer' : ''}`}
+                      >
+                        <p className="text-[10px] text-slate-400 dark:text-white/35 uppercase tracking-wider flex items-center gap-1">
+                          <span className="material-symbols-outlined text-[10px]">psychology</span>
+                          {text.memoryTitle || 'Memory'}
                         </p>
-                      </>
-                    ) : (
-                      <p className="text-[10px] text-slate-400 dark:text-white/30 mt-1">{text.memoryUnavailable || 'N/A'}</p>
-                    )}
-                  </div>
+                        {memoryLoading ? (
+                          <div className="flex items-center gap-1 mt-1">
+                            <span className="material-symbols-outlined text-[12px] animate-spin text-slate-400">progress_activity</span>
+                          </div>
+                        ) : memoryStatus ? (
+                          <>
+                            <div className="flex items-center gap-1.5 mt-1">
+                              <p className={`text-[12px] font-bold ${memoryStatus.embedding.ok ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                                {memoryStatus.embedding.ok ? (text.memoryEmbeddingOk || 'OK') : (text.memoryEmbeddingFail || 'Unavailable')}
+                              </p>
+                              <span className={`material-symbols-outlined text-[12px] ${memoryStatus.embedding.ok ? 'text-emerald-500' : 'text-amber-500'}`}>
+                                {memoryStatus.embedding.ok ? 'check_circle' : 'warning'}
+                              </span>
+                            </div>
+                            <p className="text-[10px] text-slate-500 dark:text-white/40 mt-1 truncate">
+                              {memoryStatus.provider || 'none'}
+                              {memoryStatus.embedding.error && !memoryStatus.embedding.ok ? ` · ${memoryStatus.embedding.error}` : ''}
+                            </p>
+                          </>
+                        ) : (
+                          <p className="text-[10px] text-slate-400 dark:text-white/30 mt-1">{text.memoryUnavailable || 'N/A'}</p>
+                        )}
+                      </Tag>
+                    );
+                  })()}
                 </div>
 
                 {/* #8 Score Deduction Panel — compact arc chips */}
