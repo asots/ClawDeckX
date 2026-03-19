@@ -2,37 +2,39 @@
 
 ### ✨ New Features / 新功能
 
-- show Docker volume mount paths in setup wizard
-- add persistent runtime update overlay
+- add JSON semantic diff with key-path changes summary
+- add unified diff view with color-coded add/remove lines
+- add OpenClaw native backup integration with method selector
+- add Config History tab for OpenClaw .bak file management
+- CLI version detection, upgrade prompts, real-time search
 
 ### 🐛 Bug Fixes / 修复
 
-- show all sessions instead of only last 24h active
-- make memory card clickable to navigate to editor config
-- remove unused react-shiki that crashes Sessions window
-- display actual GitHub release tag for recovery releases
-- show CLI install banner on every visit when not installed
-- add missing dark mode variants across windows, remove duplicate SourceConfigModal
-- allow description click to bubble for detail modal
-- streamline skillhub remote flow
-- sanitize skillhub config and docs
-- allow longer first gateway startup
+- suppress GORM record-not-found log for missing settings
+
+### ⚡ Performance / 性能优化
+
+- optimize ClawHub real-time search with 500ms debounce
 
 ### 🎨 UI & Styling / 界面优化
 
-- increase font sizes in KPI dashboard and session cards
-- batch theme and layout refinements across windows
-- add light mode theme support to Events, Channels, Service, Debug panels
-- card grid for tools catalog, card-click detail for plugins
-- card-click opens detail, remove detail buttons, card-style capabilities
-- unify skillhub and plugin center UI patterns
+- unify stats order and icons in ClawHub/SkillHub cards and details
 
 ### 🌐 Internationalization / 国际化
 
-- add topConsumers key to all 13 locales
-- add missing logout and sort keys across 10 locales
+- add Run Now button locale keys for all 13 languages
+
+### ♻️ Refactoring / 重构
+
+- route ClawHub search and detail via Convex HTTP actions
+
+### 📦 Build & Deploy / 构建部署
+
+- invert Docker flag - default skip, -d enables Docker build
+- add -d alias for -NoDocker shorthand
+- add -NoDocker flag to skip Docker builds via [skip-docker] tag marker
 
 ---
-**Full Changelog**: [v0.0.18...v0.0.19](https://github.com/ClawDeckX/ClawDeckX/compare/v0.0.18...v0.0.19)
+**Full Changelog**: [v0.0.19...v0.0.20](https://github.com/ClawDeckX/ClawDeckX/compare/v0.0.19...v0.0.20)
 
 
