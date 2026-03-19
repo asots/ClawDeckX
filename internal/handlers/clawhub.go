@@ -29,17 +29,15 @@ type listCache struct {
 
 // ClawHubHandler proxies ClawHub skill marketplace + local skill install/uninstall.
 type ClawHubHandler struct {
-	registryURL string
-	httpClient  *http.Client
-	gwClient    *openclaw.GWClient
-	cacheMu     sync.RWMutex
-	cacheMap    map[string]*listCache
-	cacheTTL    time.Duration
+	httpClient *http.Client
+	gwClient   *openclaw.GWClient
+	cacheMu    sync.RWMutex
+	cacheMap   map[string]*listCache
+	cacheTTL   time.Duration
 }
 
 func NewClawHubHandler(gwClient *openclaw.GWClient) *ClawHubHandler {
 	return &ClawHubHandler{
-		registryURL: "https://clawhub.ai",
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
 		},
@@ -149,6 +147,14 @@ func (h *ClawHubHandler) clawHubBaseURL() string {
 		}
 	}
 	return strings.TrimRight(webconfig.Default().Server.ClawHubQueryURL, "/")
+}
+
+// clawHubHTTPBaseURL returns the Convex HTTP actions base URL (.convex.site)
+// derived from the Convex query URL (.convex.cloud). HTTP actions like search
+// and skill detail are served on the .convex.site domain.
+func (h *ClawHubHandler) clawHubHTTPBaseURL() string {
+	base := h.clawHubBaseURL()
+	return strings.Replace(base, ".convex.cloud", ".convex.site", 1)
 }
 
 // List lists ClawHub skills (proxied to avoid CORS, supports sort/pagination).
@@ -300,7 +306,7 @@ func (h *ClawHubHandler) Search(w http.ResponseWriter, r *http.Request) {
 	}
 	h.cacheMu.RUnlock()
 
-	apiURL := fmt.Sprintf("%s/api/v1/search?q=%s&limit=%s", h.registryURL, url.QueryEscape(query), limit)
+	apiURL := fmt.Sprintf("%s/api/v1/search?q=%s&limit=%s", h.clawHubHTTPBaseURL(), url.QueryEscape(query), limit)
 	resp, err := h.httpClient.Get(apiURL)
 	if err != nil {
 		logger.Log.Error().Err(err).Str("url", apiURL).Msg("ClawHub search request failed")
@@ -362,7 +368,7 @@ func (h *ClawHubHandler) SkillDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	apiURL := fmt.Sprintf("%s/api/v1/skills/%s", h.registryURL, url.PathEscape(slug))
+	apiURL := fmt.Sprintf("%s/api/v1/skills/%s", h.clawHubHTTPBaseURL(), url.PathEscape(slug))
 	resp, err := h.httpClient.Get(apiURL)
 	if err != nil {
 		web.Fail(w, r, "CLAWHUB_DETAIL_FAILED", "skill detail failed: "+err.Error(), http.StatusBadGateway)
