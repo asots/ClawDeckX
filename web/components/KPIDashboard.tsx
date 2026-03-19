@@ -21,7 +21,7 @@ const fmtTok = (n: number) => {
 const MSG_COLORS = { user: '#3b82f6', assistant: '#10b981', tools: '#a855f7', errors: '#ef4444' };
 const CHANNEL_COLORS = ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#6366f1'];
 const kpiCard = 'rounded-2xl p-3 shadow-sm sci-card';
-const kpiLabel = 'text-[9px] font-bold text-slate-400 dark:text-white/30 uppercase mb-1.5';
+const kpiLabel = 'text-[11px] font-bold text-slate-400 dark:text-white/30 uppercase mb-1.5';
 
 export const KPIDashboard: React.FC<KPIDashboardProps> = ({ stats, sessions, labels: a, costTrend, usageAggregates: agg }) => {
   // Channel distribution
@@ -52,7 +52,7 @@ export const KPIDashboard: React.FC<KPIDashboardProps> = ({ stats, sessions, lab
           ]} innerRadius={0.5} />
           <div>
             <div className="text-base font-extrabold text-slate-800 dark:text-white/85 tabular-nums leading-none text-glow-cyan">{fmtTok(stats.totalTok)}</div>
-            <div className="text-[8px] text-slate-400 dark:text-white/25">
+            <div className="text-[10px] text-slate-400 dark:text-white/25">
               <span className="text-blue-500">●</span> {a.input || 'In'} <span className="text-amber-500">●</span> {a.output || 'Out'}
             </div>
           </div>
@@ -90,11 +90,11 @@ export const KPIDashboard: React.FC<KPIDashboardProps> = ({ stats, sessions, lab
             ].filter(s => s.value > 0)} innerRadius={0.55} />
             <div>
               <div className="text-base font-extrabold text-slate-800 dark:text-white/85 tabular-nums leading-none">{agg.messages.total}</div>
-              <div className="flex flex-wrap gap-x-1.5 text-[7px] mt-0.5">
+              <div className="flex flex-wrap gap-x-1.5 text-[9px] mt-0.5">
                 <span className="text-blue-500">● {a.userMsg || 'User'} {agg.messages.user}</span>
                 <span className="text-emerald-500">● {a.assistantMsg || 'Asst'} {agg.messages.assistant}</span>
               </div>
-              <div className="flex flex-wrap gap-x-1.5 text-[7px]">
+              <div className="flex flex-wrap gap-x-1.5 text-[9px]">
                 {agg.messages.toolCalls > 0 && <span className="text-purple-500">● {a.toolCallsLabel || 'Tools'} {agg.messages.toolCalls}</span>}
                 {agg.messages.errors > 0 && <span className="text-red-500">● {a.errors || 'Err'} {agg.messages.errors}</span>}
               </div>
@@ -111,7 +111,7 @@ export const KPIDashboard: React.FC<KPIDashboardProps> = ({ stats, sessions, lab
           <div className={kpiCard}>
             <div className="flex items-center justify-between mb-1.5">
               <span className={kpiLabel + ' mb-0'}>{a.toolUsage || 'Tools'}</span>
-              <span className="text-[8px] text-slate-400 dark:text-white/25">{agg.tools.totalCalls} · {agg.tools.uniqueTools} {a.uniqueTools || 'unique'}</span>
+              <span className="text-[10px] text-slate-400 dark:text-white/25">{agg.tools.totalCalls} · {agg.tools.uniqueTools} {a.uniqueTools || 'unique'}</span>
             </div>
             <div className="space-y-1">
               {topTools.map((t: any) => (
@@ -119,8 +119,8 @@ export const KPIDashboard: React.FC<KPIDashboardProps> = ({ stats, sessions, lab
                   <div className="flex-1 h-2 rounded-full bg-slate-100 dark:bg-white/5 overflow-hidden">
                     <div className="h-full rounded-full bg-gradient-to-r from-purple-500/80 to-violet-400/60 transition-all" style={{ width: `${(t.count / maxCalls) * 100}%` }} />
                   </div>
-                  <span className="text-[7px] text-slate-400 dark:text-white/25 font-mono truncate max-w-[55px]" title={t.name}>{t.name}</span>
-                  <span className="text-[7px] text-purple-500 dark:text-purple-400 font-bold tabular-nums shrink-0">{t.count}×</span>
+                  <span className="text-[9px] text-slate-400 dark:text-white/25 font-mono truncate max-w-[55px]" title={t.name}>{t.name}</span>
+                  <span className="text-[9px] text-purple-500 dark:text-purple-400 font-bold tabular-nums shrink-0">{t.count}×</span>
                 </div>
               ))}
             </div>
@@ -152,7 +152,7 @@ export const KPIDashboard: React.FC<KPIDashboardProps> = ({ stats, sessions, lab
                     </>
                   )}
                 </div>
-                <div className="flex justify-between text-[7px] text-slate-400 dark:text-white/25 tabular-nums">
+                <div className="flex justify-between text-[9px] text-slate-400 dark:text-white/25 tabular-nums">
                   <span>{(minMs / 1000).toFixed(1)}s</span>
                   <span className="text-amber-500 font-bold">p95 {(p95 / 1000).toFixed(1)}s</span>
                   <span>{(maxMs / 1000).toFixed(1)}s</span>
@@ -171,7 +171,7 @@ export const KPIDashboard: React.FC<KPIDashboardProps> = ({ stats, sessions, lab
             <MiniDonut size={40} slices={channelEntries.map(([, v], i) => ({
               value: v, color: CHANNEL_COLORS[i % CHANNEL_COLORS.length],
             }))} innerRadius={0.5} />
-            <div className="text-[8px] text-slate-400 dark:text-white/25 leading-tight">
+            <div className="text-[10px] text-slate-400 dark:text-white/25 leading-tight">
               {channelEntries.slice(0, 3).map(([name, count]) => <div key={name}>{name}: {count}</div>)}
             </div>
           </div>
@@ -183,7 +183,7 @@ export const KPIDashboard: React.FC<KPIDashboardProps> = ({ stats, sessions, lab
         <div className={kpiCard}>
           <div className={kpiLabel}>{a.costTrend || 'Cost 7d'}</div>
           <MiniSparkline values={costTrend.map(d => d.totalCost)} height={32} color="#10b981" />
-          <div className="text-[8px] text-emerald-500 font-bold tabular-nums mt-0.5 text-glow-green">
+          <div className="text-[10px] text-emerald-500 font-bold tabular-nums mt-0.5 text-glow-green">
             ${costTrend.reduce((sum, d) => sum + d.totalCost, 0).toFixed(2)}
           </div>
         </div>
@@ -205,8 +205,8 @@ export const KPIDashboard: React.FC<KPIDashboardProps> = ({ stats, sessions, lab
                   <div className="flex-1 h-1.5 rounded-full bg-slate-100 dark:bg-white/5 overflow-hidden">
                     <div className="h-full rounded-full bg-gradient-to-r from-purple-500/80 to-purple-400/60 transition-all" style={{ width: `${(count / maxCount) * 100}%` }} />
                   </div>
-                  <span className="text-[7px] text-slate-400 dark:text-white/25 font-mono truncate max-w-[60px]" title={name}>{name.split('/').pop()}</span>
-                  <span className="text-[7px] text-slate-500 dark:text-white/35 font-bold tabular-nums">{count}</span>
+                  <span className="text-[9px] text-slate-400 dark:text-white/25 font-mono truncate max-w-[60px]" title={name}>{name.split('/').pop()}</span>
+                  <span className="text-[9px] text-slate-500 dark:text-white/35 font-bold tabular-nums">{count}</span>
                 </div>
               ))}
             </div>
@@ -232,8 +232,8 @@ export const KPIDashboard: React.FC<KPIDashboardProps> = ({ stats, sessions, lab
                   <div className="flex-1 h-1.5 rounded-full bg-slate-100 dark:bg-white/5 overflow-hidden">
                     <div className="h-full rounded-full bg-gradient-to-r from-blue-500/80 to-cyan-400/60 transition-all" style={{ width: `${(s.tokens / maxTok) * 100}%` }} />
                   </div>
-                  <span className="text-[7px] text-slate-400 dark:text-white/25 font-mono truncate max-w-[60px]" title={s.name}>{s.name.length > 10 ? s.name.slice(0, 8) + '..' : s.name}</span>
-                  <span className="text-[7px] text-slate-500 dark:text-white/35 font-bold tabular-nums">{fmtTok(s.tokens)}</span>
+                  <span className="text-[9px] text-slate-400 dark:text-white/25 font-mono truncate max-w-[60px]" title={s.name}>{s.name.length > 10 ? s.name.slice(0, 8) + '..' : s.name}</span>
+                  <span className="text-[9px] text-slate-500 dark:text-white/35 font-bold tabular-nums">{fmtTok(s.tokens)}</span>
                 </div>
               ))}
             </div>
@@ -244,7 +244,7 @@ export const KPIDashboard: React.FC<KPIDashboardProps> = ({ stats, sessions, lab
       {/* Aborted */}
       {stats.abortedCount > 0 && (
         <div className="rounded-2xl bg-gradient-to-br from-red-50/50 to-red-100/20 dark:from-red-500/[0.06] dark:to-red-500/[0.02] backdrop-blur-xl border border-red-200/40 dark:border-red-500/10 p-3 shadow-sm">
-          <div className="text-[9px] font-bold text-red-400 dark:text-red-400/60 uppercase mb-1">{a.aborted || 'Aborted'}</div>
+          <div className="text-[11px] font-bold text-red-400 dark:text-red-400/60 uppercase mb-1">{a.aborted || 'Aborted'}</div>
           <div className="text-base font-extrabold text-red-500 tabular-nums">{stats.abortedCount}</div>
         </div>
       )}

@@ -136,7 +136,7 @@ export const SessionCard: React.FC<SessionCardProps> = ({
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
               </span>
-              <span className="text-[8px] font-bold text-red-500">{a.aborted || 'ERR'}</span>
+              <span className="text-[10px] font-bold text-red-500">{a.aborted || 'ERR'}</span>
             </span>
           )}
           <span className={`w-2 h-2 rounded-full ${activeHeatClass(s.updatedAt)}`} title={relativeTime} />
@@ -144,19 +144,19 @@ export const SessionCard: React.FC<SessionCardProps> = ({
 
         {/* Header: Kind + Channel + Key */}
         <div className="flex items-center gap-2 mb-1.5">
-          <span className={`text-[9px] px-2 py-0.5 rounded-full font-bold ${KIND_COLORS[s.kind] || 'bg-slate-500/10 text-slate-500'}`}>
+          <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${KIND_COLORS[s.kind] || 'bg-slate-500/10 text-slate-500'}`}>
             {a[s.kind] || s.kind || a.unknown || 'unknown'}
           </span>
           {chIcon && <span className="text-[11px]" title={s.lastChannel}>{chIcon}</span>}
-          <span className="text-[10px] font-mono text-slate-500 dark:text-white/40 truncate flex-1">{s.key}</span>
+          <span className="text-[11px] font-mono text-slate-500 dark:text-white/40 truncate flex-1">{s.key}</span>
         </div>
         {displayName && (
-          <p className="text-[12px] font-semibold text-slate-700 dark:text-white/70 truncate mb-2 pe-16">{displayName}</p>
+          <p className="text-[13px] font-semibold text-slate-700 dark:text-white/70 truncate mb-2 pe-16">{displayName}</p>
         )}
 
         {/* card-4: Model tag with provider color */}
         {s.model && (
-          <div className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-gradient-to-r border text-[9px] font-medium mb-2.5 ${getProviderColor(s.modelProvider)}`}>
+          <div className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-gradient-to-r border text-[10px] font-medium mb-2.5 ${getProviderColor(s.modelProvider)}`}>
             <span className="material-symbols-outlined text-[11px]">smart_toy</span>
             <span className="truncate max-w-[100px] sm:max-w-[130px]">{s.model}</span>
           </div>
@@ -166,7 +166,7 @@ export const SessionCard: React.FC<SessionCardProps> = ({
         {overrides.length > 0 && (
           <div className="flex flex-wrap gap-1 mb-2.5">
             {overrides.map((ov, i) => (
-              <span key={i} className="text-[8px] px-1.5 py-0.5 rounded-full bg-primary/8 text-primary/70 dark:bg-primary/10 dark:text-primary/60 font-medium">{ov}</span>
+              <span key={i} className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/8 text-primary/70 dark:bg-primary/10 dark:text-primary/60 font-medium">{ov}</span>
             ))}
           </div>
         )}
@@ -187,7 +187,7 @@ export const SessionCard: React.FC<SessionCardProps> = ({
                 <span className="text-[10px] text-slate-300 dark:text-white/15">—</span>
               </div>
             )}
-            {maxCtx > 0 && <span className="text-[7px] text-slate-400 dark:text-white/20 uppercase font-bold">{a.context || 'CTX'}</span>}
+            {maxCtx > 0 && <span className="text-[9px] text-slate-400 dark:text-white/20 uppercase font-bold">{a.context || 'CTX'}</span>}
           </div>
 
           {/* Metrics + bars */}
@@ -195,7 +195,7 @@ export const SessionCard: React.FC<SessionCardProps> = ({
             {/* card-3: Large token number */}
             <div className="flex items-baseline gap-1.5 mb-1">
               <span className="text-[18px] font-extrabold tabular-nums text-slate-800 dark:text-white/80 leading-none text-glow-cyan">{fmtTok(total)}</span>
-              <span className="text-[8px] font-bold text-slate-400 dark:text-white/25 uppercase">{a.tokens || 'TOKENS'}</span>
+              <span className="text-[10px] font-bold text-slate-400 dark:text-white/25 uppercase">{a.tokens || 'TOKENS'}</span>
             </div>
 
             {/* card-2: Dual-color thick bar with labels */}
@@ -207,13 +207,13 @@ export const SessionCard: React.FC<SessionCardProps> = ({
                 </>}
               </div>
               <div className="flex justify-between mt-0.5">
-                <span className="text-[8px] text-blue-500 font-bold tabular-nums">● {a.input || 'In'} {fmtTok(inp)}</span>
-                <span className="text-[8px] text-amber-500 font-bold tabular-nums">● {a.output || 'Out'} {fmtTok(out)}</span>
+                <span className="text-[10px] text-blue-500 font-bold tabular-nums">● {a.input || 'In'} {fmtTok(inp)}</span>
+                <span className="text-[10px] text-amber-500 font-bold tabular-nums">● {a.output || 'Out'} {fmtTok(out)}</span>
               </div>
             </div>
 
             {/* card-7: Message count + latency row */}
-            <div className="flex items-center gap-3 text-[9px]">
+            <div className="flex items-center gap-3 text-[10px]">
               {msgCount > 0 && (
                 <span className="flex items-center gap-0.5 text-slate-500 dark:text-white/35">
                   <span className="material-symbols-outlined text-[10px]">chat_bubble</span>
@@ -252,8 +252,8 @@ export const SessionCard: React.FC<SessionCardProps> = ({
               {hasMessages && (
                 <div className="mb-2">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-[8px] font-bold text-slate-400 dark:text-white/30 uppercase">{a.messages || 'Messages'}</span>
-                    <span className="text-[9px] font-extrabold text-slate-600 dark:text-white/60 tabular-nums">{mc.total}</span>
+                    <span className="text-[10px] font-bold text-slate-400 dark:text-white/30 uppercase">{a.messages || 'Messages'}</span>
+                    <span className="text-[11px] font-extrabold text-slate-600 dark:text-white/60 tabular-nums">{mc.total}</span>
                   </div>
                   <div className="h-2 rounded-full bg-slate-100 dark:bg-white/5 overflow-hidden flex">
                     {mc.total > 0 && <>
@@ -263,7 +263,7 @@ export const SessionCard: React.FC<SessionCardProps> = ({
                       {mc.errors > 0 && <div className="h-full bg-red-400/80" style={{ width: `${(mc.errors / mc.total) * 100}%` }} title={`${a.errors || 'Errors'}: ${mc.errors}`} />}
                     </>}
                   </div>
-                  <div className="flex flex-wrap gap-x-2.5 gap-y-0.5 mt-1 text-[7px]">
+                  <div className="flex flex-wrap gap-x-2.5 gap-y-0.5 mt-1 text-[9px]">
                     <span className="text-blue-500">● {a.userMsg || 'User'} {mc.user}</span>
                     <span className="text-emerald-500">● {a.assistantMsg || 'Asst'} {mc.assistant}</span>
                     {mc.toolCalls > 0 && <span className="text-purple-500">● {a.toolCallsLabel || 'Tools'} {mc.toolCalls}</span>}
@@ -277,16 +277,16 @@ export const SessionCard: React.FC<SessionCardProps> = ({
                   {/* Tool pills */}
                   {hasTools && (
                     <div className="flex-1 min-w-0">
-                      <div className="text-[7px] font-bold text-slate-400 dark:text-white/30 uppercase mb-1">{a.toolUsage || 'Tools'}</div>
+                      <div className="text-[9px] font-bold text-slate-400 dark:text-white/30 uppercase mb-1">{a.toolUsage || 'Tools'}</div>
                       <div className="flex flex-wrap gap-1">
                         {tu.tools?.slice(0, 5).map((tool: any) => (
-                          <span key={tool.name} className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-purple-500/8 dark:bg-purple-500/10 text-[7px] font-mono text-purple-600 dark:text-purple-400 border border-purple-500/10 dark:border-purple-500/15">
+                          <span key={tool.name} className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-purple-500/8 dark:bg-purple-500/10 text-[9px] font-mono text-purple-600 dark:text-purple-400 border border-purple-500/10 dark:border-purple-500/15">
                             <span className="truncate max-w-[60px]">{tool.name}</span>
                             <span className="text-purple-400 dark:text-purple-500 font-bold">{tool.count}×</span>
                           </span>
                         ))}
                         {tu.tools && tu.tools.length > 5 && (
-                          <span className="text-[7px] text-slate-400 dark:text-white/25">+{tu.tools.length - 5}</span>
+                          <span className="text-[9px] text-slate-400 dark:text-white/25">+{tu.tools.length - 5}</span>
                         )}
                       </div>
                     </div>
@@ -294,11 +294,11 @@ export const SessionCard: React.FC<SessionCardProps> = ({
                   {/* Latency mini stats */}
                   {hasLatency && (
                     <div className="shrink-0">
-                      <div className="text-[7px] font-bold text-slate-400 dark:text-white/30 uppercase mb-1">{a.latencyStats || 'Latency'}</div>
+                      <div className="text-[9px] font-bold text-slate-400 dark:text-white/30 uppercase mb-1">{a.latencyStats || 'Latency'}</div>
                       <div className="flex items-center gap-1.5">
                         <span className="material-symbols-outlined text-[11px] text-amber-500">speed</span>
-                        <span className="text-[9px] font-bold text-slate-600 dark:text-white/50 tabular-nums">{(lat.avgMs / 1000).toFixed(1)}s</span>
-                        <span className="text-[7px] text-slate-400 dark:text-white/25 tabular-nums">p95 {(lat.p95Ms / 1000).toFixed(1)}s</span>
+                        <span className="text-[10px] font-bold text-slate-600 dark:text-white/50 tabular-nums">{(lat.avgMs / 1000).toFixed(1)}s</span>
+                        <span className="text-[9px] text-slate-400 dark:text-white/25 tabular-nums">p95 {(lat.p95Ms / 1000).toFixed(1)}s</span>
                       </div>
                     </div>
                   )}
@@ -309,14 +309,14 @@ export const SessionCard: React.FC<SessionCardProps> = ({
         })()}
 
         {/* Time row */}
-        <div className="flex items-center gap-2 text-[9px] text-slate-400 dark:text-white/25 mb-2">
+        <div className="flex items-center gap-2 text-[10px] text-slate-400 dark:text-white/25 mb-2">
           <span className="flex-1" />
           <span title={s.updatedAt ? new Date(s.updatedAt).toLocaleString() : ''}>{relativeTime}</span>
         </div>
 
         {/* Last message preview */}
         {s.lastMessagePreview && (
-          <p className="text-[9px] text-slate-400 dark:text-white/20 line-clamp-2 leading-relaxed mb-2">
+          <p className="text-[10px] text-slate-400 dark:text-white/20 line-clamp-2 leading-relaxed mb-2">
             {s.lastMessagePreview}
           </p>
         )}
@@ -339,13 +339,13 @@ export const SessionCard: React.FC<SessionCardProps> = ({
           return (
             <div className="mb-1">
               <button onClick={e => { e.stopPropagation(); setMetaOpen(v => !v); }}
-                className="flex items-center gap-1 text-[8px] text-slate-400 dark:text-white/25 hover:text-primary transition-colors w-full">
+                className="flex items-center gap-1 text-[10px] text-slate-400 dark:text-white/25 hover:text-primary transition-colors w-full">
                 <span className="material-symbols-outlined text-[10px]" style={{ transform: metaOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 150ms' }}>expand_more</span>
                 <span className="uppercase font-bold tracking-wider">{a.metadata || 'Details'}</span>
                 <span className="text-slate-300 dark:text-white/10">({meta.length})</span>
               </button>
               {metaOpen && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-1 mt-1.5 text-[9px] animate-in fade-in slide-in-from-top-1 duration-150">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-1 mt-1.5 text-[10px] animate-in fade-in slide-in-from-top-1 duration-150">
                   {meta.map(([label, val]) => (
                     <div key={label} className="min-w-0">
                       <span className="text-slate-400 dark:text-white/30">{label}: </span>
