@@ -6,10 +6,13 @@ _2026-03-19_
 
 ### ✨ New Features / 新功能
 
+- show Docker volume mount paths in setup wizard
 - add persistent runtime update overlay
 
 ### 🐛 Bug Fixes / 修复
 
+- show all sessions instead of only last 24h active
+- make memory card clickable to navigate to editor config
 - remove unused react-shiki that crashes Sessions window
 - display actual GitHub release tag for recovery releases
 - show CLI install banner on every visit when not installed
@@ -21,6 +24,7 @@ _2026-03-19_
 
 ### 🎨 UI & Styling / 界面优化
 
+- increase font sizes in KPI dashboard and session cards
 - batch theme and layout refinements across windows
 - add light mode theme support to Events, Channels, Service, Debug panels
 - card grid for tools catalog, card-click detail for plugins
@@ -29,6 +33,7 @@ _2026-03-19_
 
 ### 🌐 Internationalization / 国际化
 
+- add topConsumers key to all 13 locales
 - add missing logout and sort keys across 10 locales
 
 ---
@@ -241,6 +246,7 @@ _2026-03-15_
 
 
 ---
+
 
 
 

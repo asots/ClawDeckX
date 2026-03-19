@@ -798,7 +798,6 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
     if (!opts?.silent) setSessionsLoading(true);
     try {
       const res = await gwApi.proxy('sessions.list', {
-        activeMinutes: 1440,
         limit: 50,
         includeDerivedTitles: true,
         includeLastMessage: true,
