@@ -16,11 +16,7 @@ interface NumberStepperProps {
 }
 
 const getDefaultAriaLabel = (type: 'increase' | 'decrease') => {
-  const lang = (typeof document !== 'undefined' ? document.documentElement.lang : '') ||
-    (typeof navigator !== 'undefined' ? navigator.language : '');
-  const isZh = /^zh/i.test(lang);
-  if (isZh) return type === 'increase' ? '增加数值' : '减少数值';
-  return type;
+  return type === 'increase' ? 'Increase value' : 'Decrease value';
 };
 
 const getPrecision = (step?: number) => {

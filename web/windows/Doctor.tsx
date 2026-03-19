@@ -1364,16 +1364,6 @@ const Doctor: React.FC<DoctorProps> = ({ language }) => {
 
   // --- Localization for check items ---
   const fallbackCheckCatalog = useMemo<Record<string, CheckLocaleEntry>>(() => {
-    if (language === 'zh') {
-      return {
-        openclaw_install: { name: 'OpenClaw 安装' }, config_file: { name: '配置文件' }, gateway_status: { name: '网关状态' },
-        pid_lock: { name: 'PID 锁文件' }, port_default: { name: '端口检查' }, disk_space: { name: '磁盘空间' },
-        gateway_diag_openclaw_installed: { name: 'OpenClaw 已安装' }, gateway_diag_config_exists: { name: '配置文件存在' },
-        gateway_diag_config_valid: { name: '配置文件格式正确' }, gateway_diag_gateway_process: { name: 'Gateway 进程' },
-        gateway_diag_port_reachable: { name: '端口可达性' }, gateway_diag_gateway_api: { name: 'Gateway API 响应' },
-        gateway_diag_port_conflict: { name: '端口冲突检查' }, gateway_diag_auth_token: { name: '鉴权 Token 匹配' },
-      };
-    }
     return {
       openclaw_install: { name: 'OpenClaw Install' }, config_file: { name: 'Config File' }, gateway_status: { name: 'Gateway Status' },
       pid_lock: { name: 'PID Lock' }, port_default: { name: 'Port Check' }, disk_space: { name: 'Disk Space' },
@@ -1382,24 +1372,16 @@ const Doctor: React.FC<DoctorProps> = ({ language }) => {
       gateway_diag_port_reachable: { name: 'Port Reachable' }, gateway_diag_gateway_api: { name: 'Gateway API Response' },
       gateway_diag_port_conflict: { name: 'Port Conflict Check' }, gateway_diag_auth_token: { name: 'Auth Token Match' },
     };
-  }, [language]);
+  }, []);
 
   const checkDetailTpl = useMemo(() => {
-    if (language === 'zh') {
-      return {
-        openclawInstalled: '已安装: {path}', openclawNotFound: '未找到 openclaw 命令',
-        configExistsSize: '配置存在，大小: {size}', configExists: '配置存在', configMissing: '未找到配置文件',
-        gatewayNotRunning: '网关未运行', noStalePid: '没有陈旧 PID 文件', stalePid: '发现陈旧 PID 文件，网关未运行',
-        portDefault: '默认端口 {port}', diskOk: '正常',
-      };
-    }
     return {
       openclawInstalled: 'installed: {path}', openclawNotFound: 'openclaw command not found',
       configExistsSize: 'exists, size: {size}', configExists: 'exists', configMissing: 'config file not found',
       gatewayNotRunning: 'gateway not running', noStalePid: 'no stale files', stalePid: 'stale PID file found but gateway not running',
       portDefault: 'default port {port}', diskOk: 'ok',
     };
-  }, [language]);
+  }, []);
 
   const formatTpl = useCallback((tpl: string, vars: Record<string, string>) => {
     return tpl.replace(/\{(\w+)\}/g, (_, key) => vars[key] ?? '');

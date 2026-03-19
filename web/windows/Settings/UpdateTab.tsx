@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Language } from '../../types';
 import { getTranslation } from '../../locales';
-import { selfUpdateApi, hostInfoApi, serviceApi, gatewayApi } from '../../services/api';
-import type { SelfUpdateInfo, UpdateCheckResult, UpdateHistoryEntry } from '../../services/api';
+import { selfUpdateApi, hostInfoApi, serviceApi, gatewayApi, runtimeApi } from '../../services/api';
+import type { SelfUpdateInfo, UpdateCheckResult, UpdateHistoryEntry, RuntimeStatus } from '../../services/api';
 import { useToast } from '../../components/Toast';
 import { useConfirm } from '../../components/ConfirmDialog';
 import CustomSelect from '../../components/CustomSelect';
@@ -62,6 +62,10 @@ const UpdateTab: React.FC<UpdateTabProps> = ({ s, language, inputCls, rowCls }) 
   // ── 服务状态 ──
   const [serviceStatus, setServiceStatus] = useState<{ openclaw_installed: boolean; clawdeckx_installed: boolean; is_docker?: boolean } | null>(null);
   const [serviceLoading, setServiceLoading] = useState(false);
+
+  // ── Docker 运行时覆盖 ──
+  const [runtimeStatus, setRuntimeStatus] = useState<RuntimeStatus | null>(null);
+  const [runtimeRollingBack, setRuntimeRollingBack] = useState(false);
 
   // Markdown-like rendering for release notes (sanitized)
   const renderMarkdown = useCallback((text: string) => {
@@ -260,6 +264,31 @@ const UpdateTab: React.FC<UpdateTabProps> = ({ s, language, inputCls, rowCls }) 
     }
   }, [toast, loadServiceStatus]);
 
+  // Docker 运行时覆盖
+  const loadRuntimeStatus = useCallback(async () => {
+    try {
+      const data = await runtimeApi.status();
+      setRuntimeStatus(data);
+    } catch {
+      // not available (non-Docker or runtime manager not initialized)
+    }
+  }, []);
+
+  const handleRuntimeRollback = useCallback(async (component: string) => {
+    const ok = await confirm(s.runtimeRollbackConfirm || 'Revert to the version bundled in the Docker image? The runtime overlay will be removed.');
+    if (!ok) return;
+    setRuntimeRollingBack(true);
+    try {
+      await runtimeApi.rollback(component);
+      toast('success', s.runtimeRollbackOk || 'Rolled back to image version');
+      await loadRuntimeStatus();
+    } catch (err: any) {
+      toast('error', (s.runtimeRollbackFailed || 'Rollback failed') + ': ' + (err.message || ''));
+    } finally {
+      setRuntimeRollingBack(false);
+    }
+  }, [confirm, toast, s, loadRuntimeStatus]);
+
   // 初始化数据加载
   useEffect(() => {
     const raf = requestAnimationFrame(() => {
@@ -267,6 +296,7 @@ const UpdateTab: React.FC<UpdateTabProps> = ({ s, language, inputCls, rowCls }) 
       selfUpdateApi.history().then(setUpdateHistory).catch(() => { });
       if (!ocUpdateInfo) hostInfoApi.checkUpdate().then(res => setOcUpdateInfo(res)).catch(() => { });
       loadServiceStatus();
+      loadRuntimeStatus();
       // Auto-check with 1-hour cache — skip if checked recently
       const now = Date.now();
       if (now - lastAutoCheckRef.current > UPDATE_CHECK_CACHE_MS) {
@@ -337,9 +367,7 @@ const UpdateTab: React.FC<UpdateTabProps> = ({ s, language, inputCls, rowCls }) 
               <h4 className="text-[13px] font-bold text-slate-700 dark:text-white/70">{sk.translateModel || 'Translation Model'}</h4>
             </div>
             <p className="text-[11px] text-slate-500 dark:text-white/40 mb-3">
-              {language === 'zh'
-                ? '选择用于翻译技能描述和更新日志的模型。默认自动选择最便宜的可用模型，未配置模型时使用免费 API。'
-                : 'Choose the model for translating skill descriptions and release notes. Defaults to the cheapest available; falls back to free API if none configured.'}
+              {sk.translateModelDesc || 'Choose the model for translating skill descriptions and release notes. Defaults to the cheapest available; falls back to free API if none configured.'}
             </p>
             <TranslateModelPicker sk={sk} />
           </div>
@@ -815,6 +843,116 @@ const UpdateTab: React.FC<UpdateTabProps> = ({ s, language, inputCls, rowCls }) 
                 </span>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Docker 运行时覆盖 ── */}
+      {runtimeStatus?.is_docker && (
+        <div className={rowCls}>
+          <div className="px-5 py-4">
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className="material-symbols-outlined text-[16px] text-blue-500/60">layers</span>
+              <h4 className="text-[13px] font-bold text-slate-700 dark:text-white/70">{s.runtimeOverlay || 'Docker Runtime Overlay'}</h4>
+            </div>
+            <p className="text-[11px] text-slate-400 dark:text-white/30 leading-relaxed mb-3">
+              {s.runtimeOverlayDesc || 'Updates are stored in a persistent volume so they survive container restarts and recreations. No need to rebuild the Docker image for every update.'}
+            </p>
+
+            <div className="space-y-2">
+              {/* ClawDeckX Runtime */}
+              {(() => {
+                const c = runtimeStatus.clawdeckx;
+                return (
+                  <div className={`flex items-center gap-3 px-3 py-2.5 rounded-lg border transition-colors ${
+                    c.using_overlay
+                      ? 'bg-blue-50 dark:bg-blue-500/5 border-blue-200 dark:border-blue-500/20'
+                      : 'bg-slate-50 dark:bg-white/[0.02] border-slate-200 dark:border-white/[0.06]'
+                  }`}>
+                    <span className="text-[16px]">🦀</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="text-[12px] font-bold text-slate-700 dark:text-white/70">ClawDeckX</p>
+                        {c.using_overlay && (
+                          <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-100 dark:bg-blue-500/15 text-blue-600 dark:text-blue-400">
+                            {s.runtimeUsingOverlay || 'Using overlay'}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3 mt-0.5 text-[10px] text-slate-400 dark:text-white/30">
+                        <span>{s.runtimeImageVersion || 'Image'}: <span className="font-mono font-medium text-slate-500 dark:text-white/50">{c.image_version || '—'}</span></span>
+                        {c.using_overlay && (
+                          <span>{s.runtimeOverlayVersion || 'Overlay'}: <span className="font-mono font-medium text-blue-600 dark:text-blue-400">{c.runtime_version || '—'}</span></span>
+                        )}
+                        <span>{s.runtimeActiveVersion || 'Active'}: <span className="font-mono font-bold text-slate-600 dark:text-white/60">{c.active_version || '—'}</span></span>
+                      </div>
+                    </div>
+                    {c.using_overlay && (
+                      <button
+                        onClick={() => handleRuntimeRollback('clawdeckx')}
+                        disabled={runtimeRollingBack}
+                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[10px] font-bold bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-500/20 transition-colors disabled:opacity-40 shrink-0"
+                      >
+                        <span className={`material-symbols-outlined text-[13px] ${runtimeRollingBack ? 'animate-spin' : ''}`}>
+                          {runtimeRollingBack ? 'progress_activity' : 'undo'}
+                        </span>
+                        {s.runtimeRollback || 'Rollback to Image'}
+                      </button>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {/* OpenClaw Runtime */}
+              {(() => {
+                const c = runtimeStatus.openclaw;
+                return (
+                  <div className={`flex items-center gap-3 px-3 py-2.5 rounded-lg border transition-colors ${
+                    c.using_overlay
+                      ? 'bg-blue-50 dark:bg-blue-500/5 border-blue-200 dark:border-blue-500/20'
+                      : 'bg-slate-50 dark:bg-white/[0.02] border-slate-200 dark:border-white/[0.06]'
+                  }`}>
+                    <span className="text-[16px]">🦞</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="text-[12px] font-bold text-slate-700 dark:text-white/70">OpenClaw</p>
+                        {c.using_overlay && (
+                          <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-100 dark:bg-blue-500/15 text-blue-600 dark:text-blue-400">
+                            {s.runtimeUsingOverlay || 'Using overlay'}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3 mt-0.5 text-[10px] text-slate-400 dark:text-white/30">
+                        <span>{s.runtimeImageVersion || 'Image'}: <span className="font-mono font-medium text-slate-500 dark:text-white/50">{c.image_version || '—'}</span></span>
+                        {c.using_overlay && (
+                          <span>{s.runtimeOverlayVersion || 'Overlay'}: <span className="font-mono font-medium text-blue-600 dark:text-blue-400">{c.runtime_version || '—'}</span></span>
+                        )}
+                        <span>{s.runtimeActiveVersion || 'Active'}: <span className="font-mono font-bold text-slate-600 dark:text-white/60">{c.active_version || '—'}</span></span>
+                      </div>
+                    </div>
+                    {c.using_overlay && (
+                      <button
+                        onClick={() => handleRuntimeRollback('openclaw')}
+                        disabled={runtimeRollingBack}
+                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[10px] font-bold bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-500/20 transition-colors disabled:opacity-40 shrink-0"
+                      >
+                        <span className={`material-symbols-outlined text-[13px] ${runtimeRollingBack ? 'animate-spin' : ''}`}>
+                          {runtimeRollingBack ? 'progress_activity' : 'undo'}
+                        </span>
+                        {s.runtimeRollback || 'Rollback to Image'}
+                      </button>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
+
+            {(runtimeStatus.clawdeckx.using_overlay || runtimeStatus.openclaw.using_overlay) && (
+              <div className="flex items-center gap-1.5 mt-2.5 text-[10px] text-amber-500 dark:text-amber-400/70">
+                <span className="material-symbols-outlined text-[13px]">info</span>
+                {s.runtimeRestartHint || 'Restart the container to activate the updated binary'}
+              </div>
+            )}
           </div>
         </div>
       )}

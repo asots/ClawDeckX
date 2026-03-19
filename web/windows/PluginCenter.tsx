@@ -6,6 +6,7 @@ import { useToast } from '../components/Toast';
 import { useConfirm } from '../components/ConfirmDialog';
 import EmptyState from '../components/EmptyState';
 import { copyToClipboard } from '../utils/clipboard';
+import { pickLocalizedText } from '../utils/localizedContent';
 
 // Built-in plugin catalog
 type CatalogEntry = { id: string; spec: string; name: string; nameZh: string; description: string; descriptionZh: string; icon: string; category: 'channel' | 'integration' | 'utility'; relatedChannels?: string[] };
@@ -100,7 +101,6 @@ const PluginCenter: React.FC<PluginCenterProps> = ({ language }) => {
   skRef.current = sk;
   const { toast } = useToast();
   const { confirm } = useConfirm();
-  const isZh = language === 'zh' || language === 'zh-TW';
 
   const [filter, setFilter] = useState<PluginFilter>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -163,7 +163,8 @@ const PluginCenter: React.FC<PluginCenterProps> = ({ language }) => {
       if (rt?.id) matchedRuntimeIds.add(rt.id);
       return {
         id: rt?.id || cat.id, spec: rt?.spec || cat.spec,
-        name: isZh ? cat.nameZh : cat.name, description: isZh ? cat.descriptionZh : cat.description,
+        name: pickLocalizedText(language, { value: cat.name, zh: cat.nameZh }),
+        description: pickLocalizedText(language, { value: cat.description, zh: cat.descriptionZh }),
         icon: cat.icon, category: cat.category, relatedChannels: cat.relatedChannels,
         installed: rt?.installed ?? (rt ? true : false), enabled: rt?.enabled ?? true,
         status: rt?.status, version: rt?.version, latestVersion: rt?.latestVersion, updateAvailable: rt?.updateAvailable, error: rt?.error,
@@ -189,7 +190,7 @@ const PluginCenter: React.FC<PluginCenterProps> = ({ language }) => {
       }
     }
     return result;
-  }, [statusData, isZh]);
+  }, [language, statusData]);
 
   const filtered = useMemo(() => {
     let list = plugins;

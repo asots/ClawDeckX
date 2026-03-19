@@ -14,6 +14,7 @@ import PluginCenter from './PluginCenter';
 import SkillHub from './SkillHub';
 import ToolsCatalog from '../components/ToolsCatalog';
 import { copyToClipboard } from '../utils/clipboard';
+import { pickLocalizedText } from '../utils/localizedContent';
 
 interface SkillsProps { language: Language; }
 
@@ -703,10 +704,16 @@ const Skills: React.FC<SkillsProps> = ({ language }) => {
 
     // 市场技能
     for (const item of marketResults) {
+      const marketName = pickLocalizedText(language, {
+        value: (item as any).displayName || (item as any).name || '',
+      });
+      const marketDescription = pickLocalizedText(language, {
+        value: (item as any).summary || (item as any).description || '',
+      });
       allItems.push({
         skill_key: `market:${(item as any).slug || (item as any).name || ''}`,
-        name: (item as any).displayName || (item as any).name || '',
-        description: (item as any).summary || (item as any).description || '',
+        name: marketName,
+        description: marketDescription,
       });
     }
 
@@ -1436,6 +1443,8 @@ const Skills: React.FC<SkillsProps> = ({ language }) => {
                       const marketKey = `market:${slug}`;
                       const mTrans = translations[marketKey];
                       const mTransReady = autoTranslate && language !== 'en' && mTrans?.status === 'cached';
+                      const rawMarketName = pickLocalizedText(language, { value: item.displayName || item.name || slug });
+                      const rawMarketDesc = pickLocalizedText(language, { value: item.summary || item.description || '' });
                       const stats = item.stats || {};
                       const ver = item.latestVersion?.version || item.tags?.latest || '';
                       const isInstalled = marketInstalledSlugs.has(slug) || skills.some(s => s.skillKey === slug || s.name === slug);
@@ -1448,13 +1457,13 @@ const Skills: React.FC<SkillsProps> = ({ language }) => {
                               <span className="text-lg">{item.emoji || '📦'}</span>
                             </div>
                             <div className="flex-1 min-w-0">
-                              <h4 className="font-bold text-[13px] text-slate-800 dark:text-white truncate">{mTransReady && mTrans?.name ? mTrans.name : (item.displayName || item.name || slug)}</h4>
+                              <h4 className="font-bold text-[13px] text-slate-800 dark:text-white truncate">{mTransReady && mTrans?.name ? mTrans.name : rawMarketName}</h4>
                               {mTrans?.status === 'translating' && <span className="text-[10px] text-primary animate-pulse">{sk.translating}</span>}
                               {ver && <span className="text-[11px] font-mono text-slate-400 dark:text-white/40">v{ver}</span>}
                             </div>
                           </div>
                           {/* 描述 */}
-                          <ExpandableDesc text={mTransReady && mTrans?.description ? mTrans.description : (item.summary || item.description || '')} moreLabel={sk.expandMore} />
+                          <ExpandableDesc text={mTransReady && mTrans?.description ? mTrans.description : rawMarketDesc} moreLabel={sk.expandMore} />
                           {/* Tags */}
                           {item.tags && typeof item.tags === 'object' && Object.keys(item.tags).length > 0 && (
                             <div className="flex flex-wrap gap-1 mb-2">
@@ -1667,8 +1676,8 @@ const Skills: React.FC<SkillsProps> = ({ language }) => {
       {marketDetail && (() => {
         const md = marketDetail;
         const mdSlug = md.slug || '';
-        const mdRawName = md.displayName || md.name || mdSlug;
-        const mdRawDesc = md.description || md.summary || '';
+        const mdRawName = pickLocalizedText(language, { value: md.displayName || md.name || mdSlug });
+        const mdRawDesc = pickLocalizedText(language, { value: md.description || md.summary || '' });
         const mdVer = md.latestVersion?.version || md.tags?.latest || '';
         const mdAuthor = md.author ? (typeof md.author === 'string' ? md.author : md.author?.name) : '';
         const mdStats = md.stats || {};

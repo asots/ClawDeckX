@@ -574,15 +574,12 @@ const handleCopyCLI = useCallback((skill: SkillHubSkill) => {
   });
 }, [toast]);
 
-// Right button action: if CLI installed → show confirm dialog; else → copy CLI command
+// Right button action: only available when SkillHub CLI is installed
 const handleRightButton = useCallback((skill: SkillHubSkill) => {
   if (cliStatus === 'installed') {
     setConfirmSkill(skill);
-  } else {
-    toast('warning', skRef.current.skillHubBannerNotInstalled || 'SkillHub CLI not installed');
-    handleCopyCLI(skill);
   }
-}, [cliStatus, handleCopyCLI, toast]);
+}, [cliStatus]);
 
 const isSkillHubCLIInstalled = cliStatus === 'installed';
 
@@ -782,19 +779,21 @@ const categoryOptions = useMemo(() => {
                     {/* Actions */}
                     <div className="flex items-center gap-1 mt-2 pt-2 border-t border-slate-100 dark:border-white/5">
                       <button onClick={(e) => { e.stopPropagation(); handleCopyPrompt(skill); }}
-                        className={`flex-1 h-7 text-[10px] font-bold rounded-lg transition-colors flex items-center justify-center gap-1 ${isSkillHubCLIInstalled ? 'bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-white/50 hover:bg-slate-200 dark:hover:bg-white/10' : 'bg-primary/15 text-primary hover:bg-primary/25'}`}>
+                        className={`h-7 text-[10px] font-bold rounded-lg transition-colors flex items-center justify-center gap-1 ${isSkillHubCLIInstalled ? 'flex-1 bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-white/50 hover:bg-slate-200 dark:hover:bg-white/10' : 'w-full bg-primary/15 text-primary hover:bg-primary/25'}`}>
                         <span className="material-symbols-outlined text-[12px]">content_copy</span>
                         <span className="truncate">{sk.copyPrompt || '复制提示词'}</span>
                       </button>
-                      <button onClick={(e) => { e.stopPropagation(); handleRightButton(skill); }}
-                        disabled={installingSlug === skill.slug}
-                        className={`h-7 px-3 text-[10px] font-bold rounded-lg transition-colors flex items-center gap-1 shrink-0 ${installingSlug === skill.slug ? 'bg-primary/20 text-primary cursor-wait' : isSkillHubCLIInstalled ? 'bg-primary text-white hover:bg-primary/90' : 'bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-white/60 hover:bg-slate-200 dark:hover:bg-white/10'}`}
-                        title={isSkillHubCLIInstalled ? `${sk.installSkill || 'Install'} ${skill.slug}` : `${sk.copyCLI || 'Copy'}: skillhub install ${skill.slug}`}>
-                        <span className={`material-symbols-outlined text-[12px] ${installingSlug === skill.slug ? 'animate-spin' : ''}`}>
-                          {installingSlug === skill.slug ? 'progress_activity' : (isSkillHubCLIInstalled ? 'download' : 'terminal')}
-                        </span>
-                        <span className="truncate">{isSkillHubCLIInstalled ? (sk.installSkill || '安装') : (sk.copyCLI || '复制命令')}</span>
-                      </button>
+                      {isSkillHubCLIInstalled && (
+                        <button onClick={(e) => { e.stopPropagation(); handleRightButton(skill); }}
+                          disabled={installingSlug === skill.slug}
+                          className={`h-7 px-3 text-[10px] font-bold rounded-lg transition-colors flex items-center gap-1 shrink-0 ${installingSlug === skill.slug ? 'bg-primary/20 text-primary cursor-wait' : 'bg-primary text-white hover:bg-primary/90'}`}
+                          title={`${sk.installSkill || 'Install'} ${skill.slug}`}>
+                          <span className={`material-symbols-outlined text-[12px] ${installingSlug === skill.slug ? 'animate-spin' : ''}`}>
+                            {installingSlug === skill.slug ? 'progress_activity' : 'download'}
+                          </span>
+                          <span className="truncate">{sk.installSkill || '安装'}</span>
+                        </button>
+                      )}
                     </div>
                   </div>
                 );

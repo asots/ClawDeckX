@@ -10,12 +10,23 @@ GATEWAY_LOG="${OCD_GATEWAY_LOG:-$OPENCLAW_DATA_DIR/logs/gateway.log}"
 GATEWAY_PORT="${OCD_OPENCLAW_GATEWAY_PORT:-18789}"
 BOOTSTRAP_DIR="${OPENCLAW_DATA_DIR}/bootstrap"
 BOOTSTRAP_FILE="${BOOTSTRAP_DIR}/gateway-bootstrap.json"
+RUNTIME_DIR="${OCD_RUNTIME_DIR:-/data/runtime}"
 
-mkdir -p "$CLAWDECKX_DATA_DIR" "$OPENCLAW_DATA_DIR" "$OPENCLAW_STATE_DIR" "$OPENCLAW_DATA_DIR/logs" "$NPM_CONFIG_PREFIX" "$BOOTSTRAP_DIR"
+mkdir -p "$CLAWDECKX_DATA_DIR" "$OPENCLAW_DATA_DIR" "$OPENCLAW_STATE_DIR" "$OPENCLAW_DATA_DIR/logs" "$NPM_CONFIG_PREFIX" "$BOOTSTRAP_DIR" \
+         "$RUNTIME_DIR/clawdeckx" "$RUNTIME_DIR/openclaw"
 export NPM_CONFIG_PREFIX
 export PATH="$NPM_CONFIG_PREFIX/bin:$HOME/.local/bin:$HOME/bin:$PATH"
 export OPENCLAW_STATE_DIR
 export OPENCLAW_CONFIG_PATH="$OPENCLAW_CONFIG"
+export OCD_RUNTIME_DIR="$RUNTIME_DIR"
+
+# ── Runtime overlay: write image version stamps on first boot ──
+if [ ! -f /app/.image-version ]; then
+    /app/clawdeckx version 2>/dev/null | head -1 > /app/.image-version || echo "unknown" > /app/.image-version
+fi
+if [ ! -f /opt/openclaw/.image-version ] && command -v openclaw &>/dev/null; then
+    openclaw --version 2>/dev/null | head -1 > /opt/openclaw/.image-version || echo "unknown" > /opt/openclaw/.image-version
+fi
 
 # write_bootstrap writes a JSON bootstrap status file for ClawDeckX to read
 write_bootstrap() {
@@ -226,5 +237,12 @@ else
     write_bootstrap "not_installed" "openclaw command not found in PATH" 0 "" ""
 fi
 
+# ── Runtime overlay: prefer updated binary from persistent volume ──
+CLAWDECKX_BIN="/app/clawdeckx"
+if [ -x "$RUNTIME_DIR/clawdeckx/clawdeckx" ] && [ -f "$RUNTIME_DIR/clawdeckx/manifest.json" ]; then
+    echo "[docker-entrypoint] Using runtime overlay ClawDeckX from $RUNTIME_DIR/clawdeckx/clawdeckx"
+    CLAWDECKX_BIN="$RUNTIME_DIR/clawdeckx/clawdeckx"
+fi
+
 # Start ClawDeckX (exec replaces shell so tini can manage signals)
-exec /app/clawdeckx serve "$@"
+exec "$CLAWDECKX_BIN" serve "$@"

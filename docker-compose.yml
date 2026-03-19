@@ -12,6 +12,9 @@ services:
       # OpenClaw is preinstalled in the image; this volume keeps config and runtime data
       # 持久化 OpenClaw 配置、状态与日志，OpenClaw 已预装在镜像中
       - clawdeckx-openclaw-data:/data/openclaw
+      # Persist runtime overlay binaries (ClawDeckX/OpenClaw updates) across container recreations
+      # 持久化运行时覆盖二进制文件，容器重建后保留更新
+      - clawdeckx-runtime:/data/runtime
     environment:
       OPENCLAW_HOME: /data/openclaw/home
       OPENCLAW_STATE_DIR: /data/openclaw/state
@@ -22,6 +25,7 @@ services:
       OCD_GATEWAY_LOG: /data/openclaw/logs/gateway.log
       OCD_SETUP_INSTALL_LOG: /data/openclaw/logs/install.log
       OCD_SETUP_DOCTOR_LOG: /data/openclaw/logs/doctor.log
+      OCD_RUNTIME_DIR: /data/runtime
       # OpenClaw Gateway connection config (default: local in-container gateway)
       # 如需连接宿主机或外部 Gateway，可覆盖为 host.docker.internal 或实际 IP
       OCD_OPENCLAW_GATEWAY_HOST: 127.0.0.1
@@ -57,3 +61,5 @@ volumes:
     name: clawdeckx-data
   clawdeckx-openclaw-data:
     name: openclaw-data
+  clawdeckx-runtime:
+    name: clawdeckx-runtime

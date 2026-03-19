@@ -47,6 +47,8 @@ const (
 	ActionSettingsUpdate         = "settings.update"
 	ActionAlertRead              = "alert.read"
 	ActionSelfUpdate             = "self.update"
+	ActionRuntimeUpdate          = "runtime.update"
+	ActionRuntimeRollback        = "runtime.rollback"
 	ActionUserCreate             = "user.create"
 	ActionUserDelete             = "user.delete"
 )

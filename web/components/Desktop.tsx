@@ -392,16 +392,19 @@ const Desktop: React.FC<DesktopProps> = ({
   };
 
   const handleLogout = useCallback(async () => {
+    const logoutLabel = (t as any).set?.logout || 'Logout';
+    const logoutConfirm = (t as any).set?.logoutConfirm || 'Log out of the current session? You will need to sign in again with your username and password.';
+    const cancelLabel = (t as any).cancel || 'Cancel';
     const ok = await confirm({
-      title: language === 'zh' ? '退出登录' : 'Logout',
-      message: language === 'zh' ? '确定退出当前会话？退出后需要重新输入用户名和密码登录。' : 'Log out of the current session? You will need to sign in again with your username and password.',
-      confirmText: language === 'zh' ? '退出' : 'Logout',
-      cancelText: language === 'zh' ? '取消' : 'Cancel',
+      title: logoutLabel,
+      message: logoutConfirm,
+      confirmText: logoutLabel,
+      cancelText: cancelLabel,
       danger: true,
     });
     if (!ok) return;
     await onLogout();
-  }, [confirm, language, onLogout]);
+  }, [confirm, onLogout, t]);
 
   const getAppTitle = useCallback((titleKey: string): string => {
     const value = (t as any)[titleKey];
@@ -466,7 +469,7 @@ const Desktop: React.FC<DesktopProps> = ({
           <div className="text-[11px] font-medium min-w-[50px] text-end hidden xs:block">
             {time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}
           </div>
-          <button onClick={handleLogout} className="hover:opacity-60 transition-opacity flex items-center" title={language === 'zh' ? '退出登录' : 'Logout'}>
+          <button onClick={handleLogout} className="hover:opacity-60 transition-opacity flex items-center" title={(t as any).set?.logout || 'Logout'}>
             <span className="material-symbols-outlined text-[15px]">logout</span>
           </button>
         </div>

@@ -312,16 +312,19 @@ const Settings: React.FC<SettingsProps> = ({ language, onLogout, pendingTab, onT
 
   const handleLogout = useCallback(async () => {
     if (!onLogout) return;
+    const logoutLabel = s.logout || 'Logout';
+    const logoutConfirm = s.logoutConfirm || 'Log out of the current session? You will need to sign in again with your username and password.';
+    const cancelLabel = (t as any).cancel || 'Cancel';
     const ok = await confirm({
-      title: language === 'zh' ? '退出登录' : 'Logout',
-      message: language === 'zh' ? '确定退出当前会话？退出后需要重新输入用户名和密码登录。' : 'Log out of the current session? You will need to sign in again with your username and password.',
-      confirmText: language === 'zh' ? '退出' : 'Logout',
-      cancelText: language === 'zh' ? '取消' : 'Cancel',
+      title: logoutLabel,
+      message: logoutConfirm,
+      confirmText: logoutLabel,
+      cancelText: cancelLabel,
       danger: true,
     });
     if (!ok) return;
     await onLogout();
-  }, [confirm, language, onLogout]);
+  }, [confirm, onLogout, s, t]);
 
   const inputCls = "w-full h-9 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-3 text-[13px] text-slate-800 dark:text-white focus:ring-2 focus:ring-primary/30 outline-none transition-all";
   const labelCls = "text-[12px] font-medium text-slate-500 dark:text-white/40";
@@ -530,16 +533,16 @@ const Settings: React.FC<SettingsProps> = ({ language, onLogout, pendingTab, onT
                 <div className={rowCls}>
                   <div className="px-4 py-3 flex items-center justify-between gap-4">
                     <div>
-                      <p className="text-[13px] font-semibold text-slate-700 dark:text-white/80">{language === 'zh' ? '退出登录' : 'Logout'}</p>
+                      <p className="text-[13px] font-semibold text-slate-700 dark:text-white/80">{s.logout || 'Logout'}</p>
                       <p className="text-[11px] text-slate-500 dark:text-white/40 mt-1">
-                        {language === 'zh' ? '结束当前会话，并返回登录页。下次需要重新输入用户名和密码。' : 'End the current session and return to the login screen. You will need to sign in again next time.'}
+                        {s.logoutDesc || 'End the current session and return to the login screen. You will need to sign in again next time.'}
                       </p>
                     </div>
                     <button
                       onClick={handleLogout}
                       className="px-4 py-[7px] rounded-lg text-[13px] font-medium transition-all bg-mac-red text-white hover:opacity-90 shadow-sm shrink-0"
                     >
-                      {language === 'zh' ? '退出' : 'Logout'}
+                      {s.logout || 'Logout'}
                     </button>
                   </div>
                 </div>

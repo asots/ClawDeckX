@@ -90,7 +90,7 @@ COPY --from=openclaw-builder /opt/openclaw /opt/openclaw
 COPY --from=openclaw-builder /usr/local/bin/openclaw /usr/local/bin/openclaw
 COPY --from=backend /clawdeckx ./clawdeckx
 COPY docker-entrypoint.sh /app/docker-entrypoint.sh
-RUN mkdir -p /data/clawdeckx /data/openclaw/npm /data/openclaw/state /data/openclaw/logs /data/openclaw/bootstrap && \
+RUN mkdir -p /data/clawdeckx /data/openclaw/npm /data/openclaw/state /data/openclaw/logs /data/openclaw/bootstrap /data/runtime/clawdeckx /data/runtime/openclaw && \
     chmod +x ./clawdeckx /app/docker-entrypoint.sh && \
     ln -sf /app/clawdeckx /usr/local/bin/clawdeckx
 VOLUME ["/data"]
@@ -105,6 +105,7 @@ ENV OCD_DB_SQLITE_PATH=/data/clawdeckx/ClawDeckX.db \
     OCD_SETUP_INSTALL_LOG=/data/openclaw/logs/install.log \
     OCD_SETUP_DOCTOR_LOG=/data/openclaw/logs/doctor.log \
     PATH=/data/openclaw/npm/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
+    OCD_RUNTIME_DIR=/data/runtime \
     OCD_BIND=0.0.0.0 \
     OCD_PORT=18788 \
     TZ=UTC
