@@ -11,7 +11,7 @@
 
     [Parameter()]
     [Alias("d")]
-    [switch]$NoDocker
+    [switch]$Docker
 )
 
 $ErrorActionPreference = "Continue"
@@ -242,10 +242,10 @@ if (-not $Version) {
     Write-Host "用法: .\scripts\release.ps1 <版本号> [-r] | -Clean" -ForegroundColor Yellow
     Write-Host ""
     Write-Host "示例:"
-    Write-Host "  .\scripts\release.ps1 0.0.5        # 新版本发布（含 Docker）"
-    Write-Host "  .\scripts\release.ps1 0.0.5 -d     # 新版本发布（跳过 Docker）"
+    Write-Host "  .\scripts\release.ps1 0.0.5        # 新版本发布（不含 Docker）"
+    Write-Host "  .\scripts\release.ps1 0.0.5 -d     # 新版本发布（含 Docker）"
     Write-Host "  .\scripts\release.ps1 0.0.4 -r     # 替换已有版本"
-    Write-Host "  .\scripts\release.ps1 0.0.4 -r -d  # 替换版本（跳过 Docker）"
+    Write-Host "  .\scripts\release.ps1 0.0.4 -r -d  # 替换版本（含 Docker）"
     Write-Host "  .\scripts\release.ps1 -Clean       # 删除所有 Release"
     exit 1
 }
@@ -336,9 +336,11 @@ function New-Tag {
     Write-Host "创建标签 $Tag..." -ForegroundColor Yellow
 
     $skipDockerSuffix = ""
-    if ($NoDocker) {
+    if (-not $Docker) {
         $skipDockerSuffix = "`n`n[skip-docker]"
-        Write-Host "标记 [skip-docker]：跳过 Docker 构建" -ForegroundColor Yellow
+        Write-Host "默认跳过 Docker 构建（使用 -d 启用）" -ForegroundColor Yellow
+    } else {
+        Write-Host "将构建并推送 Docker 镜像" -ForegroundColor Cyan
     }
 
     if ($Changelog) {
