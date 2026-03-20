@@ -2,42 +2,41 @@
 
 ### ✨ New Features / 新功能
 
-- add JSON semantic diff with key-path changes summary
-- add unified diff view with color-coded add/remove lines
-- add OpenClaw native backup integration with method selector
-- add Config History tab for OpenClaw .bak file management
-- CLI version detection, upgrade prompts, real-time search
+- smart provider test with API type auto-detection
+- change default startup window from dashboard to none
+- show channel display names in Gateway Monitor channel list
+- show theme input in create dialog and persist via config.patch
+- add model/default/theme to create/edit dialog
+- prefill defaults in create dialog and model dropdown in edit
 
 ### 🐛 Bug Fixes / 修复
 
-- use whole-line grep and trailer-style Docker-Build marker
-- change skip-docker marker to SKIP_DOCKER=true to avoid changelog false match
-- use GitHub API instead of checkout to read tag message in check-docker job
-- suppress GORM record-not-found log for missing settings
+- add toast feedback to Resolve and Compact session actions
+- prevent model switch revert after loadSessions refresh
+- sync wallpaper history selection
+- persist emoji via config.patch identity.emoji instead of agents.update
+- resolve template icon colors in KnowledgeHub, TemplateManager, WorkflowRunner, Market, UsageWizard
+- resolve scenario template icon colors via inline styles
+- resolve template icon colors via inline styles for Tailwind JIT compat
+- use correct config nesting fallback in resolveAgentConfig
+- simplify config.patch to minimal agent entry merge
+- persist model/workspace via config.patch instead of agents.update
+- reload config after create/update to reflect changes
+- prefer explicit config name over identity name in sidebar
+- replace missing Material Symbols icons in multi-agent templates
+- handle nested config structure for models and workspace
+- increase first-start gateway wait time to 60s
 
 ### ⚡ Performance / 性能优化
 
-- optimize ClawHub real-time search with 500ms debounce
+- optimize WS reconnect, streaming, and chat UX
+- optimize GWClient reconnect and WSHub backpressure handling
 
 ### 🎨 UI & Styling / 界面优化
 
-- unify stats order and icons in ClawHub/SkillHub cards and details
-
-### 🌐 Internationalization / 国际化
-
-- add Run Now button locale keys for all 13 languages
-
-### ♻️ Refactoring / 重构
-
-- route ClawHub search and detail via Convex HTTP actions
-
-### 📦 Build & Deploy / 构建部署
-
-- invert Docker flag - default skip, -d enables Docker build
-- add -d alias for -NoDocker shorthand
-- add -NoDocker flag to skip Docker builds via [skip-docker] tag marker
+- collapse session toolbar into overflow menu
 
 ---
-**Full Changelog**: [v0.0.19...v0.0.20](https://github.com/ClawDeckX/ClawDeckX/compare/v0.0.19...v0.0.20)
+**Full Changelog**: [v0.0.20...v0.0.21](https://github.com/ClawDeckX/ClawDeckX/compare/v0.0.20...v0.0.21)
 
 
