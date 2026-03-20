@@ -433,15 +433,18 @@ const Agents: React.FC<AgentsProps> = ({ language }) => {
         workspace: crudWorkspace.trim() || undefined,
         emoji: crudEmoji.trim() || undefined,
       });
-      // Patch config for model/default/theme if specified
-      if (crudModel.trim() || crudDefault || crudTheme.trim()) {
+      // Patch config for model/default/emoji/theme if specified
+      if (crudModel.trim() || crudDefault || crudEmoji.trim() || crudTheme.trim()) {
         try {
           const cfgRaw = await gwApi.configGet() as any;
           const baseHash = cfgRaw?.hash || cfgRaw?.baseHash || '';
           const agentEntry: Record<string, any> = { id: crudName.trim() };
           if (crudModel.trim()) agentEntry.model = crudModel.trim();
           if (crudDefault) agentEntry.default = true;
-          if (crudTheme.trim()) agentEntry.identity = { theme: crudTheme.trim() };
+          const identityPatch: Record<string, any> = {};
+          if (crudEmoji.trim()) identityPatch.emoji = crudEmoji.trim();
+          if (crudTheme.trim()) identityPatch.theme = crudTheme.trim();
+          if (Object.keys(identityPatch).length > 0) agentEntry.identity = identityPatch;
           await gwApi.configPatch(JSON.stringify({ agents: { list: [agentEntry] } }), baseHash);
         } catch { /* best-effort */ }
       }
@@ -465,19 +468,16 @@ const Agents: React.FC<AgentsProps> = ({ language }) => {
       if (crudWorkspace.trim()) agentEntry.workspace = crudWorkspace.trim();
       if (crudModel.trim()) agentEntry.model = crudModel.trim();
       agentEntry.default = crudDefault || undefined;
-      if (crudTheme.trim()) agentEntry.identity = { theme: crudTheme.trim() };
+      // Build identity patch (emoji + theme)
+      const identityPatch: Record<string, any> = {};
+      if (crudEmoji.trim()) identityPatch.emoji = crudEmoji.trim();
+      if (crudTheme.trim()) identityPatch.theme = crudTheme.trim();
+      if (Object.keys(identityPatch).length > 0) agentEntry.identity = identityPatch;
       // Patch config via config.patch (merges agents.list by id)
       const cfgRaw = await gwApi.configGet() as any;
       const baseHash = cfgRaw?.hash || cfgRaw?.baseHash || '';
       const patch = { agents: { list: [agentEntry] } };
       await gwApi.configPatch(JSON.stringify(patch), baseHash);
-      // Update identity (emoji) via agents.update if supported
-      try {
-        await gwApi.proxy('agents.update', {
-          agentId: selectedId,
-          avatar: crudEmoji.trim() || undefined,
-        });
-      } catch { /* best-effort */ }
       setCrudMode(null);
       loadAgents();
       loadConfig();
