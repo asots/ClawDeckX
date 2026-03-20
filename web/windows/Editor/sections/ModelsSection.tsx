@@ -104,6 +104,16 @@ const ZH_PROVIDER_NAMES: Record<string, string> = {
   'amazon-bedrock': 'Amazon Bedrock',
 };
 
+interface ProviderTestResult {
+  status: 'idle' | 'testing' | 'ok' | 'fail' | 'warning';
+  latencyMs?: number;
+  model?: string;
+  apiType?: string;
+  autoDetected?: boolean;
+  message?: string;
+  error?: string;
+}
+
 function resolveProviderDisplayName(params: { language: string; providerId: string; fallbackName: string }): string {
   const lang = params.language.toLowerCase();
   if (!lang.startsWith('zh')) return params.fallbackName;
@@ -454,7 +464,8 @@ export const ModelsSection: React.FC<SectionProps> = ({ config, setField, getFie
   const [autoDiscoverAttemptKey, setAutoDiscoverAttemptKey] = useState('');
   const modelSearchRef = useRef<HTMLDivElement>(null);
   const modelListRef = useRef<HTMLDivElement>(null);
-  const [providerTestStatus, setProviderTestStatus] = useState<Record<string, 'idle' | 'testing' | 'ok' | 'fail' | 'warning'>>({});
+  const [providerTestResults, setProviderTestResults] = useState<Record<string, ProviderTestResult>>({});
+  const [testAllRunning, setTestAllRunning] = useState(false);
   const [addModelDiscovering, setAddModelDiscovering] = useState(false);
   const [addModelDiscovered, setAddModelDiscovered] = useState<{ id: string; name?: string }[]>([]);
   const [addModelSearchOpen, setAddModelSearchOpen] = useState(false);
@@ -611,31 +622,39 @@ export const ModelsSection: React.FC<SectionProps> = ({ config, setField, getFie
   }, [selectedProvider, wizApiKey, wizBaseUrl, wizFinalModel, toast, es]);
 
   const handleTestProvider = useCallback(async (providerName: string, cfg: any) => {
-    setProviderTestStatus(prev => ({ ...prev, [providerName]: 'testing' }));
+    setProviderTestResults(prev => ({ ...prev, [providerName]: { status: 'testing' } }));
     try {
       const models = Array.isArray(cfg.models) ? cfg.models : [];
       const firstModel = models.length > 0 ? (typeof models[0] === 'string' ? models[0] : models[0]?.id) : '';
-      const result = await post<{ status?: string; message?: string }>('/api/v1/setup/test-model', {
+      const result = await post<ProviderTestResult>('/api/v1/setup/test-provider-smart', {
         provider: providerName,
         apiKey: cfg.apiKey || '',
         baseUrl: cfg.baseUrl || '',
         model: firstModel,
         apiType: cfg.api || 'openai-completions',
-      }, { signal: AbortSignal.timeout(25000) });
-      if (result?.status === 'warning') {
-        setProviderTestStatus(prev => ({ ...prev, [providerName]: 'warning' }));
-        toast('warning', result.message || es.connected);
-      } else {
-        setProviderTestStatus(prev => ({ ...prev, [providerName]: 'ok' }));
-        toast('success', es.connected);
-      }
+      }, { signal: AbortSignal.timeout(30000) });
+      const status = result?.status === 'fail' ? 'fail' : result?.status === 'warning' ? 'warning' : 'ok';
+      setProviderTestResults(prev => ({ ...prev, [providerName]: { ...result, status } }));
+      if (status === 'ok') toast('success', result?.autoDetected ? `${es.connected} (${result.apiType})` : es.connected);
+      else if (status === 'warning') toast('warning', result?.message || es.connected);
+      else toast('error', result?.message || es.failed);
     } catch (err: any) {
-      setProviderTestStatus(prev => ({ ...prev, [providerName]: 'fail' }));
       const msg = err?.name === 'TimeoutError' ? 'Connection timeout' : formatFriendlyError(err, es) || es.failed;
+      setProviderTestResults(prev => ({ ...prev, [providerName]: { status: 'fail', message: msg, error: msg } }));
       toast('error', msg);
     }
-    setTimeout(() => setProviderTestStatus(prev => ({ ...prev, [providerName]: 'idle' })), 3000);
   }, [toast, es]);
+
+  const handleTestAll = useCallback(async () => {
+    const providers = getField(['models', 'providers']) as Record<string, any> || {};
+    const entries = Object.entries(providers);
+    if (entries.length === 0) return;
+    setTestAllRunning(true);
+    for (const [name, cfg] of entries) {
+      await handleTestProvider(name, cfg);
+    }
+    setTestAllRunning(false);
+  }, [getField, handleTestProvider]);
 
   const discoverModelsForProvider = useCallback(async (providerName: string) => {
     const cfg = getField(['models', 'providers', providerName]) as any;
@@ -766,13 +785,26 @@ export const ModelsSection: React.FC<SectionProps> = ({ config, setField, getFie
         icon="cloud"
         iconColor="text-blue-500"
         desc={`${providerEntries.length} ${es.providerCount}`}
+        actions={providerEntries.length > 0 ? (
+          <button
+            onClick={handleTestAll}
+            disabled={testAllRunning}
+            className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-medium border border-slate-200 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-white/5 transition-all disabled:opacity-50"
+          >
+            <span className={`material-symbols-outlined text-[13px] ${testAllRunning ? 'animate-spin' : ''}`}>
+              {testAllRunning ? 'progress_activity' : 'network_check'}
+            </span>
+            {es.testAll || 'Test All'}
+          </button>
+        ) : undefined}
       >
         {providerEntries.length === 0 ? (
           <EmptyState message={es.noProviders} icon="cloud_off" />
         ) : (
           providerEntries.map(([name, cfg]: [string, any]) => {
             const models: any[] = cfg.models || [];
-            const testState = providerTestStatus[name] || 'idle';
+            const testResult = providerTestResults[name] || { status: 'idle' as const };
+            const testState = testResult.status;
             return (
               <ConfigCard
                 key={name}
@@ -781,28 +813,44 @@ export const ModelsSection: React.FC<SectionProps> = ({ config, setField, getFie
                 onDelete={() => deleteField(['models', 'providers', name])}
                 defaultOpen={false}
                 actions={
-                  <button
-                    onClick={() => handleTestProvider(name, cfg)}
-                    disabled={testState === 'testing'}
-                    title={es.testConn}
-                    className={`w-7 h-7 flex items-center justify-center rounded-lg transition-colors ${
-                      testState === 'testing' ? 'text-slate-400 cursor-wait' :
-                      testState === 'ok' ? 'text-green-500 hover:text-green-600' :
-                      testState === 'warning' ? 'text-amber-500 hover:text-amber-600' :
-                      testState === 'fail' ? 'text-red-500 hover:text-red-600' :
-                      'text-slate-400 hover:text-primary hover:bg-primary/5'
-                    }`}
-                  >
-                    <span className={`material-symbols-outlined text-[16px] ${
-                      testState === 'testing' ? 'animate-spin' : ''
-                    }`}>
-                      {testState === 'testing' ? 'progress_activity' :
-                       testState === 'ok' ? 'check_circle' :
-                       testState === 'warning' ? 'warning' :
-                       testState === 'fail' ? 'error' :
-                       'play_arrow'}
-                    </span>
-                  </button>
+                  <div className="flex items-center gap-1">
+                    {/* Mini result badge (latency + auto-detect) */}
+                    {testState === 'ok' && testResult.latencyMs != null && (
+                      <span className="flex items-center gap-0.5 text-[9px] font-mono tabular-nums text-green-600 dark:text-green-400 bg-green-500/10 rounded-md px-1.5 py-0.5">
+                        {testResult.latencyMs}ms
+                        {testResult.autoDetected && (
+                          <span className="text-[8px] text-amber-500 font-bold ms-0.5" title={`Auto-detected: ${testResult.apiType}`}>AUTO</span>
+                        )}
+                      </span>
+                    )}
+                    {testState === 'fail' && testResult.message && (
+                      <span className="max-w-[120px] truncate text-[9px] text-red-500 dark:text-red-400" title={testResult.error || testResult.message}>
+                        {testResult.message}
+                      </span>
+                    )}
+                    <button
+                      onClick={() => handleTestProvider(name, cfg)}
+                      disabled={testState === 'testing'}
+                      title={es.testConn}
+                      className={`w-7 h-7 flex items-center justify-center rounded-lg transition-colors ${
+                        testState === 'testing' ? 'text-slate-400 cursor-wait' :
+                        testState === 'ok' ? 'text-green-500 hover:text-green-600' :
+                        testState === 'warning' ? 'text-amber-500 hover:text-amber-600' :
+                        testState === 'fail' ? 'text-red-500 hover:text-red-600' :
+                        'text-slate-400 hover:text-primary hover:bg-primary/5'
+                      }`}
+                    >
+                      <span className={`material-symbols-outlined text-[16px] ${
+                        testState === 'testing' ? 'animate-spin' : ''
+                      }`}>
+                        {testState === 'testing' ? 'progress_activity' :
+                         testState === 'ok' ? 'check_circle' :
+                         testState === 'warning' ? 'warning' :
+                         testState === 'fail' ? 'error' :
+                         'play_arrow'}
+                      </span>
+                    </button>
+                  </div>
                 }
               >
                 {name === 'minimax' && (

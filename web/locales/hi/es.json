@@ -74,6 +74,7 @@
   "connected": "कनेक्टेड",
   "failed": "विफल",
   "testConn": "कनेक्शन परीक्षण",
+  "testAll": "सभी परीक्षण",
   "selectModel": "मॉडल चुनें",
   "customModelId": "कस्टम मॉडल ID",
   "modelSearchPlaceholder": "खोजें या मॉडल ID टाइप करें...",

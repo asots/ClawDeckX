@@ -74,6 +74,7 @@
   "connected": "接続成功",
   "failed": "接続失敗",
   "testConn": "接続テスト",
+  "testAll": "全てテスト",
   "selectModel": "モデルを選択",
   "customModelId": "カスタムモデルID",
   "modelSearchPlaceholder": "モデルIDを検索または入力...",

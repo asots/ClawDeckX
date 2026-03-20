@@ -521,6 +521,7 @@ func RunServe(args []string) int {
 	wizardHandler := handlers.NewWizardHandler()
 	wizardHandler.SetGWClient(gwClient)
 	router.POST("/api/v1/setup/test-model", wizardHandler.TestModel)
+	router.POST("/api/v1/setup/test-provider-smart", wizardHandler.TestProviderSmart)
 	router.POST("/api/v1/setup/discover-models", wizardHandler.DiscoverModels)
 	router.POST("/api/v1/setup/test-channel", wizardHandler.TestChannel)
 	router.POST("/api/v1/config/model-wizard", web.RequireAdmin(wizardHandler.SaveModel))

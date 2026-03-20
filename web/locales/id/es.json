@@ -74,6 +74,7 @@
   "connected": "Terhubung",
   "failed": "Gagal",
   "testConn": "Tes Koneksi",
+  "testAll": "Tes Semua",
   "selectModel": "Pilih Model",
   "customModelId": "ID Model Kustom",
   "modelSearchPlaceholder": "Cari atau ketik ID model...",

@@ -74,6 +74,7 @@
   "connected": "Connecté",
   "failed": "Échoué",
   "testConn": "Tester la connexion",
+  "testAll": "Tout tester",
   "selectModel": "Sélectionner le modèle",
   "customModelId": "ID de modèle personnalisé",
   "modelSearchPlaceholder": "Rechercher ou saisir l'ID du modèle...",

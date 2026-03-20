@@ -74,6 +74,7 @@
   "connected": "متصل",
   "failed": "فاشل",
   "testConn": "اختبار الاتصال",
+  "testAll": "اختبار الكل",
   "selectModel": "اختر النموذج",
   "customModelId": "معرف نموذج مخصص",
   "modelSearchPlaceholder": "ابحث أو اكتب معرف النموذج...",

@@ -74,6 +74,7 @@
   "connected": "连接成功",
   "failed": "连接失败",
   "testConn": "测试连接",
+  "testAll": "全部测试",
   "selectModel": "选择模型",
   "customModelId": "自定义模型 ID",
   "modelSearchPlaceholder": "搜索或输入模型 ID...",

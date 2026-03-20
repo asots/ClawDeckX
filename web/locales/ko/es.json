@@ -74,6 +74,7 @@
   "connected": "연결됨",
   "failed": "실패",
   "testConn": "연결 테스트",
+  "testAll": "전체 테스트",
   "selectModel": "모델 선택",
   "customModelId": "커스텀 모델 ID",
   "modelSearchPlaceholder": "모델 ID 검색 또는 입력...",

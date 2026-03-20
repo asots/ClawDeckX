@@ -162,6 +162,138 @@ func (h *WizardHandler) TestModel(w http.ResponseWriter, r *http.Request) {
 	web.OK(w, r, result)
 }
 
+// SmartTestResult is the detailed result of a smart provider test.
+type SmartTestResult struct {
+	Status       string `json:"status"` // "ok", "warning", "fail"
+	Message      string `json:"message"`
+	LatencyMs    int64  `json:"latencyMs"`
+	Model        string `json:"model"`
+	APIType      string `json:"apiType"`
+	AutoDetected bool   `json:"autoDetected"` // true if apiType was switched from original
+	Error        string `json:"error,omitempty"`
+}
+
+// alternativeAPITypes returns API types to try (in order) when the configured type fails.
+var alternativeAPITypes = []string{
+	"openai-completions",
+	"anthropic-messages",
+	"google-generative-ai",
+}
+
+// TestProviderSmart tests a configured provider with smart API type auto-detection.
+// POST /api/v1/setup/test-provider-smart
+func (h *WizardHandler) TestProviderSmart(w http.ResponseWriter, r *http.Request) {
+	var req TestModelRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		web.FailErr(w, r, web.ErrInvalidBody)
+		return
+	}
+
+	req.Provider = strings.TrimSpace(req.Provider)
+	req.APIKey = strings.TrimSpace(req.APIKey)
+	req.BaseURL = strings.TrimSpace(req.BaseURL)
+	req.Model = strings.TrimSpace(req.Model)
+	req.APIType = strings.TrimSpace(req.APIType)
+
+	if req.Provider == "" {
+		web.FailErr(w, r, web.ErrInvalidParam)
+		return
+	}
+
+	if resolvedFromRef := strings.TrimSpace(h.resolveAPIKeyReference(req.APIKey)); resolvedFromRef != req.APIKey {
+		req.APIKey = resolvedFromRef
+	}
+
+	if req.Provider != "ollama" && isRedactedAPIKey(req.APIKey) {
+		if realKey := h.resolveProviderAPIKeyViaGW(req.Provider); realKey != "" {
+			req.APIKey = strings.TrimSpace(h.resolveAPIKeyReference(realKey))
+		} else if localKey := h.resolveProviderAPIKeyViaLocalConfig(req.Provider); localKey != "" {
+			req.APIKey = localKey
+		} else if fallbackKey := h.resolveProviderAPIKeyViaEnv(req.Provider); fallbackKey != "" {
+			req.APIKey = fallbackKey
+		}
+	}
+
+	if req.Provider != "ollama" && req.APIKey == "" {
+		web.Fail(w, r, "MODEL_NO_API_KEY", "Please enter an API Key and try again.", http.StatusBadRequest)
+		return
+	}
+
+	if req.Model == "" {
+		web.Fail(w, r, "MODEL_NO_MODEL", "Model ID is required", http.StatusBadRequest)
+		return
+	}
+
+	originalAPIType := req.APIType
+	if originalAPIType == "" {
+		originalAPIType = "openai-completions"
+	}
+
+	// Try configured API type first
+	result, err := h.probeModel(req)
+	if err == nil {
+		latency, _ := result["latencyMs"].(int64)
+		web.OK(w, r, SmartTestResult{
+			Status:       "ok",
+			Message:      "Connection test passed",
+			LatencyMs:    latency,
+			Model:        req.Model,
+			APIType:      originalAPIType,
+			AutoDetected: false,
+		})
+		return
+	}
+
+	// If auth failure, don't retry with other types — the key is wrong
+	if pe, ok := err.(*ProbeError); ok {
+		if pe.UpstreamStatus == 401 || pe.UpstreamStatus == 403 {
+			web.OK(w, r, SmartTestResult{
+				Status:  "fail",
+				Message: modelTestFriendlyMessage(pe.UpstreamStatus, req.Model),
+				Model:   req.Model,
+				APIType: originalAPIType,
+				Error:   pe.Msg,
+			})
+			return
+		}
+	}
+
+	// Try alternative API types
+	for _, altType := range alternativeAPITypes {
+		if strings.EqualFold(altType, originalAPIType) {
+			continue
+		}
+		altReq := req
+		altReq.APIType = altType
+		altResult, altErr := h.probeModel(altReq)
+		if altErr == nil {
+			latency, _ := altResult["latencyMs"].(int64)
+			web.OK(w, r, SmartTestResult{
+				Status:       "ok",
+				Message:      fmt.Sprintf("Connected (auto-detected: %s)", altType),
+				LatencyMs:    latency,
+				Model:        req.Model,
+				APIType:      altType,
+				AutoDetected: true,
+			})
+			return
+		}
+	}
+
+	// All attempts failed — return original error
+	errMsg := "Connection test failed"
+	if pe, ok := err.(*ProbeError); ok {
+		errMsg = modelTestFriendlyMessage(pe.UpstreamStatus, req.Model)
+	}
+	web.OK(w, r, SmartTestResult{
+		Status:  "fail",
+		Message: errMsg,
+		Model:   req.Model,
+		APIType: originalAPIType,
+		Error:   err.Error(),
+	})
+}
+
 func modelTestFriendlyMessage(status int, modelID string) string {
 	switch status {
 	case http.StatusUnauthorized, http.StatusForbidden:

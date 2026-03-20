@@ -74,6 +74,7 @@
   "connected": "Подключено",
   "failed": "Ошибка",
   "testConn": "Проверить соединение",
+  "testAll": "Проверить все",
   "selectModel": "Выбрать модель",
   "customModelId": "Пользовательский ID модели",
   "modelSearchPlaceholder": "Поиск или введите ID модели...",
