@@ -103,11 +103,15 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
       if (Array.isArray(data)) {
         list = data;
       } else if (data?.channelAccounts && typeof data.channelAccounts === 'object') {
-        // channels.status RPC returns { channelAccounts: { channelId: [account, ...] } }
+        // channels.status RPC returns { channelAccounts, channelLabels, channelMeta }
+        const labels: Record<string, string> = data.channelLabels || {};
+        const meta: any[] = Array.isArray(data.channelMeta) ? data.channelMeta : [];
         for (const [channelId, accounts] of Object.entries(data.channelAccounts)) {
           if (Array.isArray(accounts)) {
+            const metaEntry = meta.find((m: any) => m.id === channelId);
+            const displayLabel = metaEntry?.label || labels[channelId] || '';
             for (const acc of accounts) {
-              list.push({ ...acc, name: acc.name || acc.label || channelId, channel: channelId });
+              list.push({ ...acc, name: acc.name || acc.label || channelId, channel: channelId, displayLabel: acc.displayLabel || displayLabel });
             }
           }
         }

@@ -96,7 +96,10 @@ const ChannelsPanel: React.FC<ChannelsPanelProps> = ({
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-[13px] font-bold text-slate-700 dark:text-white/80 truncate">{name}</span>
+                      <span className="text-[13px] font-bold text-slate-700 dark:text-white/80 truncate">{ch.displayLabel || name}</span>
+                      {ch.displayLabel && ch.displayLabel !== name && (
+                        <span className="text-[10px] font-mono text-slate-400 dark:text-white/30">{name}</span>
+                      )}
                       {ch.accountId && ch.accountId !== 'default' && (
                         <span className="text-[9px] font-mono text-slate-400 dark:text-white/25 bg-slate-100 dark:bg-white/5 px-1.5 py-0.5 rounded">{ch.accountId}</span>
                       )}
