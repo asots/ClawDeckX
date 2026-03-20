@@ -5,6 +5,7 @@ import { templateSystem, ScenarioTemplate } from '../../services/template-system
 import { useToast } from '../Toast';
 import { FileApplyConfirm, FileApplyRequest } from '../FileApplyConfirm';
 import AgentPickerModal from '../AgentPickerModal';
+import { resolveTemplateColor } from '../../utils/templateColors';
 
 interface ScenarioLibraryProps {
   language: Language;
@@ -291,7 +292,8 @@ const ScenarioLibraryV2: React.FC<ScenarioLibraryProps> = ({ language, defaultAg
               <div className="p-4">
                 <div className="flex items-start gap-3 mb-3">
                   <div
-                    className={`w-12 h-12 rounded-xl bg-gradient-to-br ${scenario.metadata.color || 'from-blue-500 to-cyan-500'} flex items-center justify-center shrink-0`}
+                    className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
+                    style={resolveTemplateColor(scenario.metadata.color)}
                   >
                     <span className="material-symbols-outlined text-white text-[24px]">{scenario.metadata.icon || 'auto_awesome'}</span>
                   </div>
@@ -404,7 +406,7 @@ const ScenarioLibraryV2: React.FC<ScenarioLibraryProps> = ({ language, defaultAg
             {/* Modal Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-white/[0.06] shrink-0">
               <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${previewScenario.metadata.color || 'from-blue-500 to-cyan-500'} flex items-center justify-center`}>
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={resolveTemplateColor(previewScenario.metadata.color)}>
                   <span className="material-symbols-outlined text-white text-[20px]">{previewScenario.metadata.icon || 'auto_awesome'}</span>
                 </div>
                 <div>
