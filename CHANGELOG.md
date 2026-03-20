@@ -15,6 +15,7 @@ _2026-03-20_
 
 ### 🐛 Bug Fixes / 修复
 
+- sync arm64 docker smoke test and fix Dockerfile.prebuilt drift
 - add toast feedback to Resolve and Compact session actions
 - prevent model switch revert after loadSessions refresh
 - sync wallpaper history selection
@@ -345,6 +346,7 @@ _2026-03-15_
 
 
 ---
+
 
 
 
