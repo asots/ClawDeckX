@@ -57,6 +57,8 @@ interface ChatMsg {
   model?: string;
   provider?: string;
   stopReason?: string;
+  sendFailed?: boolean;
+  sendError?: string;
 }
 
 type ChatRunPhase = 'idle' | 'sending' | 'waiting' | 'streaming' | 'running' | 'error';
@@ -114,8 +116,10 @@ function appendMessageDedup(
   const text = extractText(next.content);
   const ts = next.timestamp || 0;
   // Ref-based guard: prevent React 18 batching from allowing duplicates
-  // when two setMessages updaters run against the same base state
-  const fingerprint = `${next.role}:${text}`;
+  // when two setMessages updaters run against the same base state.
+  // Include 10s time bucket so identical text at different times isn't falsely deduped.
+  const tsBucket = ts ? Math.floor(ts / 10000) : 0;
+  const fingerprint = `${next.role}:${tsBucket}:${text}`;
   if (recentRef?.current.has(fingerprint)) return prev;
   const duplicated = prev.some((m) => {
     if (m.role !== next.role) return false;
@@ -127,7 +131,12 @@ function appendMessageDedup(
   // Mark as recently added; clear after a short delay
   if (recentRef) {
     recentRef.current.add(fingerprint);
-    setTimeout(() => recentRef.current.delete(fingerprint), 2000);
+    setTimeout(() => recentRef.current.delete(fingerprint), 5000);
+    // Cap set size to prevent unbounded growth in long sessions
+    if (recentRef.current.size > 200) {
+      const first = recentRef.current.values().next().value;
+      if (first) recentRef.current.delete(first);
+    }
   }
   return [...prev, next];
 }
@@ -294,6 +303,8 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
   const pendingRunRef = useRef<{ runId: string; beforeCount: number; startedAt: number } | null>(null);
   const finalizedAtRef = useRef<number>(0);
+  // Track finalized run IDs to reject late-arriving deltas from completed runs
+  const finalizedRunsRef = useRef<Set<string>>(new Set());
   // Dedup guard: track recently added message fingerprints to prevent React batching duplicates
   const recentAddedRef = useRef<Set<string>>(new Set());
   const historyRequestSeqRef = useRef(0);
@@ -320,6 +331,8 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
   // Stream throttle ref
   const streamTextRef = useRef('');
   const streamRafRef = useRef<number | null>(null);
+  // Track last delta arrival time for idle timeout detection
+  const lastDeltaAtRef = useRef<number>(0);
   // Latency tracking
   const [lastLatencyMs, setLastLatencyMs] = useState<number | null>(null);
   const [liveElapsed, setLiveElapsed] = useState<number>(0);
@@ -488,8 +501,14 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
       };
     }
     if (runPhase === 'waiting') {
+      let text = waitingPhrase || c.runWaiting || 'Waiting';
+      if (liveElapsed > 30000) {
+        text += ' — ' + (c.stillWorking || 'still working…');
+      } else if (liveElapsed > 10000) {
+        text += ' — ' + (c.modelWarmingUp || 'model warming up…');
+      }
       return {
-        text: waitingPhrase || c.runWaiting || 'Waiting',
+        text,
         dot: 'bg-amber-400 animate-pulse',
         textClass: 'text-amber-500',
       };
@@ -520,7 +539,7 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
       dot: 'bg-mac-green',
       textClass: 'text-mac-green',
     };
-  }, [runPhase, waitingPhrase, c.runSending, c.runWaiting, c.runStreaming, c.runRunning, c.runError, c.runIdle]);
+  }, [runPhase, waitingPhrase, liveElapsed, c.runSending, c.runWaiting, c.runStreaming, c.runRunning, c.runError, c.runIdle]);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -555,6 +574,13 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
 
     const unsubscribe = subscribeManagerWS((msg: any) => {
       try {
+        if (msg.type === '_reconnected') {
+          // WS reconnected after disconnect — full state sync
+          loadHistoryRef.current?.({ silent: true });
+          loadSessionsRef.current?.({ silent: true });
+          gwRefreshRef.current?.();
+          return;
+        }
         if (msg.type === 'chat') {
           handleChatEventRef.current(msg.data);
         } else if (msg.type === 'agent') {
@@ -589,6 +615,21 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
       } else if (status === 'closed') {
         setWsConnected(false);
         wasWsDisconnectedRef.current = true;
+        // Preserve partial stream text on disconnect so content isn't lost
+        const partial = streamTextRef.current;
+        if (partial) {
+          setMessages(msgs => appendMessageDedup(msgs, {
+            role: 'assistant',
+            content: [{ type: 'text', text: partial + '\n\n*(partial — connection lost)*' }],
+            timestamp: Date.now(),
+          }, recentAddedRef));
+          if (streamRafRef.current !== null) { clearTimeout(streamRafRef.current); streamRafRef.current = null; }
+          streamTextRef.current = '';
+          setStream(null);
+          setRunId(null);
+          setRunPhase('idle');
+          pendingRunRef.current = null;
+        }
       }
     });
 
@@ -627,7 +668,7 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
         }, recentAddedRef));
         if ((msg.role || 'assistant') === 'assistant') {
           setRunId(null);
-          if (streamRafRef.current !== null) { cancelAnimationFrame(streamRafRef.current); streamRafRef.current = null; }
+          if (streamRafRef.current !== null) { clearTimeout(streamRafRef.current); streamRafRef.current = null; }
           streamTextRef.current = '';
           setStream(null);
           setRunPhase('idle');
@@ -638,11 +679,32 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
       return;
     }
 
+    // Strict run tracking: reject events for already-finalized runs
+    const eventRunId = payload.runId as string | undefined;
+    if (eventRunId && finalizedRunsRef.current.has(eventRunId)) {
+      return;
+    }
+
+    const markFinalized = (rid?: string) => {
+      if (!rid) return;
+      finalizedRunsRef.current.add(rid);
+      // Cap at 100 entries to prevent unbounded growth
+      if (finalizedRunsRef.current.size > 100) {
+        const first = finalizedRunsRef.current.values().next().value;
+        if (first) finalizedRunsRef.current.delete(first);
+      }
+    };
+
     if (payload.state === 'delta') {
+      // Reject delta if it's for a different run than the current pending one
+      if (eventRunId && pendingRunRef.current && eventRunId !== pendingRunRef.current.runId) {
+        return;
+      }
       // Gateway sends: message: { role, content: [{ type: 'text', text }], timestamp }
       const msg = payload.message as any;
       const text = extractText(msg?.content ?? msg);
       if (typeof text === 'string' && text.trim().length > 0) {
+        lastDeltaAtRef.current = Date.now();
         throttledSetStream(text);
         setRunPhase('streaming');
       }
@@ -664,8 +726,9 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
           }, recentAddedRef));
         }
       }
+      markFinalized(eventRunId);
       finalizedAtRef.current = Date.now();
-      if (streamRafRef.current !== null) { cancelAnimationFrame(streamRafRef.current); streamRafRef.current = null; }
+      if (streamRafRef.current !== null) { clearTimeout(streamRafRef.current); streamRafRef.current = null; }
       streamTextRef.current = '';
       setStream(null);
       setRunId(null);
@@ -674,6 +737,8 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
       setLiveToolCalls(new Map());
       if (pendingRunRef.current?.startedAt) setLastLatencyMs(Date.now() - pendingRunRef.current.startedAt);
       pendingRunRef.current = null;
+      // Delayed history refresh: gateway may take a moment to persist the final message
+      setTimeout(() => loadHistoryRef.current?.({ silent: true }), 2000);
     } else if (payload.state === 'aborted') {
       // If there was partial stream text, keep it as a message
       const partialText = streamTextRef.current;
@@ -684,7 +749,8 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
           timestamp: Date.now(),
         }, recentAddedRef));
       }
-      if (streamRafRef.current !== null) { cancelAnimationFrame(streamRafRef.current); streamRafRef.current = null; }
+      markFinalized(eventRunId);
+      if (streamRafRef.current !== null) { clearTimeout(streamRafRef.current); streamRafRef.current = null; }
       streamTextRef.current = '';
       setStream(null);
       setRunId(null);
@@ -693,7 +759,8 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
       setLiveToolCalls(new Map());
       pendingRunRef.current = null;
     } else if (payload.state === 'error') {
-      if (streamRafRef.current !== null) { cancelAnimationFrame(streamRafRef.current); streamRafRef.current = null; }
+      markFinalized(eventRunId);
+      if (streamRafRef.current !== null) { clearTimeout(streamRafRef.current); streamRafRef.current = null; }
       streamTextRef.current = '';
       setStream(null);
       setRunId(null);
@@ -831,9 +898,21 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
         if (areSessionsEquivalent(prev, mapped)) {
           return prev;
         }
+        // Incremental merge: reuse previous objects by key when unchanged to preserve React identity
+        const prevMap = new Map(prev.map(s => [s.key, s]));
+        let changed = prev.length !== mapped.length;
+        const merged = mapped.map((next: GwSession) => {
+          const existing = prevMap.get(next.key);
+          if (existing && areSessionsEquivalent([existing], [next])) {
+            return existing; // preserve identity
+          }
+          changed = true;
+          return next;
+        });
+        if (!changed) return prev;
         // Persist to sessionStorage for instant display on next window open
-        try { sessionStorage.setItem('clawdeck-sessions-cache', JSON.stringify(mapped)); } catch { /* ignore */ }
-        return mapped;
+        try { sessionStorage.setItem('clawdeck-sessions-cache', JSON.stringify(merged)); } catch { /* ignore */ }
+        return merged;
       });
     } catch { /* ignore */ }
     finally {
@@ -858,6 +937,11 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
     try {
       const res = await gwApi.proxy('chat.history', { sessionKey: targetSessionKey, limit: 200 }) as any;
       if (historyRequestSeqRef.current !== requestSeq || sessionKeyRef.current !== targetSessionKey) {
+        return;
+      }
+      // Skip replacing messages while actively streaming — the stream/final events
+      // are the source of truth during a run; history will sync after finalization.
+      if (opts?.silent && pendingRunRef.current && streamTextRef.current) {
         return;
       }
       const msgs = Array.isArray(res?.messages) ? res.messages : [];
@@ -924,6 +1008,14 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionKey]);
 
+  // Refs to latest callbacks for use inside stable-dependency useEffects (e.g. WS subscription)
+  const loadHistoryRef = useRef(loadHistory);
+  loadHistoryRef.current = loadHistory;
+  const loadSessionsRef = useRef(loadSessions);
+  loadSessionsRef.current = loadSessions;
+  const gwRefreshRef = useRef(gwRefresh);
+  gwRefreshRef.current = gwRefresh;
+
   // On ready: load history first (user-visible), then sessions list (sidebar has cache).
   useEffect(() => {
     if (!gwReady) return;
@@ -974,7 +1066,18 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
   }, [gwReady]);
 
   // Load chat history only when selected session changes.
+  // Also reset all streaming state to prevent stale run data from the previous session.
   useEffect(() => {
+    // Clean up streaming state from the previous session
+    if (streamRafRef.current !== null) { clearTimeout(streamRafRef.current); streamRafRef.current = null; }
+    streamTextRef.current = '';
+    setStream(null);
+    setRunId(null);
+    setRunPhase('idle');
+    setError(null);
+    setLiveToolCalls(new Map());
+    pendingRunRef.current = null;
+
     if (gwReady && hasStartedInitialDetectingRef.current) {
       loadHistory();
     }
@@ -997,14 +1100,14 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
         const hasAssistantAfterUser = lastUserIdx >= 0 && lastIdx > lastUserIdx && latest?.role === 'assistant';
         if (hasAssistantAfterUser) {
           setRunId(null);
-          if (streamRafRef.current !== null) { cancelAnimationFrame(streamRafRef.current); streamRafRef.current = null; }
+          if (streamRafRef.current !== null) { clearTimeout(streamRafRef.current); streamRafRef.current = null; }
           streamTextRef.current = '';
           setStream(null);
           setRunPhase('idle');
           pendingRunRef.current = null;
         } else if (Date.now() - pending.startedAt > 90000) {
           setRunId(null);
-          if (streamRafRef.current !== null) { cancelAnimationFrame(streamRafRef.current); streamRafRef.current = null; }
+          if (streamRafRef.current !== null) { clearTimeout(streamRafRef.current); streamRafRef.current = null; }
           streamTextRef.current = '';
           setStream(null);
           setRunPhase('error');
@@ -1024,7 +1127,7 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
     if (stream !== '' || runPhase !== 'streaming') return;
     const timer = setTimeout(() => {
       if (streamTextRef.current === '' || streamTextRef.current == null) {
-        if (streamRafRef.current !== null) { cancelAnimationFrame(streamRafRef.current); streamRafRef.current = null; }
+        if (streamRafRef.current !== null) { clearTimeout(streamRafRef.current); streamRafRef.current = null; }
         streamTextRef.current = '';
         setStream(null);
         setRunPhase('idle');
@@ -1035,9 +1138,34 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
     return () => clearTimeout(timer);
   }, [stream, runPhase]);
 
-  // Auto-scroll + scroll-to-bottom detection
+  // Delta idle timeout: if actively streaming but no new delta for 60s, recover via history reload.
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: isStreaming ? 'auto' : 'smooth' });
+    if (runPhase !== 'streaming') return;
+    const timer = setInterval(() => {
+      if (lastDeltaAtRef.current && Date.now() - lastDeltaAtRef.current > 60000) {
+        console.warn('[sessions] delta idle timeout (60s), recovering via history reload');
+        if (streamRafRef.current !== null) { clearTimeout(streamRafRef.current); streamRafRef.current = null; }
+        streamTextRef.current = '';
+        lastDeltaAtRef.current = 0;
+        setStream(null);
+        setRunId(null);
+        setRunPhase('idle');
+        pendingRunRef.current = null;
+        loadHistoryRef.current?.({ silent: true });
+      }
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [runPhase]);
+
+  // Track whether the user is near the bottom of the chat (within 300px)
+  const nearBottomRef = useRef(true);
+
+  // Auto-scroll: only scroll to bottom when the user is already near the bottom.
+  // This preserves scroll position when reading older messages during silent reloads.
+  useEffect(() => {
+    if (nearBottomRef.current) {
+      chatEndRef.current?.scrollIntoView({ behavior: isStreaming ? 'auto' : 'smooth' });
+    }
   }, [messages, stream]);
 
   useEffect(() => {
@@ -1045,6 +1173,7 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
     if (!el) return;
     const onScroll = () => {
       const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+      nearBottomRef.current = distFromBottom < 300;
       setShowScrollBtn(distFromBottom > 200);
     };
     el.addEventListener('scroll', onScroll, { passive: true });
@@ -1167,22 +1296,23 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
     return groups.filter(g => g.items.length > 0);
   }, [filteredSessions, c]);
 
-  // Stream throttle: batch rapid setStream updates into 50ms frames
+  // Stream throttle: batch rapid setStream updates into 50ms minimum intervals (max 20 renders/s).
+  // Reduces React re-renders ~3x vs RAF (~16ms) with negligible visual impact.
   const throttledSetStream = useCallback((text: string) => {
     streamTextRef.current = text;
     if (streamRafRef.current === null) {
-      streamRafRef.current = window.requestAnimationFrame(() => {
-        setStream(streamTextRef.current);
+      streamRafRef.current = window.setTimeout(() => {
         streamRafRef.current = null;
-      });
+        setStream(streamTextRef.current);
+      }, 50) as unknown as number;
     }
   }, []);
 
   // Cancel any pending throttled stream update and clear stream state.
-  // Must be called instead of bare setStream(null) to prevent RAF race condition.
+  // Must be called instead of bare setStream(null) to prevent timeout race condition.
   const clearStream = useCallback(() => {
     if (streamRafRef.current !== null) {
-      cancelAnimationFrame(streamRafRef.current);
+      clearTimeout(streamRafRef.current);
       streamRafRef.current = null;
     }
     streamTextRef.current = '';
@@ -1333,8 +1463,19 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
     } catch (err: any) {
       clearStream();
       setRunPhase('error');
-      setError(err?.message || cRef.current.error);
-      setMessages(prev => [...prev, { role: 'assistant', content: [{ type: 'text', text: 'Error: ' + (err?.message || cRef.current.error) }], timestamp: Date.now() }]);
+      const errMsg = err?.message || cRef.current.error;
+      setError(errMsg);
+      // Mark the optimistic user message as failed (instead of appending an error assistant msg)
+      setMessages(prev => {
+        const copy = [...prev];
+        for (let i = copy.length - 1; i >= 0; i--) {
+          if (copy[i].role === 'user') {
+            copy[i] = { ...copy[i], sendFailed: true, sendError: errMsg };
+            break;
+          }
+        }
+        return copy;
+      });
       pendingRunRef.current = null;
       // If gateway connection just flapped, force a status refresh sooner.
       gwRefresh();
@@ -1863,6 +2004,7 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
               {group.items.map(s => (
                 <div key={s.key} className="relative group">
                   <button onClick={() => selectSession(s.key)}
+                    aria-current={sessionKey === s.key ? 'true' : undefined}
                     className={`w-full text-start p-2.5 rounded-xl transition-all border ${sessionKey === s.key
                       ? 'bg-primary/10 border-primary/20 shadow-sm glow-subtle-blue'
                       : 'border-transparent hover:bg-slate-200/50 dark:hover:bg-white/5'
@@ -1940,10 +2082,19 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
         </div>
 
         {/* Connection Status */}
-        <div className="px-3 py-2 border-t border-slate-200 dark:border-white/5 flex items-center gap-2">
-          <div className={`w-1.5 h-1.5 rounded-full ${gwReady ? 'bg-mac-green animate-glow-pulse-green' : wsConnecting ? 'bg-mac-yellow animate-pulse' : 'bg-slate-300 dark:bg-white/20'}`} />
+        <div className="px-3 py-2 border-t border-slate-200 dark:border-white/5 flex items-center gap-2"
+          title={`GW: ${gwReady ? 'ready' : 'not ready'} | WS: ${wsConnected ? 'open' : wsConnecting ? 'connecting' : 'closed'}`}>
+          <div className={`w-1.5 h-1.5 rounded-full ${
+            gwReady && wsConnected ? 'bg-mac-green animate-glow-pulse-green'
+            : gwReady && !wsConnected ? 'bg-amber-400 animate-pulse'
+            : wsConnecting ? 'bg-mac-yellow animate-pulse'
+            : 'bg-slate-300 dark:bg-white/20'
+          }`} />
           <span className="text-[11px] font-medium text-slate-400 dark:text-white/40">
-            {gwReady ? c.connected : wsConnecting ? c.connecting : c.disconnected}
+            {gwReady && wsConnected ? c.connected
+             : gwReady && !wsConnected ? (c.reconnecting || 'Reconnecting…')
+             : wsConnecting ? c.connecting
+             : c.disconnected}
           </span>
         </div>
       </aside>
@@ -2444,12 +2595,26 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
                         </button>
                       )}
                       {/* Resend for user messages */}
-                      {isUser && (
+                      {isUser && !msg.sendFailed && (
                         <button onClick={() => resendMessage(idx)}
                           className="flex items-center gap-0.5 text-[11px] text-white/60 hover:text-white transition-colors">
                           <span className="material-symbols-outlined text-[12px]">replay</span>
                           {c.resend || 'Edit'}
                         </button>
+                      )}
+                      {/* Send failed indicator + retry */}
+                      {isUser && msg.sendFailed && (
+                        <div className="flex items-center gap-2">
+                          <span className="flex items-center gap-0.5 text-[11px] text-red-400">
+                            <span className="material-symbols-outlined text-[12px]">error</span>
+                            {msg.sendError || c.error || 'Failed'}
+                          </span>
+                          <button onClick={() => resendMessage(idx)}
+                            className="flex items-center gap-0.5 text-[11px] text-amber-400 hover:text-amber-300 transition-colors">
+                            <span className="material-symbols-outlined text-[12px]">refresh</span>
+                            {c.retry || 'Retry'}
+                          </button>
+                        </div>
                       )}
                       {/* Rich metadata badges for assistant messages */}
                       {!isUser && !isSystem && !isTool && (
@@ -2640,7 +2805,7 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
 
         {/* Message context menu */}
         {ctxMenu && (
-          <div className="fixed inset-0 z-50" onClick={() => setCtxMenu(null)} onContextMenu={e => { e.preventDefault(); setCtxMenu(null); }}>
+          <div className="fixed inset-0 z-50" onClick={() => setCtxMenu(null)} onContextMenu={e => { e.preventDefault(); setCtxMenu(null); }} onKeyDown={e => { if (e.key === 'Escape') setCtxMenu(null); }} tabIndex={-1} role="dialog" aria-modal="true">
             <div className="absolute rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#1a1c20] shadow-2xl shadow-black/15 dark:shadow-black/40 py-1 min-w-[140px] animate-in fade-in zoom-in-95 duration-100"
               style={{ top: Math.min(ctxMenu.y, window.innerHeight - 180), left: Math.min(ctxMenu.x, window.innerWidth - 160) }}>
               <button onClick={() => { navigator.clipboard.writeText(ctxMenu.text); setCtxMenu(null); }}
