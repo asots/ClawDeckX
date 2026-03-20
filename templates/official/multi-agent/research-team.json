@@ -7,7 +7,7 @@
     "description": "Collaborative research team with lead researcher, analysts, and critics",
     "category": "research",
     "difficulty": "hard",
-    "icon": "biotech",
+    "icon": "school",
     "color": "from-cyan-500 to-blue-500",
     "tags": ["research", "analysis", "team", "academic"],
     "author": "ClawDeckX Team"
@@ -22,7 +22,7 @@
         "id": "lead-researcher",
         "name": "Lead Researcher",
         "role": "Direct research and synthesize findings",
-        "icon": "science",
+        "icon": "explore",
         "color": "bg-blue-500",
         "soulSnippet": "## Lead Researcher\n\n_You are the research director, orchestrating the team's efforts._\n\n### Responsibilities\n- Define research questions and scope\n- Coordinate team members\n- Synthesize findings into conclusions\n- Ensure research quality and rigor\n\n### Research Process\n1. Frame the question clearly\n2. Assign tasks to specialists\n3. Review and integrate findings\n4. Draw evidence-based conclusions\n\n### Output\nDeliver structured research reports with clear methodology, findings, and recommendations."
       },

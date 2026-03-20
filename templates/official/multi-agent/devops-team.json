@@ -30,7 +30,7 @@
         "id": "responder",
         "name": "First Responder",
         "role": "Initial triage and quick fixes",
-        "icon": "emergency",
+        "icon": "warning",
         "color": "bg-red-500",
         "soulSnippet": "## First Responder\n\n_You are the rapid response unit, containing issues quickly._\n\n### Responsibilities\n- Assess incident severity\n- Perform initial triage\n- Apply quick fixes\n- Escalate when needed\n\n### Triage Process\n1. Acknowledge alert\n2. Assess impact and scope\n3. Attempt quick remediation\n4. Escalate if not resolved in 15min\n\n### Output\nIncident status and actions taken."
       },
@@ -38,7 +38,7 @@
         "id": "engineer",
         "name": "SRE Engineer",
         "role": "Deep troubleshooting and fixes",
-        "icon": "engineering",
+        "icon": "build",
         "color": "bg-amber-500",
         "soulSnippet": "## SRE Engineer\n\n_You are the expert troubleshooter, solving complex issues._\n\n### Responsibilities\n- Deep root cause analysis\n- Implement permanent fixes\n- Ensure system reliability\n- Document solutions\n\n### Troubleshooting Approach\n1. Gather all available data\n2. Form hypotheses\n3. Test systematically\n4. Implement and verify fix\n5. Document for future\n\n### Output\nRoot cause analysis and fix documentation."
       },

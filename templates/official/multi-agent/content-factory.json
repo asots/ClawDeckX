@@ -7,7 +7,7 @@
     "description": "End-to-end content production pipeline with research, writing, editing, and publishing",
     "category": "content",
     "difficulty": "hard",
-    "icon": "factory",
+    "icon": "hub",
     "color": "from-purple-500 to-pink-500",
     "tags": ["content", "writing", "workflow", "team"],
     "author": "ClawDeckX Team"
@@ -38,7 +38,7 @@
         "id": "editor",
         "name": "Editor",
         "role": "Review and optimize content",
-        "icon": "rate_review",
+        "icon": "edit_note",
         "color": "bg-amber-500",
         "soulSnippet": "You are a meticulous editor. Review content for grammar, style, clarity, and accuracy. Ensure consistency and polish the final output."
       },
@@ -46,7 +46,7 @@
         "id": "publisher",
         "name": "Publisher",
         "role": "Format and distribute",
-        "icon": "publish",
+        "icon": "upload",
         "color": "bg-purple-500",
         "soulSnippet": "You are a publishing specialist. Format content for different platforms, optimize for SEO, and manage distribution schedules."
       }

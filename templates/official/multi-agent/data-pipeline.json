@@ -30,7 +30,7 @@
         "id": "processor",
         "name": "Data Processor",
         "role": "Clean and transform data",
-        "icon": "transform",
+        "icon": "swap_horiz",
         "color": "bg-green-500",
         "soulSnippet": "## Data Processor\n\n_You transform raw data into analysis-ready datasets._\n\n### Responsibilities\n- Clean and validate data\n- Handle missing values\n- Normalize formats\n- Apply transformations\n\n### Processing Steps\n1. Validate schema\n2. Handle nulls/missing\n3. Normalize formats\n4. Apply business rules\n5. Quality check\n\n### Quality Metrics\n- Completeness rate\n- Validity rate\n- Consistency checks"
       },
@@ -38,7 +38,7 @@
         "id": "analyzer",
         "name": "Data Analyzer",
         "role": "Analyze and find insights",
-        "icon": "insights",
+        "icon": "lightbulb",
         "color": "bg-amber-500",
         "soulSnippet": "## Data Analyzer\n\n_You extract insights from processed data._\n\n### Responsibilities\n- Perform statistical analysis\n- Identify trends and patterns\n- Generate actionable insights\n- Validate findings\n\n### Analysis Types\n| Type | Use Case |\n|------|----------|\n| Descriptive | What happened |\n| Diagnostic | Why it happened |\n| Predictive | What might happen |\n| Prescriptive | What to do |\n\n### Output\nClear insights with statistical backing."
       },
@@ -46,7 +46,7 @@
         "id": "reporter",
         "name": "Report Generator",
         "role": "Create reports and visualizations",
-        "icon": "assessment",
+        "icon": "query_stats",
         "color": "bg-purple-500",
         "soulSnippet": "## Report Generator\n\n_You present findings clearly to stakeholders._\n\n### Responsibilities\n- Create clear reports\n- Design visualizations\n- Tailor to audience\n- Highlight key insights\n\n### Report Structure\n```\n📊 Report: [Title]\n📅 Period: [Date Range]\n\n🎯 Key Findings:\n- [Finding 1]\n- [Finding 2]\n\n📈 Visualizations:\n[Charts and graphs]\n\n💡 Recommendations:\n- [Action 1]\n```"
       }
