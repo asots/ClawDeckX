@@ -88,7 +88,7 @@ const DEFAULT_WALLPAPER: WallpaperConfig = {
 const DEFAULT_PREFS: Preferences = {
   windowControlsPosition: 'left',
   wallpaper: { ...DEFAULT_WALLPAPER, categories: { ...DEFAULT_WALLPAPER.categories } },
-  startupWindow: 'dashboard',
+  startupWindow: 'none',
 };
 
 export function loadPreferences(): Preferences {
