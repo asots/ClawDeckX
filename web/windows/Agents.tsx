@@ -184,7 +184,7 @@ const Agents: React.FC<AgentsProps> = ({ language }) => {
   // Build model options from gateway config for the edit agent dropdown
   const modelOptions = useMemo(() => {
     const opts: { value: string; label: string }[] = [];
-    const providers = config?.models?.providers || {};
+    const providers = config?.models?.providers || config?.parsed?.models?.providers || config?.config?.models?.providers || {};
     for (const [pName, pCfg] of Object.entries(providers) as [string, any][]) {
       const models = Array.isArray(pCfg?.models) ? pCfg.models : [];
       for (const m of models) {
@@ -373,8 +373,9 @@ const Agents: React.FC<AgentsProps> = ({ language }) => {
     // Derive workspace base path from existing agents
     let wsBase = '';
     if (config) {
-      const list = config?.agents?.list || [];
-      const defaults = config?.agents?.defaults;
+      const cfg0 = config?.agents || config?.parsed?.agents || config?.config?.agents || {};
+      const list = cfg0?.list || [];
+      const defaults = cfg0?.defaults;
       const refEntry = list.find((e: any) => e?.workspace) || defaults;
       const refWs = refEntry?.workspace || '';
       if (refWs) {
@@ -397,9 +398,10 @@ const Agents: React.FC<AgentsProps> = ({ language }) => {
     setCrudMode('edit');
     const cfg = resolveAgentConfig(selected.id);
     // For workspace, use the raw config value (not the i18n display label)
-    const list = config?.agents?.list || [];
+    const cfg0 = config?.agents || config?.parsed?.agents || config?.config?.agents || {};
+    const list = cfg0?.list || [];
     const entry = list.find((e: any) => e?.id === selected.id);
-    const rawWorkspace = entry?.workspace || config?.agents?.defaults?.workspace || '';
+    const rawWorkspace = entry?.workspace || cfg0?.defaults?.workspace || '';
     setCrudName(resolveLabel(selected));
     setCrudWorkspace(rawWorkspace);
     setCrudModel(cfg.model.replace(/ \(\+\d+\)$/, ''));
@@ -1293,8 +1295,9 @@ const Agents: React.FC<AgentsProps> = ({ language }) => {
                     const newName = e.target.value;
                     setCrudName(newName);
                     if (crudMode === 'create' && config) {
-                      const list = config?.agents?.list || [];
-                      const defaults = config?.agents?.defaults;
+                      const cfg0 = config?.agents || config?.parsed?.agents || config?.config?.agents || {};
+                      const list = cfg0?.list || [];
+                      const defaults = cfg0?.defaults;
                       const refEntry = list.find((en: any) => en?.workspace) || defaults;
                       const refWs = refEntry?.workspace || '';
                       if (refWs) {
