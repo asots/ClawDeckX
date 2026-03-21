@@ -1222,11 +1222,13 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
 
   // Auto-scroll: only scroll to bottom when the user is already near the bottom.
   // This preserves scroll position when reading older messages during silent reloads.
+  // Depends on messages, stream, liveToolCalls and runPhase so that intermediate
+  // execution states (tool calls, phase transitions) also trigger auto-scroll.
   useEffect(() => {
     if (nearBottomRef.current) {
       chatEndRef.current?.scrollIntoView({ behavior: isStreaming ? 'auto' : 'smooth' });
     }
-  }, [messages, stream]);
+  }, [messages, stream, liveToolCalls, runPhase]);
 
   useEffect(() => {
     const el = scrollContainerRef.current;

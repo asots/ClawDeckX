@@ -11,9 +11,10 @@ interface MarkdownRendererProps {
   labels?: { copyCode?: string };
 }
 
-const CodeBlock: React.FC<{ lang: string; code: string; copyLabel?: string }> = ({ lang, code, copyLabel }) => {
+const CodeBlock: React.FC<{ lang?: string; code: string; copyLabel?: string }> = ({ lang, code, copyLabel }) => {
   const [copied, setCopied] = useState(false);
-  const handleCopy = () => {
+  const handleCopy = (e: React.MouseEvent) => {
+    e.stopPropagation();
     navigator.clipboard.writeText(code).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
@@ -21,7 +22,7 @@ const CodeBlock: React.FC<{ lang: string; code: string; copyLabel?: string }> = 
   };
 
   return (
-    <div className="relative group/code my-2 sci-card rounded-xl">
+    <div className="relative group/code my-2 sci-card rounded-xl overflow-hidden">
       {lang && (
         <div className="absolute top-1.5 start-2 z-10">
           <span className="text-[8px] font-bold uppercase tracking-wider text-white/25 dark:text-[var(--color-neon-cyan)]/50 select-none">{lang}</span>
@@ -30,12 +31,12 @@ const CodeBlock: React.FC<{ lang: string; code: string; copyLabel?: string }> = 
       <div className="absolute top-1.5 end-1.5 opacity-0 group-hover/code:opacity-100 transition z-10">
         <button
           onClick={handleCopy}
-          className="text-[9px] px-1.5 py-0.5 rounded bg-white/10 hover:bg-white/20 text-white/60 transition sci-badge"
+          className="text-[9px] px-1.5 py-0.5 rounded bg-white/10 hover:bg-white/20 text-white/60 transition sci-badge cursor-pointer select-none"
         >
           {copied ? '✓' : (copyLabel || 'Copy')}
         </button>
       </div>
-      <pre className="bg-slate-900 dark:bg-black/30 rounded-xl p-3 text-[10px] font-mono text-slate-100 overflow-auto">
+      <pre className="bg-slate-900 dark:bg-black/30 rounded-xl p-3 text-[10px] font-mono text-slate-100 overflow-auto max-h-[60vh]">
         <code>{code}</code>
       </pre>
     </div>
@@ -71,22 +72,15 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, str
         <ReactMarkdown
           remarkPlugins={[remarkGfm]}
           components={{
-            code({ className: cn, children, ...props }) {
+            code({ className: cn, children }) {
               const lang = /language-(\w+)/.exec(cn || '')?.[1];
               const codeStr = String(children).replace(/\n$/, '');
               const isInline = !cn && !codeStr.includes('\n');
-              if (!isInline && lang) {
+              if (!isInline) {
                 return <CodeBlock lang={lang} code={codeStr} copyLabel={labels?.copyCode} />;
               }
-              if (!isInline) {
-                return (
-                  <pre className="bg-slate-100 dark:bg-white/[0.06] rounded-xl p-3 my-2 text-[10px] font-mono overflow-auto">
-                    <code {...props}>{children}</code>
-                  </pre>
-                );
-              }
               return (
-                <code className="px-1 py-0.5 rounded bg-slate-100 dark:bg-white/10 dark:text-[var(--color-neon-cyan)]/80 text-[10px] font-mono" {...props}>
+                <code className="px-1 py-0.5 rounded bg-slate-100 dark:bg-white/10 dark:text-[var(--color-neon-cyan)]/80 text-[10px] font-mono">
                   {children}
                 </code>
               );
