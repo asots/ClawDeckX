@@ -634,7 +634,7 @@ docker_install() {
     echo -e "${YELLOW}🔐 First-time login / 首次登录：${NC}"
     echo -e "  View initial admin credentials in container logs:"
     echo -e "  查看容器日志中的初始管理员账户信息："
-    echo -e "  ${GREEN}$COMPOSE_CMD logs | grep -A2 'Password'${NC}"
+    echo -e "  ${GREEN}$COMPOSE_CMD logs --tail 50${NC}"
     echo ""
     echo -e "${YELLOW}Docker management commands / Docker 管理命令：${NC}"
     echo -e "  ${GREEN}$COMPOSE_CMD ps${NC}              - Status / 状态"
