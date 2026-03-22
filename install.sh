@@ -494,7 +494,6 @@ install_docker() {
         fi
     fi
 
-    echo -e "${GREEN}✓ Docker is ready / Docker 已就绪${NC}"
     return 0
 }
 
@@ -1588,8 +1587,8 @@ fi
 # Offer installation mode choice (Binary vs Docker) unless inside a container
 if ! is_inside_docker; then
     echo -e "${YELLOW}Choose installation mode / 选择安装模式：${NC}"
-    echo "  1) Binary - Direct binary install / 直接安装二进制文件"
-    echo "  2) Docker - Run in Docker container / 在 Docker 容器中运行"
+    echo "  1) Binary - Install ClawDeckX only on this machine / 仅在本机安装 ClawDeckX"
+    echo "  2) Docker - Install OpenClaw + ClawDeckX all-in-one bundle / 安装 OpenClaw + ClawDeckX Docker 整合包"
     echo ""
     echo -n "Enter your choice [1-2] / 输入选择 [1-2]: "
     read -n 1 -r INSTALL_MODE </dev/tty

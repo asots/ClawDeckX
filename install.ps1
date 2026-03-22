@@ -1205,8 +1205,8 @@ if (Test-Installed) {
 
 # Offer installation mode choice (Binary vs Docker)
 Write-C "Choose installation mode / 选择安装模式：" Yellow
-Write-Host "  1) Binary - Direct binary install / 直接安装二进制文件"
-Write-Host "  2) Docker - Run in Docker container / 在 Docker 容器中运行"
+Write-Host "  1) Binary - Install ClawDeckX only on this machine / 仅在本机安装 ClawDeckX"
+Write-Host "  2) Docker - Install OpenClaw + ClawDeckX all-in-one bundle / 安装 OpenClaw + ClawDeckX Docker 整合包"
 Write-Host ""
 $installMode = Read-Choice "Enter your choice / 输入选择 [1-2]:" 1 2
 if ($installMode -eq 2) {
