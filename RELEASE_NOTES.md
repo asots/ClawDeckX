@@ -2,17 +2,24 @@
 
 ### ✨ New Features / 新功能
 
-- add required credential validation to channel wizard
+- add Docker install/manage/mirror support to install scripts
 
 ### 🐛 Bug Fixes / 修复
 
-- stop deleting runtime .md files from OpenClaw package
-- auto-reset run phase after error and stuck detection
-- enhance chat error display with HTTP status hints
-- split provider/model in session model switch for correct local display
-- auto-set supportsUsageInStreaming for custom openai-completions providers
+- set explicit network name and auto-show logs after install
+- hide console window for all exec.Command calls on Windows
+- use logs --tail 50 for credential viewing hint
+- increase first-run gateway wait to 120s with progress
+- improve install mode text and fix duplicate Docker ready message
+- add login credential hint after Docker install
+- improve first-run password visibility in Docker logs
+- code block copy button and auto-scroll on tool calls
+
+### 🎨 UI & Styling / 界面优化
+
+- remove green checkmark badge from chat welcome screen
 
 ---
-**Full Changelog**: [v0.0.21...v0.0.22](https://github.com/ClawDeckX/ClawDeckX/compare/v0.0.21...v0.0.22)
+**Full Changelog**: [v0.0.22...v0.0.23](https://github.com/ClawDeckX/ClawDeckX/compare/v0.0.22...v0.0.23)
 
 
