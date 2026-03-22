@@ -938,10 +938,22 @@ LATEST_VERSION="${LATEST_VERSION_RAW#v}"
 echo -e "${CYAN}:: ClawDeckX Launcher - ${LATEST_VERSION} ::${NC}"
 echo ""
 
-# Priority check: if Docker deployment exists (and we're not inside a container), show Docker menu
-if ! is_inside_docker && check_docker_deployed; then
-    docker_management_menu
-    exit 0
+# Detect all existing installations simultaneously
+HAS_DOCKER=false
+HAS_BINARY=false
+IS_CONTAINER=false
+
+if is_inside_docker; then
+    IS_CONTAINER=true
+fi
+
+if [ "$IS_CONTAINER" = false ] && check_docker_deployed; then
+    HAS_DOCKER=true
+fi
+
+if check_installed; then
+    HAS_BINARY=true
+    get_config_port
 fi
 
 # Function to uninstall ClawDeckX
@@ -1427,187 +1439,215 @@ update() {
     exit 0
 }
 
-# Check if already installed
-if check_installed; then
-    # Resolve port from config file
-    get_config_port
-    
-    echo -e "${GREEN}✓ ClawDeckX is already installed / ClawDeckX 已安装${NC}"
-    echo -e "${CYAN}Location / 位置：${NC} $INSTALLED_LOCATION"
-    echo -e "${CYAN}Current version / 当前版本：${NC} $CURRENT_VERSION"
-    echo -e "${CYAN}Latest version / 最新版本：${NC} $LATEST_VERSION"
-    echo -e "${CYAN}Port / 端口：${NC} $PORT"
-    
-    # Check systemd service status
-    SERVICE_RUNNING=false
-    if check_systemd_service; then
-        echo -e "${CYAN}Systemd service / systemd 服务：${NC} ${GREEN}Installed${NC} ($SYSTEMD_SERVICE_TYPE-level)"
-        # Check if service is active/running
-        if [ "$SYSTEMD_SERVICE_TYPE" = "user" ]; then
-            if systemctl --user is-active --quiet clawdeckx 2>/dev/null; then
-                SERVICE_RUNNING=true
-                echo -e "${CYAN}Service status / 服务状态：${NC} ${GREEN}Running / 运行中${NC}"
-            else
-                echo -e "${CYAN}Service status / 服务状态：${NC} ${YELLOW}Stopped / 已停止${NC}"
-            fi
+# ==============================================================================
+# Unified Adaptive Main Menu
+# ==============================================================================
+# Shows detected installations and offers all relevant actions.
+# The menu is built dynamically based on what's detected (Docker, Binary, both, or neither).
+
+# --- Display detected installations ---
+if [ "$HAS_DOCKER" = true ] || [ "$HAS_BINARY" = true ]; then
+    echo -e "${CYAN}Detected installations / 检测到的安装：${NC}"
+
+    if [ "$HAS_DOCKER" = true ]; then
+        DOCKER_VER=$(get_docker_version)
+        DOCKER_RUNNING=false
+        if check_docker_running; then
+            DOCKER_RUNNING=true
+        fi
+        # Read Docker port
+        DOCKER_PORT=$DEFAULT_PORT
+        local_compose_port=$(grep -oE '"[0-9]+:18788"' "$DOCKER_COMPOSE_FILE" 2>/dev/null | head -1 | grep -oE '^"[0-9]+' | tr -d '"')
+        if [ -n "$local_compose_port" ]; then
+            DOCKER_PORT=$local_compose_port
+        fi
+        if [ "$DOCKER_RUNNING" = true ]; then
+            echo -e "  🐳 Docker: ${GREEN}v${DOCKER_VER}${NC} (${GREEN}Running / 运行中${NC}) on port ${DOCKER_PORT}"
         else
-            if systemctl is-active --quiet clawdeckx 2>/dev/null; then
-                SERVICE_RUNNING=true
-                echo -e "${CYAN}Service status / 服务状态：${NC} ${GREEN}Running / 运行中${NC}"
-            else
-                echo -e "${CYAN}Service status / 服务状态：${NC} ${YELLOW}Stopped / 已停止${NC}"
-            fi
+            echo -e "  🐳 Docker: ${GREEN}v${DOCKER_VER}${NC} (${YELLOW}Stopped / 已停止${NC}) on port ${DOCKER_PORT}"
         fi
     fi
-    
-    echo ""
-    
-    # Check if update is available
-    IS_LATEST=false
-    if [ "$CURRENT_VERSION" = "$LATEST_VERSION" ]; then
-        IS_LATEST=true
+
+    if [ "$HAS_BINARY" = true ]; then
+        BINARY_SERVICE_RUNNING=false
+        BINARY_SERVICE_STATUS=""
+        if check_systemd_service; then
+            if [ "$SYSTEMD_SERVICE_TYPE" = "user" ]; then
+                if systemctl --user is-active --quiet clawdeckx 2>/dev/null; then
+                    BINARY_SERVICE_RUNNING=true
+                    BINARY_SERVICE_STATUS="${GREEN}Running / 运行中${NC}"
+                else
+                    BINARY_SERVICE_STATUS="${YELLOW}Stopped / 已停止${NC}"
+                fi
+            else
+                if systemctl is-active --quiet clawdeckx 2>/dev/null; then
+                    BINARY_SERVICE_RUNNING=true
+                    BINARY_SERVICE_STATUS="${GREEN}Running / 运行中${NC}"
+                else
+                    BINARY_SERVICE_STATUS="${YELLOW}Stopped / 已停止${NC}"
+                fi
+            fi
+            echo -e "  📦 Binary: ${GREEN}v${CURRENT_VERSION}${NC} ($BINARY_SERVICE_STATUS) at $INSTALLED_LOCATION"
+        else
+            echo -e "  📦 Binary: ${GREEN}v${CURRENT_VERSION}${NC} at $INSTALLED_LOCATION"
+        fi
     fi
-    
-    # Show menu based on version status and service state
-    if [ "$IS_LATEST" = true ]; then
-        echo -e "${GREEN}✓ Already up to date! / 已是最新版本！${NC}"
+
+    echo ""
+fi
+
+# --- Build adaptive menu ---
+MENU_ITEMS=()
+MENU_ACTIONS=()
+N=0
+
+if [ "$HAS_DOCKER" = true ]; then
+    N=$((N + 1)); MENU_ITEMS+=("$N) Manage Docker deployment / 管理 Docker 部署"); MENU_ACTIONS+=("manage_docker")
+fi
+
+if [ "$HAS_BINARY" = true ]; then
+    N=$((N + 1)); MENU_ITEMS+=("$N) Manage binary installation / 管理本机安装"); MENU_ACTIONS+=("manage_binary")
+fi
+
+if [ "$IS_CONTAINER" = false ]; then
+    if [ "$HAS_BINARY" = false ]; then
+        N=$((N + 1)); MENU_ITEMS+=("$N) Install: Binary / 安装：本机二进制"); MENU_ACTIONS+=("install_binary")
+    fi
+    if [ "$HAS_DOCKER" = false ]; then
+        N=$((N + 1)); MENU_ITEMS+=("$N) Install: Docker / 安装：Docker 整合包"); MENU_ACTIONS+=("install_docker")
+    fi
+fi
+
+N=$((N + 1)); MENU_ITEMS+=("$N) Exit / 退出"); MENU_ACTIONS+=("exit")
+
+echo -e "${YELLOW}What would you like to do? / 您想做什么？${NC}"
+for item in "${MENU_ITEMS[@]}"; do
+    echo "  $item"
+done
+echo ""
+echo -n "Enter your choice [1-$N] / 输入选择 [1-$N]: "
+read -n 1 -r MAIN_CHOICE </dev/tty
+echo
+
+# Validate input
+if [ -z "$MAIN_CHOICE" ] || ! [[ "$MAIN_CHOICE" =~ ^[0-9]+$ ]] || [ "$MAIN_CHOICE" -lt 1 ] || [ "$MAIN_CHOICE" -gt "$N" ]; then
+    echo -e "${RED}Invalid choice / 选择无效${NC}"
+    echo -e "${YELLOW}Press any key to continue... / 按任意键继续...${NC}"
+    read -n 1 -s </dev/tty
+    exec "$0" "$@"
+fi
+
+SELECTED_ACTION="${MENU_ACTIONS[$((MAIN_CHOICE - 1))]}"
+
+case "$SELECTED_ACTION" in
+    manage_docker)
+        docker_management_menu
+        exit 0
+        ;;
+    manage_binary)
+        # --- Binary management sub-menu ---
         echo ""
+        echo -e "${GREEN}✓ Binary Installation / 本机安装${NC}"
+        echo -e "${CYAN}Location / 位置：${NC} $INSTALLED_LOCATION"
+        echo -e "${CYAN}Current version / 当前版本：${NC} $CURRENT_VERSION"
+        echo -e "${CYAN}Latest version / 最新版本：${NC} $LATEST_VERSION"
+        echo -e "${CYAN}Port / 端口：${NC} $PORT"
+
+        SERVICE_RUNNING=$BINARY_SERVICE_RUNNING
+        if check_systemd_service; then
+            echo -e "${CYAN}Service / 服务：${NC} ${GREEN}Installed${NC} ($SYSTEMD_SERVICE_TYPE-level) — $BINARY_SERVICE_STATUS"
+        fi
+        echo ""
+
+        IS_LATEST=false
+        if [ "$CURRENT_VERSION" = "$LATEST_VERSION" ]; then
+            IS_LATEST=true
+            echo -e "${GREEN}✓ Already up to date! / 已是最新版本！${NC}"
+        else
+            echo -e "${YELLOW}New version available! / 有新版本可用！${NC}"
+        fi
+        echo ""
+
         echo -e "${YELLOW}What would you like to do? / 您想做什么？${NC}"
-        echo "  1) Re-download current version / 重新下载当前版本"
-        
-        # Show service management options based on status
+        if [ "$IS_LATEST" = true ]; then
+            echo "  1) Re-download current version / 重新下载当前版本"
+        else
+            echo "  1) Update to latest version / 更新到最新版本"
+        fi
         if [ "$SERVICE_RUNNING" = true ]; then
             echo "  2) Stop service / 停止服务"
-            echo "  3) Uninstall / 卸载"
-            echo "  4) Exit / 退出"
-        else
-            # Service installed but stopped
-            if check_systemd_service; then
-                echo "  2) Start service / 启动服务"
-                echo "  3) Uninstall / 卸载"
-                echo "  4) Exit / 退出"
-            else
-                echo "  2) Uninstall / 卸载"
-                echo "  3) Exit / 退出"
-            fi
+        elif check_systemd_service; then
+            echo "  2) Start service / 启动服务"
         fi
-    else
-        echo -e "${YELLOW}New version available! / 有新版本可用！${NC}"
+        echo "  3) Uninstall / 卸载"
+        echo "  4) Back / 返回"
         echo ""
-        echo -e "${YELLOW}What would you like to do? / 您想做什么？${NC}"
-        echo "  1) Update to latest version / 更新到最新版本"
-        
-        # Show service management options based on status
-        if [ "$SERVICE_RUNNING" = true ]; then
-            echo "  2) Stop service / 停止服务"
-            echo "  3) Uninstall / 卸载"
-            echo "  4) Exit / 退出"
-        else
-            # Service installed but stopped
-            if check_systemd_service; then
-                echo "  2) Start service / 启动服务"
-                echo "  3) Uninstall / 卸载"
-                echo "  4) Exit / 退出"
-            else
-                echo "  2) Uninstall / 卸载"
-                echo "  3) Exit / 退出"
-            fi
-        fi
-    fi
-    echo ""
-    echo -n "Enter your choice [1-4] / 输入选择 [1-4]: "
-    read -n 1 -r CHOICE </dev/tty
-    echo
-    
-    # Handle empty input
-    if [ -z "$CHOICE" ]; then
-        echo -e "${RED}Invalid input. Please enter a number between 1-4. / 输入无效，请输入 1-4 之间的数字。${NC}"
-        echo -e "${YELLOW}Press any key to continue... / 按任意键继续...${NC}"
-        read -n 1 -s </dev/tty
-        exec "$0" "$@"
-    fi
-    
-    case $CHOICE in
-        1)
-            update
-            ;;
-        2)
-            if [ "$SERVICE_RUNNING" = true ]; then
-                stop_service
-                exit 0
-            elif check_systemd_service; then
-                # Start service
-                echo ""
-                echo -e "${BLUE}Starting systemd service... / 正在启动 systemd 服务...${NC}"
-                if [ "$SYSTEMD_SERVICE_TYPE" = "user" ]; then
-                    systemctl --user start clawdeckx
-                else
-                    sudo systemctl start clawdeckx
-                fi
-                
-                # Check if started successfully
-                sleep 2
-                if [ "$SYSTEMD_SERVICE_TYPE" = "user" ]; then
-                    if systemctl --user is-active --quiet clawdeckx 2>/dev/null; then
-                        echo -e "${GREEN}✓ Service started successfully / 服务启动成功${NC}"
+        echo -n "Enter your choice [1-4] / 输入选择 [1-4]: "
+        read -n 1 -r BCHOICE </dev/tty
+        echo
+
+        case $BCHOICE in
+            1)
+                update
+                ;;
+            2)
+                if [ "$SERVICE_RUNNING" = true ]; then
+                    stop_service
+                    exit 0
+                elif check_systemd_service; then
+                    echo ""
+                    echo -e "${BLUE}Starting systemd service... / 正在启动 systemd 服务...${NC}"
+                    if [ "$SYSTEMD_SERVICE_TYPE" = "user" ]; then
+                        systemctl --user start clawdeckx
                     else
-                        echo -e "${YELLOW}⚠ Service failed to start / 服务启动失败${NC}"
+                        sudo systemctl start clawdeckx
                     fi
-                else
-                    if systemctl is-active --quiet clawdeckx 2>/dev/null; then
-                        echo -e "${GREEN}✓ Service started successfully / 服务启动成功${NC}"
+                    sleep 2
+                    if [ "$SYSTEMD_SERVICE_TYPE" = "user" ]; then
+                        if systemctl --user is-active --quiet clawdeckx 2>/dev/null; then
+                            echo -e "${GREEN}✓ Service started successfully / 服务启动成功${NC}"
+                        else
+                            echo -e "${YELLOW}⚠ Service failed to start / 服务启动失败${NC}"
+                        fi
                     else
-                        echo -e "${YELLOW}⚠ Service failed to start / 服务启动失败${NC}"
+                        if systemctl is-active --quiet clawdeckx 2>/dev/null; then
+                            echo -e "${GREEN}✓ Service started successfully / 服务启动成功${NC}"
+                        else
+                            echo -e "${YELLOW}⚠ Service failed to start / 服务启动失败${NC}"
+                        fi
                     fi
+                    echo ""
+                    echo -e "${CYAN}Access ClawDeckX at / 访问 ClawDeckX：${NC}"
+                    echo -e "  ${GREEN}http://localhost:${PORT}${NC}"
+                    exit 0
+                else
+                    echo -e "${RED}Invalid choice / 选择无效${NC}"
                 fi
-                
-                echo ""
-                echo -e "${CYAN}You can access ClawDeckX at: / 可以访问 ClawDeckX：${NC}"
-                echo -e "  ${GREEN}http://localhost:${PORT}${NC}"
-                echo ""
-                echo -e "${YELLOW}Service management commands / 服务管理命令：${NC}"
-                echo -e "  ${GREEN}systemctl --user status clawdeckx${NC}   - Check status / 查看状态"
-                echo -e "  ${GREEN}systemctl --user stop clawdeckx${NC}     - Stop service / 停止服务"
-                exit 0
-            else
+                ;;
+            3)
                 uninstall
-            fi
-            ;;
-        3)
-            # Always uninstall (option 3 is always "Uninstall")
-            uninstall
-            ;;
-        4)
-            # Exit
-            echo -e "${YELLOW}Exiting / 退出${NC}"
-            exit 0
-            ;;
-        *)
-            # Invalid input
-            echo -e "${RED}Invalid choice. Please enter a number between 1-4. / 选择无效，请输入 1-4 之间的数字。${NC}"
-            echo -e "${YELLOW}Press any key to continue... / 按任意键继续...${NC}"
-            read -n 1 -s </dev/tty
-            exec "$0" "$@"
-            ;;
-    esac
-fi
-
-# Offer installation mode choice (Binary vs Docker) unless inside a container
-if ! is_inside_docker; then
-    echo -e "${YELLOW}Choose installation mode / 选择安装模式：${NC}"
-    echo "  1) Binary - Install ClawDeckX only on this machine / 仅在本机安装 ClawDeckX"
-    echo "  2) Docker - Install OpenClaw + ClawDeckX all-in-one bundle / 安装 OpenClaw + ClawDeckX Docker 整合包"
-    echo ""
-    echo -n "Enter your choice [1-2] / 输入选择 [1-2]: "
-    read -n 1 -r INSTALL_MODE </dev/tty
-    echo
-
-    if [ "$INSTALL_MODE" = "2" ]; then
+                ;;
+            4)
+                exec "$0" "$@"
+                ;;
+            *)
+                echo -e "${RED}Invalid choice / 选择无效${NC}"
+                exec "$0" "$@"
+                ;;
+        esac
+        exit 0
+        ;;
+    install_docker)
         docker_install
-        # docker_install calls exit 0 on success
-    fi
-    echo ""
-fi
+        ;;
+    install_binary)
+        # Fall through to binary install below
+        ;;
+    exit)
+        echo -e "${YELLOW}Exiting / 退出${NC}"
+        exit 0
+        ;;
+esac
 
 # 0. Check root user (Binary install only — Docker does not need a dedicated user)
 if [ "$(id -u)" = "0" ]; then

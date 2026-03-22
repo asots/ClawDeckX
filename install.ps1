@@ -1109,119 +1109,175 @@ $LATEST_VERSION = Get-LatestVersion $REPO
 Write-C ":: ClawDeckX Launcher - $LATEST_VERSION ::" Cyan
 Write-Host ""
 
-# -- Priority check: Docker deployment exists? ---------------------------------
-if (Test-DockerDeployed) {
-    Show-DockerManagementMenu
-    return
-}
+# ==============================================================================
+# Unified Adaptive Main Menu
+# ==============================================================================
 
-# -- Already installed? --------------------------------------------------------
-if (Test-Installed) {
-    # Resolve port from config file
-    $script:PORT = Get-ConfigPort
+$HAS_DOCKER = Test-DockerDeployed
+$HAS_BINARY = Test-Installed
+if ($HAS_BINARY) { $script:PORT = Get-ConfigPort }
 
-    Write-C "✓ ClawDeckX is already installed / ClawDeckX 已安装" Green
-    Write-C "Location / 位置：        $($script:INSTALLED_LOCATION)" Cyan
-    Write-C "Current version / 当前版本： $($script:CURRENT_VERSION)" Cyan
-    Write-C "Latest version / 最新版本：  $LATEST_VERSION" Cyan
-    Write-C "Port / 端口：            $($script:PORT)" Cyan
+# --- Display detected installations ---
+if ($HAS_DOCKER -or $HAS_BINARY) {
+    Write-C "Detected installations / 检测到的安装：" Cyan
 
-    $script:SERVICE_RUNNING = $false
-    if (Test-AutoStartInstalled) {
-        Write-C "Auto-start / 自动启动：      Installed / 已安装 (计划任务)" Cyan
+    if ($HAS_DOCKER) {
+        $dockerVer = Get-DockerVersion
+        $dockerRunning = Test-DockerRunning
+        $dockerPort = Get-ComposePort
+        if ($dockerRunning) {
+            Write-Host "  🐳 Docker: " -NoNewline; Write-Host "v$dockerVer" -ForegroundColor Green -NoNewline; Write-Host " (" -NoNewline; Write-Host "Running / 运行中" -ForegroundColor Green -NoNewline; Write-Host ") on port $dockerPort"
+        } else {
+            Write-Host "  🐳 Docker: " -NoNewline; Write-Host "v$dockerVer" -ForegroundColor Green -NoNewline; Write-Host " (" -NoNewline; Write-Host "Stopped / 已停止" -ForegroundColor Yellow -NoNewline; Write-Host ") on port $dockerPort"
+        }
     }
-    if (Test-ProcessRunning) {
-        $script:SERVICE_RUNNING = $true
-        Write-C "Status / 状态：          Running / 运行中" Green
-    } else {
-        Write-C "Status / 状态：          Stopped / 已停止" Yellow
+
+    $binaryServiceRunning = $false
+    if ($HAS_BINARY) {
+        $binaryStatus = ""
+        if (Test-AutoStartInstalled) {
+            if (Test-ProcessRunning) {
+                $binaryServiceRunning = $true
+                $binaryStatus = "Running / 运行中"
+                Write-Host "  📦 Binary: " -NoNewline; Write-Host "v$($script:CURRENT_VERSION)" -ForegroundColor Green -NoNewline; Write-Host " (" -NoNewline; Write-Host $binaryStatus -ForegroundColor Green -NoNewline; Write-Host ") at $($script:INSTALLED_LOCATION)"
+            } else {
+                $binaryStatus = "Stopped / 已停止"
+                Write-Host "  📦 Binary: " -NoNewline; Write-Host "v$($script:CURRENT_VERSION)" -ForegroundColor Green -NoNewline; Write-Host " (" -NoNewline; Write-Host $binaryStatus -ForegroundColor Yellow -NoNewline; Write-Host ") at $($script:INSTALLED_LOCATION)"
+            }
+        } else {
+            Write-Host "  📦 Binary: " -NoNewline; Write-Host "v$($script:CURRENT_VERSION)" -ForegroundColor Green -NoNewline; Write-Host " at $($script:INSTALLED_LOCATION)"
+        }
     }
 
     Write-Host ""
-
-    $isLatest = ($script:CURRENT_VERSION -eq $LATEST_VERSION)
-
-    if ($isLatest) {
-        Write-C "✓ Already up to date! / 已是最新版本！" Green
-        Write-Host ""
-        Write-C "What would you like to do? / 您想做什么?" Yellow
-        Write-Host "  1) Re-download current version / 重新下载当前版本"
-    } else {
-        Write-C "New version available! / 有新版本可用！" Yellow
-        Write-Host ""
-        Write-C "What would you like to do? / 您想做什么?" Yellow
-        Write-Host "  1) Update to latest version / 更新到最新版本"
-    }
-
-    $hasAutoStart = Test-AutoStartInstalled
-    if ($script:SERVICE_RUNNING) {
-        Write-Host "  2) Stop ClawDeckX / 停止 ClawDeckX"
-        Write-Host "  3) Uninstall / 卸载"
-        Write-Host "  4) Exit / 退出"
-    } elseif ($hasAutoStart) {
-        Write-Host "  2) Start ClawDeckX / 启动 ClawDeckX"
-        Write-Host "  3) Uninstall / 卸载"
-        Write-Host "  4) Exit / 退出"
-    } else {
-        Write-Host "  2) Uninstall / 卸载"
-        Write-Host "  3) Exit / 退出"
-    }
-
-    Write-Host ""
-    $choice = Read-Choice "Enter your choice / 输入选择 [1-4]:" 1 4
-
-    switch ($choice) {
-        1 {
-            Update-ClawDeckX -LatestVersion $LATEST_VERSION -Repo $REPO
-            return
-        }
-        2 {
-            if ($script:SERVICE_RUNNING) {
-                Stop-ClawDeckXService
-                return
-            } elseif ($hasAutoStart) {
-                Write-Host ""
-                $null = Start-ClawDeckXService
-                if (Test-ProcessRunning) {
-                    Write-Host ""
-                    Write-C "You can access ClawDeckX at: / 可以访问 ClawDeckX：" Cyan
-                    Write-C "  http://localhost:$($script:PORT)" Green
-                    Write-Host ""
-                    Show-ServiceCommands
-                }
-                return
-            } else {
-                Uninstall-ClawDeckX
-                return
-            }
-        }
-        3 {
-            if ($script:SERVICE_RUNNING -or $hasAutoStart) {
-                Uninstall-ClawDeckX
-            } else {
-                Write-C "Exiting / 退出" Yellow
-            }
-            return
-        }
-        default {
-            Write-C "Exiting / 退出" Yellow
-            return
-        }
-    }
 }
 
-# -- Fresh install -------------------------------------------------------------
+# --- Build adaptive menu ---
+$menuItems = @()
+$menuActions = @()
+$n = 0
 
-# Offer installation mode choice (Binary vs Docker)
-Write-C "Choose installation mode / 选择安装模式：" Yellow
-Write-Host "  1) Binary - Install ClawDeckX only on this machine / 仅在本机安装 ClawDeckX"
-Write-Host "  2) Docker - Install OpenClaw + ClawDeckX all-in-one bundle / 安装 OpenClaw + ClawDeckX Docker 整合包"
+if ($HAS_DOCKER) {
+    $n++; $menuItems += "$n) Manage Docker deployment / 管理 Docker 部署"; $menuActions += "manage_docker"
+}
+if ($HAS_BINARY) {
+    $n++; $menuItems += "$n) Manage binary installation / 管理本机安装"; $menuActions += "manage_binary"
+}
+if (-not $HAS_BINARY) {
+    $n++; $menuItems += "$n) Install: Binary / 安装：本机二进制"; $menuActions += "install_binary"
+}
+if (-not $HAS_DOCKER) {
+    $n++; $menuItems += "$n) Install: Docker / 安装：Docker 整合包"; $menuActions += "install_docker"
+}
+$n++; $menuItems += "$n) Exit / 退出"; $menuActions += "exit"
+
+Write-C "What would you like to do? / 您想做什么？" Yellow
+foreach ($item in $menuItems) {
+    Write-Host "  $item"
+}
 Write-Host ""
-$installMode = Read-Choice "Enter your choice / 输入选择 [1-2]:" 1 2
-if ($installMode -eq 2) {
-    Install-DockerClawDeckX
-    return
+$mainChoice = Read-Choice "Enter your choice / 输入选择 [1-$n]:" 1 $n
+
+$selectedAction = $menuActions[$mainChoice - 1]
+
+switch ($selectedAction) {
+    "manage_docker" {
+        Show-DockerManagementMenu
+        return
+    }
+    "manage_binary" {
+        # --- Binary management sub-menu ---
+        Write-Host ""
+        Write-C "✓ Binary Installation / 本机安装" Green
+        Write-C "Location / 位置：        $($script:INSTALLED_LOCATION)" Cyan
+        Write-C "Current version / 当前版本： $($script:CURRENT_VERSION)" Cyan
+        Write-C "Latest version / 最新版本：  $LATEST_VERSION" Cyan
+        Write-C "Port / 端口：            $($script:PORT)" Cyan
+
+        $script:SERVICE_RUNNING = $binaryServiceRunning
+        $hasAutoStart = Test-AutoStartInstalled
+        if ($hasAutoStart) {
+            if ($binaryServiceRunning) {
+                Write-C "Service / 服务：          Installed — Running / 运行中" Green
+            } else {
+                Write-C "Service / 服务：          Installed — Stopped / 已停止" Yellow
+            }
+        }
+        Write-Host ""
+
+        $isLatest = ($script:CURRENT_VERSION -eq $LATEST_VERSION)
+        if ($isLatest) {
+            Write-C "✓ Already up to date! / 已是最新版本！" Green
+        } else {
+            Write-C "New version available! / 有新版本可用！" Yellow
+        }
+        Write-Host ""
+
+        Write-C "What would you like to do? / 您想做什么？" Yellow
+        if ($isLatest) {
+            Write-Host "  1) Re-download current version / 重新下载当前版本"
+        } else {
+            Write-Host "  1) Update to latest version / 更新到最新版本"
+        }
+        if ($script:SERVICE_RUNNING) {
+            Write-Host "  2) Stop service / 停止服务"
+        } elseif ($hasAutoStart) {
+            Write-Host "  2) Start service / 启动服务"
+        }
+        Write-Host "  3) Uninstall / 卸载"
+        Write-Host "  4) Back / 返回"
+        Write-Host ""
+        $bChoice = Read-Choice "Enter your choice / 输入选择 [1-4]:" 1 4
+
+        switch ($bChoice) {
+            1 {
+                Update-ClawDeckX -LatestVersion $LATEST_VERSION -Repo $REPO
+                return
+            }
+            2 {
+                if ($script:SERVICE_RUNNING) {
+                    Stop-ClawDeckXService
+                    return
+                } elseif ($hasAutoStart) {
+                    Write-Host ""
+                    $null = Start-ClawDeckXService
+                    if (Test-ProcessRunning) {
+                        Write-Host ""
+                        Write-C "Access ClawDeckX at / 访问 ClawDeckX：" Cyan
+                        Write-C "  http://localhost:$($script:PORT)" Green
+                        Write-Host ""
+                        Show-ServiceCommands
+                    }
+                    return
+                } else {
+                    Write-C "Invalid choice / 选择无效" Red
+                }
+            }
+            3 {
+                Uninstall-ClawDeckX
+                return
+            }
+            default {
+                # Back - re-run script
+                & $MyInvocation.MyCommand.Path
+                return
+            }
+        }
+        return
+    }
+    "install_docker" {
+        Install-DockerClawDeckX
+        return
+    }
+    "install_binary" {
+        # Fall through to binary install below
+    }
+    "exit" {
+        Write-C "Exiting / 退出" Yellow
+        return
+    }
 }
+
 Write-Host ""
 
 $arch = Get-Architecture
