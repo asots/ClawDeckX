@@ -800,17 +800,25 @@ function Install-Docker {
 }
 
 function Install-DockerClawDeckXNew {
+    # Auto-detect next available instance name
+    $defaultName = "clawdeckx"
+    if ((Test-Path "docker-compose.yml") -and ((Get-Content "docker-compose.yml" -Raw -EA SilentlyContinue) -match "knowhunters/clawdeckx")) {
+        $n = 2
+        while (Test-Path "docker-compose-clawdeckx-${n}.yml") { $n++ }
+        $defaultName = "clawdeckx-$n"
+    }
+
     Write-Host ""
     Write-C "Each Docker deployment needs a unique instance name." Cyan
     Write-C "每个 Docker 部署需要一个唯一的实例名称。" Cyan
     Write-Host ""
-    Write-C "Default instance name: clawdeckx" Green
+    Write-C "Suggested instance name: $defaultName" Green
     Write-Host "Examples: clawdeckx-2, clawdeckx-dev, clawdeckx-test"
     Write-Host ""
-    $instanceName = Read-Host "Enter instance name (or press Enter for default) / 输入实例名称（回车使用默认）"
-    if ([string]::IsNullOrWhiteSpace($instanceName)) { $instanceName = "clawdeckx" }
+    $instanceName = Read-Host "Enter instance name (or press Enter for '$defaultName') / 输入实例名称（回车使用 '$defaultName'）"
+    if ([string]::IsNullOrWhiteSpace($instanceName)) { $instanceName = $defaultName }
     $instanceName = $instanceName.ToLower().Replace(" ", "-") -replace '[^a-z0-9_-]', ''
-    if ([string]::IsNullOrWhiteSpace($instanceName)) { $instanceName = "clawdeckx" }
+    if ([string]::IsNullOrWhiteSpace($instanceName)) { $instanceName = $defaultName }
 
     $checkFile = if ($instanceName -eq "clawdeckx") { "docker-compose.yml" } else { "docker-compose-$instanceName.yml" }
     if (Test-Path $checkFile) {

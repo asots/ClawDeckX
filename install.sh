@@ -545,20 +545,31 @@ install_docker() {
 
 # Prompt user for a new Docker instance name, then call docker_install
 docker_install_new() {
+    # Auto-detect next available instance name
+    local default_name="clawdeckx"
+    if [ -f "docker-compose.yml" ] && grep -q "knowhunters/clawdeckx" "docker-compose.yml" 2>/dev/null; then
+        # Default instance exists, find next available number
+        local n=2
+        while [ -f "docker-compose-clawdeckx-${n}.yml" ]; do
+            n=$((n + 1))
+        done
+        default_name="clawdeckx-${n}"
+    fi
+
     echo ""
     echo -e "${CYAN}Each Docker deployment needs a unique instance name."
     echo -e "每个 Docker 部署需要一个唯一的实例名称。${NC}"
     echo ""
-    echo -e "Default instance name: ${GREEN}clawdeckx${NC}"
+    echo -e "Suggested instance name: ${GREEN}${default_name}${NC}"
     echo -e "Examples: clawdeckx-2, clawdeckx-dev, clawdeckx-test"
     echo ""
-    echo -n "Enter instance name (or press Enter for default) / 输入实例名称（回车使用默认）: "
+    echo -n "Enter instance name (or press Enter for '${default_name}') / 输入实例名称（回车使用 '${default_name}'）: "
     read -r INSTANCE_NAME </dev/tty
-    INSTANCE_NAME="${INSTANCE_NAME:-clawdeckx}"
+    INSTANCE_NAME="${INSTANCE_NAME:-$default_name}"
     # Sanitize: lowercase, replace spaces with hyphens, remove invalid chars
     INSTANCE_NAME=$(echo "$INSTANCE_NAME" | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | sed 's/[^a-z0-9_-]//g')
     if [ -z "$INSTANCE_NAME" ]; then
-        INSTANCE_NAME="clawdeckx"
+        INSTANCE_NAME="$default_name"
     fi
 
     # Check if this instance name is already in use
