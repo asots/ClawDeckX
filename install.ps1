@@ -877,6 +877,11 @@ function Install-DockerClawDeckX {
     Write-C "Access ClawDeckX at / 访问 ClawDeckX：" Cyan
     Write-C "  http://localhost:$($script:PORT)" Green
     Write-Host ""
+    Write-C "🔐 First-time login / 首次登录：" Yellow
+    Write-Host "  View initial admin credentials in container logs:"
+    Write-Host "  查看容器日志中的初始管理员账户信息："
+    Write-C "  $COMPOSE_CMD logs | Select-String 'Password'" Green
+    Write-Host ""
     Show-DockerCommands
 }
 
