@@ -1860,6 +1860,15 @@ if [ "$(id -u)" = "0" ]; then
     # 检测 openclaw 用户是否已存在
     if id "openclaw" &>/dev/null; then
         echo -e "${GREEN}✓ User 'openclaw' already exists / 用户 'openclaw' 已存在${NC}"
+        # Ensure openclaw is in docker group if Docker is installed
+        if getent group docker &>/dev/null; then
+            if ! id -nG openclaw 2>/dev/null | grep -qw docker; then
+                usermod -aG docker openclaw
+                echo -e "${GREEN}✓ Added 'openclaw' to docker group / 已将 'openclaw' 添加到 docker 组${NC}"
+            else
+                echo -e "${GREEN}✓ 'openclaw' is already in docker group / 'openclaw' 已在 docker 组中${NC}"
+            fi
+        fi
         echo ""
         echo -e "${YELLOW}Please run the following commands to switch user and re-run:"
         echo -e "请执行以下命令切换用户并重新运行：${NC}"
@@ -1915,6 +1924,12 @@ if [ "$(id -u)" = "0" ]; then
         # 添加到 sudo 组
         usermod -aG sudo openclaw
         echo -e "${GREEN}✓ Added to sudo group / 已添加到 sudo 组${NC}"
+        
+        # 添加到 docker 组（如果 Docker 已安装）
+        if getent group docker &>/dev/null; then
+            usermod -aG docker openclaw
+            echo -e "${GREEN}✓ Added to docker group / 已添加到 docker 组${NC}"
+        fi
         
         # 配置 NOPASSWD
         echo 'openclaw ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/openclaw
