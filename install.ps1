@@ -888,9 +888,22 @@ function Install-DockerClawDeckX {
     }
 
     # Step 4: Smart port configuration — auto-detect available port
+    # Collect ports already assigned by other Docker instances
     Write-Host ""
     Write-C "Detecting available port... / 正在检测可用端口..." Cyan
+    $assignedPorts = @()
+    foreach ($_cf in (Get-ChildItem -Path . -Filter "docker-compose*.yml" -ErrorAction SilentlyContinue)) {
+        if ($_cf.Name -eq $composeFile) { continue }
+        $m = Select-String -Path $_cf.FullName -Pattern '"(\d+):18800"' -ErrorAction SilentlyContinue | Select-Object -First 1
+        if ($m) { $assignedPorts += [int]$m.Matches.Groups[1].Value }
+    }
     $autoPort = Find-AvailablePort $DEFAULT_PORT
+    # If found port is assigned to another instance (stopped), bump and retry
+    foreach ($_used in $assignedPorts) {
+        while ($autoPort -eq $_used) {
+            $autoPort = Find-AvailablePort ($autoPort + 1)
+        }
+    }
 
     if ($autoPort -ne $DEFAULT_PORT) {
         Write-C "Default port $DEFAULT_PORT is occupied, auto-selected: $autoPort" Yellow
@@ -990,6 +1003,10 @@ function Update-DockerClawDeckX {
     $cnMatch = Select-String -Path $ComposeFile -Pattern 'container_name:\s*(\S+)' -ErrorAction SilentlyContinue | Select-Object -First 1
     if ($cnMatch) { $containerName = $cnMatch.Matches.Groups[1].Value }
 
+    # Extract port from compose file for health check
+    $portMatch = Select-String -Path $ComposeFile -Pattern '"(\d+):18800"' -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($portMatch) { $script:PORT = $portMatch.Matches.Groups[1].Value }
+
     $currentVer = try { (& docker inspect --format '{{ index .Config.Labels "org.opencontainers.image.version" }}' $containerName 2>$null) } catch { "unknown" }
     if ($currentVer -eq '<no value>') { $currentVer = "unknown" }
     Write-C "Current image version / 当前镜像版本： $currentVer" Cyan
@@ -1055,7 +1072,6 @@ function Uninstall-DockerClawDeckX {
         [string]$ComposeFile = $DOCKER_COMPOSE_FILE,
         [string]$InstanceName = "clawdeckx"
     )
-    $titleExtra = if ($InstanceName -ne "clawdeckx") { " [$InstanceName]" } else { "" }
     Write-Section "Uninstall ClawDeckX (Docker: $InstanceName) / 卸载 ClawDeckX (Docker: $InstanceName)"
 
     Write-C "This will: / 将执行：" Cyan

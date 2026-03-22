@@ -5,6 +5,16 @@ set -e
 # ClawDeckX - One-Click Launcher
 # ==============================================================================
 
+# Save script to temp file for reliable re-exec (curl|bash sets $0 to "bash")
+SELF_SCRIPT="${BASH_SOURCE[0]:-}"
+if [ -z "$SELF_SCRIPT" ] || [ "$SELF_SCRIPT" = "bash" ] || [ "$SELF_SCRIPT" = "/bin/bash" ] || [ ! -f "$SELF_SCRIPT" ]; then
+    SELF_SCRIPT="/tmp/.clawdeckx-installer.sh"
+    # When piped, save stdin (already consumed) — re-download if needed
+    if [ ! -f "$SELF_SCRIPT" ]; then
+        curl -fsSL "https://raw.githubusercontent.com/ClawDeckX/ClawDeckX/main/install.sh" -o "$SELF_SCRIPT" 2>/dev/null || true
+    fi
+fi
+
 # Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -443,41 +453,8 @@ check_docker_compose() {
     return 1
 }
 
-# Check if ClawDeckX is deployed via Docker (docker-compose.yml + container exist)
-check_docker_deployed() {
-    if [ -f "$DOCKER_COMPOSE_FILE" ] && check_docker && check_docker_compose; then
-        # Check if compose file references our image
-        if grep -q "knowhunters/clawdeckx" "$DOCKER_COMPOSE_FILE" 2>/dev/null; then
-            return 0
-        fi
-    fi
-    return 1
-}
-
-# Get currently running ClawDeckX Docker image version
-get_docker_version() {
-    local ver
-    ver=$(docker inspect --format '{{ index .Config.Labels "org.opencontainers.image.version" }}' clawdeckx 2>/dev/null)
-    if [ -n "$ver" ] && [ "$ver" != "<no value>" ]; then
-        echo "$ver"
-        return
-    fi
-    # Fallback: parse image tag
-    ver=$(docker inspect --format '{{ .Config.Image }}' clawdeckx 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
-    if [ -n "$ver" ]; then
-        echo "$ver"
-        return
-    fi
-    echo "unknown"
-}
-
-# Check if ClawDeckX container is running
-check_docker_running() {
-    docker ps --filter "name=clawdeckx" --filter "status=running" --format '{{.Names}}' 2>/dev/null | grep -q "clawdeckx"
-}
-
 # Install Docker Engine (Linux only)
-install_docker() {
+install_docker_engine() {
     echo ""
     echo -e "${YELLOW}═══════════════════════════════════════════════════════════${NC}"
     echo -e "${YELLOW}  Install Docker / 安装 Docker${NC}"
@@ -633,7 +610,7 @@ docker_install() {
             echo -e "${YELLOW}Cannot proceed without Docker. / 没有 Docker 无法继续。${NC}"
             exit 1
         fi
-        if ! install_docker; then
+        if ! install_docker_engine; then
             exit 1
         fi
         echo ""
@@ -673,10 +650,28 @@ docker_install() {
     fi
 
     # Step 4: Smart port configuration — auto-detect available port
+    # Collect ports already assigned by other Docker instances
     echo ""
     echo -e "${CYAN}Detecting available port... / 正在检测可用端口...${NC}"
-    find_available_port $DEFAULT_PORT
+    local start_port=$DEFAULT_PORT
+    local assigned_ports=()
+    for _cf in docker-compose.yml docker-compose-*.yml; do
+        [ -f "$_cf" ] || continue
+        [ "$_cf" = "$compose_file" ] && continue  # Skip our own file
+        local _ap
+        _ap=$(grep -oE '"[0-9]+:18800"' "$_cf" 2>/dev/null | head -1 | grep -oE '^"[0-9]+' | tr -d '"')
+        [ -n "$_ap" ] && assigned_ports+=("$_ap")
+    done
+    # Find a port that is both unoccupied AND not assigned to another instance
+    find_available_port $start_port
     local auto_port=$FOUND_PORT
+    # If found port is assigned to another instance (stopped), bump and retry
+    for _used in "${assigned_ports[@]}"; do
+        while [ "$auto_port" = "$_used" ]; do
+            find_available_port $((auto_port + 1))
+            auto_port=$FOUND_PORT
+        done
+    done
 
     if [ "$auto_port" -ne "$DEFAULT_PORT" ]; then
         echo -e "${YELLOW}Default port $DEFAULT_PORT is occupied, auto-selected: $auto_port"
@@ -788,10 +783,16 @@ docker_update() {
     echo -e "${YELLOW}═══════════════════════════════════════════════════════════${NC}"
     echo ""
 
-    # Extract container name from compose file
+    # Extract container name and port from compose file
     local container_name
-    container_name=$(grep -oP 'container_name:\s*\K\S+' "$compose_file" 2>/dev/null | head -1)
+    container_name=$(grep -oP 'container_name:\s*\K\S+' "$compose_file" 2>/dev/null | head -1 || true)
     container_name="${container_name:-$instance_name}"
+
+    local compose_port
+    compose_port=$(grep -oE '"[0-9]+:18800"' "$compose_file" 2>/dev/null | head -1 | grep -oE '^"[0-9]+' | tr -d '"' || true)
+    if [ -n "$compose_port" ]; then
+        PORT=$compose_port
+    fi
 
     local current_ver
     current_ver=$(docker inspect --format '{{ index .Config.Labels "org.opencontainers.image.version" }}' "$container_name" 2>/dev/null || echo "unknown")
@@ -963,7 +964,7 @@ docker_management_menu() {
 
     # Extract container name from compose file
     local container_name
-    container_name=$(grep -oP 'container_name:\s*\K\S+' "$compose_file" 2>/dev/null | head -1)
+    container_name=$(grep -oP 'container_name:\s*\K\S+' "$compose_file" 2>/dev/null | head -1 || true)
     container_name="${container_name:-$instance_name}"
 
     local docker_ver
@@ -1057,7 +1058,7 @@ docker_management_menu() {
             docker_uninstall "$compose_file" "$instance_name"
             ;;
         7)
-            exec "$0" "$@"
+            exec bash "$SELF_SCRIPT" "$@"
             ;;
         *)
             echo -e "${RED}Invalid choice / 选择无效${NC}"
@@ -1121,7 +1122,7 @@ if [ "$IS_CONTAINER" = false ] && check_docker && check_docker_compose; then
             local_port=$(grep -oE '"[0-9]+:18800"' "$cf" 2>/dev/null | head -1 | grep -oE '^"[0-9]+' | tr -d '"')
             DOCKER_INSTANCE_PORTS+=("${local_port:-$DEFAULT_PORT}")
             # Extract container name for version/status check
-            local_container=$(grep -oP 'container_name:\s*\K\S+' "$cf" 2>/dev/null | head -1)
+            local_container=$(grep -oP 'container_name:\s*\K\S+' "$cf" 2>/dev/null | head -1 || true)
             local_container="${local_container:-clawdeckx}"
             # Version
             local_ver=$(docker inspect --format '{{ index .Config.Labels "org.opencontainers.image.version" }}' "$local_container" 2>/dev/null || echo "unknown")
@@ -1175,7 +1176,7 @@ uninstall() {
             echo -e "${RED}Invalid input. Please enter 1 or 2. / 输入无效，请输入 1 或 2。${NC}"
             echo -e "${YELLOW}Press any key to continue... / 按任意键继续...${NC}"
             read -n 1 -s </dev/tty
-            exec "$0" "$@"
+            exec bash "$SELF_SCRIPT" "$@"
         fi
         
         if [ "$MODE" = "1" ]; then
@@ -1388,10 +1389,10 @@ check_process_running() {
 stop_port_process() {
     local port=$1
     local pid
-    pid=$(ss -tlnp 2>/dev/null | grep ":${port} " | grep -oP 'pid=\K[0-9]+' | head -1)
+    pid=$(ss -tlnp 2>/dev/null | grep ":${port} " | grep -oP 'pid=\K[0-9]+' | head -1 || true)
     if [ -z "$pid" ]; then
         # Fallback: try lsof
-        pid=$(lsof -ti :"$port" 2>/dev/null | head -1)
+        pid=$(lsof -ti :"$port" 2>/dev/null | head -1 || true)
     fi
     if [ -n "$pid" ] && [ "$pid" -gt 0 ] 2>/dev/null; then
         local pname
@@ -1536,6 +1537,14 @@ update() {
             ;;
     esac
     
+    # Detect network for proxy
+    if [ "$NEED_MIRROR" != true ]; then
+        echo -e "${CYAN}Checking network connectivity... / 正在检测网络连通性...${NC}"
+        if detect_network; then
+            NEED_MIRROR=true
+        fi
+    fi
+
     # Get download URL for update
     API_URL="https://api.github.com/repos/$REPO/releases/latest"
     ASSET_PATTERN="clawdeckx-${OS}-${ARCH}"
@@ -1588,8 +1597,17 @@ update() {
     echo ""
     echo -e "${BLUE}Downloading update... / 正在下载更新...${NC}"
     
-    # Download the update
-    curl -L -o "$INSTALLED_LOCATION" "$DOWNLOAD_URL" --progress-bar
+    # Download the update (with China proxy fallback)
+    if [ "$NEED_MIRROR" = true ]; then
+        local cn_url="https://ghfast.top/$DOWNLOAD_URL"
+        echo -e "${CYAN}Using China proxy... / 使用中国代理...${NC}"
+        if ! curl -L -o "$INSTALLED_LOCATION" "$cn_url" --progress-bar 2>/dev/null; then
+            echo -e "${YELLOW}China proxy failed, trying direct... / 中国代理失败，尝试直连...${NC}"
+            curl -L -o "$INSTALLED_LOCATION" "$DOWNLOAD_URL" --progress-bar
+        fi
+    else
+        curl -L -o "$INSTALLED_LOCATION" "$DOWNLOAD_URL" --progress-bar
+    fi
     
     # Make executable
     chmod +x "$INSTALLED_LOCATION"
@@ -1730,15 +1748,14 @@ for item in "${MENU_ITEMS[@]}"; do
 done
 echo ""
 echo -n "Enter your choice [1-$N] / 输入选择 [1-$N]: "
-read -n 1 -r MAIN_CHOICE </dev/tty
-echo
+read -r MAIN_CHOICE </dev/tty
 
 # Validate input
 if [ -z "$MAIN_CHOICE" ] || ! [[ "$MAIN_CHOICE" =~ ^[0-9]+$ ]] || [ "$MAIN_CHOICE" -lt 1 ] || [ "$MAIN_CHOICE" -gt "$N" ]; then
     echo -e "${RED}Invalid choice / 选择无效${NC}"
     echo -e "${YELLOW}Press any key to continue... / 按任意键继续...${NC}"
     read -n 1 -s </dev/tty
-    exec "$0" "$@"
+    exec bash "$SELF_SCRIPT" "$@"
 fi
 
 SELECTED_ACTION="${MENU_ACTIONS[$((MAIN_CHOICE - 1))]}"
@@ -1836,11 +1853,11 @@ case "$SELECTED_ACTION" in
                 uninstall
                 ;;
             4)
-                exec "$0" "$@"
+                exec bash "$SELF_SCRIPT" "$@"
                 ;;
             *)
                 echo -e "${RED}Invalid choice / 选择无效${NC}"
-                exec "$0" "$@"
+                exec bash "$SELF_SCRIPT" "$@"
                 ;;
         esac
         exit 0
@@ -1901,8 +1918,12 @@ if [ "$(id -u)" = "0" ]; then
         echo ""
         echo -e "${BLUE}Creating user 'openclaw'... / 正在创建用户 'openclaw'...${NC}"
         
-        # 创建用户（无密码模式，稍后设置）
-        adduser --gecos "" --disabled-password openclaw
+        # 创建用户（跨发行版兼容：Debian/Ubuntu 用 adduser，CentOS/RHEL 用 useradd）
+        if command -v adduser &>/dev/null && adduser --help 2>&1 | grep -q -- '--gecos'; then
+            adduser --gecos "" --disabled-password openclaw
+        else
+            useradd -m -s /bin/bash openclaw
+        fi
         echo -e "${GREEN}✓ User created / 用户已创建${NC}"
         
         # 设置密码（最多重试 3 次）
@@ -2000,6 +2021,18 @@ esac
 
 echo -e "${GREEN}✓ Detected System:${NC} $OS/$ARCH"
 
+# 1.5. Detect network for binary download proxy
+if [ "$NEED_MIRROR" != true ]; then
+    echo -e "${CYAN}Checking network connectivity... / 正在检测网络连通性...${NC}"
+    if detect_network; then
+        NEED_MIRROR=true
+        echo -e "${YELLOW}⚠ GitHub may be slow — will use China proxy for download"
+        echo -e "  GitHub 可能较慢 — 将使用中国代理下载${NC}"
+    else
+        echo -e "${GREEN}✓ Direct network access OK / 网络直连正常${NC}"
+    fi
+fi
+
 # 2. Define Download URL (GitHub Releases)
 # REPO 和 API_URL 已在脚本开头定义
 
@@ -2031,10 +2064,19 @@ fi
 
 echo -e "${GREEN}✓ Found asset:${NC} $DOWNLOAD_URL"
 
-# 3. Download - use $(pwd) to get current working directory
+# 3. Download - use $(pwd) to get current working directory (with China proxy fallback)
 INSTALLED_BINARY="$(pwd)/$BINARY_NAME"
 echo -e "${YELLOW}Downloading $BINARY_NAME ...${NC}"
-curl -L -o "$INSTALLED_BINARY" "$DOWNLOAD_URL" --progress-bar
+if [ "$NEED_MIRROR" = true ]; then
+    CN_DL_URL="https://ghfast.top/$DOWNLOAD_URL"
+    echo -e "${CYAN}Using China proxy... / 使用中国代理...${NC}"
+    if ! curl -L -o "$INSTALLED_BINARY" "$CN_DL_URL" --progress-bar 2>/dev/null; then
+        echo -e "${YELLOW}China proxy failed, trying direct... / 中国代理失败，尝试直连...${NC}"
+        curl -L -o "$INSTALLED_BINARY" "$DOWNLOAD_URL" --progress-bar
+    fi
+else
+    curl -L -o "$INSTALLED_BINARY" "$DOWNLOAD_URL" --progress-bar
+fi
 
 # 4. Make Executable
 chmod +x "$INSTALLED_BINARY"
