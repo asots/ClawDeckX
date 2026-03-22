@@ -96,8 +96,8 @@ const Settings: React.FC<SettingsProps> = ({ language, onLogout, pendingTab, onT
   const [notifyShutdown, setNotifyShutdown] = useState(false);
 
   // ── 访问安全 ──
-  const [srvCfg, setSrvCfg] = useState<ServerConfig>({ bind: '0.0.0.0', port: 18788, cors_origins: [], clawhub_query_url: 'https://wry-manatee-359.convex.cloud/api/query', skillhub_data_url: 'https://cloudcache.tencentcs.com/qcloud/tea/app/data/skills.33d56946.json' });
-  const [srvCfgOriginal, setSrvCfgOriginal] = useState<ServerConfig>({ bind: '0.0.0.0', port: 18788, cors_origins: [], clawhub_query_url: 'https://wry-manatee-359.convex.cloud/api/query', skillhub_data_url: 'https://cloudcache.tencentcs.com/qcloud/tea/app/data/skills.33d56946.json' });
+  const [srvCfg, setSrvCfg] = useState<ServerConfig>({ bind: '0.0.0.0', port: 18800, cors_origins: [], clawhub_query_url: 'https://wry-manatee-359.convex.cloud/api/query', skillhub_data_url: 'https://cloudcache.tencentcs.com/qcloud/tea/app/data/skills.33d56946.json' });
+  const [srvCfgOriginal, setSrvCfgOriginal] = useState<ServerConfig>({ bind: '0.0.0.0', port: 18800, cors_origins: [], clawhub_query_url: 'https://wry-manatee-359.convex.cloud/api/query', skillhub_data_url: 'https://cloudcache.tencentcs.com/qcloud/tea/app/data/skills.33d56946.json' });
   const [srvCfgSaving, setSrvCfgSaving] = useState(false);
   const [srvCfgDirty, setSrvCfgDirty] = useState(false);
   const [srvCfgRestart, setSrvCfgRestart] = useState(false);
@@ -219,7 +219,7 @@ const Settings: React.FC<SettingsProps> = ({ language, onLogout, pendingTab, onT
     serverConfigApi.get().then((data) => {
       const cfg: ServerConfig = {
         bind: data.bind || '0.0.0.0',
-        port: data.port || 18788,
+        port: data.port || 18800,
         cors_origins: data.cors_origins || [],
         clawhub_query_url: data.clawhub_query_url || 'https://wry-manatee-359.convex.cloud/api/query',
         skillhub_data_url: data.skillhub_data_url || 'https://cloudcache.tencentcs.com/qcloud/tea/app/data/skills.33d56946.json',
@@ -487,7 +487,7 @@ const Settings: React.FC<SettingsProps> = ({ language, onLogout, pendingTab, onT
                   <div>
                     <label className={labelCls}>{s.listenPort}</label>
                     <input type="text" inputMode="numeric" value={srvCfg.port}
-                      onChange={e => { const v = e.target.value.replace(/\D/g, ''); const n = parseInt(v) || 0; if (n >= 0 && n <= 65535) updateSrvCfg({ port: n || 18788 }); }}
+                      onChange={e => { const v = e.target.value.replace(/\D/g, ''); const n = parseInt(v) || 0; if (n >= 0 && n <= 65535) updateSrvCfg({ port: n || 18800 }); }}
                       className={`${inputCls} mt-1.5 w-40`} />
                     <p className="text-[10px] text-slate-400 dark:text-white/20 mt-1.5">{s.listenPortHint}</p>
                   </div>

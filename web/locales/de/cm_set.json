@@ -283,7 +283,7 @@
     "bindAddress": "Bindungsadresse",
     "bindAddressHint": "0.0.0.0 = alle Schnittstellen (LAN-zugänglich), 127.0.0.1 = nur localhost",
     "listenPort": "Listening-Port",
-    "listenPortHint": "Standard 18788, Neustart nach Änderung erforderlich",
+    "listenPortHint": "Standard 18800, Neustart nach Änderung erforderlich",
     "corsOrigins": "CORS-erlaubte Ursprünge",
     "corsOriginsHint": "Für Cross-Origin-Zugriff erlaubte Ursprünge. Leer = nur gleicher Ursprung.",
     "addOrigin": "Ursprung hinzufügen",

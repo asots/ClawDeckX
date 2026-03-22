@@ -137,22 +137,22 @@ irm https://raw.githubusercontent.com/ClawDeckX/ClawDeckX/main/install.ps1 | iex
 Download the binary from [Releases](https://github.com/ClawDeckX/ClawDeckX/releases). No dependencies. Just run.
 
 ```bash
-# Run with default settings (localhost:18788)
+# Run with default settings (localhost:18800)
 ./ClawDeckX
 
 # Specify port and bind address
-./ClawDeckX --port 18788 --bind 0.0.0.0
+./ClawDeckX --port 18800 --bind 0.0.0.0
 
 # Create initial admin user on first run
 ./ClawDeckX --user admin --pass your_password
 
 # All options combined
-./ClawDeckX --bind 0.0.0.0 --port 18788 --user admin --pass your_password
+./ClawDeckX --bind 0.0.0.0 --port 18800 --user admin --pass your_password
 ```
 
 | Flag | Short | Description |
 | :--- | :---: | :--- |
-| `--port` | `-p` | Server port (default: `18788`) |
+| `--port` | `-p` | Server port (default: `18800`) |
 | `--bind` | `-b` | Bind address (default: `127.0.0.1`) |
 | `--user` | `-u` | Initial admin username (first run only) |
 | `--pass` | | Initial admin password (min 6 chars) |
@@ -189,7 +189,7 @@ After updating the image, recreate the container to apply Dockerfile and entrypo
 docker compose up -d --force-recreate
 ```
 
-Open your browser at `http://localhost:18788`. The first run will auto-generate an admin account — credentials will be shown in the container logs.
+Open your browser at `http://localhost:18800`. The first run will auto-generate an admin account — credentials will be shown in the container logs.
 
 ClawDeckX and OpenClaw run in the same container. OpenClaw is **preinstalled** in the official Docker image with version-pinned compatibility. On startup, the container entrypoint auto-starts the OpenClaw Gateway if a configuration file exists. If OpenClaw is not yet configured, complete the Setup Wizard in the web UI — no manual installation is needed.
 
@@ -208,7 +208,7 @@ docker logs clawdeckx
 
 | Port | Service | Description |
 | :--- | :--- | :--- |
-| `18788` | ClawDeckX Web UI | Main dashboard (mapped by default) |
+| `18800` | ClawDeckX Web UI | Main dashboard (mapped by default) |
 | `18789` | OpenClaw Gateway | Optional: expose for external debugging |
 
 To expose the Gateway port, add `- "18789:18789"` under `ports` in `docker-compose.yml`.
@@ -231,7 +231,7 @@ Note that exposing `18789` alone does not guarantee host access to the Gateway. 
 | `OCD_OPENCLAW_GATEWAY_HOST` | `127.0.0.1` | Gateway host address |
 | `OCD_OPENCLAW_GATEWAY_PORT` | `18789` | Gateway port |
 | `OCD_OPENCLAW_GATEWAY_TOKEN` | *(empty)* | Gateway auth token |
-| `OCD_PORT` | `18788` | ClawDeckX listen port |
+| `OCD_PORT` | `18800` | ClawDeckX listen port |
 | `OCD_BIND` | `0.0.0.0` | ClawDeckX bind address |
 | `TZ` | `UTC` | Container timezone (e.g. `Asia/Shanghai`) |
 

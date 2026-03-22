@@ -15,7 +15,7 @@ NC='\033[0m' # No Color
 
 # Installation paths - prefer current directory
 BINARY_NAME="clawdeckx"
-DEFAULT_PORT=18788
+DEFAULT_PORT=18800
 PORT=$DEFAULT_PORT
 # Config and data directories are relative to executable location
 CONFIG_DIR=""
@@ -827,7 +827,7 @@ docker_management_menu() {
 
     # Read port from docker-compose.yml
     local compose_port
-    compose_port=$(grep -oE '"[0-9]+:18788"' "$DOCKER_COMPOSE_FILE" 2>/dev/null | head -1 | grep -oE '^"[0-9]+' | tr -d '"')
+    compose_port=$(grep -oE '"[0-9]+:18800"' "$DOCKER_COMPOSE_FILE" 2>/dev/null | head -1 | grep -oE '^"[0-9]+' | tr -d '"')
     if [ -n "$compose_port" ]; then
         PORT=$compose_port
     fi
@@ -1457,7 +1457,7 @@ if [ "$HAS_DOCKER" = true ] || [ "$HAS_BINARY" = true ]; then
         fi
         # Read Docker port
         DOCKER_PORT=$DEFAULT_PORT
-        local_compose_port=$(grep -oE '"[0-9]+:18788"' "$DOCKER_COMPOSE_FILE" 2>/dev/null | head -1 | grep -oE '^"[0-9]+' | tr -d '"')
+        local_compose_port=$(grep -oE '"[0-9]+:18800"' "$DOCKER_COMPOSE_FILE" 2>/dev/null | head -1 | grep -oE '^"[0-9]+' | tr -d '"')
         if [ -n "$local_compose_port" ]; then
             DOCKER_PORT=$local_compose_port
         fi

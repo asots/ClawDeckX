@@ -283,7 +283,7 @@
     "bindAddress": "バインドアドレス",
     "bindAddressHint": "0.0.0.0 = 全インターフェース（LAN アクセス可能）、127.0.0.1 = ローカルのみ",
     "listenPort": "リッスンポート",
-    "listenPortHint": "デフォルト 18788、変更後は再起動が必要",
+    "listenPortHint": "デフォルト 18800、変更後は再起動が必要",
     "corsOrigins": "CORS 許可オリジン",
     "corsOriginsHint": "クロスオリジンアクセスを許可するオリジン。空欄 = 同一オリジンのみ。",
     "addOrigin": "オリジンを追加",

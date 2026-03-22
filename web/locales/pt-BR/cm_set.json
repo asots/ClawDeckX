@@ -283,7 +283,7 @@
     "bindAddress": "Endereço de Bind",
     "bindAddressHint": "0.0.0.0 = todas as interfaces (acessível via LAN), 127.0.0.1 = apenas localhost",
     "listenPort": "Porta de Escuta",
-    "listenPortHint": "Padrão 18788, reinicialização necessária após alteração",
+    "listenPortHint": "Padrão 18800, reinicialização necessária após alteração",
     "corsOrigins": "Origens CORS Permitidas",
     "corsOriginsHint": "Origens permitidas para acesso cross-origin. Vazio = apenas mesma origem.",
     "addOrigin": "Adicionar Origem",

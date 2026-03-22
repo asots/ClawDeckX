@@ -131,14 +131,14 @@ irm https://raw.githubusercontent.com/ClawDeckX/ClawDeckX/main/install.ps1 | iex
 
 ```bash
 ./ClawDeckX
-./ClawDeckX --port 18788 --bind 0.0.0.0
+./ClawDeckX --port 18800 --bind 0.0.0.0
 ./ClawDeckX --user admin --pass your_password
-./ClawDeckX --bind 0.0.0.0 --port 18788 --user admin --pass your_password
+./ClawDeckX --bind 0.0.0.0 --port 18800 --user admin --pass your_password
 ```
 
 | 参数 | 简写 | 说明 |
 | :--- | :---: | :--- |
-| `--port` | `-p` | 服务端口（默认 `18788`） |
+| `--port` | `-p` | 服务端口（默认 `18800`） |
 | `--bind` | `-b` | 绑定地址（默认 `127.0.0.1`） |
 | `--user` | `-u` | 初始管理员用户名（仅首次） |
 | `--pass` | | 初始管理员密码（至少 6 位） |
@@ -172,7 +172,7 @@ docker compose up -d
 docker compose up -d --force-recreate
 ```
 
-浏览器打开 `http://localhost:18788`，首次启动会自动生成管理员账户，凭据将显示在容器日志中。
+浏览器打开 `http://localhost:18800`，首次启动会自动生成管理员账户，凭据将显示在容器日志中。
 
 ClawDeckX 与 OpenClaw 运行在同一个容器中。官方 Docker 镜像已预装 OpenClaw，版本与兼容性已锁定。容器启动时，入口脚本会在配置文件存在时自动启动 OpenClaw Gateway。如果尚未配置，请在 Web 界面中完成安装向导即可，无需手动安装。
 
@@ -190,7 +190,7 @@ docker logs clawdeckx
 
 | 端口 | 服务 | 说明 |
 | :--- | :--- | :--- |
-| `18788` | ClawDeckX Web UI | 主界面（默认已映射） |
+| `18800` | ClawDeckX Web UI | 主界面（默认已映射） |
 | `18789` | OpenClaw Gateway | 可选：映射后可从容器外调试 Gateway |
 
 如需从容器外访问 Gateway，在 `docker-compose.yml` 的 `ports` 中添加 `- "18789:18789"`。
@@ -213,7 +213,7 @@ docker logs clawdeckx
 | `OCD_OPENCLAW_GATEWAY_HOST` | `127.0.0.1` | Gateway 地址 |
 | `OCD_OPENCLAW_GATEWAY_PORT` | `18789` | Gateway 端口 |
 | `OCD_OPENCLAW_GATEWAY_TOKEN` | *(empty)* | Gateway 认证令牌 |
-| `OCD_PORT` | `18788` | ClawDeckX 监听端口 |
+| `OCD_PORT` | `18800` | ClawDeckX 监听端口 |
 | `OCD_BIND` | `0.0.0.0` | ClawDeckX 绑定地址 |
 | `TZ` | `UTC` | 容器时区（如 `Asia/Shanghai`） |
 

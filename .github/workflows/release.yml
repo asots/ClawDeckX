@@ -290,7 +290,7 @@ jobs:
           echo "==> Verifying ClawDeckX binary..."
           docker run --rm --platform linux/amd64 --entrypoint /app/clawdeckx "$IMAGE" --version || true
           echo "==> Starting container for health check..."
-          CID=$(docker run -d --platform linux/amd64 -p 28788:18788 "$IMAGE")
+          CID=$(docker run -d --platform linux/amd64 -p 28788:18800 "$IMAGE")
           if ! wait_for_health "http://localhost:28788/api/v1/health" 30 2; then
             echo "==> Container logs:" >&2
             docker logs "$CID" >&2 || true
@@ -349,7 +349,7 @@ jobs:
           echo "==> Verifying ClawDeckX binary..."
           docker run --rm --platform linux/arm64 --entrypoint /app/clawdeckx "$IMAGE" --version || true
           echo "==> Starting container for health check..."
-          CID=$(docker run -d --platform linux/arm64 -p 28789:18788 "$IMAGE")
+          CID=$(docker run -d --platform linux/arm64 -p 28789:18800 "$IMAGE")
           if ! wait_for_health "http://localhost:28789/api/v1/health" 60 3; then
             echo "==> Container logs:" >&2
             docker logs "$CID" >&2 || true

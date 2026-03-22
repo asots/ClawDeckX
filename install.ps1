@@ -21,7 +21,7 @@ $OutputEncoding = [System.Text.Encoding]::UTF8
 # Constants
 $BINARY_NAME = "clawdeckx.exe"
 $TASK_NAME = "ClawDeckX"
-$DEFAULT_PORT = 18788
+$DEFAULT_PORT = 18800
 
 # Script-level variables
 $script:INSTALLED_LOCATION = ""
@@ -724,7 +724,7 @@ function Test-DockerRunning {
 function Get-ComposePort {
     if (Test-Path $DOCKER_COMPOSE_FILE) {
         $content = Get-Content $DOCKER_COMPOSE_FILE -Raw -ErrorAction SilentlyContinue
-        if ($content -match '"(\d+):18788"') {
+        if ($content -match '"(\d+):18800"') {
             return [int]$Matches[1]
         }
     }
