@@ -990,6 +990,8 @@ export const gwApi = {
   skills: () => rpc<any[]>('skills.status'),
   skillsUpdate: (params: { skillKey: string; enabled?: boolean; apiKey?: string }) =>
     rpc('skills.update', params),
+  skillsInstall: (params: { name: string; installId: string; timeoutMs?: number }) =>
+    rpc<{ ok: boolean; message: string }>('skills.install', params),
   // Config
   configGet: () => rpc('config.get'),
   configSet: (key: string, value: any) => {
@@ -1093,6 +1095,12 @@ export const gwApi = {
     rpc('set-heartbeats', { enabled }),
   systemEvent: (text: string) =>
     rpc('system-event', { text }),
+  systemPresence: () =>
+    rpc<Array<{
+      host?: string; ip?: string; version?: string; mode?: string;
+      reason?: string; platform?: string; deviceFamily?: string;
+      roles?: string[]; scopes?: string[]; ts: number;
+    }>>('system-presence'),
   // Talk mode
   talkMode: (enabled: boolean, phase?: string) =>
     rpc('talk.mode', { enabled, ...(phase ? { phase } : {}) }),
