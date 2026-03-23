@@ -440,6 +440,19 @@ apply_image_mirror() {
     echo -e "${GREEN}✓ Using mirror for image pull / 使用镜像加速拉取：${NC} $mirrored_image"
 }
 
+# Revert mirrored image back to original in docker-compose.yml
+revert_image_mirror() {
+    local compose_file="$1"
+    if [ -z "$DOCKER_MIRROR" ]; then return; fi
+    local mirror_host
+    mirror_host=$(echo "$DOCKER_MIRROR" | sed 's|https\?://||')
+    local original_image="knowhunters/clawdeckx"
+    local mirrored_image="${mirror_host}/${original_image}"
+    if grep -q "$mirrored_image" "$compose_file" 2>/dev/null; then
+        sed_inplace "s|image: ${mirrored_image}|image: ${original_image}|" "$compose_file"
+    fi
+}
+
 # Check if running inside a Docker container
 is_inside_docker() {
     [ -f /.dockerenv ] || grep -qE '/(docker|lxc|containerd)/' /proc/1/cgroup 2>/dev/null
@@ -755,7 +768,18 @@ docker_install() {
 
     echo ""
     echo -e "${BLUE}Pulling Docker image... / 正在拉取 Docker 镜像...${NC}"
-    $compose_run pull
+    if ! $compose_run pull; then
+        if [ "$NEED_MIRROR" = true ]; then
+            echo ""
+            echo -e "${YELLOW}⚠ Mirror pull failed, reverting to direct pull..."
+            echo -e "  镜像加速拉取失败，回退为直连拉取...${NC}"
+            revert_image_mirror "$compose_file"
+            $compose_run pull
+        else
+            echo -e "${RED}Docker pull failed / Docker 拉取失败${NC}"
+            return 1
+        fi
+    fi
 
     echo ""
     echo -e "${BLUE}Starting ClawDeckX container... / 正在启动 ClawDeckX 容器...${NC}"
@@ -890,7 +914,18 @@ docker_update() {
 
     echo ""
     echo -e "${BLUE}Pulling latest image... / 正在拉取最新镜像...${NC}"
-    $compose_run pull
+    if ! $compose_run pull; then
+        if [ "$NEED_MIRROR" = true ]; then
+            echo ""
+            echo -e "${YELLOW}⚠ Mirror pull failed, reverting to direct pull..."
+            echo -e "  镜像加速拉取失败，回退为直连拉取...${NC}"
+            revert_image_mirror "$compose_file"
+            $compose_run pull
+        else
+            echo -e "${RED}Docker pull failed / Docker 拉取失败${NC}"
+            return 1
+        fi
+    fi
 
     echo ""
     echo -e "${BLUE}Recreating container with new image... / 正在用新镜像重建容器...${NC}"

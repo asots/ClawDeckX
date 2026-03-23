@@ -736,6 +736,19 @@ function Set-ImageMirror {
     Write-C "✓ Using mirror for image pull / 使用镜像加速拉取： $mirroredImage" Green
 }
 
+function Undo-ImageMirror {
+    param([string]$ComposeFile)
+    if (-not $script:DOCKER_MIRROR) { return }
+    $mirrorHost = $script:DOCKER_MIRROR -replace 'https?://', ''
+    $originalImage = "knowhunters/clawdeckx"
+    $mirroredImage = "$mirrorHost/$originalImage"
+    $content = Get-Content $ComposeFile -Raw
+    if ($content -match [regex]::Escape($mirroredImage)) {
+        $content = $content -replace [regex]::Escape("image: $mirroredImage"), "image: $originalImage"
+        Set-Content -Path $ComposeFile -Value $content -NoNewline
+    }
+}
+
 function Test-DockerInstalled {
     try {
         $null = & docker info 2>$null
@@ -997,6 +1010,13 @@ function Install-DockerClawDeckX {
     Write-Host ""
     Write-C "Pulling Docker image... / 正在拉取 Docker 镜像..." Blue
     Invoke-ComposeCmd @("pull") -ComposeFile $composeFile -ProjectName $InstanceName
+    if ($LASTEXITCODE -ne 0 -and $script:NEED_MIRROR) {
+        Write-Host ""
+        Write-C "⚠ Mirror pull failed, reverting to direct pull..." Yellow
+        Write-C "  镜像加速拉取失败，回退为直连拉取..." Yellow
+        Undo-ImageMirror $composeFile
+        Invoke-ComposeCmd @("pull") -ComposeFile $composeFile -ProjectName $InstanceName
+    }
 
     Write-Host ""
     Write-C "Starting ClawDeckX container... / 正在启动 ClawDeckX 容器..." Blue
@@ -1115,6 +1135,13 @@ function Update-DockerClawDeckX {
     Write-Host ""
     Write-C "Pulling latest image... / 正在拉取最新镜像..." Blue
     Invoke-ComposeCmd @("pull") -ComposeFile $ComposeFile -ProjectName $InstanceName
+    if ($LASTEXITCODE -ne 0 -and $script:NEED_MIRROR) {
+        Write-Host ""
+        Write-C "⚠ Mirror pull failed, reverting to direct pull..." Yellow
+        Write-C "  镜像加速拉取失败，回退为直连拉取..." Yellow
+        Undo-ImageMirror $ComposeFile
+        Invoke-ComposeCmd @("pull") -ComposeFile $ComposeFile -ProjectName $InstanceName
+    }
 
     Write-Host ""
     Write-C "Recreating container with new image... / 正在用新镜像重建容器..." Blue
