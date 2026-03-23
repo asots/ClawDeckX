@@ -39,6 +39,34 @@ function Write-C {
     Write-Host $Text -ForegroundColor $Color
 }
 
+function Print-AccessUrls {
+    param([int]$Port = $script:PORT)
+    Write-C "Access ClawDeckX at / 访问 ClawDeckX：" Cyan
+    Write-C "  http://localhost:${Port}" Green
+    # LAN IPs
+    try {
+        $lanIPs = [System.Net.Dns]::GetHostAddresses([System.Net.Dns]::GetHostName()) |
+            Where-Object { $_.AddressFamily -eq 'InterNetwork' -and $_.ToString() -ne '127.0.0.1' } |
+            ForEach-Object { $_.ToString() }
+        foreach ($ip in $lanIPs) {
+            Write-C "  http://${ip}:${Port}  (LAN)" Green
+        }
+    } catch { }
+    # Public IP
+    try {
+        $pubIP = $null
+        foreach ($url in @('https://api.ipify.org', 'https://ifconfig.me', 'https://ipinfo.io/ip')) {
+            try {
+                $pubIP = (Invoke-WebRequest -Uri $url -UseBasicParsing -TimeoutSec 5 -ErrorAction Stop).Content.Trim()
+                if ($pubIP) { break }
+            } catch { continue }
+        }
+        if ($pubIP) {
+            Write-C "  http://${pubIP}:${Port}  (Public / 公网)" Green
+        }
+    } catch { }
+}
+
 function Write-Banner {
     Write-Host ""
     Write-Host "  ___ _             ___          _  __  __" -ForegroundColor Blue
@@ -339,8 +367,7 @@ function Update-ClawDeckX {
         $started = Start-ClawDeckXService
         if ($started -and (Test-ProcessRunning)) {
             Write-Host ""
-            Write-C "You can access ClawDeckX at: / 可以访问 ClawDeckX：" Cyan
-            Write-C "  http://localhost:$($script:PORT)" Green
+            Print-AccessUrls
             Write-Host ""
             if (Test-AutoStartInstalled) { Show-ServiceCommands }
         }
@@ -980,8 +1007,7 @@ function Install-DockerClawDeckX {
     Write-C "✅ Docker installation complete! / Docker 安装完成！" Green
     Write-Host "=======================================================" -ForegroundColor Green
     Write-Host ""
-    Write-C "Access ClawDeckX at / 访问 ClawDeckX：" Cyan
-    Write-C "  http://localhost:$($script:PORT)" Green
+    Print-AccessUrls
     Write-Host ""
     Write-C "� Data volumes / 数据卷：" Cyan
     Write-Host "  ClawDeckX data: /data/clawdeckx  -> volume: $InstanceName-data" -ForegroundColor Green
@@ -1072,7 +1098,7 @@ function Update-DockerClawDeckX {
     Write-Host ""
     Write-C "Previous version / 旧版本： $currentVer" Cyan
     Write-C "Current version  / 新版本： $newVer" Cyan
-    Write-C "Access at / 访问： http://localhost:$($script:PORT)" Cyan
+    Print-AccessUrls
 }
 
 function Uninstall-DockerClawDeckX {
@@ -1203,7 +1229,7 @@ function Show-DockerManagementMenu {
                 Invoke-ComposeCmd @("up", "-d") -ComposeFile $ComposeFile -ProjectName $InstanceName
                 Start-Sleep -Seconds 2
                 Write-C "✓ Started / 已启动" Green
-                Write-C "Access at / 访问： http://localhost:$($script:PORT)" Cyan
+                Print-AccessUrls
             }
         }
         3 {
@@ -1226,7 +1252,7 @@ function Show-DockerManagementMenu {
             $statusCheck = & docker ps --filter "name=^${containerName}$" --filter "status=running" --format '{{.Names}}' 2>$null
             if ($statusCheck) {
                 Write-C "✓ ClawDeckX is running / ClawDeckX 运行中" Green
-                Write-C "Access at / 访问： http://localhost:$($script:PORT)" Cyan
+                Print-AccessUrls
             } else {
                 Write-C "ClawDeckX is not running / ClawDeckX 未运行" Yellow
             }
@@ -1437,8 +1463,7 @@ switch ($selectedAction) {
                     $null = Start-ClawDeckXService
                     if (Test-ProcessRunning) {
                         Write-Host ""
-                        Write-C "Access ClawDeckX at / 访问 ClawDeckX：" Cyan
-                        Write-C "  http://localhost:$($script:PORT)" Green
+                        Print-AccessUrls
                         Write-Host ""
                         Show-ServiceCommands
                     }

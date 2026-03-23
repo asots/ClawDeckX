@@ -83,6 +83,30 @@ get_config_port() {
     PORT=$DEFAULT_PORT
 }
 
+# Print all access URLs (localhost + LAN + public IP) for a given port
+# Usage: print_access_urls <port>
+print_access_urls() {
+    local port="${1:-$PORT}"
+    echo -e "${CYAN}Access ClawDeckX at / 访问 ClawDeckX：${NC}"
+    echo -e "  ${GREEN}http://localhost:${port}${NC}"
+    # LAN IPs (exclude loopback)
+    local lan_ips
+    lan_ips=$(hostname -I 2>/dev/null || ip -4 addr show 2>/dev/null | grep -oP 'inet \K[\d.]+' | grep -v '^127\.' || true)
+    for ip in $lan_ips; do
+        [ "$ip" = "127.0.0.1" ] && continue
+        echo -e "  ${GREEN}http://${ip}:${port}${NC}  (LAN)"
+    done
+    # Public IP
+    local pub_ip=""
+    pub_ip=$(curl -sf --connect-timeout 3 --max-time 5 https://api.ipify.org 2>/dev/null \
+          || curl -sf --connect-timeout 3 --max-time 5 https://ifconfig.me 2>/dev/null \
+          || curl -sf --connect-timeout 3 --max-time 5 https://ipinfo.io/ip 2>/dev/null \
+          || true)
+    if [ -n "$pub_ip" ]; then
+        echo -e "  ${GREEN}http://${pub_ip}:${port}${NC}  (Public / 公网)"
+    fi
+}
+
 # Check if a specific port is available (not in use)
 check_port_available() {
     local port=$1
@@ -747,8 +771,7 @@ docker_install() {
     echo -e "${GREEN}✅ Docker installation complete! / Docker 安装完成！${NC}"
     echo -e "${GREEN}═══════════════════════════════════════════════════════════${NC}"
     echo ""
-    echo -e "${CYAN}Access ClawDeckX at / 访问 ClawDeckX：${NC}"
-    echo -e "  ${GREEN}http://localhost:${PORT}${NC}"
+    print_access_urls "$PORT"
     echo ""
     echo -e "${CYAN}📂 Data volumes / 数据卷：${NC}"
     echo -e "  ClawDeckX data: ${GREEN}/data/clawdeckx${NC}  → volume: ${instance_name}-data"
@@ -863,7 +886,7 @@ docker_update() {
     echo ""
     echo -e "${CYAN}Previous version / 旧版本：${NC} $current_ver"
     echo -e "${CYAN}Current version  / 新版本：${NC} $new_ver"
-    echo -e "${CYAN}Access at / 访问：${NC} http://localhost:${PORT}"
+    print_access_urls "$PORT"
     echo ""
 }
 
@@ -1033,7 +1056,7 @@ docker_management_menu() {
                 $compose_run up -d
                 sleep 2
                 echo -e "${GREEN}✓ Started / 已启动${NC}"
-                echo -e "${CYAN}Access at / 访问：${NC} http://localhost:${PORT}"
+                print_access_urls "$PORT"
             fi
             ;;
         3)
@@ -1055,7 +1078,7 @@ docker_management_menu() {
             echo ""
             if docker ps --filter "name=^${container_name}$" --filter "status=running" --format '{{.Names}}' 2>/dev/null | grep -q .; then
                 echo -e "${GREEN}✓ ClawDeckX is running / ClawDeckX 运行中${NC}"
-                echo -e "${CYAN}Access at / 访问：${NC} http://localhost:${PORT}"
+                print_access_urls "$PORT"
             else
                 echo -e "${YELLOW}ClawDeckX is not running / ClawDeckX 未运行${NC}"
             fi
@@ -1635,8 +1658,7 @@ update() {
         # Show access URL if running
         if check_process_running; then
             echo ""
-            echo -e "${CYAN}You can access ClawDeckX at: / 可以访问 ClawDeckX：${NC}"
-            echo -e "  ${GREEN}http://localhost:${PORT}${NC}"
+            print_access_urls "$PORT"
             echo ""
             if check_systemd_service; then
                 echo -e "${YELLOW}Service management commands / 服务管理命令：${NC}"
@@ -1848,8 +1870,7 @@ case "$SELECTED_ACTION" in
                         fi
                     fi
                     echo ""
-                    echo -e "${CYAN}Access ClawDeckX at / 访问 ClawDeckX：${NC}"
-                    echo -e "  ${GREEN}http://localhost:${PORT}${NC}"
+                    print_access_urls "$PORT"
                     exit 0
                 else
                     echo -e "${RED}Invalid choice / 选择无效${NC}"
