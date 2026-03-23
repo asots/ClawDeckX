@@ -320,11 +320,12 @@ function Update-ClawDeckX {
 
     $apiUrl = "https://api.github.com/repos/$Repo/releases/latest"
     $assetPattern = "clawdeckx-windows-${arch}.exe"
-    $downloadUrl = Get-DownloadUrl $apiUrl $assetPattern
+    $downloadUrl = Get-DownloadUrl $Repo $script:LATEST_TAG $assetPattern $apiUrl
 
     if (-not $downloadUrl) {
         Write-C "Error: Could not find download URL for windows/$arch" Red
         Write-C "错误：无法找到 windows/$arch 的下载链接" Red
+        Write-Host "Try again later or check GitHub rate limit. / 请稍后重试或检查 GitHub 访问限制。"
         return
     }
 
@@ -588,7 +589,18 @@ function Get-Architecture {
 }
 
 function Get-DownloadUrl {
-    param([string]$ApiUrl, [string]$AssetPattern)
+    param([string]$Repo, [string]$Tag, [string]$AssetPattern, [string]$ApiUrl)
+    # Primary: construct direct download URL (no API needed, no rate limit)
+    if ($Tag -and $Tag -ne 'latest') {
+        $directUrl = "https://github.com/$Repo/releases/download/$Tag/$AssetPattern"
+        try {
+            $resp = Invoke-WebRequest -Uri $directUrl -Method Head -UseBasicParsing -MaximumRedirection 5 -ErrorAction Stop
+            if ($resp.StatusCode -eq 200) { return $directUrl }
+        } catch {
+            Write-C "Direct URL check failed, trying API fallback..." Yellow
+        }
+    }
+    # Fallback: use API
     try {
         [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13
         $release = Invoke-RestMethod -Uri $ApiUrl -UseBasicParsing
@@ -598,24 +610,44 @@ function Get-DownloadUrl {
             }
         }
     } catch {
-        Write-C "Warning: Could not fetch release info / 警告：无法获取发布信息: $_" Yellow
+        $errMsg = $_.ToString()
+        if ($errMsg -match 'rate limit') {
+            Write-C "⚠ GitHub API rate limit exceeded / GitHub API 请求频率超限" Red
+            Write-C "Tip: Wait a few minutes and retry / 提示：等待几分钟后重试" Yellow
+        } else {
+            Write-C "Warning: Could not fetch release info / 警告：无法获取发布信息: $_" Yellow
+        }
     }
     return $null
 }
 
 function Get-LatestVersion {
     param([string]$Repo)
+    # Primary: get version via 302 redirect (no API quota cost)
+    try {
+        $resp = Invoke-WebRequest -Uri "https://github.com/$Repo/releases/latest" -Method Head -UseBasicParsing -MaximumRedirection 0 -ErrorAction SilentlyContinue
+    } catch {
+        $redirectUrl = $_.Exception.Response.Headers.Location
+        if ($redirectUrl) {
+            # Store raw tag for direct URL construction
+            $script:LATEST_TAG = ($redirectUrl -split '/tag/')[-1]
+            return ($script:LATEST_TAG -replace '^v', '')
+        }
+    }
+    # Fallback: use API
     $apiUrl = "https://api.github.com/repos/$Repo/releases/latest"
     try {
         [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13
         $release = Invoke-RestMethod -Uri $apiUrl -UseBasicParsing
         $tag = $release.tag_name
         if ($tag) {
+            $script:LATEST_TAG = $tag
             return $tag -replace '^v', ''
         }
     } catch {
         Write-C "Warning: Could not fetch latest version / 警告：无法获取最新版本" Yellow
     }
+    $script:LATEST_TAG = 'latest'
     return "latest"
 }
 
@@ -1583,7 +1615,7 @@ Write-C "Fetching latest release info... / 正在获取最新版本信息... ($L
 
 $apiUrl = "https://api.github.com/repos/$REPO/releases/latest"
 $assetPattern = "clawdeckx-windows-${arch}.exe"
-$downloadUrl = Get-DownloadUrl $apiUrl $assetPattern
+$downloadUrl = Get-DownloadUrl $REPO $script:LATEST_TAG $assetPattern $apiUrl
 
 if (-not $downloadUrl) {
     Write-C "Error: Could not find a release asset for windows/$arch" Red
@@ -1591,6 +1623,7 @@ if (-not $downloadUrl) {
     Write-Host "This might be because: / 可能的原因："
     Write-Host "1. No release has been published yet. / 尚未发布任何版本。"
     Write-Host "2. The asset naming does not match. / 资源文件名不匹配。"
+    Write-Host "3. GitHub API rate limit — try again later. / GitHub 访问限制 — 请稍后重试。"
     return
 }
 

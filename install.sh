@@ -1181,9 +1181,23 @@ echo -e "${NC}"
 # 获取最新版本号
 REPO="ClawDeckX/ClawDeckX"
 API_URL="https://api.github.com/repos/$REPO/releases/latest"
-LATEST_VERSION_RAW=$(curl -s $API_URL | grep '"tag_name"' | cut -d '"' -f 4)
+
+# Primary: get version via 302 redirect (no API quota cost)
+LATEST_VERSION_RAW=$(curl -sI "https://github.com/$REPO/releases/latest" 2>/dev/null \
+    | grep -i '^location:' | sed 's/.*\/tag\///' | tr -d '\r\n')
+
+# Fallback: use API if redirect method failed
 if [ -z "$LATEST_VERSION_RAW" ]; then
-    LATEST_VERSION_RAW="latest"
+    API_RESPONSE=$(curl -s "$API_URL")
+    LATEST_VERSION_RAW=$(echo "$API_RESPONSE" | grep '"tag_name"' | cut -d '"' -f 4)
+    # Check for API rate limit
+    if [ -z "$LATEST_VERSION_RAW" ]; then
+        if echo "$API_RESPONSE" | grep -q "rate limit"; then
+            echo -e "${RED}GitHub API rate limit exceeded / GitHub API 请求频率超限${NC}"
+            echo -e "${YELLOW}Will attempt direct download... / 将尝试直接下载...${NC}"
+        fi
+        LATEST_VERSION_RAW="latest"
+    fi
 fi
 # Remove 'v' prefix for display and comparison
 LATEST_VERSION="${LATEST_VERSION_RAW#v}"
@@ -1659,12 +1673,34 @@ update() {
     fi
 
     # Get download URL for update
-    API_URL="https://api.github.com/repos/$REPO/releases/latest"
     ASSET_PATTERN="clawdeckx-${OS}-${ARCH}"
-    DOWNLOAD_URL=$(curl -s $API_URL | grep "browser_download_url" | grep "$ASSET_PATTERN" | cut -d '"' -f 4)
-    
+    DOWNLOAD_URL=""
+
+    # Primary: construct direct download URL (no API needed, no rate limit)
+    if [ "$LATEST_VERSION_RAW" != "latest" ]; then
+        DOWNLOAD_URL="https://github.com/$REPO/releases/download/${LATEST_VERSION_RAW}/${ASSET_PATTERN}"
+        HTTP_CODE=$(curl -sI -o /dev/null -w "%{http_code}" -L "$DOWNLOAD_URL" 2>/dev/null)
+        if [ "$HTTP_CODE" != "200" ]; then
+            echo -e "${YELLOW}Direct URL returned $HTTP_CODE, trying API fallback...${NC}"
+            DOWNLOAD_URL=""
+        fi
+    fi
+
+    # Fallback: use API
+    if [ -z "$DOWNLOAD_URL" ]; then
+        API_URL="https://api.github.com/repos/$REPO/releases/latest"
+        API_RESPONSE=$(curl -s "$API_URL")
+        if echo "$API_RESPONSE" | grep -q "rate limit"; then
+            echo -e "${RED}⚠ GitHub API rate limit exceeded / GitHub API 请求频率超限${NC}"
+            echo -e "${YELLOW}Tip: Wait a few minutes and retry, or set GITHUB_TOKEN env var${NC}"
+            exit 1
+        fi
+        DOWNLOAD_URL=$(echo "$API_RESPONSE" | grep "browser_download_url" | grep "$ASSET_PATTERN" | cut -d '"' -f 4)
+    fi
+
     if [ -z "$DOWNLOAD_URL" ]; then
         echo -e "${RED}Error: Could not find download URL for $OS/$ARCH${NC}"
+        echo "Try again later or set GITHUB_TOKEN to bypass rate limit."
         exit 1
     fi
     
@@ -2149,10 +2185,6 @@ fi
 
 echo -e "${YELLOW}Fetching latest release info... (${LATEST_VERSION})${NC}"
 
-# Use curl to get the download URL for the specific asset
-# Asset name convention: ClawDeckX-{os}-{arch} (e.g., ClawDeckX-linux-amd64)
-# If on macOS, the binary might be named ClawDeckX-darwin-amd64 or similar.
-# Adjusting based on standard Go build naming.
 BINARY_NAME="clawdeckx"
 ASSET_PATTERN="clawdeckx-${OS}-${ARCH}"
 
@@ -2163,13 +2195,36 @@ if [[ "$OS" == *"mingw"* || "$OS" == *"cygwin"* ]]; then
     BINARY_NAME="clawdeckx.exe"
 fi
 
-DOWNLOAD_URL=$(curl -s $API_URL | grep "browser_download_url" | grep "$ASSET_PATTERN" | cut -d '"' -f 4)
+# Primary: construct direct download URL (no API needed, no rate limit)
+if [ "$LATEST_VERSION_RAW" != "latest" ]; then
+    DOWNLOAD_URL="https://github.com/$REPO/releases/download/${LATEST_VERSION_RAW}/${ASSET_PATTERN}"
+    # Verify the URL exists (HEAD request, follow redirects)
+    HTTP_CODE=$(curl -sI -o /dev/null -w "%{http_code}" -L "$DOWNLOAD_URL" 2>/dev/null)
+    if [ "$HTTP_CODE" != "200" ]; then
+        echo -e "${YELLOW}Direct URL returned $HTTP_CODE, trying API fallback...${NC}"
+        DOWNLOAD_URL=""
+    fi
+fi
+
+# Fallback: use API to find asset URL
+if [ -z "$DOWNLOAD_URL" ]; then
+    API_RESPONSE=$(curl -s "$API_URL")
+    # Check for rate limit
+    if echo "$API_RESPONSE" | grep -q "rate limit"; then
+        echo -e "${RED}⚠ GitHub API rate limit exceeded / GitHub API 请求频率超限${NC}"
+        echo -e "${YELLOW}Tip: Wait a few minutes and retry, or set GITHUB_TOKEN env var${NC}"
+        echo -e "${YELLOW}提示：等待几分钟后重试，或设置 GITHUB_TOKEN 环境变量${NC}"
+        exit 1
+    fi
+    DOWNLOAD_URL=$(echo "$API_RESPONSE" | grep "browser_download_url" | grep "$ASSET_PATTERN" | cut -d '"' -f 4)
+fi
 
 if [ -z "$DOWNLOAD_URL" ]; then
     echo -e "${RED}Error: Could not find a release asset for $OS/$ARCH${NC}"
     echo "This might be because:"
     echo "1. No release has been published yet."
     echo "2. The asset naming does not match '$ASSET_PATTERN'."
+    echo "3. GitHub API rate limit — try again later or set GITHUB_TOKEN."
     exit 1
 fi
 
