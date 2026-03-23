@@ -99,6 +99,7 @@
   "nodesHelp": "Nós são dispositivos remotos executando OpenClaw que podem executar comandos e tarefas",
   "devicesHelp": "Pareamento de dispositivos autoriza dispositivos remotos a acessar este gateway",
   "bindingsHelp": "Vinculações determinam qual nó os agentes IA usam para executar comandos",
+  "gatewayPresence": "Presença do gateway",
   "pairRequestHelp": "Iniciar uma solicitação de pareamento desta máquina para um nó remoto",
   "pairVerifyHelp": "Verificar se um token de pareamento é válido",
   "rotateHelp": "Gerar um novo token e invalidar o antigo",

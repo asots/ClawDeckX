@@ -99,6 +99,7 @@
   "nodesHelp": "節點是執行 OpenClaw 的遠端裝置，可以執行命令和任務",
   "devicesHelp": "裝置配對用於授權遠端裝置存取此閘道",
   "bindingsHelp": "綁定決定 AI 代理在哪個節點上執行命令",
+  "gatewayPresence": "閘道在線狀態",
   "pairRequestHelp": "從本機主動向遠端節點發起配對請求",
   "pairVerifyHelp": "驗證配對 Token 是否有效",
   "rotateHelp": "產生新 Token 並使舊 Token 失效",

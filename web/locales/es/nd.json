@@ -99,6 +99,7 @@
   "nodesHelp": "Los nodos son dispositivos remotos que ejecutan OpenClaw y pueden ejecutar comandos y tareas",
   "devicesHelp": "El emparejamiento de dispositivos autoriza a los dispositivos remotos a acceder a este gateway",
   "bindingsHelp": "Los vínculos determinan qué nodo usan los agentes IA para ejecutar comandos",
+  "gatewayPresence": "Presencia del gateway",
   "pairRequestHelp": "Iniciar una solicitud de emparejamiento desde esta máquina a un nodo remoto",
   "pairVerifyHelp": "Verificar si un token de emparejamiento es válido",
   "rotateHelp": "Generar un nuevo token e invalidar el anterior",

@@ -99,6 +99,7 @@
   "nodesHelp": "노드는 명령과 작업을 실행할 수 있는 OpenClaw 실행 원격 디바이스입니다",
   "devicesHelp": "디바이스 페어링은 원격 디바이스가 이 게이트웨이에 접근할 수 있도록 인가합니다",
   "bindingsHelp": "바인딩은 AI 에이전트가 명령 실행에 사용할 노드를 결정합니다",
+  "gatewayPresence": "게이트웨이 온라인 상태",
   "pairRequestHelp": "이 머신에서 원격 노드로 페어링 요청을 시작합니다",
   "pairVerifyHelp": "페어링 토큰이 유효한지 확인합니다",
   "rotateHelp": "새 토큰을 생성하고 기존 토큰을 무효화합니다",

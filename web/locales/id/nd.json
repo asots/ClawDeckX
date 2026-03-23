@@ -99,6 +99,7 @@
   "nodesHelp": "Node adalah perangkat remote yang menjalankan OpenClaw yang dapat mengeksekusi perintah dan tugas",
   "devicesHelp": "Pairing perangkat mengotorisasi perangkat remote untuk mengakses gateway ini",
   "bindingsHelp": "Binding menentukan node mana yang digunakan agen AI untuk mengeksekusi perintah",
+  "gatewayPresence": "Kehadiran gateway",
   "pairRequestHelp": "Mulai permintaan pairing dari mesin ini ke node remote",
   "pairVerifyHelp": "Verifikasi apakah token pairing valid",
   "rotateHelp": "Hasilkan token baru dan batalkan yang lama",

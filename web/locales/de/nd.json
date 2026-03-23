@@ -99,6 +99,7 @@
   "nodesHelp": "Knoten sind Remote-Geräte mit OpenClaw, die Befehle und Aufgaben ausführen können",
   "devicesHelp": "Gerätekopplung autorisiert Remote-Geräte für den Zugriff auf dieses Gateway",
   "bindingsHelp": "Bindungen bestimmen, welchen Knoten KI-Agents zur Befehlsausführung verwenden",
+  "gatewayPresence": "Gateway-Präsenz",
   "pairRequestHelp": "Kopplungsanfrage von diesem Gerät an einen Remote-Knoten senden",
   "pairVerifyHelp": "Prüfen, ob ein Kopplungstoken gültig ist",
   "rotateHelp": "Neues Token generieren und das alte ungültig machen",

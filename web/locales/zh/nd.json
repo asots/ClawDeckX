@@ -99,6 +99,7 @@
   "nodesHelp": "节点是运行 OpenClaw 的远程设备，可以执行命令和任务",
   "devicesHelp": "设备配对用于授权远程设备访问此网关",
   "bindingsHelp": "绑定决定 AI 代理在哪个节点上执行命令",
+  "gatewayPresence": "网关在线状态",
   "pairRequestHelp": "从本机主动向远程节点发起配对请求",
   "pairVerifyHelp": "验证配对 Token 是否有效",
   "rotateHelp": "生成新 Token 并使旧 Token 失效",

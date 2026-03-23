@@ -13,6 +13,12 @@ import { copyToClipboard } from '../utils/clipboard';
 
 interface NodesProps { language: Language; }
 
+interface PresenceEntry {
+  host?: string; ip?: string; version?: string; mode?: string;
+  reason?: string; platform?: string; deviceFamily?: string;
+  roles?: string[]; scopes?: string[]; ts: number;
+}
+
 interface NodeEntry {
   nodeId: string;
   displayName?: string;
@@ -172,6 +178,7 @@ const Nodes: React.FC<NodesProps> = ({ language }) => {
   const [tab, setTab] = useState<TabId>('nodes');
   const [nodes, setNodes] = useState<NodeEntry[]>([]);
   const [nodesLoading, setNodesLoading] = useState(true);
+  const [presence, setPresence] = useState<PresenceEntry[]>([]);
   const [pending, setPending] = useState<PendingDevice[]>([]);
   const [paired, setPaired] = useState<PairedDevice[]>([]);
   
@@ -261,6 +268,13 @@ const Nodes: React.FC<NodesProps> = ({ language }) => {
   const [templateName, setTemplateName] = useState('');
   const [dragIndex, setDragIndex] = useState<number | null>(null);
 
+  const fetchPresence = useCallback(async () => {
+    try {
+      const res = await gwApi.systemPresence();
+      if (Array.isArray(res)) setPresence(res);
+    } catch { /* silent */ }
+  }, []);
+
   const fetchNodes = useCallback(async () => {
     setNodesLoading(true); setError('');
     try {
@@ -279,6 +293,13 @@ const Nodes: React.FC<NodesProps> = ({ language }) => {
     } catch { /* silent */ }
   }, []);
 
+  const fetchPresenceQuiet = useCallback(async () => {
+    try {
+      const res = await gwApi.systemPresence();
+      if (Array.isArray(res)) setPresence(res);
+    } catch { /* silent */ }
+  }, []);
+
   // Real-time: node.invoke.request events + node status tracking
   useGatewayEvents(useMemo(() => ({
     'node.invoke.request': (p) => {
@@ -287,9 +308,12 @@ const Nodes: React.FC<NodesProps> = ({ language }) => {
       setEventLog(prev => [`[${new Date().toLocaleTimeString()}] invoke.request → ${node}: ${cmd}`, ...prev.slice(0, 49)]);
     },
     'health': () => {
-      if (autoRefresh) fetchNodesQuiet();
+      if (autoRefresh) {
+        fetchNodesQuiet();
+        fetchPresenceQuiet();
+      }
     },
-  }), [autoRefresh, fetchNodesQuiet]));
+  }), [autoRefresh, fetchNodesQuiet, fetchPresenceQuiet]));
 
   // Alert generation: detect node status changes
   useEffect(() => {
@@ -569,9 +593,9 @@ const Nodes: React.FC<NodesProps> = ({ language }) => {
   }, [deviceSearchInput]);
 
   useEffect(() => {
-    const raf = requestAnimationFrame(() => { fetchNodes(); });
+    const raf = requestAnimationFrame(() => { fetchNodes(); fetchPresence(); });
     return () => cancelAnimationFrame(raf);
-  }, [fetchNodes]);
+  }, [fetchNodes, fetchPresence]);
   useEffect(() => {
     if (tab === 'devices') {
       fetchDevices();
@@ -1055,7 +1079,7 @@ const Nodes: React.FC<NodesProps> = ({ language }) => {
                     </button>
                   </div>
                   {/* Refresh button */}
-                  <button onClick={fetchNodes} disabled={nodesLoading}
+                  <button onClick={() => { fetchNodes(); fetchPresence(); }} disabled={nodesLoading}
                     className="h-8 px-3 flex items-center gap-1.5 theme-field hover:bg-slate-200 dark:hover:bg-white/10 rounded-lg text-[11px] font-bold theme-text-secondary disabled:opacity-50">
                     <span className={`material-symbols-outlined text-[14px] ${nodesLoading ? 'animate-spin' : ''}`}>{nodesLoading ? 'progress_activity' : 'refresh'}</span>
                     <span className="hidden sm:inline">{nd.refresh}</span>
@@ -1080,6 +1104,28 @@ const Nodes: React.FC<NodesProps> = ({ language }) => {
                       </span>
                     </>
                   )}
+                </div>
+              )}
+
+              {/* Gateway Presence bar */}
+              {presence.length > 0 && (
+                <div className="rounded-xl bg-sky-50 dark:bg-sky-500/[0.04] border border-sky-200/50 dark:border-sky-500/10 p-3">
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <span className="material-symbols-outlined text-[14px] text-sky-500">dns</span>
+                    <span className="text-[11px] font-bold text-sky-600 dark:text-sky-400">{nd.gatewayPresence || 'Gateway Presence'} ({presence.length})</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {presence.map((p, i) => (
+                      <div key={`${p.host}-${p.ip}-${i}`}
+                        className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-white/60 dark:bg-white/5 border border-sky-100 dark:border-white/5 text-[11px]">
+                        <span className="w-1.5 h-1.5 rounded-full bg-mac-green shrink-0" />
+                        <span className="font-bold theme-text">{p.host || p.ip || '?'}</span>
+                        {p.version && <span className="theme-text-secondary">v{p.version}</span>}
+                        {p.mode && <span className="text-sky-500 dark:text-sky-400">{p.mode}</span>}
+                        {p.platform && <span className="theme-text-muted">{p.platform}</span>}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
 

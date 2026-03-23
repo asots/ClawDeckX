@@ -101,6 +101,7 @@
   "nodesHelp": "Nodes are remote devices running OpenClaw that can execute commands and tasks",
   "devicesHelp": "Device pairing authorizes remote devices to access this gateway",
   "bindingsHelp": "Bindings determine which node AI agents use to execute commands",
+  "gatewayPresence": "Gateway Presence",
   
   "pairRequestHelp": "Initiate a pairing request from this machine to a remote node",
   "pairVerifyHelp": "Verify if a pairing token is valid",

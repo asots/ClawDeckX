@@ -99,6 +99,7 @@
   "nodesHelp": "Les nœuds sont des appareils distants exécutant OpenClaw qui peuvent exécuter des commandes et des tâches",
   "devicesHelp": "L'appairage d'appareils autorise les appareils distants à accéder à ce gateway",
   "bindingsHelp": "Les liaisons déterminent quel nœud les agents IA utilisent pour exécuter les commandes",
+  "gatewayPresence": "Présence du gateway",
   "pairRequestHelp": "Lancer une demande d'appairage depuis cette machine vers un nœud distant",
   "pairVerifyHelp": "Vérifier si un token d'appairage est valide",
   "rotateHelp": "Générer un nouveau token et invalider l'ancien",
