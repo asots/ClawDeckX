@@ -283,7 +283,7 @@
     "bindAddress": "Bind Address",
     "bindAddressHint": "0.0.0.0 = all interfaces (LAN accessible), 127.0.0.1 = localhost only",
     "listenPort": "Listen Port",
-    "listenPortHint": "Default 18800, restart required after change",
+    "listenPortHint": "Default 18788, restart required after change",
     "corsOrigins": "CORS Allowed Origins",
     "corsOriginsHint": "Origins allowed for cross-origin access. Empty = same-origin only.",
     "addOrigin": "Add Origin",

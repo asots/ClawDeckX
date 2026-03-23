@@ -283,7 +283,7 @@
     "bindAddress": "繫結地址",
     "bindAddressHint": "0.0.0.0 = 所有網絡卡（區域網可訪問），127.0.0.1 = 僅本機",
     "listenPort": "監聽埠",
-    "listenPortHint": "預設 18800，修改後需重啟生效",
+    "listenPortHint": "預設 18788，修改後需重啟生效",
     "corsOrigins": "CORS 允許來源",
     "corsOriginsHint": "允許跨域訪問的來源地址，留空則僅允許同源訪問",
     "addOrigin": "新增來源",

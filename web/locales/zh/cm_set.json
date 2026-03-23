@@ -283,7 +283,7 @@
     "bindAddress": "绑定地址",
     "bindAddressHint": "0.0.0.0 = 所有网卡（局域网可访问），127.0.0.1 = 仅本机",
     "listenPort": "监听端口",
-    "listenPortHint": "默认 18800，修改后需重启生效",
+    "listenPortHint": "默认 18788，修改后需重启生效",
     "corsOrigins": "CORS 允许来源",
     "corsOriginsHint": "允许跨域访问的来源地址，留空则仅允许同源访问",
     "addOrigin": "添加来源",

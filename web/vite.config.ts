@@ -15,7 +15,7 @@ export default defineConfig({
     host: '0.0.0.0',
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:18800',
+        target: 'http://127.0.0.1:18788',
         ws: true,
       },
     },

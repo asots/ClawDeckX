@@ -283,7 +283,7 @@
     "bindAddress": "Alamat Bind",
     "bindAddressHint": "0.0.0.0 = semua antarmuka (LAN dapat diakses), 127.0.0.1 = hanya localhost",
     "listenPort": "Port Listen",
-    "listenPortHint": "Default 18800, restart diperlukan setelah perubahan",
+    "listenPortHint": "Default 18788, restart diperlukan setelah perubahan",
     "corsOrigins": "CORS Allowed Origins",
     "corsOriginsHint": "Origin yang diizinkan untuk akses lintas-origin. Kosong = hanya same-origin.",
     "addOrigin": "Tambah Origin",

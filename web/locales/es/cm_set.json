@@ -283,7 +283,7 @@
     "bindAddress": "Dirección de enlace",
     "bindAddressHint": "0.0.0.0 = todas las interfaces (accesible por LAN), 127.0.0.1 = solo localhost",
     "listenPort": "Puerto de escucha",
-    "listenPortHint": "Predeterminado 18800, se requiere reinicio después del cambio",
+    "listenPortHint": "Predeterminado 18788, se requiere reinicio después del cambio",
     "corsOrigins": "Orígenes CORS permitidos",
     "corsOriginsHint": "Orígenes permitidos para acceso cruzado. Vacío = solo mismo origen.",
     "addOrigin": "Añadir origen",

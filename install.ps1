@@ -21,7 +21,9 @@ $OutputEncoding = [System.Text.Encoding]::UTF8
 # Constants
 $BINARY_NAME = "clawdeckx.exe"
 $TASK_NAME = "ClawDeckX"
-$DEFAULT_PORT = 18800
+$DEFAULT_PORT = 18788
+$INTERNAL_PORT = 18788
+$DEFAULT_HOST_PORT = 18700
 
 # Script-level variables
 $script:INSTALLED_LOCATION = ""
@@ -781,7 +783,7 @@ function Test-DockerRunning {
 function Get-ComposePort {
     if (Test-Path $DOCKER_COMPOSE_FILE) {
         $content = Get-Content $DOCKER_COMPOSE_FILE -Raw -ErrorAction SilentlyContinue
-        if ($content -match '"(\d+):18800"') {
+        if ($content -match '"(\d+):18788"') {
             return [int]$Matches[1]
         }
     }
@@ -921,10 +923,10 @@ function Install-DockerClawDeckX {
     $assignedPorts = @()
     foreach ($_cf in (Get-ChildItem -Path . -Filter "docker-compose*.yml" -ErrorAction SilentlyContinue)) {
         if ($_cf.Name -eq $composeFile) { continue }
-        $m = Select-String -Path $_cf.FullName -Pattern '"(\d+):18800"' -ErrorAction SilentlyContinue | Select-Object -First 1
+        $m = Select-String -Path $_cf.FullName -Pattern '"(\d+):18788"' -ErrorAction SilentlyContinue | Select-Object -First 1
         if ($m) { $assignedPorts += [int]$m.Matches.Groups[1].Value }
     }
-    $autoPort = Find-AvailablePort $DEFAULT_PORT
+    $autoPort = Find-AvailablePort $DEFAULT_HOST_PORT
     # If found port is assigned to another instance (stopped), bump and retry
     foreach ($_used in $assignedPorts) {
         while ($autoPort -eq $_used) {
@@ -932,9 +934,9 @@ function Install-DockerClawDeckX {
         }
     }
 
-    if ($autoPort -ne $DEFAULT_PORT) {
-        Write-C "Default port $DEFAULT_PORT is occupied, auto-selected: $autoPort" Yellow
-        Write-C "默认端口 $DEFAULT_PORT 已被占用，自动选择：$autoPort" Yellow
+    if ($autoPort -ne $DEFAULT_HOST_PORT) {
+        Write-C "Default port $DEFAULT_HOST_PORT is occupied, auto-selected: $autoPort" Yellow
+        Write-C "默认端口 $DEFAULT_HOST_PORT 已被占用，自动选择：$autoPort" Yellow
     } else {
         Write-C "✓ Port $autoPort is available / 端口 $autoPort 可用" Green
     }
@@ -954,11 +956,10 @@ function Install-DockerClawDeckX {
     }
 
     $script:PORT = $autoPort
-    if ($script:PORT -ne $DEFAULT_PORT) {
-        $content = Get-Content $composeFile -Raw
-        $content = $content -replace "`"${DEFAULT_PORT}:${DEFAULT_PORT}`"", "`"$($script:PORT):${DEFAULT_PORT}`""
-        Set-Content -Path $composeFile -Value $content -NoNewline
-    }
+    # Replace host port in compose file; internal port stays at INTERNAL_PORT
+    $content = Get-Content $composeFile -Raw
+    $content = $content -replace "`"${DEFAULT_HOST_PORT}:${INTERNAL_PORT}`"", "`"$($script:PORT):${INTERNAL_PORT}`""
+    Set-Content -Path $composeFile -Value $content -NoNewline
     # Inject OCD_HOST_PORT so the container banner shows the correct external URL
     $content = Get-Content $composeFile -Raw
     if ($content -match "OCD_HOST_PORT") {
@@ -1038,7 +1039,7 @@ function Update-DockerClawDeckX {
     if ($cnMatch) { $containerName = $cnMatch.Matches.Groups[1].Value }
 
     # Extract port from compose file for health check
-    $portMatch = Select-String -Path $ComposeFile -Pattern '"(\d+):18800"' -ErrorAction SilentlyContinue | Select-Object -First 1
+    $portMatch = Select-String -Path $ComposeFile -Pattern '"(\d+):18788"' -ErrorAction SilentlyContinue | Select-Object -First 1
     if ($portMatch) { $script:PORT = $portMatch.Matches.Groups[1].Value }
 
     $currentVer = try { (& docker inspect --format '{{ index .Config.Labels "org.opencontainers.image.version" }}' $containerName 2>$null) } catch { "unknown" }
@@ -1186,7 +1187,7 @@ function Show-DockerManagementMenu {
     if ($rc) { $isRunning = $true }
 
     $cc = Get-Content $ComposeFile -Raw -EA SilentlyContinue
-    if ($cc -match '"(\d+):18800"') { $script:PORT = [int]$Matches[1] }
+    if ($cc -match '"(\d+):18788"') { $script:PORT = [int]$Matches[1] }
 
     Write-C "✓ Docker deployment: $InstanceName" Green
     Write-C "Compose file / 配置文件： $ComposeFile" Cyan
@@ -1303,7 +1304,7 @@ if ((Test-DockerInstalled) -and (Test-DockerCompose)) {
             }
             # Extract port
             $iport = $DEFAULT_PORT
-            if ($content -match '"(\d+):18800"') { $iport = [int]$Matches[1] }
+            if ($content -match '"(\d+):18788"') { $iport = [int]$Matches[1] }
             $DOCKER_INSTANCE_PORTS += $iport
             # Extract container name for version/status check
             $icn = "clawdeckx"

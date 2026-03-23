@@ -103,7 +103,7 @@ func Default() Config {
 	dataDir := defaultDataDir()
 	return Config{
 		Server: ServerConfig{
-			Port:            18800,
+			Port:            18788,
 			Bind:            "0.0.0.0",
 			CORSOrigins:     []string{},
 			ClawHubQueryURL: "https://wry-manatee-359.convex.cloud",

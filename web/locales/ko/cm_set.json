@@ -283,7 +283,7 @@
     "bindAddress": "바인드 주소",
     "bindAddressHint": "0.0.0.0 = 모든 인터페이스 (LAN 접근 가능), 127.0.0.1 = 로컬만",
     "listenPort": "수신 포트",
-    "listenPortHint": "기본값 18800, 변경 후 재시작 필요",
+    "listenPortHint": "기본값 18788, 변경 후 재시작 필요",
     "corsOrigins": "CORS 허용 출처",
     "corsOriginsHint": "교차 출처 접근이 허용된 출처. 비워두면 동일 출처만 허용.",
     "addOrigin": "출처 추가",

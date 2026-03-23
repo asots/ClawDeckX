@@ -5,7 +5,7 @@ services:
     init: true
     restart: unless-stopped
     ports:
-      - "18800:18800"
+      - "18700:18788"
     volumes:
       - clawdeckx-data:/data/clawdeckx
       # Persist OpenClaw config, state, and logs across container updates
@@ -32,7 +32,7 @@ services:
       OCD_OPENCLAW_GATEWAY_PORT: 18789
       # OCD_OPENCLAW_GATEWAY_TOKEN: your_token_here
     healthcheck:
-      test: ["CMD", "curl", "-sf", "http://localhost:18800/api/v1/health"]
+      test: ["CMD", "curl", "-sf", "http://localhost:18788/api/v1/health"]
       interval: 30s
       timeout: 5s
       start_period: 15s

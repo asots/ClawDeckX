@@ -25,7 +25,9 @@ NC='\033[0m' # No Color
 
 # Installation paths - prefer current directory
 BINARY_NAME="clawdeckx"
-DEFAULT_PORT=18800
+DEFAULT_PORT=18788
+INTERNAL_PORT=18788
+DEFAULT_HOST_PORT=18700
 PORT=$DEFAULT_PORT
 # Config and data directories are relative to executable location
 CONFIG_DIR=""
@@ -673,17 +675,18 @@ docker_install() {
         echo -e "${GREEN}✓ Configured for instance: $instance_name${NC}"
     fi
 
-    # Step 4: Smart port configuration — auto-detect available port
+    # Step 4: Smart port configuration — auto-detect available host port
+    # Docker maps HOST_PORT → INTERNAL_PORT (18788). Host port starts from DEFAULT_HOST_PORT (18700).
     # Collect ports already assigned by other Docker instances
     echo ""
     echo -e "${CYAN}Detecting available port... / 正在检测可用端口...${NC}"
-    local start_port=$DEFAULT_PORT
+    local start_port=$DEFAULT_HOST_PORT
     local assigned_ports=()
     for _cf in docker-compose.yml docker-compose-*.yml; do
         [ -f "$_cf" ] || continue
         [ "$_cf" = "$compose_file" ] && continue  # Skip our own file
         local _ap
-        _ap=$(grep -oE '"[0-9]+:18800"' "$_cf" 2>/dev/null | head -1 | grep -oE '^"[0-9]+' | tr -d '"')
+        _ap=$(grep -oE '"[0-9]+:18788"' "$_cf" 2>/dev/null | head -1 | grep -oE '^"[0-9]+' | tr -d '"')
         [ -n "$_ap" ] && assigned_ports+=("$_ap")
     done
     # Find a port that is both unoccupied AND not assigned to another instance
@@ -697,9 +700,9 @@ docker_install() {
         done
     done
 
-    if [ "$auto_port" -ne "$DEFAULT_PORT" ]; then
-        echo -e "${YELLOW}Default port $DEFAULT_PORT is occupied, auto-selected: $auto_port"
-        echo -e "默认端口 $DEFAULT_PORT 已被占用，自动选择：$auto_port${NC}"
+    if [ "$auto_port" -ne "$DEFAULT_HOST_PORT" ]; then
+        echo -e "${YELLOW}Default port $DEFAULT_HOST_PORT is occupied, auto-selected: $auto_port"
+        echo -e "默认端口 $DEFAULT_HOST_PORT 已被占用，自动选择：$auto_port${NC}"
     else
         echo -e "${GREEN}✓ Port $auto_port is available / 端口 $auto_port 可用${NC}"
     fi
@@ -718,9 +721,8 @@ docker_install() {
     fi
 
     PORT=$auto_port
-    if [ "$PORT" -ne "$DEFAULT_PORT" ]; then
-        sed_inplace "s/\"${DEFAULT_PORT}:${DEFAULT_PORT}\"/\"${PORT}:${DEFAULT_PORT}\"/" "$compose_file"
-    fi
+    # Replace host port in compose file; internal port stays at INTERNAL_PORT
+    sed_inplace "s/\"${DEFAULT_HOST_PORT}:${INTERNAL_PORT}\"/\"${PORT}:${INTERNAL_PORT}\"/" "$compose_file"
     # Inject OCD_HOST_PORT so the container banner shows the correct external URL
     if grep -q "OCD_HOST_PORT" "$compose_file" 2>/dev/null; then
         sed_inplace "s/OCD_HOST_PORT: .*/OCD_HOST_PORT: \"${PORT}\"/" "$compose_file"
@@ -818,7 +820,7 @@ docker_update() {
     container_name="${container_name:-$instance_name}"
 
     local compose_port
-    compose_port=$(grep -oE '"[0-9]+:18800"' "$compose_file" 2>/dev/null | head -1 | grep -oE '^"[0-9]+' | tr -d '"' || true)
+    compose_port=$(grep -oE '"[0-9]+:18788"' "$compose_file" 2>/dev/null | head -1 | grep -oE '^"[0-9]+' | tr -d '"' || true)
     if [ -n "$compose_port" ]; then
         PORT=$compose_port
     fi
@@ -1007,7 +1009,7 @@ docker_management_menu() {
 
     # Read port from compose file
     local compose_port
-    compose_port=$(grep -oE '"[0-9]+:18800"' "$compose_file" 2>/dev/null | head -1 | grep -oE '^"[0-9]+' | tr -d '"')
+    compose_port=$(grep -oE '"[0-9]+:18788"' "$compose_file" 2>/dev/null | head -1 | grep -oE '^"[0-9]+' | tr -d '"')
     if [ -n "$compose_port" ]; then
         PORT=$compose_port
     fi
@@ -1148,7 +1150,7 @@ if [ "$IS_CONTAINER" = false ] && check_docker && check_docker_compose; then
                 DOCKER_INSTANCE_NAMES+=("$local_name")
             fi
             # Extract port
-            local_port=$(grep -oE '"[0-9]+:18800"' "$cf" 2>/dev/null | head -1 | grep -oE '^"[0-9]+' | tr -d '"')
+            local_port=$(grep -oE '"[0-9]+:18788"' "$cf" 2>/dev/null | head -1 | grep -oE '^"[0-9]+' | tr -d '"')
             DOCKER_INSTANCE_PORTS+=("${local_port:-$DEFAULT_PORT}")
             # Extract container name for version/status check
             local_container=$(grep -oP 'container_name:\s*\K\S+' "$cf" 2>/dev/null | head -1 || true)

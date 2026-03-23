@@ -15,7 +15,7 @@ func TestDefault(t *testing.T) {
 	cfg := Default()
 
 	// Server defaults
-	assert.Equal(t, 18800, cfg.Server.Port)
+	assert.Equal(t, 18788, cfg.Server.Port)
 	assert.Equal(t, "0.0.0.0", cfg.Server.Bind)
 	assert.Empty(t, cfg.Server.CORSOrigins)
 
@@ -61,7 +61,7 @@ func TestConfig_ListenAddr(t *testing.T) {
 
 func TestConfig_ListenAddr_Default(t *testing.T) {
 	cfg := Default()
-	assert.Equal(t, "0.0.0.0:18800", cfg.ListenAddr())
+	assert.Equal(t, "0.0.0.0:18788", cfg.ListenAddr())
 }
 
 func TestConfig_JWTExpireDuration(t *testing.T) {
