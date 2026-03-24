@@ -97,7 +97,24 @@ func (h *RuntimeHandler) UpdateClawDeckX(w http.ResponseWriter, r *http.Request)
 
 	logger.Log.Info().
 		Str("user", web.GetUsername(r)).
-		Msg("ClawDeckX runtime overlay updated via API")
+		Msg("ClawDeckX runtime overlay updated via API, scheduling restart")
+
+	// Read the overlay binary path from the manifest and restart with it.
+	// restartSelf() would re-exec os.Executable() (the old image binary),
+	// so we must use the overlay path explicitly.
+	overlayBin := ""
+	if mf, err := h.mgr.ReadManifest(runtime.ComponentClawDeckX); err == nil && mf != nil {
+		overlayBin = mf.BinaryPath
+	}
+
+	go func() {
+		time.Sleep(2 * time.Second)
+		if overlayBin != "" {
+			restartWithBinary(overlayBin)
+		} else {
+			restartSelf()
+		}
+	}()
 }
 
 // UpdateOpenClaw installs OpenClaw@latest into the runtime overlay via npm.

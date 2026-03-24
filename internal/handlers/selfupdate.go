@@ -328,6 +328,13 @@ func restartSelf() {
 	if err != nil {
 		return
 	}
+	restartWithBinary(exe)
+}
+
+// restartWithBinary restarts the process using the specified binary path.
+// Used by runtime overlay updates where the new binary differs from os.Executable().
+func restartWithBinary(exe string) {
+	logger.Log.Info().Str("binary", exe).Msg("restarting process")
 
 	if runtime.GOOS == "windows" {
 		// On Windows, start a new process with DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP
@@ -339,7 +346,7 @@ func restartSelf() {
 		os.Exit(0)
 	} else {
 		// On Unix, exec replaces the current process
-		execErr := execSyscall(exe, os.Args, os.Environ())
+		execErr := execSyscall(exe, append([]string{exe}, os.Args[1:]...), os.Environ())
 		if execErr != nil {
 			// Fallback: start new process
 			cmd := exec.Command(exe, os.Args[1:]...)
