@@ -952,6 +952,13 @@ export const gwApi = {
     rpc('sessions.preview', { keys: [key], limit, maxChars: 500 }),
   sessionsHistory: (key: string) =>
     rpc('chat.history', { sessionKey: key }),
+  sessionsHistoryPaginated: (key: string, limit?: number, cursor?: string) => {
+    const qs = new URLSearchParams();
+    qs.set('key', key);
+    if (limit) qs.set('limit', String(limit));
+    if (cursor) qs.set('cursor', cursor);
+    return get<{ sessionKey: string; messages: any[]; hasMore: boolean; nextCursor?: string }>(`/api/v1/gw/sessions/history-paginated?${qs.toString()}`);
+  },
   sessionsReset: (key: string) =>
     rpc('sessions.reset', { key }),
   sessionsDelete: (key: string, deleteTranscript = false) =>
@@ -1010,6 +1017,57 @@ export const gwApi = {
     rpc('config.apply', { raw, baseHash }),
   configPatch: (raw: string, baseHash: string) =>
     rpc('config.patch', { raw, baseHash }),
+  /**
+   * Safe config patch: auto-fetches current hash, patches, and returns fresh config.
+   * Retries once on hash mismatch (e.g. after gateway restart).
+   * @param patch - config patch object (will be JSON.stringify'd)
+   * @returns fresh config from configGet after successful patch
+   */
+  configSafePatch: async (patch: Record<string, any>): Promise<any> => {
+    const fetchHash = async () => {
+      const res: any = await rpc('config.get');
+      return res?.hash || res?.baseHash || '';
+    };
+    const raw = JSON.stringify(patch);
+    let hash = await fetchHash();
+    try {
+      await rpc('config.patch', { raw, baseHash: hash });
+    } catch (err: any) {
+      const msg = err?.message || '';
+      const code = err?.code || err?.errorCode || '';
+      if (code === 'HASH_MISMATCH' || msg.includes('hash') || msg.includes('Hash')) {
+        hash = await fetchHash();
+        await rpc('config.patch', { raw, baseHash: hash });
+      } else {
+        throw err;
+      }
+    }
+    return rpc('config.get');
+  },
+  /**
+   * Safe config apply: auto-fetches current hash, applies full config, and returns result.
+   * Retries once on hash mismatch (e.g. after gateway restart).
+   * @param raw - full config JSON string
+   * @returns result from configApply
+   */
+  configSafeApply: async (raw: string): Promise<any> => {
+    const fetchHash = async () => {
+      const res: any = await rpc('config.get');
+      return res?.hash || res?.baseHash || '';
+    };
+    let hash = await fetchHash();
+    try {
+      return await rpc('config.apply', { raw, baseHash: hash });
+    } catch (err: any) {
+      const msg = err?.message || '';
+      const code = err?.code || err?.errorCode || '';
+      if (code === 'HASH_MISMATCH' || msg.includes('hash') || msg.includes('Hash')) {
+        hash = await fetchHash();
+        return await rpc('config.apply', { raw, baseHash: hash });
+      }
+      throw err;
+    }
+  },
   configSchema: () => rpc('config.schema'),
   // Agents
   agents: () => rpc<any[]>('agents.list'),

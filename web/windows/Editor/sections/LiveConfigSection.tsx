@@ -60,27 +60,28 @@ export const LiveConfigSection: React.FC<LiveConfigSectionProps> = ({ language }
     if (!rawText.trim()) return;
     setConfigResult(null);
     try {
-      await gwApi.configApply(rawText, baseHash);
+      await gwApi.configSafeApply(rawText);
       setConfigResult({ ok: true, text: es.configApplyOk });
       setTimeout(() => setConfigResult(null), 3000);
       loadConfig();
     } catch (err: any) {
       setConfigResult({ ok: false, text: `${es.configApplyFailed}: ${err?.message || ''}` });
     }
-  }, [rawText, baseHash, es, loadConfig]);
+  }, [rawText, es, loadConfig]);
 
   const handlePatch = useCallback(async () => {
     if (!rawText.trim()) return;
     setConfigResult(null);
     try {
-      await gwApi.configPatch(rawText, baseHash);
+      const parsed = JSON.parse(rawText);
+      await gwApi.configSafePatch(parsed);
       setConfigResult({ ok: true, text: es.configPatchOk });
       setTimeout(() => setConfigResult(null), 3000);
       loadConfig();
     } catch (err: any) {
       setConfigResult({ ok: false, text: `${es.configPatchFailed}: ${err?.message || ''}` });
     }
-  }, [rawText, baseHash, es, loadConfig]);
+  }, [rawText, es, loadConfig]);
 
   // Config.set single key handler
   const handleConfigSet = useCallback(async () => {

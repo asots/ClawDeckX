@@ -72,6 +72,29 @@ interface LiveToolCall {
   phase: 'start' | 'running' | 'done';
 }
 
+/** Parse peer info from an agent session key. Format: agent:<agentId>:<rest> where rest can be:
+ *  - <channel>:group:<peerId>  (group chat)
+ *  - <channel>:channel:<peerId> (channel chat)
+ *  - <channel>:direct:<peerId> (DM per-channel-peer)
+ *  - main (main session, no peer)
+ */
+function parseSessionKeyPeer(sessionKey: string): { channel: string; peerKind: string; peerId: string; accountId: string } | null {
+  const parts = sessionKey.trim().toLowerCase().split(':').filter(Boolean);
+  // agent:<agentId>:<channel>:<peerKind>:<peerId...>
+  if (parts.length < 5 || parts[0] !== 'agent') return null;
+  const channel = parts[2];
+  const peerKind = parts[3];
+  if (!channel || !peerKind) return null;
+  if (!['group', 'channel', 'direct'].includes(peerKind)) return null;
+  // peerId may contain colons (e.g. thread suffixes), take everything after peerKind
+  const peerId = parts.slice(4).join(':');
+  if (!peerId) return null;
+  // Strip thread suffix if present
+  const threadIdx = peerId.indexOf(':thread:');
+  const cleanPeerId = threadIdx >= 0 ? peerId.slice(0, threadIdx) : peerId;
+  return { channel, peerKind, peerId: cleanPeerId, accountId: 'default' };
+}
+
 interface MarkdownMessageBoundaryProps {
   content: string;
   streaming?: boolean;
@@ -310,6 +333,13 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
   const historyRequestSeqRef = useRef(0);
   const sessionsRequestSeqRef = useRef(0);
   const sendingRef = useRef(false);
+  // Pagination state for cursor-based history loading
+  const [hasMoreHistory, setHasMoreHistory] = useState(false);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const nextCursorRef = useRef<string | undefined>(undefined);
+  const loadingOlderRef = useRef(false);
+  // Session message cache: stores messages + pagination state per session key
+  const sessionCacheRef = useRef<Map<string, { messages: ChatMsg[]; hasMore: boolean; cursor?: string }>>(new Map());
 
   // --- New state for optimizations ---
   // Sidebar search
@@ -349,6 +379,16 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
   const waitingPhraseRef = useRef('');
   // Btw / side-result inline messages from gateway
   const [btwMessage, setBtwMessage] = useState<{ question: string; text: string; isError?: boolean } | null>(null);
+
+  // Fetch agents list on mount for sidebar filter
+  useEffect(() => {
+    if (!gwReady) return;
+    gwApi.agents().then((list: any) => {
+      if (Array.isArray(list)) {
+        setAgentsList(list.map((a: any) => ({ id: a.id || '', label: a.label || a.id || '' })).filter((a: { id: string }) => a.id));
+      }
+    }).catch(() => {});
+  }, [gwReady]);
 
   // Load model capabilities from config (for image support detection)
   useEffect(() => {
@@ -430,6 +470,10 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
   const [renameKey, setRenameKey] = useState('');
   const [renameLabel, setRenameLabel] = useState('');
   const [renaming, setRenaming] = useState(false);
+  const [bindAgentId, setBindAgentId] = useState('');
+  const [bindAgentOriginal, setBindAgentOriginal] = useState('');
+  const [agentsList, setAgentsList] = useState<Array<{ id: string; label?: string }>>([]);
+  const [agentFilter, setAgentFilter] = useState('');
   const [deleteConfirmKey, setDeleteConfirmKey] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
 
@@ -965,76 +1009,91 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
   const messagesLenRef = useRef(0);
   messagesLenRef.current = messages.length;
 
-  // Load chat history (via REST proxy)
+  // Helper: map raw gateway messages to ChatMsg
+  const mapMessages = useCallback((msgs: any[]): ChatMsg[] => msgs.map((m: any) => ({
+    role: m.role || 'assistant',
+    content: m.content,
+    timestamp: m.timestamp || m.ts,
+    ...(m.usage ? { usage: m.usage } : {}),
+    ...(m.cost ? { cost: m.cost } : {}),
+    ...(m.model ? { model: m.model } : {}),
+    ...(m.provider ? { provider: m.provider } : {}),
+    ...(m.stopReason ? { stopReason: m.stopReason } : {}),
+  })), []);
+
+  // Helper: restore optimistic image data stripped by gateway
+  const restoreImages = useCallback((prev: ChatMsg[], mapped: ChatMsg[]): ChatMsg[] => {
+    const prevUserWithImages: Array<{ ts: number; text: string; imgs: any[] }> = [];
+    for (const m of prev) {
+      if (m.role === 'user' && Array.isArray(m.content)) {
+        const imgs = m.content.filter((b: any) => b?.type === 'image' && b?.source?.data);
+        if (imgs.length > 0) {
+          const text = m.content.filter((b: any) => b?.type === 'text').map((b: any) => b.text || '').join('');
+          prevUserWithImages.push({ ts: m.timestamp || 0, text, imgs });
+        }
+      }
+    }
+    if (prevUserWithImages.length === 0) return mapped;
+    return mapped.map((m: ChatMsg) => {
+      if (m.role !== 'user' || !Array.isArray(m.content)) return m;
+      const hasOmitted = m.content.some((b: any) => b?.type === 'image' && (b?.omitted || (b?.source && !b?.source?.data)));
+      if (!hasOmitted) return m;
+      const mText = m.content.filter((b: any) => b?.type === 'text').map((b: any) => b.text || '').join('');
+      const mTs = m.timestamp || 0;
+      const match = prevUserWithImages.find(p =>
+        p.text === mText && (!mTs || !p.ts || Math.abs(mTs - p.ts) < 60000)
+      );
+      if (!match) return m;
+      let imgIdx = 0;
+      const restored = m.content.map((b: any) => {
+        if (b?.type === 'image' && (b?.omitted || (b?.source && !b?.source?.data)) && imgIdx < match.imgs.length) {
+          return match.imgs[imgIdx++];
+        }
+        return b;
+      });
+      return { ...m, content: restored };
+    });
+  }, []);
+
+  // Load chat history — uses paginated endpoint for initial load, RPC for silent refresh
   const loadHistory = useCallback(async (opts?: { silent?: boolean }) => {
     if (!gwReadyRef.current) return;
     const requestSeq = ++historyRequestSeqRef.current;
     const targetSessionKey = sessionKey;
-    // Only show loading spinner on first load (no existing messages)
     const showSpinner = !opts?.silent && messagesLenRef.current === 0;
     if (showSpinner) setChatLoading(true);
     try {
-      const res = await gwApi.proxy('chat.history', { sessionKey: targetSessionKey, limit: 200 }) as any;
-      if (historyRequestSeqRef.current !== requestSeq || sessionKeyRef.current !== targetSessionKey) {
-        return;
+      let mapped: ChatMsg[];
+      if (opts?.silent) {
+        // Silent refresh: use lightweight RPC (no pagination needed, just sync latest)
+        if (pendingRunRef.current && streamTextRef.current) return;
+        const res = await gwApi.proxy('chat.history', { sessionKey: targetSessionKey, limit: 200 }) as any;
+        if (historyRequestSeqRef.current !== requestSeq || sessionKeyRef.current !== targetSessionKey) return;
+        mapped = mapMessages(Array.isArray(res?.messages) ? res.messages : []);
+        // Don't reset pagination state on silent refresh
+      } else {
+        // Initial load: use paginated endpoint for fast first render
+        const res = await gwApi.sessionsHistoryPaginated(targetSessionKey, 50) as any;
+        if (historyRequestSeqRef.current !== requestSeq || sessionKeyRef.current !== targetSessionKey) return;
+        const msgs = Array.isArray(res?.messages) ? res.messages : [];
+        mapped = mapMessages(msgs);
+        // Update pagination state
+        const more = Boolean(res?.hasMore);
+        setHasMoreHistory(more);
+        nextCursorRef.current = more ? (res?.nextCursor || undefined) : undefined;
       }
-      // Skip replacing messages while actively streaming — the stream/final events
-      // are the source of truth during a run; history will sync after finalization.
-      if (opts?.silent && pendingRunRef.current && streamTextRef.current) {
-        return;
-      }
-      const msgs = Array.isArray(res?.messages) ? res.messages : [];
-      const mapped = msgs.map((m: any) => ({
-        role: m.role || 'assistant',
-        content: m.content,
-        timestamp: m.timestamp || m.ts,
-        ...(m.usage ? { usage: m.usage } : {}),
-        ...(m.cost ? { cost: m.cost } : {}),
-        ...(m.model ? { model: m.model } : {}),
-        ...(m.provider ? { provider: m.provider } : {}),
-        ...(m.stopReason ? { stopReason: m.stopReason } : {}),
-      }));
-      // Preserve image data from optimistic user messages: the gateway strips
-      // image data from chat.history (sets omitted:true), so restore from prev.
-      // IMPORTANT: must be a single setMessages(prev => ...) call so `prev`
-      // contains the original optimistic messages (not the already-stripped mapped).
+      // Preserve image data from optimistic user messages
       setMessages(prev => {
-        // Collect image blocks from previous optimistic user messages
-        const prevUserWithImages: Array<{ ts: number; text: string; imgs: any[] }> = [];
-        for (const m of prev) {
-          if (m.role === 'user' && Array.isArray(m.content)) {
-            const imgs = m.content.filter((b: any) => b?.type === 'image' && b?.source?.data);
-            if (imgs.length > 0) {
-              const text = m.content.filter((b: any) => b?.type === 'text').map((b: any) => b.text || '').join('');
-              prevUserWithImages.push({ ts: m.timestamp || 0, text, imgs });
-            }
-          }
-        }
-        if (prevUserWithImages.length === 0) return mapped;
-        // For each mapped user message with omitted images, restore from prev
-        return mapped.map((m: ChatMsg) => {
-          if (m.role !== 'user' || !Array.isArray(m.content)) return m;
-          const hasOmitted = m.content.some((b: any) => b?.type === 'image' && (b?.omitted || (b?.source && !b?.source?.data)));
-          if (!hasOmitted) return m;
-          const mText = m.content.filter((b: any) => b?.type === 'text').map((b: any) => b.text || '').join('');
-          const mTs = m.timestamp || 0;
-          const match = prevUserWithImages.find(p =>
-            p.text === mText && (!mTs || !p.ts || Math.abs(mTs - p.ts) < 60000)
-          );
-          if (!match) return m;
-          let imgIdx = 0;
-          const restored = m.content.map((b: any) => {
-            if (b?.type === 'image' && (b?.omitted || (b?.source && !b?.source?.data)) && imgIdx < match.imgs.length) {
-              return match.imgs[imgIdx++];
-            }
-            return b;
-          });
-          return { ...m, content: restored };
-        });
+        const result = restoreImages(prev, mapped);
+        // Update session cache
+        sessionCacheRef.current.set(targetSessionKey, { messages: result, hasMore: Boolean(nextCursorRef.current), cursor: nextCursorRef.current });
+        return result;
       });
     } catch {
       if (historyRequestSeqRef.current === requestSeq && sessionKeyRef.current === targetSessionKey) {
         setMessages([]);
+        setHasMoreHistory(false);
+        nextCursorRef.current = undefined;
       }
     } finally {
       if (showSpinner && historyRequestSeqRef.current === requestSeq && sessionKeyRef.current === targetSessionKey) {
@@ -1045,7 +1104,51 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionKey]);
+  }, [sessionKey, mapMessages, restoreImages]);
+
+  // Load older messages when user scrolls to top (cursor-based pagination)
+  const loadOlderMessages = useCallback(async () => {
+    if (!gwReadyRef.current || loadingOlderRef.current || !nextCursorRef.current) return;
+    loadingOlderRef.current = true;
+    setLoadingOlder(true);
+    const targetSessionKey = sessionKeyRef.current;
+    const cursor = nextCursorRef.current;
+    try {
+      const res = await gwApi.sessionsHistoryPaginated(targetSessionKey, 50, cursor) as any;
+      if (sessionKeyRef.current !== targetSessionKey) return;
+      const msgs = Array.isArray(res?.messages) ? res.messages : [];
+      if (msgs.length === 0) {
+        setHasMoreHistory(false);
+        nextCursorRef.current = undefined;
+        return;
+      }
+      const mapped = mapMessages(msgs);
+      const more = Boolean(res?.hasMore);
+      setHasMoreHistory(more);
+      nextCursorRef.current = more ? (res?.nextCursor || undefined) : undefined;
+      // Preserve scroll position: measure scrollHeight before prepend
+      const el = scrollContainerRef.current;
+      const prevScrollHeight = el?.scrollHeight || 0;
+      const prevScrollTop = el?.scrollTop || 0;
+      setMessages(prev => {
+        const combined = [...mapped, ...prev];
+        // Update session cache with combined messages
+        sessionCacheRef.current.set(targetSessionKey, { messages: combined, hasMore: more, cursor: nextCursorRef.current });
+        return combined;
+      });
+      // Restore scroll position after React renders the prepended messages
+      requestAnimationFrame(() => {
+        if (el) {
+          const newScrollHeight = el.scrollHeight;
+          el.scrollTop = prevScrollTop + (newScrollHeight - prevScrollHeight);
+        }
+      });
+    } catch { /* ignore */ }
+    finally {
+      loadingOlderRef.current = false;
+      setLoadingOlder(false);
+    }
+  }, [mapMessages]);
 
   // Refs to latest callbacks for use inside stable-dependency useEffects (e.g. WS subscription)
   const loadHistoryRef = useRef(loadHistory);
@@ -1282,6 +1385,10 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
     }
   }, [messages, stream, liveToolCalls, runPhase]);
 
+  // Keep ref for loadOlderMessages to avoid stale closure in scroll handler
+  const loadOlderRef = useRef(loadOlderMessages);
+  loadOlderRef.current = loadOlderMessages;
+
   useEffect(() => {
     const el = scrollContainerRef.current;
     if (!el) return;
@@ -1289,6 +1396,10 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
       const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
       nearBottomRef.current = distFromBottom < 300;
       setShowScrollBtn(distFromBottom > 200);
+      // Scroll-to-top: load older messages when near top
+      if (el.scrollTop < 100 && !loadingOlderRef.current && nextCursorRef.current) {
+        loadOlderRef.current();
+      }
     };
     el.addEventListener('scroll', onScroll, { passive: true });
     return () => el.removeEventListener('scroll', onScroll);
@@ -1377,14 +1488,21 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
 
   // Sidebar: filtered + grouped sessions
   const filteredSessions = useMemo(() => {
-    if (!sidebarSearch) return sessions;
+    let list = sessions;
+    if (agentFilter) {
+      list = list.filter(s => {
+        const parts = (s.key || '').split(':');
+        return parts[0] === 'agent' && parts[1] === agentFilter;
+      });
+    }
+    if (!sidebarSearch) return list;
     const q = sidebarSearch.toLowerCase();
-    return sessions.filter(s => 
+    return list.filter(s => 
       (s.label || '').toLowerCase().includes(q) ||
       (s.key || '').toLowerCase().includes(q) ||
       (s.lastMessagePreview || '').toLowerCase().includes(q)
     );
-  }, [sessions, sidebarSearch]);
+  }, [sessions, sidebarSearch, agentFilter]);
   const showSidebarRefreshHint = false; // Suppress flashing refresh hint — background polls are silent
   const showSidebarSkeleton = sessionsLoading && sessions.length === 0 && !wsConnecting && !initialDetecting;
   const showSidebarEmpty = sessions.length === 0 && !sessionsLoading && !wsConnecting && !initialDetecting;
@@ -1771,21 +1889,38 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
     }
     // Save current draft before switching
     saveDraft(sessionKey, input);
+    // Cache current session messages + pagination state before switching away
+    setMessages(prev => {
+      sessionCacheRef.current.set(sessionKey, { messages: prev, hasMore: hasMoreHistory, cursor: nextCursorRef.current });
+      return prev;
+    });
     ensureSessionPresent(key);
-    setIsSwitchingSession(true);
-    setSessionKey(key);
     clearStream();
     setRunId(null);
     setRunPhase('idle');
     pendingRunRef.current = null;
     setBtwMessage(null);
     setDrawerOpen(false);
+    // Restore from cache if available (instant display)
+    const cached = sessionCacheRef.current.get(key);
+    if (cached) {
+      setMessages(cached.messages);
+      setHasMoreHistory(cached.hasMore);
+      nextCursorRef.current = cached.cursor;
+      setIsSwitchingSession(false);
+    } else {
+      setMessages([]);
+      setHasMoreHistory(false);
+      nextCursorRef.current = undefined;
+      setIsSwitchingSession(true);
+    }
+    setSessionKey(key);
     // Restore draft for new session
     setInput(loadDraft(key));
     // Clear unread
     setUnreadMap(prev => { const next = { ...prev }; delete next[key]; return next; });
     setExpandedMsgs(new Set());
-  }, [sessionKey, input, saveDraft, loadDraft, clearStream, ensureSessionPresent]);
+  }, [sessionKey, input, hasMoreHistory, saveDraft, loadDraft, clearStream, ensureSessionPresent]);
 
   // New session
   const handleNewSession = useCallback(() => {
@@ -1798,6 +1933,9 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
     setRunPhase('idle');
     pendingRunRef.current = null;
     setBtwMessage(null);
+    // Reset pagination state for new session
+    setHasMoreHistory(false);
+    nextCursorRef.current = undefined;
     void loadSessions();
   }, [clearStream, ensureSessionPresent, loadSessions]);
 
@@ -1805,27 +1943,81 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
   const openRenameDialog = useCallback((key: string, currentLabel: string) => {
     setRenameKey(key);
     setRenameLabel(currentLabel || '');
+    setBindAgentId('');
+    setBindAgentOriginal('');
     setRenameOpen(true);
     setSessionMenuKey(null);
+    // For group/channel sessions, fetch agents + current binding
+    const peer = parseSessionKeyPeer(key);
+    if (peer && (peer.peerKind === 'group' || peer.peerKind === 'channel')) {
+      Promise.all([
+        gwApi.agents().catch(() => []),
+        gwApi.configGet().catch(() => null),
+      ]).then(([agents, cfg]) => {
+        const list = Array.isArray(agents) ? agents.map((a: any) => ({ id: a.id || '', label: a.label || a.id || '' })).filter((a: { id: string }) => a.id) : [];
+        setAgentsList(list);
+        // Find existing peer binding
+        const parsed = (cfg as any)?.parsed || (cfg as any)?.config || cfg || {};
+        const bindings: any[] = Array.isArray(parsed.bindings) ? parsed.bindings : [];
+        const existing = bindings.find((b: any) =>
+          b.match?.channel?.toLowerCase() === peer.channel &&
+          b.match?.peer?.id?.toLowerCase() === peer.peerId &&
+          ['group', 'channel'].includes(b.match?.peer?.kind?.toLowerCase() || '')
+        );
+        const boundId = existing?.agentId || '';
+        setBindAgentId(boundId);
+        setBindAgentOriginal(boundId);
+      });
+    } else {
+      setAgentsList([]);
+    }
   }, []);
 
   const handleRenameSession = useCallback(async () => {
     if (!gwReady || renaming || !renameKey) return;
     setRenaming(true);
     try {
+      // Save rename
       await gwApi.proxy('sessions.patch', { key: renameKey, label: renameLabel.trim() || null });
-      // Update local sessions list
       setSessions(prev => prev.map(s => s.key === renameKey ? { ...s, label: renameLabel.trim() || s.key } : s));
+      // Save peer binding if changed
+      const peer = parseSessionKeyPeer(renameKey);
+      if (peer && (peer.peerKind === 'group' || peer.peerKind === 'channel') && bindAgentId !== bindAgentOriginal) {
+        try {
+          const cfg = await gwApi.configGet() as any;
+          const parsed = cfg?.parsed || cfg?.config || cfg || {};
+          const allBindings: any[] = Array.isArray(parsed.bindings) ? parsed.bindings : [];
+          // Remove existing peer binding for this channel+peer
+          let updated = allBindings.filter((b: any) => !(
+            b.match?.channel?.toLowerCase() === peer.channel &&
+            b.match?.peer?.id?.toLowerCase() === peer.peerId &&
+            ['group', 'channel'].includes(b.match?.peer?.kind?.toLowerCase() || '')
+          ));
+          // Add new binding if agent selected
+          if (bindAgentId) {
+            updated.push({
+              agentId: bindAgentId,
+              match: { channel: peer.channel, peer: { kind: peer.peerKind, id: peer.peerId } }
+            });
+          }
+          await gwApi.configSafePatch({ bindings: updated });
+          toast('success', bindAgentId ? (c.bindSaved || 'Agent binding saved') : (c.bindRemoved || 'Agent binding removed'));
+        } catch (err: any) {
+          toast('error', err?.message || c.bindFailed || 'Failed to save agent binding');
+        }
+      }
       setRenameOpen(false);
       setRenameKey('');
       setRenameLabel('');
+      setBindAgentId('');
+      setBindAgentOriginal('');
     } catch (err: any) {
       console.error('Rename failed:', err);
     } finally {
       setRenaming(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [renaming, renameKey, renameLabel]);
+  }, [renaming, renameKey, renameLabel, bindAgentId, bindAgentOriginal, c]);
 
   // Delete session
   const handleDeleteSession = useCallback(async (key: string) => {
@@ -2087,15 +2279,17 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
           </button>
         </div>
 
-        {/* Session Key Input + Search */}
+        {/* Agent Filter + Search */}
         <div className="px-3 py-2.5 border-b border-slate-200 dark:border-white/5 space-y-2">
-          <div className="relative">
-            <span className="material-symbols-outlined absolute start-2 top-1/2 -translate-y-1/2 text-slate-400 dark:text-white/20 text-[14px]">key</span>
-            <input value={sessionKey} onChange={e => setSessionKey(e.target.value)}
-              onBlur={() => loadHistory()}
-              className="w-full h-9 ps-7 pe-3 bg-white dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-lg text-[12px] font-mono text-slate-700 dark:text-white/70 focus:ring-1 focus:ring-primary/50 outline-none sci-input"
-              placeholder={c.sessionKey} />
-          </div>
+          <CustomSelect
+            value={agentFilter}
+            onChange={(v: string) => setAgentFilter(v)}
+            options={[
+              { value: '', label: c.allAgents || 'All Agents' },
+              ...agentsList.map(a => ({ value: a.id, label: a.label || a.id }))
+            ]}
+            className="w-full h-9 px-2.5 bg-white dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-lg text-[12px] text-slate-700 dark:text-white/70 sci-input"
+          />
           <div className="relative">
             <span className="material-symbols-outlined absolute start-2 top-1/2 -translate-y-1/2 text-slate-400 dark:text-white/20 text-[13px]">search</span>
             <input value={sidebarSearch} onChange={e => setSidebarSearch(e.target.value)}
@@ -2485,6 +2679,19 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
                 <button onClick={() => setSessionNotice(null)} className="text-amber-400 hover:text-amber-600 dark:hover:text-amber-300 transition-colors">
                   <span className="material-symbols-outlined text-[16px]">close</span>
                 </button>
+              </div>
+            )}
+
+            {/* Load older messages indicator */}
+            {loadingOlder && (
+              <div className="flex items-center justify-center gap-2 py-3">
+                <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                <span className="text-[11px] text-text-secondary">{c.loadingOlder || 'Loading older messages…'}</span>
+              </div>
+            )}
+            {!loadingOlder && !hasMoreHistory && messages.length > 0 && !chatLoading && (
+              <div className="text-center py-2">
+                <span className="text-[10px] text-text-muted">{c.noMoreHistory || 'Beginning of conversation'}</span>
               </div>
             )}
 
@@ -3232,6 +3439,29 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
               </p>
             </div>
 
+            {/* Bind Agent — only for group/channel sessions */}
+            {agentsList.length > 0 && parseSessionKeyPeer(renameKey) && (
+              <div className="mt-4">
+                <label className="text-[10px] font-bold text-slate-500 dark:text-white/40 uppercase block mb-1">
+                  <span className="material-symbols-outlined text-[12px] align-middle me-0.5">link</span>
+                  {c.bindAgent || 'Bind Agent'}
+                </label>
+                <CustomSelect
+                  value={bindAgentId}
+                  onChange={setBindAgentId}
+                  options={[
+                    { value: '', label: c.bindDefault || 'Default (no override)' },
+                    ...agentsList.map(a => ({ value: a.id, label: a.label || a.id }))
+                  ]}
+                  className="w-full h-9 px-3 bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/10 rounded-xl text-[12px] text-slate-800 dark:text-white/80"
+                  disabled={renaming}
+                />
+                <p className="text-[10px] text-slate-400 dark:text-white/30 mt-1">
+                  {c.bindAgentHint || "Route this peer's messages to a specific agent"}
+                </p>
+              </div>
+            )}
+
             <div className="flex justify-end gap-2 mt-5">
               <button onClick={() => setRenameOpen(false)} disabled={renaming}
                 className="px-4 py-2 rounded-xl text-[11px] font-bold text-slate-500 dark:text-white/40 hover:bg-slate-100 dark:hover:bg-white/5 transition-all">
@@ -3240,7 +3470,7 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
               <button onClick={handleRenameSession} disabled={renaming}
                 className="px-4 py-2 rounded-xl bg-primary text-white text-[11px] font-bold disabled:opacity-40 transition-all flex items-center gap-1.5">
                 {renaming && <span className="material-symbols-outlined text-[14px] animate-spin">progress_activity</span>}
-                {renaming ? c.renaming : c.renameSession}
+                {renaming ? c.renaming : (c.saveSession || c.renameSession)}
               </button>
             </div>
           </div>

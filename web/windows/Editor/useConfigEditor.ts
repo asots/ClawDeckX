@@ -243,10 +243,9 @@ export function useConfigEditor(): UseConfigEditorReturn {
     if (!config) return false;
     setSaving(true);
     setSaveError('');
-    // Refresh baseHash after gateway reload. The rpc() layer auto-retries on
-    // transient 502 / GW_PROXY_FAILED errors, so a brief initial delay is enough.
-    const refreshHash = async () => {
-      await new Promise(r => setTimeout(r, 1000));
+    // Refresh baseHashRef from gateway (with optional delay for post-save reload)
+    const refreshHash = async (delay = 0) => {
+      if (delay > 0) await new Promise(r => setTimeout(r, delay));
       const freshData: any = await gwApi.configGet().catch(() => null);
       if (freshData?.hash) baseHashRef.current = freshData.hash;
     };
@@ -254,17 +253,18 @@ export function useConfigEditor(): UseConfigEditorReturn {
       const raw = JSON.stringify(config, null, 2);
       // 统一优先走 WebSocket 保存（本地/远程网关均适用）
       if (baseHashRef.current) {
-        // 有 hash → 用 configApply（原子写入+重载）
-        const res: any = await gwApi.configApply(raw, baseHashRef.current);
+        // 有 hash → 用 configSafeApply（自动刷新 hash + 重试）
+        const res: any = await gwApi.configSafeApply(raw);
         if (res?.config) setConfig(res.config);
-        await refreshHash();
+        // Refresh hash after gateway reload settles
+        await refreshHash(1000);
       } else {
         // 无 hash → 尝试 configSetAll + reload，失败时降级本地写入
         try {
           await gwApi.configSetAll(config);
           await gwApi.configReload().catch(() => {});
-          // 刷新 hash 以便后续保存走 configApply
-          await refreshHash();
+          // 刷新 hash 以便后续保存走 configSafeApply
+          await refreshHash(1000);
         } catch {
           // WS 不可用，降级本地写入
           if (mode === 'local') {
