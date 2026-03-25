@@ -126,6 +126,7 @@
     "noChannels": "Keine Kanäle konfiguriert",
     "noSkills": "Keine Skills-Daten",
     "defaultCannotDelete": "Standard-Agent kann nicht gelöscht werden",
+    "workspaceRequired": "Arbeitsbereichspfad ist erforderlich",
     "nameValidation": "Nur Buchstaben, Zahlen, Bindestriche, Unterstriche. Länge 1-64",
     "browserBody": "Anfragetext",
     "browserBodyHint": "JSON-Anfragetext",

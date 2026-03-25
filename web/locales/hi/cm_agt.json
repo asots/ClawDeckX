@@ -126,6 +126,7 @@
     "noChannels": "कोई चैनल कॉन्फ़िगर नहीं",
     "noSkills": "कोई स्किल डेटा नहीं",
     "defaultCannotDelete": "डिफ़ॉल्ट एजेंट हटाया नहीं जा सकता",
+    "workspaceRequired": "कार्यस्थान पथ आवश्यक है",
     "nameValidation": "केवल अक्षर, संख्याएं, हाइफन, अंडरस्कोर। लंबाई 1-64",
     "browserBody": "अनुरोध बॉडी",
     "browserBodyHint": "JSON अनुरोध बॉडी",

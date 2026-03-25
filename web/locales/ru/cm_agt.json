@@ -126,6 +126,7 @@
     "noChannels": "Каналы не настроены",
     "noSkills": "Нет данных о навыках",
     "defaultCannotDelete": "Агент по умолчанию не может быть удалён",
+    "workspaceRequired": "Путь рабочей области обязателен",
     "nameValidation": "Только буквы, цифры, дефисы, подчёркивания. Длина 1-64",
     "browserBody": "Тело запроса",
     "browserBodyHint": "JSON-тело запроса",

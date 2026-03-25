@@ -126,6 +126,7 @@
     "noChannels": "설정된 채널 없음",
     "noSkills": "스킬 데이터 없음",
     "defaultCannotDelete": "기본 에이전트는 삭제할 수 없습니다",
+    "workspaceRequired": "워크스페이스 경로는 필수입니다",
     "nameValidation": "영문, 숫자, 하이픈, 밑줄만 가능. 길이 1-64",
     "browserBody": "요청 본문",
     "browserBodyHint": "JSON 요청 본문",

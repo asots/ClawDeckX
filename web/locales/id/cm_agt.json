@@ -126,6 +126,7 @@
     "noChannels": "Tidak ada channel terkonfigurasi",
     "noSkills": "Tidak ada data skill",
     "defaultCannotDelete": "Agen default tidak dapat dihapus",
+    "workspaceRequired": "Jalur workspace wajib diisi",
     "nameValidation": "Hanya huruf, angka, tanda hubung, garis bawah. Panjang 1-64",
     "browserBody": "Body Permintaan",
     "browserBodyHint": "Body permintaan JSON",

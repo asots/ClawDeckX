@@ -127,6 +127,7 @@
     "noSkills": "No skills data",
     "defaultCannotDelete": "Default agent cannot be deleted",
     "nameValidation": "Only letters, numbers, hyphens, underscores. Length 1-64",
+    "workspaceRequired": "Workspace path is required",
     "browserBody": "Request Body",
     "browserBodyHint": "JSON request body",
     "all": "All",

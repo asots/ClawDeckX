@@ -126,6 +126,7 @@
     "noChannels": "Nenhum canal configurado",
     "noSkills": "Nenhum dado de skills",
     "defaultCannotDelete": "O agente padrão não pode ser excluído",
+    "workspaceRequired": "O caminho do workspace é obrigatório",
     "nameValidation": "Apenas letras, números, hífens, sublinhados. Tamanho 1-64",
     "browserBody": "Corpo da Requisição",
     "browserBodyHint": "Corpo da requisição JSON",

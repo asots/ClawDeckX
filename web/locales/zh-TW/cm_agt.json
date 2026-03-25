@@ -127,6 +127,7 @@
     "noSkills": "暫無技能資料",
     "defaultCannotDelete": "預設代理不可刪除",
     "nameValidation": "名稱僅支援字母、數字、連字元和下劃線，長度 1-64",
+    "workspaceRequired": "工作區路徑為必填項",
     "browserBody": "請求體",
     "browserBodyHint": "JSON 格式的請求體內容",
     "all": "全部",

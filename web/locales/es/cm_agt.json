@@ -126,6 +126,7 @@
     "noChannels": "No hay canales configurados",
     "noSkills": "Sin datos de skills",
     "defaultCannotDelete": "El agente predeterminado no se puede eliminar",
+    "workspaceRequired": "La ruta del espacio de trabajo es obligatoria",
     "nameValidation": "Solo letras, números, guiones y guiones bajos. Longitud 1-64",
     "browserBody": "Cuerpo de solicitud",
     "browserBodyHint": "Cuerpo de solicitud JSON",

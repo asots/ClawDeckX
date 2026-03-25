@@ -391,7 +391,7 @@ const Agents: React.FC<AgentsProps> = ({ language }) => {
     let idx = agents.length + 1;
     let suggestedName = `agent-${idx}`;
     while (existingIds.has(suggestedName)) { idx++; suggestedName = `agent-${idx}`; }
-    // Derive workspace base path from existing agents
+    // Derive workspace base path from existing agents, fallback to config file dir
     let wsBase = '';
     if (config) {
       const cfg0 = config?.agents || config?.parsed?.agents || config?.config?.agents || {};
@@ -400,10 +400,18 @@ const Agents: React.FC<AgentsProps> = ({ language }) => {
       const refEntry = list.find((e: any) => e?.workspace) || defaults;
       const refWs = refEntry?.workspace || '';
       if (refWs) {
-        // Extract base dir: e.g. "/home/user/.openclaw/workspace-shop" → "/home/user/.openclaw"
         const sep = refWs.includes('\\') ? '\\' : '/';
         const lastSep = refWs.lastIndexOf(sep);
         wsBase = lastSep > 0 ? refWs.slice(0, lastSep) : refWs;
+      }
+      // Fallback: derive from config file path (e.g. /root/.openclaw/config.json5 → /root/.openclaw)
+      if (!wsBase) {
+        const cfgPath = config?.path || '';
+        if (cfgPath) {
+          const sep = cfgPath.includes('\\') ? '\\' : '/';
+          const lastSep = cfgPath.lastIndexOf(sep);
+          wsBase = lastSep > 0 ? cfgPath.slice(0, lastSep) : cfgPath;
+        }
       }
     }
     const suggestedWs = wsBase ? `${wsBase}${wsBase.includes('\\') ? '\\' : '/'}workspace-${suggestedName}` : '';
@@ -443,6 +451,10 @@ const Agents: React.FC<AgentsProps> = ({ language }) => {
     if (!crudName.trim()) return;
     if (!AGENT_NAME_RE.test(crudName.trim())) {
       setCrudError(a.nameValidation);
+      return;
+    }
+    if (!crudWorkspace.trim()) {
+      setCrudError(a.workspaceRequired || 'Workspace path is required');
       return;
     }
     setCrudBusy(true); setCrudError(null);
@@ -1419,10 +1431,22 @@ const Agents: React.FC<AgentsProps> = ({ language }) => {
                       const defaults = cfg0?.defaults;
                       const refEntry = list.find((en: any) => en?.workspace) || defaults;
                       const refWs = refEntry?.workspace || '';
+                      let wsBase = '';
                       if (refWs) {
                         const sep = refWs.includes('\\') ? '\\' : '/';
                         const lastSep = refWs.lastIndexOf(sep);
-                        const wsBase = lastSep > 0 ? refWs.slice(0, lastSep) : refWs;
+                        wsBase = lastSep > 0 ? refWs.slice(0, lastSep) : refWs;
+                      }
+                      if (!wsBase) {
+                        const cfgPath = config?.path || '';
+                        if (cfgPath) {
+                          const sep = cfgPath.includes('\\') ? '\\' : '/';
+                          const lastSep = cfgPath.lastIndexOf(sep);
+                          wsBase = lastSep > 0 ? cfgPath.slice(0, lastSep) : cfgPath;
+                        }
+                      }
+                      if (wsBase) {
+                        const sep = wsBase.includes('\\') ? '\\' : '/';
                         setCrudWorkspace(newName.trim() ? `${wsBase}${sep}workspace-${newName.trim()}` : '');
                       }
                     }

@@ -126,6 +126,7 @@
     "noChannels": "チャンネルが設定されていません",
     "noSkills": "スキルデータなし",
     "defaultCannotDelete": "デフォルトエージェントは削除できません",
+    "workspaceRequired": "ワークスペースパスは必須です",
     "nameValidation": "英字、数字、ハイフン、アンダースコアのみ。1〜64文字",
     "browserBody": "リクエストボディ",
     "browserBodyHint": "JSON リクエストボディ",
