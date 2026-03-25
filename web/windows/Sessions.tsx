@@ -764,6 +764,16 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
       pendingRunRef.current = null;
     } else if (payload.state === 'error') {
       markFinalized(eventRunId);
+      // If we have partial streamed content, preserve it as a message instead of
+      // discarding it — the user already sees the text on screen.
+      const partialText = streamTextRef.current;
+      if (partialText) {
+        setMessages(msgs => appendMessageDedup(msgs, {
+          role: 'assistant',
+          content: [{ type: 'text', text: partialText }],
+          timestamp: Date.now(),
+        }, recentAddedRef));
+      }
       if (streamRafRef.current !== null) { clearTimeout(streamRafRef.current); streamRafRef.current = null; }
       streamTextRef.current = '';
       setStream(null);
@@ -2880,8 +2890,8 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
               </div>
             )}
 
-            {/* Error */}
-            {error && (
+            {/* Error — suppress while stream content is still visible */}
+            {error && stream === null && (
               <div className="flex justify-center">
                 <div className="px-3 py-2 rounded-xl bg-red-500/10 border border-red-500/20 text-[11px] text-red-500 font-medium flex items-center gap-2">
                   <span className="material-symbols-outlined text-[14px]">error</span>
