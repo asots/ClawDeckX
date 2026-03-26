@@ -177,6 +177,21 @@
     "bindSaved": "Привязка агента сохранена",
     "bindRemoved": "Привязка агента удалена",
     "bindFailed": "Не удалось сохранить привязку агента",
-    "saveSession": "Сохранить"
+    "saveSession": "Сохранить",
+    "remaining": "осталось",
+    "cacheRead": "Чтение кэша",
+    "cacheWrite": "Запись кэша",
+    "tokenTrend": "Рост токенов",
+    "costTrend": "Рост затрат",
+    "toolResults": "Результаты",
+    "missingCost": "записей без данных о стоимости",
+    "activeDays": "активных дней",
+    "msgTrend": "Тренд сообщений",
+    "latencyTrend": "Тренд задержки",
+    "sendDenied": "Отклонено",
+    "sessionType": "Тип",
+    "childSessions": "Подсессии",
+    "elapsed": "Прошло времени",
+    "lastLatency": "Задержка"
   }
 }

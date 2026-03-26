@@ -177,6 +177,21 @@
     "bindSaved": "代理绑定已保存",
     "bindRemoved": "代理绑定已移除",
     "bindFailed": "保存代理绑定失败",
-    "saveSession": "保存"
+    "saveSession": "保存",
+    "remaining": "剩余",
+    "cacheRead": "缓存读取",
+    "cacheWrite": "缓存写入",
+    "tokenTrend": "Token 增长",
+    "costTrend": "费用增长",
+    "toolResults": "结果",
+    "missingCost": "条记录缺少费用数据",
+    "activeDays": "活跃天数",
+    "msgTrend": "消息趋势",
+    "latencyTrend": "延迟趋势",
+    "sendDenied": "已拒绝",
+    "sessionType": "类型",
+    "childSessions": "子会话",
+    "elapsed": "已用时间",
+    "lastLatency": "延迟"
   }
 }

@@ -3321,19 +3321,36 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
           const entry = res?.sessions?.[0];
           return entry?.usage ?? null;
         }}
-        labels={c}
-        session={{
-          model: activeSession?.model,
-          modelProvider: activeSession?.modelProvider,
-          totalTokens: activeSession?.totalTokens,
-          maxContextTokens: activeSession?.maxContextTokens,
-          compacted: activeSession?.compacted,
-          thinkingLevel: activeSession?.thinkingLevel,
-          messageCount: messages.length || undefined,
-          lastLatencyMs: lastLatencyMs,
-          liveElapsed: liveElapsed,
-          runPhase: runPhase,
+        loadTimeseries={async (key) => {
+          return await gwApi.sessionsUsageTimeseries(key) as any;
         }}
+        labels={c}
+        session={(() => {
+          const agentMatch = sessionKey.match(/^agent:([^:]+):/);
+          const agentId = agentMatch?.[1];
+          const agentObj = agentId ? agentsList.find(ag => ag.id === agentId) : undefined;
+          return {
+            model: activeSession?.model,
+            modelProvider: activeSession?.modelProvider,
+            totalTokens: activeSession?.totalTokens,
+            inputTokens: activeSession?.inputTokens,
+            outputTokens: activeSession?.outputTokens,
+            maxContextTokens: activeSession?.maxContextTokens,
+            compacted: activeSession?.compacted,
+            thinkingLevel: activeSession?.thinkingLevel,
+            reasoningLevel: activeSession?.reasoningLevel,
+            verboseLevel: activeSession?.verboseLevel,
+            sendPolicy: activeSession?.sendPolicy,
+            fastMode: activeSession?.fastMode,
+            kind: activeSession?.kind,
+            messageCount: messages.length || undefined,
+            lastLatencyMs: lastLatencyMs,
+            liveElapsed: liveElapsed,
+            runPhase: runPhase,
+            agentId,
+            agentLabel: agentObj?.label || agentObj?.id,
+          };
+        })()}
         onModelChange={async (model) => {
           try {
             await gwApi.sessionsPatch(sessionKey, { model: model || null });

@@ -177,6 +177,21 @@
     "bindSaved": "Agent binding saved",
     "bindRemoved": "Agent binding removed",
     "bindFailed": "Failed to save agent binding",
-    "saveSession": "Save"
+    "saveSession": "Save",
+    "remaining": "left",
+    "cacheRead": "Cache Read",
+    "cacheWrite": "Cache Write",
+    "tokenTrend": "Token Growth",
+    "costTrend": "Cost Growth",
+    "toolResults": "Results",
+    "missingCost": "entries without cost data",
+    "activeDays": "active days",
+    "msgTrend": "Message Trend",
+    "latencyTrend": "Latency Trend",
+    "sendDenied": "Denied",
+    "sessionType": "Type",
+    "childSessions": "Sub-sessions",
+    "elapsed": "Elapsed",
+    "lastLatency": "Latency"
   }
 }

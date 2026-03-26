@@ -177,6 +177,21 @@
     "bindSaved": "Vinculação de agente salva",
     "bindRemoved": "Vinculação de agente removida",
     "bindFailed": "Falha ao salvar vinculação de agente",
-    "saveSession": "Salvar"
+    "saveSession": "Salvar",
+    "remaining": "restante",
+    "cacheRead": "Leitura de cache",
+    "cacheWrite": "Escrita de cache",
+    "tokenTrend": "Crescimento de tokens",
+    "costTrend": "Crescimento de custos",
+    "toolResults": "Resultados",
+    "missingCost": "entradas sem dados de custo",
+    "activeDays": "dias ativos",
+    "msgTrend": "Tendência de mensagens",
+    "latencyTrend": "Tendência de latência",
+    "sendDenied": "Negado",
+    "sessionType": "Tipo",
+    "childSessions": "Subsessões",
+    "elapsed": "Tempo decorrido",
+    "lastLatency": "Latência"
   }
 }

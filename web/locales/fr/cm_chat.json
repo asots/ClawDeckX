@@ -177,6 +177,21 @@
     "bindSaved": "Liaison d'agent enregistrée",
     "bindRemoved": "Liaison d'agent supprimée",
     "bindFailed": "Échec de l'enregistrement de la liaison d'agent",
-    "saveSession": "Enregistrer"
+    "saveSession": "Enregistrer",
+    "remaining": "restant",
+    "cacheRead": "Lecture cache",
+    "cacheWrite": "Écriture cache",
+    "tokenTrend": "Croissance des tokens",
+    "costTrend": "Croissance des coûts",
+    "toolResults": "Résultats",
+    "missingCost": "entrées sans données de coût",
+    "activeDays": "jours actifs",
+    "msgTrend": "Tendance des messages",
+    "latencyTrend": "Tendance de latence",
+    "sendDenied": "Refusé",
+    "sessionType": "Type",
+    "childSessions": "Sous-sessions",
+    "elapsed": "Temps écoulé",
+    "lastLatency": "Latence"
   }
 }

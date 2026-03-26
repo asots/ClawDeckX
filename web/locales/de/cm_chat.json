@@ -177,6 +177,21 @@
     "bindSaved": "Agentenbindung gespeichert",
     "bindRemoved": "Agentenbindung entfernt",
     "bindFailed": "Agentenbindung konnte nicht gespeichert werden",
-    "saveSession": "Speichern"
+    "saveSession": "Speichern",
+    "remaining": "übrig",
+    "cacheRead": "Cache-Lesen",
+    "cacheWrite": "Cache-Schreiben",
+    "tokenTrend": "Token-Wachstum",
+    "costTrend": "Kostenwachstum",
+    "toolResults": "Ergebnisse",
+    "missingCost": "Einträge ohne Kostendaten",
+    "activeDays": "aktive Tage",
+    "msgTrend": "Nachrichtentrend",
+    "latencyTrend": "Latenztrend",
+    "sendDenied": "Abgelehnt",
+    "sessionType": "Typ",
+    "childSessions": "Untersitzungen",
+    "elapsed": "Vergangene Zeit",
+    "lastLatency": "Latenz"
   }
 }

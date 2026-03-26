@@ -177,6 +177,21 @@
     "bindSaved": "에이전트 바인딩이 저장되었습니다",
     "bindRemoved": "에이전트 바인딩이 제거되었습니다",
     "bindFailed": "에이전트 바인딩 저장 실패",
-    "saveSession": "저장"
+    "saveSession": "저장",
+    "remaining": "남음",
+    "cacheRead": "캐시 읽기",
+    "cacheWrite": "캐시 쓰기",
+    "tokenTrend": "토큰 추이",
+    "costTrend": "비용 추이",
+    "toolResults": "결과",
+    "missingCost": "건의 비용 데이터 없음",
+    "activeDays": "활성 일수",
+    "msgTrend": "메시지 추이",
+    "latencyTrend": "지연 추이",
+    "sendDenied": "거부됨",
+    "sessionType": "유형",
+    "childSessions": "하위 세션",
+    "elapsed": "경과 시간",
+    "lastLatency": "지연"
   }
 }

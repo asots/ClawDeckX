@@ -177,6 +177,21 @@
     "bindSaved": "エージェントバインドを保存しました",
     "bindRemoved": "エージェントバインドを削除しました",
     "bindFailed": "エージェントバインドの保存に失敗しました",
-    "saveSession": "保存"
+    "saveSession": "保存",
+    "remaining": "残り",
+    "cacheRead": "キャッシュ読取",
+    "cacheWrite": "キャッシュ書込",
+    "tokenTrend": "トークン推移",
+    "costTrend": "コスト推移",
+    "toolResults": "結果",
+    "missingCost": "件のコストデータなし",
+    "activeDays": "アクティブ日数",
+    "msgTrend": "メッセージ推移",
+    "latencyTrend": "レイテンシ推移",
+    "sendDenied": "拒否",
+    "sessionType": "タイプ",
+    "childSessions": "サブセッション",
+    "elapsed": "経過時間",
+    "lastLatency": "レイテンシ"
   }
 }

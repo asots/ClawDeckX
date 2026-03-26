@@ -177,6 +177,21 @@
     "bindSaved": "تم حفظ ربط الوكيل",
     "bindRemoved": "تم إزالة ربط الوكيل",
     "bindFailed": "فشل حفظ ربط الوكيل",
-    "saveSession": "حفظ"
+    "saveSession": "حفظ",
+    "remaining": "متبقي",
+    "cacheRead": "قراءة التخزين المؤقت",
+    "cacheWrite": "كتابة التخزين المؤقت",
+    "tokenTrend": "نمو الرموز",
+    "costTrend": "نمو التكلفة",
+    "toolResults": "النتائج",
+    "missingCost": "سجلات بدون بيانات تكلفة",
+    "activeDays": "أيام نشطة",
+    "msgTrend": "اتجاه الرسائل",
+    "latencyTrend": "اتجاه التأخير",
+    "sendDenied": "مرفوض",
+    "sessionType": "النوع",
+    "childSessions": "جلسات فرعية",
+    "elapsed": "الوقت المنقضي",
+    "lastLatency": "التأخير"
   }
 }

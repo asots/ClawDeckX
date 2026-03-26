@@ -177,6 +177,21 @@
     "bindSaved": "Binding agen disimpan",
     "bindRemoved": "Binding agen dihapus",
     "bindFailed": "Gagal menyimpan binding agen",
-    "saveSession": "Simpan"
+    "saveSession": "Simpan",
+    "remaining": "tersisa",
+    "cacheRead": "Baca Cache",
+    "cacheWrite": "Tulis Cache",
+    "tokenTrend": "Pertumbuhan Token",
+    "costTrend": "Pertumbuhan Biaya",
+    "toolResults": "Hasil",
+    "missingCost": "entri tanpa data biaya",
+    "activeDays": "hari aktif",
+    "msgTrend": "Tren Pesan",
+    "latencyTrend": "Tren Latensi",
+    "sendDenied": "Ditolak",
+    "sessionType": "Tipe",
+    "childSessions": "Sub-sesi",
+    "elapsed": "Waktu berlalu",
+    "lastLatency": "Latensi"
   }
 }
