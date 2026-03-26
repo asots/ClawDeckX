@@ -372,6 +372,8 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
   const [dragOver, setDragOver] = useState(false);
   // Model image capability map: { "provider/modelId": boolean }
   const [modelImageMap, setModelImageMap] = useState<Record<string, boolean>>({});
+  // Model context window map: { "provider/modelId": number } — fallback when gateway doesn't report maxContextTokens
+  const [modelCtxMap, setModelCtxMap] = useState<Record<string, number>>({});
   // Live tool calls (real-time streaming from agent events)
   const [liveToolCalls, setLiveToolCalls] = useState<Map<string, LiveToolCall>>(new Map());
   // Fun waiting phrase (picked once per waiting session, rotates)
@@ -401,6 +403,7 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
         if (cancelled) return;
         const providers = cfg?.models?.providers || cfg?.parsed?.models?.providers || cfg?.config?.models?.providers || {};
         const map: Record<string, boolean> = {};
+        const ctxMap: Record<string, number> = {};
         for (const [pName, pCfg] of Object.entries(providers) as [string, any][]) {
           const pModels = Array.isArray(pCfg?.models) ? pCfg.models : [];
           for (const m of pModels) {
@@ -408,9 +411,11 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
             if (!id) continue;
             const input = Array.isArray(m?.input) ? m.input : ['text', 'image'];
             map[`${pName}/${id}`] = input.includes('image');
+            if (typeof m === 'object' && m?.contextWindow > 0) ctxMap[`${pName}/${id}`] = m.contextWindow;
           }
         }
         setModelImageMap(map);
+        setModelCtxMap(ctxMap);
       } catch { /* ignore */ }
     })();
     return () => { cancelled = true; };
@@ -3194,8 +3199,9 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
         )}
 
         {/* Token context bar above input */}
-        {activeSession?.totalTokens && activeSession?.maxContextTokens ? (() => {
-          const pct = Math.min(100, (activeSession.totalTokens / activeSession.maxContextTokens) * 100);
+        {activeSession?.totalTokens && (activeSession?.maxContextTokens || modelCtxMap[activeSession?.model || '']) ? (() => {
+          const maxCtx = activeSession.maxContextTokens || modelCtxMap[activeSession.model || ''] || 0;
+          const pct = Math.min(100, (activeSession.totalTokens / maxCtx) * 100);
           const clr = pct > 90 ? 'bg-red-500' : pct > 70 ? 'bg-amber-500' : 'bg-emerald-500';
           return (
             <div className="shrink-0 px-4 py-1 border-t border-slate-100/50 dark:border-white/[0.03] flex items-center gap-2">
@@ -3203,7 +3209,7 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
                 <div className={`h-full rounded-full ${clr} transition-all duration-500`} style={{ width: `${pct}%` }} />
               </div>
               <span className="text-[8px] font-mono text-slate-400 dark:text-white/25 tabular-nums shrink-0">
-                {(activeSession.totalTokens / 1000).toFixed(1)}k / {(activeSession.maxContextTokens / 1000).toFixed(0)}k
+                {(activeSession.totalTokens / 1000).toFixed(1)}k / {(maxCtx / 1000).toFixed(0)}k
               </span>
             </div>
           );
@@ -3349,7 +3355,7 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
             totalTokens: activeSession?.totalTokens,
             inputTokens: activeSession?.inputTokens,
             outputTokens: activeSession?.outputTokens,
-            maxContextTokens: activeSession?.maxContextTokens,
+            maxContextTokens: activeSession?.maxContextTokens || modelCtxMap[activeSession?.model || ''] || 0,
             compacted: activeSession?.compacted,
             thinkingLevel: activeSession?.thinkingLevel,
             reasoningLevel: activeSession?.reasoningLevel,
