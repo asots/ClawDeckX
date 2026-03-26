@@ -1,6 +1,24 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { MiniDonut, MiniBarChart, MiniSparkline } from './MiniChart';
 
+/* ── In-memory cache for usage data (avoids re-fetch on session switch) ── */
+const CACHE_TTL = 30_000;
+const CACHE_MAX = 50;
+interface CacheEntry { usage: any; timeseries: any; ts: number; }
+const usageCache = new Map<string, CacheEntry>();
+function cacheGet(key: string): CacheEntry | null {
+  const e = usageCache.get(key);
+  if (!e || Date.now() - e.ts > CACHE_TTL) { usageCache.delete(key); return null; }
+  return e;
+}
+function cacheSet(key: string, usage: any, timeseries: any) {
+  if (usageCache.size >= CACHE_MAX) {
+    const oldest = usageCache.keys().next().value;
+    if (oldest !== undefined) usageCache.delete(oldest);
+  }
+  usageCache.set(key, { usage, timeseries, ts: Date.now() });
+}
+
 interface SessionInfo {
   model?: string;
   modelProvider?: string;
@@ -86,8 +104,12 @@ export const UsagePanel: React.FC<UsagePanelProps> = ({ sessionKey, gwReady, loa
     try { return localStorage.getItem('usage-panel-collapsed') === '1'; } catch { return false; }
   });
 
-  const load = useCallback(async () => {
+  const loadData = useCallback(async (force = false) => {
     if (!gwReady || !sessionKey) return;
+    if (!force) {
+      const cached = cacheGet(sessionKey);
+      if (cached) { setUsage(cached.usage); setTimeseries(cached.timeseries); return; }
+    }
     setLoading(true);
     setError(null);
     try {
@@ -97,13 +119,14 @@ export const UsagePanel: React.FC<UsagePanelProps> = ({ sessionKey, gwReady, loa
       ]);
       setUsage(data);
       if (ts) setTimeseries(ts);
+      cacheSet(sessionKey, data, ts);
     } catch (e: any) {
       setError(e?.message || 'Failed to load');
     }
     setLoading(false);
   }, [gwReady, sessionKey, loadUsage, loadTimeseries]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { loadData(); }, [loadData]);
 
   useEffect(() => {
     if (!modelPickerOpen) return;
@@ -164,7 +187,7 @@ export const UsagePanel: React.FC<UsagePanelProps> = ({ sessionKey, gwReady, loa
       <div className="flex items-center justify-between px-3 py-2 border-b border-slate-100/60 dark:border-white/[0.04] shrink-0">
         <span className="text-[11px] font-bold text-slate-500 dark:text-white/40 uppercase">{a.usage || 'Usage'}</span>
         <div className="flex items-center gap-1">
-          <button onClick={load} disabled={loading} className="p-0.5 text-slate-400 hover:text-primary transition">
+          <button onClick={() => loadData(true)} disabled={loading} className="p-0.5 text-slate-400 hover:text-primary transition">
             <span className={`material-symbols-outlined text-[12px] ${loading ? 'animate-spin' : ''}`}>refresh</span>
           </button>
           <button onClick={toggle} className="p-0.5 text-slate-400 hover:text-primary transition">
@@ -354,7 +377,7 @@ export const UsagePanel: React.FC<UsagePanelProps> = ({ sessionKey, gwReady, loa
           <div className="flex flex-col items-center gap-2 p-3 text-center rounded-lg bg-red-50/50 dark:bg-red-500/5">
             <span className="material-symbols-outlined text-[16px] text-red-400">error</span>
             <p className="text-[10px] text-red-400">{error}</p>
-            <button onClick={load} className="text-[10px] px-2 py-1 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition">
+            <button onClick={() => loadData(true)} className="text-[10px] px-2 py-1 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition">
               {a.retry || 'Retry'}
             </button>
           </div>
