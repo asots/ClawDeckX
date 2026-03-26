@@ -145,6 +145,8 @@
     "agents": "代理",
     "latencyTrendKpi": "延迟趋势",
     "dailyTokens": "每日 Token",
-    "remaining": "剩余"
+    "remaining": "剩余",
+    "showDashboard": "展开面板",
+    "hideDashboard": "收起面板"
   }
 }

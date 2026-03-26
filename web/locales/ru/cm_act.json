@@ -145,6 +145,8 @@
     "agents": "Агенты",
     "latencyTrendKpi": "Тренд задержки",
     "dailyTokens": "Ежедневные токены",
-    "remaining": "осталось"
+    "remaining": "осталось",
+    "showDashboard": "Показать панель",
+    "hideDashboard": "Скрыть панель"
   }
 }

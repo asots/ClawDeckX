@@ -145,6 +145,8 @@
     "agents": "وكلاء",
     "latencyTrendKpi": "اتجاه التأخير",
     "dailyTokens": "الرموز اليومية",
-    "remaining": "متبقي"
+    "remaining": "متبقي",
+    "showDashboard": "إظهار لوحة المعلومات",
+    "hideDashboard": "إخفاء لوحة المعلومات"
   }
 }

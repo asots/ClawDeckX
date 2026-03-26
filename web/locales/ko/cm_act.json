@@ -145,6 +145,8 @@
     "agents": "에이전트",
     "latencyTrendKpi": "지연 추이",
     "dailyTokens": "일별 토큰",
-    "remaining": "남음"
+    "remaining": "남음",
+    "showDashboard": "대시보드 표시",
+    "hideDashboard": "대시보드 숨기기"
   }
 }

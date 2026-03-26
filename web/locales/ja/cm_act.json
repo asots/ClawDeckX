@@ -145,6 +145,8 @@
     "agents": "エージェント",
     "latencyTrendKpi": "レイテンシ推移",
     "dailyTokens": "日別トークン",
-    "remaining": "残り"
+    "remaining": "残り",
+    "showDashboard": "ダッシュボードを表示",
+    "hideDashboard": "ダッシュボードを非表示"
   }
 }

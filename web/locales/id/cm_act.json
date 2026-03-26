@@ -145,6 +145,8 @@
     "agents": "Agen",
     "latencyTrendKpi": "Tren Latensi",
     "dailyTokens": "Token Harian",
-    "remaining": "tersisa"
+    "remaining": "tersisa",
+    "showDashboard": "Tampilkan Dasbor",
+    "hideDashboard": "Sembunyikan Dasbor"
   }
 }

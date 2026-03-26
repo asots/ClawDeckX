@@ -45,6 +45,7 @@ const Activity: React.FC<ActivityProps> = ({ language, onNavigateToSession }) =>
   const [usageAggregates, setUsageAggregates] = useState<any>(null);
   const [usageTotals, setUsageTotals] = useState<any>(null);
   const [usageByKey, setUsageByKey] = useState<Record<string, any>>({});
+  const [kpiCollapsed, setKpiCollapsed] = useState(() => localStorage.getItem('clawdeck:kpi-collapsed') === '1');
 
 
   const loadSessions = useCallback(async () => {
@@ -313,9 +314,20 @@ const Activity: React.FC<ActivityProps> = ({ language, onNavigateToSession }) =>
           </div>
         </div>
 
-        {/* KPI Dashboard */}
+        {/* KPI Dashboard — collapsible */}
         {sessions.length > 0 && (
-          <KPIDashboard stats={kpiStats} sessions={sessions} labels={a} costTrend={costTrend} usageAggregates={usageAggregates} usageTotals={usageTotals} />
+          <div>
+            <button
+              onClick={() => setKpiCollapsed(v => { const next = !v; localStorage.setItem('clawdeck:kpi-collapsed', next ? '1' : '0'); return next; })}
+              className="flex items-center gap-1 mt-1 mb-1 text-[10px] font-bold text-slate-400 dark:text-white/30 hover:text-primary dark:hover:text-primary transition-colors"
+            >
+              <span className={`material-symbols-outlined text-[14px] transition-transform ${kpiCollapsed ? '' : 'rotate-180'}`}>expand_less</span>
+              {kpiCollapsed ? (a.showDashboard || 'Show Dashboard') : (a.hideDashboard || 'Hide Dashboard')}
+            </button>
+            {!kpiCollapsed && (
+              <KPIDashboard stats={kpiStats} sessions={sessions} labels={a} costTrend={costTrend} usageAggregates={usageAggregates} usageTotals={usageTotals} />
+            )}
+          </div>
         )}
 
         {/* Search + Filter + Sort */}

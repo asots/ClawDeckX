@@ -145,6 +145,8 @@
     "agents": "Agents",
     "latencyTrendKpi": "Latency Trend",
     "dailyTokens": "Daily Tokens",
-    "remaining": "left"
+    "remaining": "left",
+    "showDashboard": "Show Dashboard",
+    "hideDashboard": "Hide Dashboard"
   }
 }
