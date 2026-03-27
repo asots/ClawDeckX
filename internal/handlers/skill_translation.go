@@ -219,15 +219,23 @@ func (h *SkillTranslationHandler) translateBatch(lang string, skills []skillItem
 
 		// Translate name
 		translatedName, engineName, err := h.translator.TranslateForced(ctx, sk.Name, "en", lang, preferEngine)
-		if err != nil {
-			logger.Log.Warn().Err(err).Str("skill", sk.SkillKey).Msg("translate name failed")
+		if err != nil || isGarbageTranslation(sk.Name, translatedName) {
+			if err != nil {
+				logger.Log.Warn().Err(err).Str("skill", sk.SkillKey).Msg("translate name failed")
+			} else {
+				logger.Log.Warn().Str("skill", sk.SkillKey).Str("got", translatedName).Msg("translate name returned garbage, using original")
+			}
 			translatedName = sk.Name
 		}
 
 		// Translate description (engine from name translation is representative)
 		translatedDesc, engineDesc, err := h.translator.TranslateForced(ctx, sk.Description, "en", lang, preferEngine)
-		if err != nil {
-			logger.Log.Warn().Err(err).Str("skill", sk.SkillKey).Msg("translate description failed")
+		if err != nil || isGarbageTranslation(sk.Description, translatedDesc) {
+			if err != nil {
+				logger.Log.Warn().Err(err).Str("skill", sk.SkillKey).Msg("translate description failed")
+			} else {
+				logger.Log.Warn().Str("skill", sk.SkillKey).Str("got", translatedDesc).Msg("translate description returned garbage, using original")
+			}
 			translatedDesc = sk.Description
 		}
 
@@ -266,4 +274,21 @@ func skillKeys(skills []skillItem) []string {
 
 func hashText(text string) string {
 	return fmt.Sprintf("%x", md5.Sum([]byte(text)))
+}
+
+// isGarbageTranslation detects when a translation API returns garbage instead of
+// a real translation (e.g. a URL, or content completely unrelated to the source).
+// This prevents translated skill names from being replaced by random URLs.
+func isGarbageTranslation(source, translated string) bool {
+	t := strings.TrimSpace(translated)
+	if t == "" {
+		return true
+	}
+	// If the source doesn't contain a URL but the translation does, it's garbage.
+	sourceHasURL := strings.Contains(source, "http://") || strings.Contains(source, "https://")
+	translatedHasURL := strings.HasPrefix(t, "http://") || strings.HasPrefix(t, "https://")
+	if !sourceHasURL && translatedHasURL {
+		return true
+	}
+	return false
 }
