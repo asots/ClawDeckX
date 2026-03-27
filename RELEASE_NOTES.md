@@ -2,18 +2,21 @@
 
 ### 🐛 Bug Fixes / 修复
 
-- hide snapshot toolbar on config-history tab
-- backup dir outside state path, radio scope, notify reorder, i18n ON/OFF
+- route recipe install through gateway RPC
+- ignore cached URL translations
+- reject garbage translations containing URLs for skill names
+- use clipboard fallback for context menu copy in Sessions
+- use clipboard fallback for code block copy in non-HTTPS context
+
+### 🎨 UI & Styling / 界面优化
+
+- move tool policy above model picker in UsagePanel
 
 ### 🌐 Internationalization / 国际化
 
-- rename ocBackupFull to Standard backup for clarity
-
-### 📦 Build & Deploy / 构建部署
-
-- upgrade Node.js from 22 to 24
+- add secProfile tool strategy labels for all 13 locales
 
 ---
-**Full Changelog**: [v0.0.31...v0.0.32](https://github.com/ClawDeckX/ClawDeckX/compare/v0.0.31...v0.0.32)
+**Full Changelog**: [v0.0.32...v0.0.33](https://github.com/ClawDeckX/ClawDeckX/compare/v0.0.32...v0.0.33)
 
 
