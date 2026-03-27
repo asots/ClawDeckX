@@ -557,8 +557,8 @@ const SnapshotTab: React.FC<SnapshotTabProps> = ({ s, inputCls, labelCls, rowCls
 
         {snapshotModeTab === 'config-history' && (<div className={rowCls}><div className="px-4 py-3"><ConfigBackupTab s={s} /></div></div>)}
 
-        {/* Batch management toolbar + snapshot list — hide when OpenClaw backup method is active */}
-        {(snapshotModeTab !== 'manual' || backupMethod !== 'openclaw') && <>
+        {/* Batch management toolbar + snapshot list — hide on config-history tab and when OpenClaw backup method is active */}
+        {snapshotModeTab !== 'config-history' && (snapshotModeTab !== 'manual' || backupMethod !== 'openclaw') && <>
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-1.5">
             <select value={filterTrigger} onChange={e => setFilterTrigger(e.target.value)} className="px-2 py-1 rounded-lg text-[11px] border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] text-slate-600 dark:text-white/60">
