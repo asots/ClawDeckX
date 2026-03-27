@@ -3221,7 +3221,7 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
           <div className="fixed inset-0 z-50" onClick={() => setCtxMenu(null)} onContextMenu={e => { e.preventDefault(); setCtxMenu(null); }} onKeyDown={e => { if (e.key === 'Escape') setCtxMenu(null); }} tabIndex={-1} role="dialog" aria-modal="true">
             <div className="absolute rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#1a1c20] shadow-2xl shadow-black/15 dark:shadow-black/40 py-1 min-w-[140px] animate-in fade-in zoom-in-95 duration-100"
               style={{ top: Math.min(ctxMenu.y, window.innerHeight - 180), left: Math.min(ctxMenu.x, window.innerWidth - 160) }}>
-              <button onClick={() => { navigator.clipboard.writeText(ctxMenu.text); setCtxMenu(null); }}
+              <button onClick={() => { copyToClipboard(ctxMenu.text).catch(() => {}); setCtxMenu(null); }}
                 className="w-full flex items-center gap-2 px-3 py-1.5 text-[11px] text-slate-600 dark:text-white/60 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
                 <span className="material-symbols-outlined text-[14px]">content_copy</span>
                 {c.copy}
