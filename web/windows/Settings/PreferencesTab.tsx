@@ -18,6 +18,8 @@ const PreferencesTab: React.FC<PreferencesTabProps> = ({ s, pref, prefs, onPrefs
   const [wallpaperLoading, setWallpaperLoading] = useState(false);
   const [wallpaperPreview, setWallpaperPreview] = useState<string>('');
   const [wallpaperCollapsed, setWallpaperCollapsed] = useState(true);
+  const [windowControlsCollapsed, setWindowControlsCollapsed] = useState(true);
+  const [startupCollapsed, setStartupCollapsed] = useState(true);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -103,83 +105,98 @@ const PreferencesTab: React.FC<PreferencesTabProps> = ({ s, pref, prefs, onPrefs
 
       {/* Window Controls Position */}
       <div className={rowCls}>
-        <div className="px-4 py-3">
-          <div className="flex items-center gap-2 mb-3">
-            <span className="material-symbols-outlined text-[18px] text-blue-500">pip_exit</span>
+        <button
+          className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 dark:hover:bg-white/3 transition-colors"
+          onClick={() => setWindowControlsCollapsed(v => !v)}
+        >
+          <span className="material-symbols-outlined text-[18px] text-blue-500">pip_exit</span>
+          <div className="flex-1 text-start">
             <p className="text-[13px] font-semibold text-slate-700 dark:text-white/80">{pref?.windowControls || 'Window Controls Position'}</p>
+            <p className="text-[11px] text-slate-400 dark:text-white/30">{pref?.windowControlsDesc || 'Choose where the close, minimize, and maximize buttons appear on windows.'}</p>
           </div>
-          <p className="text-[11px] text-slate-400 dark:text-white/30 mb-3">{pref?.windowControlsDesc || 'Choose where the close, minimize, and maximize buttons appear on windows.'}</p>
-          <div className="flex gap-3">
-            {(['left', 'right'] as const).map(pos => (
-              <button key={pos} onClick={() => handleControlsPosition(pos)}
-                className={`flex-1 flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all ${
-                  prefs.windowControlsPosition === pos
-                    ? 'border-primary bg-primary/5 dark:bg-primary/10'
-                    : 'border-slate-200 dark:border-white/10 hover:border-slate-300 dark:hover:border-white/20'
-                }`}>
-                {/* Mini window preview */}
-                <div className="w-full h-10 rounded-lg bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 flex items-center px-2 gap-1.5">
-                  {pos === 'left' ? (
-                    <>
-                      <div className="flex gap-1 shrink-0">
-                        <div className="w-2 h-2 rounded-full bg-mac-red" />
-                        <div className="w-2 h-2 rounded-full bg-mac-yellow" />
-                        <div className="w-2 h-2 rounded-full bg-mac-green" />
-                      </div>
-                      <div className="flex-1" />
-                    </>
-                  ) : (
-                    <>
-                      <div className="flex-1" />
-                      <div className="flex gap-1 shrink-0">
-                        <div className="w-2 h-2 rounded-full bg-mac-yellow" />
-                        <div className="w-2 h-2 rounded-full bg-mac-green" />
-                        <div className="w-2 h-2 rounded-full bg-mac-red" />
-                      </div>
-                    </>
-                  )}
-                </div>
-                <span className={`text-[11px] font-bold ${
-                  prefs.windowControlsPosition === pos ? 'text-primary' : 'text-slate-500 dark:text-white/40'
-                }`}>
-                  {pos === 'left' ? (pref?.windowControlsLeft || 'Left (macOS)') : (pref?.windowControlsRight || 'Right (Windows)')}
-                </span>
-              </button>
-            ))}
+          <span className={`material-symbols-outlined text-[16px] text-slate-400 transition-transform duration-200 ${windowControlsCollapsed ? '' : 'rotate-180'}`}>expand_more</span>
+        </button>
+        {!windowControlsCollapsed && (
+          <div className="px-4 pb-4">
+            <div className="flex gap-3">
+              {(['left', 'right'] as const).map(pos => (
+                <button key={pos} onClick={() => handleControlsPosition(pos)}
+                  className={`flex-1 flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all ${
+                    prefs.windowControlsPosition === pos
+                      ? 'border-primary bg-primary/5 dark:bg-primary/10'
+                      : 'border-slate-200 dark:border-white/10 hover:border-slate-300 dark:hover:border-white/20'
+                  }`}>
+                  <div className="w-full h-10 rounded-lg bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 flex items-center px-2 gap-1.5">
+                    {pos === 'left' ? (
+                      <>
+                        <div className="flex gap-1 shrink-0">
+                          <div className="w-2 h-2 rounded-full bg-mac-red" />
+                          <div className="w-2 h-2 rounded-full bg-mac-yellow" />
+                          <div className="w-2 h-2 rounded-full bg-mac-green" />
+                        </div>
+                        <div className="flex-1" />
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex-1" />
+                        <div className="flex gap-1 shrink-0">
+                          <div className="w-2 h-2 rounded-full bg-mac-yellow" />
+                          <div className="w-2 h-2 rounded-full bg-mac-green" />
+                          <div className="w-2 h-2 rounded-full bg-mac-red" />
+                        </div>
+                      </>
+                    )}
+                  </div>
+                  <span className={`text-[11px] font-bold ${
+                    prefs.windowControlsPosition === pos ? 'text-primary' : 'text-slate-500 dark:text-white/40'
+                  }`}>
+                    {pos === 'left' ? (pref?.windowControlsLeft || 'Left (macOS)') : (pref?.windowControlsRight || 'Right (Windows)')}
+                  </span>
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Startup Window */}
       <div className={rowCls}>
-        <div className="px-4 py-3">
-          <div className="flex items-center gap-2 mb-3">
-            <span className="material-symbols-outlined text-[18px] text-cyan-500">launch</span>
+        <button
+          className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 dark:hover:bg-white/3 transition-colors"
+          onClick={() => setStartupCollapsed(v => !v)}
+        >
+          <span className="material-symbols-outlined text-[18px] text-cyan-500">launch</span>
+          <div className="flex-1 text-start">
             <p className="text-[13px] font-semibold text-slate-700 dark:text-white/80">{pref?.startupWindow || 'Startup Window'}</p>
+            <p className="text-[11px] text-slate-400 dark:text-white/30">{pref?.startupWindowDesc || 'Choose which window opens automatically when you enter the desktop.'}</p>
           </div>
-          <p className="text-[11px] text-slate-400 dark:text-white/30 mb-3">{pref?.startupWindowDesc || 'Choose which window opens automatically when you enter the desktop.'}</p>
-          <div className="flex flex-wrap gap-2">
-            {([
-              { id: 'none' as const, label: pref?.startupNone || 'None', icon: 'block' },
-              { id: 'dashboard' as const, label: pref?.startupDashboard || 'Dashboard', icon: 'dashboard' },
-              { id: 'gateway' as const, label: pref?.startupGateway || 'Gateway', icon: 'router' },
-              { id: 'sessions' as const, label: pref?.startupSessions || 'Sessions', icon: 'forum' },
-              { id: 'editor' as const, label: pref?.startupEditor || 'Editor', icon: 'code_blocks' },
-              { id: 'skills' as const, label: pref?.startupSkills || 'Skills', icon: 'extension' },
-              { id: 'agents' as const, label: pref?.startupAgents || 'Agents', icon: 'smart_toy' },
-            ] as { id: StartupWindowMode; label: string; icon: string }[]).map(opt => (
-              <button key={opt.id} onClick={() => handleStartupWindow(opt.id)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all border ${
-                  prefs.startupWindow === opt.id
-                    ? 'bg-primary/10 text-primary border-primary/30'
-                    : 'bg-slate-50 dark:bg-white/5 text-slate-500 dark:text-white/40 border-slate-200 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-white/10'
-                }`}>
-                <span className="material-symbols-outlined text-[14px]">{opt.icon}</span>
-                {opt.label}
-              </button>
-            ))}
+          <span className={`material-symbols-outlined text-[16px] text-slate-400 transition-transform duration-200 ${startupCollapsed ? '' : 'rotate-180'}`}>expand_more</span>
+        </button>
+        {!startupCollapsed && (
+          <div className="px-4 pb-4">
+            <div className="flex flex-wrap gap-2">
+              {([
+                { id: 'none' as const, label: pref?.startupNone || 'None', icon: 'block' },
+                { id: 'dashboard' as const, label: pref?.startupDashboard || 'Dashboard', icon: 'dashboard' },
+                { id: 'gateway' as const, label: pref?.startupGateway || 'Gateway', icon: 'router' },
+                { id: 'sessions' as const, label: pref?.startupSessions || 'Sessions', icon: 'forum' },
+                { id: 'editor' as const, label: pref?.startupEditor || 'Editor', icon: 'code_blocks' },
+                { id: 'skills' as const, label: pref?.startupSkills || 'Skills', icon: 'extension' },
+                { id: 'agents' as const, label: pref?.startupAgents || 'Agents', icon: 'smart_toy' },
+              ] as { id: StartupWindowMode; label: string; icon: string }[]).map(opt => (
+                <button key={opt.id} onClick={() => handleStartupWindow(opt.id)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all border ${
+                    prefs.startupWindow === opt.id
+                      ? 'bg-primary/10 text-primary border-primary/30'
+                      : 'bg-slate-50 dark:bg-white/5 text-slate-500 dark:text-white/40 border-slate-200 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-white/10'
+                  }`}>
+                  <span className="material-symbols-outlined text-[14px]">{opt.icon}</span>
+                  {opt.label}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Desktop Wallpaper */}

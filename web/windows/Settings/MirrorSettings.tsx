@@ -194,7 +194,6 @@ const MirrorSettings: React.FC<MirrorSettingsProps> = ({ s, m }) => {
   const [systemStatus, setSystemStatus] = useState<SystemMirrorStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [detecting, setDetecting] = useState(false);
-  const [saving, setSaving] = useState(false);
   const [applyingTool, setApplyingTool] = useState<string | null>(null);
   const [applyResults, setApplyResults] = useState<Record<string, MirrorApplyResult>>({});
   const [collapsed, setCollapsed] = useState(true);
@@ -242,21 +241,10 @@ const MirrorSettings: React.FC<MirrorSettingsProps> = ({ s, m }) => {
     setCfg(prev => ({ ...prev, [key]: value, preset: 'custom' }));
   }, []);
 
-  const saveConfig = useCallback(async () => {
-    setSaving(true);
-    try {
-      await mirrorConfigApi.set(cfg);
-      toast('success', m.savedOk || '配置已保存');
-    } catch {
-      toast('error', m.saveFailed || '保存失败');
-    } finally {
-      setSaving(false);
-    }
-  }, [cfg, toast, m]);
-
   const applyTool = useCallback(async (tool: string) => {
     setApplyingTool(tool);
     try {
+      await mirrorConfigApi.set(cfg);
       const res = await mirrorConfigApi.apply([tool], cfg);
       const result = res.results?.[0];
       if (result) {
@@ -281,6 +269,7 @@ const MirrorSettings: React.FC<MirrorSettingsProps> = ({ s, m }) => {
       return false;
     });
     try {
+      await mirrorConfigApi.set(cfg);
       const res = await mirrorConfigApi.apply(tools, cfg);
       const newResults: Record<string, MirrorApplyResult> = {};
       const toolMap: Record<string, string> = { npm: 'npm', go: 'go', pip: 'pip', git: 'git', docker: 'docker' };
@@ -456,18 +445,8 @@ const MirrorSettings: React.FC<MirrorSettingsProps> = ({ s, m }) => {
           {/* ── Bottom action bar ── */}
           <div className="flex items-center gap-2 pt-1">
             <button
-              onClick={saveConfig}
-              disabled={saving}
-              className="h-8 px-4 rounded-lg text-[11px] font-bold bg-white dark:bg-white/8 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-white/50 hover:border-primary/30 hover:text-primary disabled:opacity-40 flex items-center gap-1.5 transition-colors"
-            >
-              {saving
-                ? <><span className="material-symbols-outlined text-[13px] animate-spin">progress_activity</span>{m.saving || '保存中...'}</>
-                : <><span className="material-symbols-outlined text-[13px]">save</span>{m.saveConfig || '保存配置'}</>
-              }
-            </button>
-            <button
               onClick={applyAll}
-              disabled={applyingTool === 'all'}
+              disabled={!!applyingTool}
               className="h-8 px-4 rounded-lg text-[11px] font-bold bg-primary text-white hover:bg-primary/90 disabled:opacity-40 flex items-center gap-1.5 transition-colors"
             >
               {applyingTool === 'all'
