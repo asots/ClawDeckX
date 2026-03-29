@@ -679,6 +679,20 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
           }
         } else if (msg.type === 'sessions.changed') {
           loadSessionsRef.current?.({ silent: true });
+        } else if (msg.type === 'context_compaction.started') {
+          // Gateway event: context compaction has begun for this session (openclaw >=2026.3.24)
+          const d = msg.data;
+          if (!d?.sessionKey || d.sessionKey === sessionKeyRef.current) {
+            setCompacting(true);
+          }
+        } else if (msg.type === 'context_compaction.completed') {
+          // Gateway event: context compaction finished
+          const d = msg.data;
+          if (!d?.sessionKey || d.sessionKey === sessionKeyRef.current) {
+            setCompacting(false);
+            loadSessionsRef.current?.({ silent: true });
+            loadHistoryRef.current?.({ silent: true });
+          }
         } else if (msg.type === 'talk.mode') {
           // Gateway payload: { enabled: boolean, phase?: string, ts: number }
           const d = msg.data;
@@ -995,6 +1009,7 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
         limit: 50,
         includeDerivedTitles: true,
         includeLastMessage: true,
+        includeSpawned: true,
       }) as any;
       if (sessionsRequestSeqRef.current !== requestSeq) {
         return;
@@ -3188,6 +3203,16 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
                   <div className="flex items-center gap-2 mt-1">
                     <span className="text-[11px] text-primary font-medium">{c.streaming}</span>
                   </div>
+                </div>
+              </div>
+            )}
+
+            {/* Compaction in-progress banner (context_compaction.started event from gateway) */}
+            {compacting && stream === null && runPhase === 'idle' && (
+              <div className="flex justify-center">
+                <div className="px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-600 dark:text-amber-400 font-medium flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[14px] animate-spin">progress_activity</span>
+                  {c.compacting || 'Compacting context…'}
                 </div>
               </div>
             )}

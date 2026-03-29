@@ -2,6 +2,8 @@
 
 ### ✨ New Features / 新功能
 
+- handle context_compaction events and includeSpawned
+- sync with openclaw v2026.3.28
 - add MCP handler, mirror config, McpCenter UI and settings
 
 ### 🐛 Bug Fixes / 修复

@@ -775,6 +775,7 @@ export interface PluginStatusPlugin {
   updateAvailable?: boolean;
   description?: string;
   kind?: string;
+  category?: 'channel' | 'inference' | 'provider' | 'utility' | string;
   source?: string;
   origin?: string;
   status: 'loaded' | 'disabled' | 'error';
