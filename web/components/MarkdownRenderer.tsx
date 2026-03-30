@@ -28,7 +28,7 @@ const CodeBlock: React.FC<{ code: string; copyLabel?: string }> = ({ code, copyL
 
   return (
     <div className="relative group/code my-2 sci-card rounded-xl overflow-hidden">
-      <div className="absolute top-1.5 end-1.5 opacity-0 group-hover/code:opacity-100 transition z-10">
+      <div className={`absolute top-1.5 end-1.5 transition z-10 ${copied || copyFailed ? 'opacity-100' : 'opacity-0 group-hover/code:opacity-100'}`}>
         <button
           onClick={handleCopy}
           className="text-[9px] px-1.5 py-0.5 rounded bg-white/10 hover:bg-white/20 text-white/60 transition sci-badge cursor-pointer select-none"
