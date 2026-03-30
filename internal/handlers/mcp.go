@@ -518,7 +518,7 @@ func testStdioMcpServer(name string, cfg McpServerConfig) McpServerTestResult {
 	result.Details["command"] = command
 	result.Details["args"] = strings.Join(cfg.Args, " ")
 
-	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, resolved, cfg.Args...)
 	cmd.Env = os.Environ()
@@ -570,7 +570,9 @@ func testStdioMcpServer(name string, cfg McpServerConfig) McpServerTestResult {
 		result.Message = err.Error()
 		return result
 	}
-	_ = stdin.Close()
+	// Do NOT close stdin here — proxies like mcp-remote keep stdin open as the
+	// control channel; closing it immediately triggers an EOF shutdown before
+	// the proxy has a chance to relay the initialize response.
 
 	stdoutCh := make(chan []byte, 1)
 	stderrCh := make(chan string, 1)
@@ -831,7 +833,7 @@ func (h *McpHandler) Test(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(r.Context(), 8*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), 25*time.Second)
 	defer cancel()
 	result := testMcpServer(ctx, name, normalizeMcpServerConfig(serverCfg))
 
