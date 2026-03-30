@@ -125,12 +125,19 @@ ensure_default_clawhub() {
     fi
 
     echo "[docker-entrypoint] Installing ClawHub CLI..."
-    if npm install -g clawhub --prefix "$NPM_CONFIG_PREFIX" >/tmp/clawhub-install.log 2>&1; then
-        echo "[docker-entrypoint] ClawHub CLI installed"
-        return 0
-    fi
+    local attempt
+    for attempt in 1 2 3; do
+        if npm install -g clawhub --prefix "$NPM_CONFIG_PREFIX" >/tmp/clawhub-install.log 2>&1; then
+            echo "[docker-entrypoint] ClawHub CLI installed"
+            return 0
+        fi
+        if [ "$attempt" -lt 3 ]; then
+            echo "[docker-entrypoint] ClawHub install attempt ${attempt}/3 failed, retrying in 5s..." >&2
+            sleep 5
+        fi
+    done
 
-    echo "[docker-entrypoint] WARNING: Failed to install ClawHub CLI" >&2
+    echo "[docker-entrypoint] WARNING: Failed to install ClawHub CLI after 3 attempts" >&2
     tail -20 /tmp/clawhub-install.log 2>/dev/null >&2 || true
     return 1
 }
@@ -146,12 +153,19 @@ ensure_default_skillhub() {
     fi
 
     echo "[docker-entrypoint] Installing SkillHub CLI..."
-    if bash -lc 'curl -fsSL https://skillhub-1388575217.cos.ap-guangzhou.myqcloud.com/install/install.sh | bash -s -- --cli-only' >/tmp/skillhub-install.log 2>&1; then
-        echo "[docker-entrypoint] SkillHub CLI installed"
-        return 0
-    fi
+    local attempt
+    for attempt in 1 2 3; do
+        if bash -lc 'curl -fsSL https://skillhub-1388575217.cos.ap-guangzhou.myqcloud.com/install/install.sh | bash -s -- --cli-only' >/tmp/skillhub-install.log 2>&1; then
+            echo "[docker-entrypoint] SkillHub CLI installed"
+            return 0
+        fi
+        if [ "$attempt" -lt 3 ]; then
+            echo "[docker-entrypoint] SkillHub install attempt ${attempt}/3 failed, retrying in 5s..." >&2
+            sleep 5
+        fi
+    done
 
-    echo "[docker-entrypoint] WARNING: Failed to install SkillHub CLI" >&2
+    echo "[docker-entrypoint] WARNING: Failed to install SkillHub CLI after 3 attempts" >&2
     tail -20 /tmp/skillhub-install.log 2>/dev/null >&2 || true
     return 1
 }
