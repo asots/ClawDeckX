@@ -2,21 +2,26 @@
 
 ### ✨ New Features / 新功能
 
-- handle context_compaction events and includeSpawned
-- sync with openclaw v2026.3.28
-- add MCP handler, mirror config, McpCenter UI and settings
+- add confirm step before saving SKILL.md to prevent accidental overwrites
+- add JSON edit tab to server editor, move mcp-remote button above extra JSON
+- add mcp-remote bridge conversion button for SSE servers
+- add headers editor for SSE servers in McpCenter form
 
 ### 🐛 Bug Fixes / 修复
 
-- relax SKILL.md path validation, expand editor modal, add resize
-- remove save button from mirror settings, make prefs sections collapsible
-- resolve api key for model discovery
+- remove UTF-8 BOM from all cm_sk.json locale files
+- use inline borderColor style to override theme-field border on JSON error
+- validate JSON on every keystroke and highlight textarea border on error
+- keep stdio stdin open for mcp-remote proxies, extend test timeout to 20s
+- restrict attachments to images only, matching openclaw gateway behavior
+- handle baseUrl-only single server and streamable-http type in JSON paste
+- recognize baseUrl field and forward headers for HTTP servers
 
-### 🌐 Internationalization / 国际化
+### 📦 Build & Deploy / 构建部署
 
-- add mirror and mcp test keys to all 11 non-en locales
+- upgrade upload-artifact and download-artifact to v6 (Node.js 24)
 
 ---
-**Full Changelog**: [v0.0.33...v0.0.34](https://github.com/ClawDeckX/ClawDeckX/compare/v0.0.33...v0.0.34)
+**Full Changelog**: [v0.0.34...v0.0.35](https://github.com/ClawDeckX/ClawDeckX/compare/v0.0.34...v0.0.35)
 
 
