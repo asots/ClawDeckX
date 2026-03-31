@@ -10,7 +10,8 @@
     "icon": "analytics",
     "color": "from-indigo-500 to-purple-500",
     "tags": ["data", "pipeline", "analytics", "automation"],
-    "author": "ClawDeckX Team"
+    "author": "ClawDeckX Team",
+    "scope": "multi-agent"
   },
   "requirements": {
     "skills": ["web", "shell"],

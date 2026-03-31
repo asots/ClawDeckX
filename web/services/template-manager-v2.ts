@@ -23,6 +23,10 @@ export interface TemplateMetadata {
   updateFrequency?: 'static' | 'occasional' | 'frequent';
   featured?: boolean;
   lastUpdated?: string; // ISO 8601
+  /** 'single-agent': has per-file prompts suitable for single-agent workspace file writing.
+   *  'multi-agent': team-builder only, not suitable for single-agent file writing.
+   *  Omitted = legacy / no restriction. */
+  scope?: 'single-agent' | 'multi-agent';
 }
 
 export interface TemplateRequirements {

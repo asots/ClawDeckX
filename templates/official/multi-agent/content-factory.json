@@ -10,7 +10,8 @@
     "icon": "hub",
     "color": "from-purple-500 to-pink-500",
     "tags": ["content", "writing", "workflow", "team"],
-    "author": "ClawDeckX Team"
+    "author": "ClawDeckX Team",
+    "scope": "single-agent"
   },
   "requirements": {
     "skills": ["web"],

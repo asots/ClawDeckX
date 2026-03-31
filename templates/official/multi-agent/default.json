@@ -10,7 +10,8 @@
     "icon": "hub",
     "color": "from-slate-500 to-slate-600",
     "tags": ["general"],
-    "author": "ClawDeckX Team"
+    "author": "ClawDeckX Team",
+    "scope": "multi-agent"
   },
   "content": {
     "agents": [],

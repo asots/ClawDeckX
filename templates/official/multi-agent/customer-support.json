@@ -10,7 +10,8 @@
     "icon": "support_agent",
     "color": "from-green-500 to-teal-500",
     "tags": ["support", "customer", "service", "helpdesk"],
-    "author": "ClawDeckX Team"
+    "author": "ClawDeckX Team",
+    "scope": "multi-agent"
   },
   "requirements": {
     "skills": [],

@@ -10,7 +10,8 @@
     "icon": "school",
     "color": "from-cyan-500 to-blue-500",
     "tags": ["research", "analysis", "team", "academic"],
-    "author": "ClawDeckX Team"
+    "author": "ClawDeckX Team",
+    "scope": "multi-agent"
   },
   "requirements": {
     "skills": ["web", "memory"],

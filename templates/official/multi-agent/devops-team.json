@@ -10,7 +10,8 @@
     "icon": "cloud",
     "color": "from-orange-500 to-red-500",
     "tags": ["devops", "incident", "infrastructure", "automation"],
-    "author": "ClawDeckX Team"
+    "author": "ClawDeckX Team",
+    "scope": "multi-agent"
   },
   "requirements": {
     "skills": ["shell"],

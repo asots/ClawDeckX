@@ -426,7 +426,10 @@ const Agents: React.FC<AgentsProps> = ({ language }) => {
     // Load multi-agent templates for the picker (fire-and-forget)
     try {
       const templates = await templateSystem.getMultiAgentTemplates(language);
-      setAiGenTemplates(templates.filter(t => t.content.prompts?.files || t.content.prompts?.agentFile));
+      setAiGenTemplates(templates.filter(t =>
+        (t.content.prompts?.files || t.content.prompts?.agentFile) &&
+        t.metadata?.scope !== 'multi-agent'
+      ));
     } catch { /* templates optional */ }
   }, [fileActive, selectedId, language, buildAiGenFallbackPrompt]);
 
