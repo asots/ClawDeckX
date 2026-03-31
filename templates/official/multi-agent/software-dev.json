@@ -1,0 +1,26 @@
+{
+  "metadata": {
+    "name": "Software Dev Team",
+    "description": "Full-stack software development team with PM, architects, frontend/backend devs and QA",
+    "category": "engineering",
+    "icon": "code",
+    "color": "from-blue-500 to-cyan-500",
+    "tags": ["engineering", "software", "development", "agile"],
+    "author": "ClawDeckX Team",
+    "scope": "multi-agent"
+  },
+  "content": {
+    "agents": [],
+    "workflow": { "type": "collaborative", "description": "", "steps": [] },
+    "prompts": {
+      "step1": {
+        "en": "Output ONLY valid JSON, no markdown.\n\nYou are designing a Software Development multi-agent team.\nScenario: {{scenarioName}}\nDescription: {{description}}\nAgents: {{agentCount}}\nWorkflow: collaborative\n\nCreate a realistic engineering team. Typical roles: product manager (requirements/prioritization), software architect (design/tech decisions), frontend developer, backend developer, QA engineer. Adjust composition to fit the scenario — a smaller team may merge roles (e.g. full-stack dev), a larger team may add DevOps or security specialist.\n\nFor each agent: id (kebab-case), name, role (≤8 words), description (≤20 words), icon (Material Symbol), color (Tailwind gradient).\nreasoning: ≤15 words. Design workflow steps that reflect a real sprint cycle: requirements → design → parallel implementation → code review → QA → release.\n\n{\"reasoning\":\"\",\"template\":{\"id\":\"\",\"name\":\"\",\"description\":\"\",\"agents\":[{\"id\":\"\",\"name\":\"\",\"role\":\"\",\"description\":\"\",\"icon\":\"\",\"color\":\"\"}],\"workflow\":{\"type\":\"collaborative\",\"description\":\"\",\"steps\":[{\"agent\":\"\",\"action\":\"\"}]}}}",
+        "zh": "只输出合法JSON，不要Markdown。\n\n你正在设计一个软件开发多智能体团队。\n场景：{{scenarioName}}\n描述：{{description}}\n智能体数量：{{agentCount}}\n工作流：协作\n\n创建一个符合实际的工程团队。典型角色：产品经理（需求/优先级）、软件架构师（设计/技术决策）、前端开发工程师、后端开发工程师、QA工程师。根据场景调整组成——小团队可合并角色（如全栈工程师），大团队可增加DevOps或安全专家。\n\n每个智能体：id（短横线格式）、名称、角色（≤8字）、描述（≤20字）、图标（Material Symbol）、颜色（Tailwind渐变）。\n推理：≤15字。工作流步骤应反映真实迭代周期：需求→设计→并行开发→代码审查→QA→发布。\n\n{\"reasoning\":\"\",\"template\":{\"id\":\"\",\"name\":\"\",\"description\":\"\",\"agents\":[{\"id\":\"\",\"name\":\"\",\"role\":\"\",\"description\":\"\",\"icon\":\"\",\"color\":\"\"}],\"workflow\":{\"type\":\"collaborative\",\"description\":\"\",\"steps\":[{\"agent\":\"\",\"action\":\"\"}]}}}"
+      },
+      "agentFile": {
+        "en": "Output ONLY valid JSON. Field values must be rich Markdown, NOT plain sentences.\n\nAgent: {{agentName}}\nRole: {{agentRole}}\nDescription: {{agentDesc}}\nTeam / Scenario: {{scenarioName}}\nLanguage: English\n\nFields:\n- soul: First-person Markdown persona (3-5 paragraphs). Cover: engineering identity and professional philosophy (craft, quality bar, attitude toward technical debt); specific domain expertise and the decisions this agent owns (architecture choices, API design, test strategy, product scope, etc.); how they collaborate in a sprint — what they produce, review, and unblock; their standards for \"done\" (definition of done, code review bar, QA acceptance criteria); a guiding engineering principle or personal motto.\n- agentsMd: Session-startup guide (Markdown). Include: what codebase context, PRDs, design docs, or open PRs to load first; primary goal for this session (feature implementation, architecture review, bug triage, sprint planning, test coverage, etc.); collaboration touchpoints with specific teammates; output format and handoff expectations (PR description, design doc, test report, release notes).\n- userMd: Markdown profile of the product owner, tech lead, or stakeholder this agent serves. Cover: their background and decision-making style; what they expect from this agent each sprint; how they prefer to receive updates (async doc, PR comment, standup summary); what \"high quality\" means to them.\n- identityMd: Exactly one line: \"Name: X | Creature: X | Vibe: X | Emoji: X\" — pick a creature that fits the engineering role's personality.\n- heartbeat: 5-7 checkboxes (- [ ] task): recurring sprint duties specific to this agent's role (e.g. review open PRs, check CI status, update ticket status, run test suite, review design doc, sync with teammates, update changelog).\n\n{\"soul\":\"\",\"agentsMd\":\"\",\"userMd\":\"\",\"identityMd\":\"\",\"heartbeat\":\"\"}",
+        "zh": "只输出合法JSON。字段必须是丰富的Markdown，不是简短句子。\n\n智能体：{{agentName}}\n角色：{{agentRole}}\n描述：{{agentDesc}}\n团队/场景：{{scenarioName}}\n语言：中文\n\n字段：\n- soul：第一人称Markdown人设（3-5段）。涵盖：工程师身份和职业哲学（工艺追求、质量标准、对技术债务的态度）；具体领域专长和该智能体负责的决策（架构选型、API设计、测试策略、产品范围等）；在迭代周期中如何协作——产出什么、评审什么、解除哪些阻碍；\"完成\"的标准（完成定义、代码审查标准、QA验收条件）；指导性工程原则或个人座右铭。\n- agentsMd：会话启动指南（Markdown）。包含：首先加载哪些代码库上下文、PRD、设计文档或开放PR；本次会话主要目标（功能实现、架构评审、问题分类、迭代规划、测试覆盖率等）；与特定团队成员的协作联系点；输出格式和交接期望（PR描述、设计文档、测试报告、发布说明）。\n- userMd：该智能体服务的产品负责人、技术负责人或利益相关者的Markdown画像。涵盖：其背景和决策风格；每个迭代对该智能体的期望；偏好的更新接收方式（异步文档、PR评论、站会摘要）；对他们来说\"高质量\"意味着什么。\n- identityMd：严格一行：\"Name: X | Creature: X | Vibe: X | Emoji: X\" —— 选择符合工程角色个性的动物。\n- heartbeat：5-7个复选框（- [ ] 任务）：针对该智能体角色的周期性迭代职责（如审查开放PR、检查CI状态、更新工单状态、运行测试套件、评审设计文档、与队友同步、更新变更日志）。\n\n{\"soul\":\"\",\"agentsMd\":\"\",\"userMd\":\"\",\"identityMd\":\"\",\"heartbeat\":\"\"}"
+      }
+    }
+  }
+}

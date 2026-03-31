@@ -28,14 +28,18 @@
       "name": "Multi-Agent Collaboration",
       "description": "Multi-agent workflow templates",
       "path": "official/multi-agent",
-      "version": "1.0.1",
-      "templateCount": 6,
+      "version": "1.1.0",
+      "templateCount": 10,
       "subcategories": [
+        { "id": "engineering", "name": "Engineering", "icon": "code" },
         { "id": "content", "name": "Content Production", "icon": "article" },
         { "id": "research", "name": "Research Teams", "icon": "biotech" },
         { "id": "devops", "name": "DevOps Teams", "icon": "cloud" },
         { "id": "support", "name": "Customer Support", "icon": "support_agent" },
-        { "id": "data", "name": "Data Pipeline", "icon": "analytics" }
+        { "id": "data", "name": "Data Pipeline", "icon": "analytics" },
+        { "id": "operations", "name": "Operations", "icon": "storefront" },
+        { "id": "education", "name": "Education", "icon": "school" },
+        { "id": "finance", "name": "Finance", "icon": "account_balance" }
       ]
     },
     {
