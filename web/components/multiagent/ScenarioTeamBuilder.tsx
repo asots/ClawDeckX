@@ -26,7 +26,7 @@ interface ScenarioTeamBuilderProps {
   completedResult?: MultiAgentGenerateResult;
 }
 
-type BuilderStep = 'input' | 'prompt-review' | 'generating' | 'wizard' | 'preview' | 'edit-agent';
+type BuilderStep = 'input' | 'generating' | 'wizard' | 'preview' | 'edit-agent';
 
 interface AgentEdit {
   id: string;
@@ -360,35 +360,38 @@ const ScenarioTeamBuilder: React.FC<ScenarioTeamBuilderProps> = ({
 
   const [wzStep1Prompt, setWzStep1Prompt] = useState(''); // empty = backend uses compact default prompt
 
-  /** Build the generic fallback step1 prompt from the _default template (mirrors Go default). */
-  const buildDefaultStep1Prompt = useCallback(async (name: string, desc: string, size: typeof teamSize, wfType: typeof workflowType): Promise<string> => {
-    const agentCount = size === 'small' ? '3 to 4' : size === 'large' ? '8 to 10' : '5 to 7';
-    try {
-      const templates = await templateSystem.getMultiAgentTemplates(language);
-      const def = templates.find(t => t.id === '_default');
-      if (def?.content.prompts?.step1) {
-        const resolved = resolveTemplatePrompt(def.content.prompts.step1, language, {
-          scenarioName: name,
-          description: desc,
-          agentCount,
-          workflowType: wfType,
-        });
-        if (resolved) return resolved;
-      }
-    } catch { /* fall through */ }
-    return ''; // backend will use its built-in default
-  }, [language]);
+  /** Auto-load step1 prompt whenever scenario params or linked template change. */
+  useEffect(() => {
+    if (!scenarioName.trim() && !description.trim()) return;
+    const agentCount = teamSize === 'small' ? '3 to 4' : teamSize === 'large' ? '8 to 10' : '5 to 7';
+    templateSystem.getMultiAgentTemplates(language).then(templates => {
+      // If a linked template is active, use its step1 prompt
+      const linkedId = SCENARIO_TEMPLATES.find(
+        t => (stb[t.nameKey] || t.name) === scenarioName
+      )?.multiAgentTemplateId;
+      const tplId = linkedId || '_default';
+      const tpl = templates.find(t => t.id === tplId) ?? templates.find(t => t.id === '_default');
+      if (!tpl?.content.prompts?.step1) return;
+      const resolved = resolveTemplatePrompt(tpl.content.prompts.step1, language, {
+        scenarioName: scenarioName.trim(),
+        description: description.trim(),
+        agentCount,
+        workflowType,
+      });
+      if (resolved) setWzStep1Prompt(resolved);
+    }).catch(() => { /* prompts optional */ });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scenarioName, description, teamSize, workflowType, language]);
 
-  const handlePreparePrompt = useCallback(async () => {
+  const handlePreparePrompt = useCallback(() => {
     if (!scenarioName.trim() || !description.trim()) return;
     setError(null);
-    // Always pre-fill with resolved prompt so user can see and edit it
-    if (!wzStep1Prompt) {
-      const prompt = await buildDefaultStep1Prompt(scenarioName.trim(), description.trim(), teamSize, workflowType);
-      if (prompt) setWzStep1Prompt(prompt);
+    if (directLlm) {
+      handleConfirmWizard();
+    } else {
+      handleConfirmGenerate();
     }
-    setStep('prompt-review');
-  }, [scenarioName, description, teamSize, workflowType, wzStep1Prompt, buildDefaultStep1Prompt]);
+  }, [scenarioName, description, directLlm]);
 
   const handleConfirmWizard = useCallback(() => {
     setError(null);
@@ -445,7 +448,7 @@ const ScenarioTeamBuilder: React.FC<ScenarioTeamBuilderProps> = ({
       } else {
         setError(errMsg || stb.generateFailed || 'Generation failed');
       }
-      setStep('prompt-review');
+      setStep('input');
     }
   }, [scenarioName, description, teamSize, workflowType, language, selectedModel, directLlm, stb, onTaskSubmitted]);
 
@@ -768,10 +771,10 @@ const ScenarioTeamBuilder: React.FC<ScenarioTeamBuilderProps> = ({
               </button>
             )}
             {/* Step indicator */}
-            {(step === 'input' || step === 'prompt-review') && (
+            {step === 'input' && (
               <div className="hidden sm:flex items-center gap-1">
-                {(['input', 'prompt-review', 'preview'] as const).map((s, i) => {
-                  const order: BuilderStep[] = ['input', 'prompt-review', 'generating', 'preview', 'edit-agent'];
+                {(['input', 'preview'] as const).map((s, i) => {
+                  const order: BuilderStep[] = ['input', 'generating', 'preview', 'edit-agent'];
                   const done = order.indexOf(step) > order.indexOf(s);
                   const active = step === s;
                   return (
@@ -779,7 +782,7 @@ const ScenarioTeamBuilder: React.FC<ScenarioTeamBuilderProps> = ({
                       <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold transition-all ${
                         active ? 'bg-violet-500 text-white' : done ? 'bg-violet-500/30 text-violet-400' : 'bg-slate-200 dark:bg-white/10 text-slate-400 dark:text-white/30'
                       }`}>{i + 1}</div>
-                      {i < 2 && <div className="w-3 h-px bg-slate-200 dark:bg-white/10" />}
+                      {i < 1 && <div className="w-3 h-px bg-slate-200 dark:bg-white/10" />}
                     </React.Fragment>
                   );
                 })}
@@ -788,15 +791,14 @@ const ScenarioTeamBuilder: React.FC<ScenarioTeamBuilderProps> = ({
             <button
               onClick={
                 step === 'edit-agent' ? () => setStep('preview')
-                : step === 'prompt-review' ? () => setStep('input')
-                : step === 'wizard' ? () => setStep('prompt-review')
+                : step === 'wizard' ? () => setStep('input')
                 : step === 'generating' && genTaskId ? () => { setMinimized(true); onClose(); }
                 : onClose
               }
               className="w-8 h-8 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 flex items-center justify-center transition-colors"
             >
               <span className="material-symbols-outlined text-[18px] text-slate-400">
-                {step === 'edit-agent' || step === 'prompt-review' || step === 'wizard' ? 'arrow_back'
+                {step === 'edit-agent' || step === 'wizard' ? 'arrow_back'
                   : step === 'generating' && genTaskId ? 'minimize'
                   : 'close'}
               </span>
@@ -1073,11 +1075,38 @@ const ScenarioTeamBuilder: React.FC<ScenarioTeamBuilderProps> = ({
                   </div>
                 </div>
               )}
+
+              {/* ── AI Prompt (inline, auto-filled) ── */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-[10px] font-bold text-slate-500 dark:text-white/40 uppercase tracking-wider">
+                    {stb.promptLabel || 'AI Prompt'}
+                  </label>
+                  <button
+                    onClick={() => setWzStep1Prompt('')}
+                    className="flex items-center gap-1 text-[10px] text-slate-400 dark:text-white/30 hover:text-violet-600 dark:hover:text-violet-400 transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-[12px]">restart_alt</span>
+                    {stb.promptReset || 'Reset'}
+                  </button>
+                </div>
+                <textarea
+                  value={wzStep1Prompt}
+                  onChange={e => setWzStep1Prompt(e.target.value)}
+                  rows={8}
+                  placeholder={stb.promptPlaceholder || 'Leave empty to use the built-in default prompt (recommended). Paste a custom prompt here to override.'}
+                  className="w-full px-3 py-3 rounded-xl bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/10 text-[11px] text-slate-700 dark:text-white/70 font-mono focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/50 resize-none leading-relaxed transition-all placeholder:text-slate-300 dark:placeholder:text-white/15"
+                />
+                <p className="text-[10px] text-slate-400 dark:text-white/25 mt-1.5 flex items-center gap-1">
+                  <span className="material-symbols-outlined text-[12px]">info</span>
+                  {stb.promptHint || 'You can freely edit this prompt before sending it to the AI.'}
+                </p>
+              </div>
             </div>
           )}
 
-          {/* ══ Step: Prompt Review ══ */}
-          {step === 'prompt-review' && (
+          {/* ══ Step: Prompt Review (removed — merged into input step) ══ */}
+          {false && (
             <div className="p-5 space-y-3">
               {error && (error === '__gateway__' ? (
                 <div className="rounded-xl bg-red-500/10 border border-red-500/25 p-3 space-y-2">
@@ -1913,8 +1942,7 @@ const ScenarioTeamBuilder: React.FC<ScenarioTeamBuilderProps> = ({
           <button
             onClick={
               step === 'edit-agent' ? () => setStep('preview')
-              : step === 'prompt-review' ? () => setStep('input')
-              : step === 'wizard' ? () => setStep('prompt-review')
+              : step === 'wizard' ? () => setStep('input')
               : step === 'generating' && genTaskId
                 ? () => { setMinimized(true); onClose(); }
                 : onClose
@@ -1922,7 +1950,6 @@ const ScenarioTeamBuilder: React.FC<ScenarioTeamBuilderProps> = ({
             className="px-4 py-2 rounded-lg text-[11px] font-bold text-slate-600 dark:text-white/60 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors"
           >
             {step === 'edit-agent' ? (stb.backToPreview || 'Back')
-              : step === 'prompt-review' ? (stb.back || 'Back')
               : step === 'wizard' ? (stb.back || 'Back')
               : step === 'generating' && genTaskId ? (stb.minimizeBtn || 'Minimize')
               : (stb.cancel || 'Cancel')}
@@ -1932,16 +1959,6 @@ const ScenarioTeamBuilder: React.FC<ScenarioTeamBuilderProps> = ({
             {step === 'input' && (
               <button
                 onClick={handlePreparePrompt}
-                disabled={!scenarioName.trim() || !description.trim()}
-                className="px-5 py-2 rounded-lg text-[12px] font-bold bg-gradient-to-r from-violet-500 to-purple-600 text-white hover:from-violet-600 hover:to-purple-700 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2 transition-all shadow-md shadow-violet-500/20"
-              >
-                <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
-                {stb.nextBtn || 'Next'}
-              </button>
-            )}
-            {step === 'prompt-review' && (
-              <button
-                onClick={directLlm ? handleConfirmWizard : handleConfirmGenerate}
                 disabled={!scenarioName.trim() || !description.trim()}
                 className="px-5 py-2 rounded-lg text-[12px] font-bold bg-gradient-to-r from-violet-500 to-purple-600 text-white hover:from-violet-600 hover:to-purple-700 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2 transition-all shadow-md shadow-violet-500/20"
               >
