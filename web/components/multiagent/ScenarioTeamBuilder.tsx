@@ -104,6 +104,18 @@ const TEAM_SIZES = [
   { value: 'large', range: '8-10', icon: 'diversity_3' },
 ] as const;
 
+const ElapsedTimer: React.FC<{ startedAt: number; className?: string }> = ({ startedAt, className }) => {
+  const [elapsed, setElapsed] = useState(() => Math.floor((Date.now() - startedAt) / 1000));
+  useEffect(() => {
+    const id = setInterval(() => setElapsed(Math.floor((Date.now() - startedAt) / 1000)), 1000);
+    return () => clearInterval(id);
+  }, [startedAt]);
+  const m = Math.floor(elapsed / 60);
+  const s = elapsed % 60;
+  const label = m > 0 ? `${m}m ${s}s` : `${s}s`;
+  return <span className={className}>{label}</span>;
+};
+
 const ScenarioTeamBuilder: React.FC<ScenarioTeamBuilderProps> = ({
   language,
   onClose,
@@ -584,6 +596,8 @@ const ScenarioTeamBuilder: React.FC<ScenarioTeamBuilderProps> = ({
     customPrompt?: string;
     expanded: boolean;
     showPrompt: boolean;
+    startedAt?: number;   // Date.now() when streaming started
+    tokenCount?: number;  // accumulated token count
   }
 
   const [wzPhase, setWzPhase] = useState<WzPhase>('step1');
@@ -714,7 +728,7 @@ const ScenarioTeamBuilder: React.FC<ScenarioTeamBuilderProps> = ({
     wzStep2AbortRef.current?.abort();
     wzStep2ActiveIdxRef.current = idx;
     setWzStep2Running(true);
-    setWzAgents(prev => prev.map((a, i) => i === idx ? { ...a, status: 'running', streamBuf: '', error: undefined } : a));
+    setWzAgents(prev => prev.map((a, i) => i === idx ? { ...a, status: 'running', streamBuf: '', error: undefined, startedAt: Date.now(), tokenCount: 0 } : a));
 
     const req: WizardStep2Request = {
       agentId: agent.id, agentName: agent.name, agentRole: agent.role, agentDesc: agent.description,
@@ -726,7 +740,7 @@ const ScenarioTeamBuilder: React.FC<ScenarioTeamBuilderProps> = ({
     wzStep2AbortRef.current = multiAgentApi.wizardStep2(
       req,
       (_token, _agentId) => {
-        setWzAgents(prev => prev.map((a, i) => i === idx ? { ...a, streamBuf: a.streamBuf + _token } : a));
+        setWzAgents(prev => prev.map((a, i) => i === idx ? { ...a, streamBuf: a.streamBuf + _token, tokenCount: (a.tokenCount ?? 0) + _token.length } : a));
       },
       (doneData) => {
         setWzAgents(prev => {
@@ -1589,6 +1603,14 @@ const ScenarioTeamBuilder: React.FC<ScenarioTeamBuilderProps> = ({
                                       <span className="relative rounded-full h-1.5 w-1.5 bg-green-500" />
                                     </span>
                                     <span className="text-[10px] font-bold text-green-400/70 uppercase tracking-wider">{stb.wzLiveOutput || 'Live output'}</span>
+                                    <span className="ms-auto flex items-center gap-2">
+                                      {agent.startedAt && (
+                                        <ElapsedTimer startedAt={agent.startedAt} className="text-[10px] font-mono text-slate-500 dark:text-white/20" />
+                                      )}
+                                      {(agent.tokenCount ?? 0) > 0 && (
+                                        <span className="text-[10px] font-mono text-slate-500 dark:text-white/20">{agent.tokenCount} chars</span>
+                                      )}
+                                    </span>
                                   </div>
                                   <pre className="px-2 py-1.5 text-[10px] font-mono text-slate-300/70 dark:text-white/40 leading-relaxed whitespace-pre-wrap break-all max-h-[100px] overflow-y-auto">
                                     {agent.streamBuf}<span className="inline-block w-1.5 h-2.5 bg-violet-400 animate-pulse ml-0.5 align-middle" />
