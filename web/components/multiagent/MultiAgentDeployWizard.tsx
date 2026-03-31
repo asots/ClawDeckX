@@ -119,6 +119,7 @@ const MultiAgentDeployWizard: React.FC<MultiAgentDeployWizardProps> = ({
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'created': return 'bg-green-500/10 text-green-600 dark:text-green-400';
+      case 'updated': return 'bg-violet-500/10 text-violet-600 dark:text-violet-400';
       case 'skipped': return 'bg-amber-500/10 text-amber-600 dark:text-amber-400';
       case 'failed': return 'bg-red-500/10 text-red-600 dark:text-red-400';
       case 'preview': return 'bg-blue-500/10 text-blue-600 dark:text-blue-400';
@@ -129,6 +130,7 @@ const MultiAgentDeployWizard: React.FC<MultiAgentDeployWizardProps> = ({
   const getStatusLabel = (status: string) => {
     switch (status) {
       case 'created': return md.statusCreated || 'Created';
+      case 'updated': return md.statusUpdated || 'Updated';
       case 'skipped': return md.statusSkipped || 'Skipped';
       case 'failed': return md.statusFailed || 'Failed';
       case 'preview': return md.statusPreview || 'Will Create';
@@ -358,8 +360,8 @@ const MultiAgentDeployWizard: React.FC<MultiAgentDeployWizardProps> = ({
               </div>
               <p className="text-[10px] text-slate-400 dark:text-white/30 -mt-1 ms-6">
                 {skipExisting
-                  ? (md.skipExistingHintOn || 'Existing agents will be left unchanged')
-                  : (md.skipExistingHintOff || 'Existing agents will be recreated and their workspace files overwritten')}
+                  ? (md.skipExistingHintOn || 'Existing agents will be skipped, their files unchanged')
+                  : (md.skipExistingHintOff || 'Existing agents will have their workspace files overwritten with new content')}
               </p>
 
               {previewResult && (

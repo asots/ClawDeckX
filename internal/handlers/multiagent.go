@@ -1194,12 +1194,15 @@ func (h *MultiAgentHandler) executeDeploy(w http.ResponseWriter, r *http.Request
 
 		_, err := h.client.Request("agents.create", createParams)
 		if err != nil {
-			// If agent already exists, try to continue
 			errStr := err.Error()
 			if strings.Contains(errStr, "already exists") {
-				status.Status = "skipped"
+				// Agent exists; overwrite its workspace files since skipExisting=false
+				status.Status = "updated"
 				status.Workspace = workspace
-				result.SkippedCount++
+				result.DeployedCount++
+				if _, writeErr := h.createAgentWorkspace(homeDir, agentID, agentCfg); writeErr != nil {
+					logger.Log.Warn().Err(writeErr).Str("agentId", agentID).Msg("Failed to overwrite agent config files")
+				}
 			} else {
 				status.Status = "failed"
 				status.Error = errStr
