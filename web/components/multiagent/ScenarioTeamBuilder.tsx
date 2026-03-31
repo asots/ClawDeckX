@@ -382,13 +382,7 @@ const ScenarioTeamBuilder: React.FC<ScenarioTeamBuilderProps> = ({
   const handlePreparePrompt = useCallback(async () => {
     if (!scenarioName.trim() || !description.trim()) return;
     setError(null);
-    // Pre-fill prompt if not yet set
-    if (!wzStep1Prompt) {
-      const prompt = await buildDefaultStep1Prompt(scenarioName.trim(), description.trim(), teamSize, workflowType);
-      if (prompt) setWzStep1Prompt(prompt);
-    }
-    // Go directly to wizard — no intermediate prompt-review step
-    setError(null);
+    // Navigate to wizard immediately so UI feels responsive
     setStep('wizard');
     setTimeout(() => {
       if (wzStep1ResultRef.current) {
@@ -400,6 +394,11 @@ const ScenarioTeamBuilder: React.FC<ScenarioTeamBuilderProps> = ({
         wzStep1BufRef.current = '';
       }
     }, 0);
+    // Pre-fill prompt in background if not yet set
+    if (!wzStep1Prompt) {
+      const prompt = await buildDefaultStep1Prompt(scenarioName.trim(), description.trim(), teamSize, workflowType);
+      if (prompt) setWzStep1Prompt(prompt);
+    }
   }, [scenarioName, description, teamSize, workflowType, wzStep1Prompt, buildDefaultStep1Prompt]);
 
   const handleConfirmWizard = handlePreparePrompt;
@@ -622,6 +621,23 @@ const ScenarioTeamBuilder: React.FC<ScenarioTeamBuilderProps> = ({
 
   // Register auto-start ref so handleConfirmWizard can call it after state flush
   useEffect(() => { wzStartStep1Ref.current = wzHandleStep1Start; }, [wzHandleStep1Start]);
+
+  // Retry prompt load when wizard step1 is active but prompt still empty (async race on first open)
+  useEffect(() => {
+    if (step !== 'wizard' || wzPhase !== 'step1' || wzStep1Prompt || wzStep1Running) return;
+    const agentCount = teamSize === 'small' ? '3 to 4' : teamSize === 'large' ? '8 to 10' : '5 to 7';
+    templateSystem.getMultiAgentTemplates(language).then(templates => {
+      const def = templates.find(t => t.id === '_default');
+      if (!def?.content.prompts?.step1) return;
+      const resolved = resolveTemplatePrompt(def.content.prompts.step1, language, {
+        scenarioName: scenarioName.trim(),
+        description: description.trim(),
+        agentCount,
+        workflowType,
+      });
+      if (resolved) setWzStep1Prompt(resolved);
+    }).catch(() => {});
+  }, [step, wzPhase, wzStep1Prompt, wzStep1Running, scenarioName, description, teamSize, workflowType, language]);
 
   const wzHandleStep1Stop = useCallback(() => {
     wzStep1AbortRef.current?.abort();
@@ -1264,6 +1280,27 @@ const ScenarioTeamBuilder: React.FC<ScenarioTeamBuilderProps> = ({
               {/* ── Phase 1: Stream core structure ── */}
               {wzPhase === 'step1' && (
                 <div className="p-4 space-y-3">
+                  {/* Config summary chips */}
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-100 dark:bg-white/[0.06] border border-slate-200 dark:border-white/10">
+                      <span className="material-symbols-outlined text-[11px] text-violet-500">edit_note</span>
+                      <span className="text-[10px] font-bold text-slate-700 dark:text-white/70 max-w-[120px] truncate">{scenarioName}</span>
+                    </div>
+                    <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-100 dark:bg-white/[0.06] border border-slate-200 dark:border-white/10">
+                      <span className="material-symbols-outlined text-[11px] text-violet-500">{TEAM_SIZES.find(s => s.value === teamSize)?.icon || 'groups'}</span>
+                      <span className="text-[10px] text-slate-600 dark:text-white/60">{stb[`teamSize_${teamSize}`] || teamSize} · {TEAM_SIZES.find(s => s.value === teamSize)?.range}</span>
+                    </div>
+                    <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-100 dark:bg-white/[0.06] border border-slate-200 dark:border-white/10">
+                      <span className="material-symbols-outlined text-[11px] text-violet-500">{WORKFLOW_TYPES.find(w => w.value === workflowType)?.icon || 'hub'}</span>
+                      <span className="text-[10px] text-slate-600 dark:text-white/60">{ma[WORKFLOW_TYPES.find(w => w.value === workflowType)?.labelKey || ''] || workflowType}</span>
+                    </div>
+                    {selectedModelLabel && (
+                      <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-100 dark:bg-white/[0.06] border border-slate-200 dark:border-white/10">
+                        <span className="material-symbols-outlined text-[11px] text-violet-500">memory</span>
+                        <span className="text-[10px] text-slate-600 dark:text-white/60 max-w-[100px] truncate">{selectedModelLabel}</span>
+                      </div>
+                    )}
+                  </div>
                   {/* Status + controls */}
                   <div className="flex items-center gap-2">
                     {wzStep1Running
