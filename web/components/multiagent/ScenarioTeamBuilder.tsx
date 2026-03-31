@@ -352,6 +352,7 @@ const ScenarioTeamBuilder: React.FC<ScenarioTeamBuilderProps> = ({
     // Mark that we're applying a template so the auto-clear useEffect skips
     applyingTemplateRef.current = true;
     currentTemplateIdRef.current = tpl.multiAgentTemplateId ?? null;
+    setWzPromptUserEdited(false);
     // Load template prompts if linked
     if (tpl.multiAgentTemplateId) {
       const agentCount = tpl.teamSize === 'small' ? '3-4' : tpl.teamSize === 'large' ? '8-10' : '5-7';
@@ -862,7 +863,7 @@ const ScenarioTeamBuilder: React.FC<ScenarioTeamBuilderProps> = ({
             <button
               onClick={
                 step === 'edit-agent' ? () => setStep('preview')
-                : step === 'wizard' ? () => setStep('input')
+                : step === 'wizard' ? () => { setStep('input'); setWzPromptUserEdited(false); }
                 : step === 'generating' && genTaskId ? () => { setMinimized(true); onClose(); }
                 : onClose
               }
@@ -1865,7 +1866,7 @@ const ScenarioTeamBuilder: React.FC<ScenarioTeamBuilderProps> = ({
           <button
             onClick={
               step === 'edit-agent' ? () => setStep('preview')
-              : step === 'wizard' ? () => setStep('input')
+              : step === 'wizard' ? () => { setStep('input'); setWzPromptUserEdited(false); }
               : step === 'generating' && genTaskId
                 ? () => { setMinimized(true); onClose(); }
               : onClose
