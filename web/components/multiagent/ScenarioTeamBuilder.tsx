@@ -116,6 +116,19 @@ const ElapsedTimer: React.FC<{ startedAt: number; className?: string }> = ({ sta
   return <span className={className}>{label}</span>;
 };
 
+const StreamOutput: React.FC<{ content: string }> = ({ content }) => {
+  const preRef = useRef<HTMLPreElement>(null);
+  useEffect(() => {
+    const el = preRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [content]);
+  return (
+    <pre ref={preRef} className="px-2 py-1.5 text-[10px] font-mono text-slate-300/70 dark:text-white/40 leading-relaxed whitespace-pre-wrap break-all max-h-[100px] overflow-y-auto">
+      {content}<span className="inline-block w-1.5 h-2.5 bg-violet-400 animate-pulse ml-0.5 align-middle" />
+    </pre>
+  );
+};
+
 const ScenarioTeamBuilder: React.FC<ScenarioTeamBuilderProps> = ({
   language,
   onClose,
@@ -1624,9 +1637,7 @@ const ScenarioTeamBuilder: React.FC<ScenarioTeamBuilderProps> = ({
                                       )}
                                     </span>
                                   </div>
-                                  <pre className="px-2 py-1.5 text-[10px] font-mono text-slate-300/70 dark:text-white/40 leading-relaxed whitespace-pre-wrap break-all max-h-[100px] overflow-y-auto">
-                                    {agent.streamBuf}<span className="inline-block w-1.5 h-2.5 bg-violet-400 animate-pulse ml-0.5 align-middle" />
-                                  </pre>
+                                  <StreamOutput content={agent.streamBuf} />
                                 </div>
                               )}
                               {/* Done: file previews */}
