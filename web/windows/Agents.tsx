@@ -145,6 +145,23 @@ const Agents: React.FC<AgentsProps> = ({ language }) => {
     templateSystem.getAllTemplates(language).then(setFileTemplates).catch(() => { /* templates optional */ });
   }, [language]);
 
+  // When user switches files while AI gen panel is open + a template is selected, re-resolve the prompt
+  useEffect(() => {
+    if (!aiGenOpen || !aiGenSelectedTplId || !fileActive) return;
+    const tpl = aiGenTemplates.find(t => t.id === aiGenSelectedTplId);
+    if (!tpl?.content.prompts) return;
+    const agentName = identity?.name || selectedId || '';
+    const agentRole = identity?.role || '';
+    const agentDesc = identity?.description || '';
+    const placeholders = { agentName, agentRole, agentDesc, scenarioName: agentRole || agentName };
+    const fileKeyMap: Record<string, string> = { agents: 'agents', soul: 'soul', user: 'user', identity: 'identity', heartbeat: 'heartbeat' };
+    const mappedKey = fileKeyMap[fileActive.replace('.md', '').toLowerCase()];
+    const perFilePrompts = mappedKey ? tpl.content.prompts.files?.[mappedKey as keyof NonNullable<typeof tpl.content.prompts.files>] : undefined;
+    const resolved = resolveTemplatePrompt(perFilePrompts ?? tpl.content.prompts.agentFile, language, placeholders);
+    if (resolved) setAiGenPrompt(resolved);
+    else setAiGenPrompt(buildAiGenFallbackPrompt(fileActive));
+  }, [fileActive, aiGenOpen, aiGenSelectedTplId]);
+
   // Subscribe to shared Manager WS for agent chat streaming events
   useEffect(() => {
     setWsConnecting(true);

@@ -495,14 +495,16 @@ class TemplateManagerV2 {
       'data-pipeline': () => import('../../templates/official/multi-agent/data-pipeline.json'),
     };
 
-    const templates = await Promise.all(
-      Object.entries(loaders).map(async ([id, loader]) => {
+    const results = await Promise.allSettled(
+      Object.entries(loaders).map(async ([_id, loader]) => {
         const module = await loader();
         return module.default || module;
       })
     );
 
-    return templates;
+    return results
+      .filter((r): r is PromiseFulfilledResult<any> => r.status === 'fulfilled')
+      .map(r => r.value);
   }
 
   private async loadLocalAgents(): Promise<AgentTemplate[]> {
