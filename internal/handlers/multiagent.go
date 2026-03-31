@@ -1807,6 +1807,44 @@ func writeSSEJSON(w http.ResponseWriter, event string, v interface{}) {
 	writeSSE(w, event, string(b))
 }
 
+// activityContext returns a context that is cancelled if no activity is reported
+// within inactivity for longer than the idle timeout, or when the parent is done.
+// Call the returned ping() function each time a token arrives to reset the timer.
+// The absolute hard-cap is hardCap regardless of activity.
+func activityContext(parent context.Context, idleTimeout, hardCap time.Duration) (ctx context.Context, ping func()) {
+	ctx, cancel := context.WithCancel(parent)
+	lastActive := time.Now()
+	mu := sync.Mutex{}
+	ping = func() {
+		mu.Lock()
+		lastActive = time.Now()
+		mu.Unlock()
+	}
+	go func() {
+		deadline := time.Now().Add(hardCap)
+		ticker := time.NewTicker(2 * time.Second)
+		defer ticker.Stop()
+		defer cancel()
+		for {
+			select {
+			case <-parent.Done():
+				return
+			case now := <-ticker.C:
+				if now.After(deadline) {
+					return
+				}
+				mu.Lock()
+				idle := now.Sub(lastActive)
+				mu.Unlock()
+				if idle >= idleTimeout {
+					return
+				}
+			}
+		}
+	}()
+	return ctx, ping
+}
+
 // stripFences removes ```json / ``` markdown fences from LLM output.
 func stripFences(s string) string {
 	s = strings.TrimSpace(s)
@@ -1887,8 +1925,7 @@ func (h *MultiAgentHandler) GenerateWizardStep1(w http.ResponseWriter, r *http.R
 		)
 	}
 
-	ctx, cancel := context.WithTimeout(r.Context(), 480*time.Second)
-	defer cancel()
+	ctx, pingStep1 := activityContext(r.Context(), 120*time.Second, 30*time.Minute)
 
 	var buf strings.Builder
 	for chunk := range llmdirect.StreamCompletion(ctx, providerCfg, []llmdirect.Message{{Role: "user", Content: prompt}}, 2048) {
@@ -1905,6 +1942,7 @@ func (h *MultiAgentHandler) GenerateWizardStep1(w http.ResponseWriter, r *http.R
 		if chunk.Done {
 			break
 		}
+		pingStep1()
 		buf.WriteString(chunk.Token)
 		writeSSEJSON(w, "token", map[string]string{"token": chunk.Token})
 	}
@@ -1983,8 +2021,7 @@ func (h *MultiAgentHandler) GenerateWizardStep2(w http.ResponseWriter, r *http.R
 		)
 	}
 
-	ctx, cancel := context.WithTimeout(r.Context(), 480*time.Second)
-	defer cancel()
+	ctx, pingStep2 := activityContext(r.Context(), 120*time.Second, 30*time.Minute)
 
 	var buf strings.Builder
 	for chunk := range llmdirect.StreamCompletion(ctx, providerCfg, []llmdirect.Message{{Role: "user", Content: prompt}}, 4096) {
@@ -2001,6 +2038,7 @@ func (h *MultiAgentHandler) GenerateWizardStep2(w http.ResponseWriter, r *http.R
 		if chunk.Done {
 			break
 		}
+		pingStep2()
 		buf.WriteString(chunk.Token)
 		writeSSEJSON(w, "token", map[string]string{"token": chunk.Token, "agentId": req.AgentID})
 	}
