@@ -367,21 +367,27 @@ const ScenarioTeamBuilder: React.FC<ScenarioTeamBuilderProps> = ({
           ?? null;
       }).catch(() => { /* prompts optional */ });
     } else {
-      // No linked template — load generic _default prompt
-      wzAgentFilePromptRef.current = null;
+      // No linked template — load generic default prompt + agentFile
       const agentCount = tpl.teamSize === 'small' ? '3 to 4' : tpl.teamSize === 'large' ? '8 to 10' : '5 to 7';
       templateSystem.getMultiAgentTemplates(language).then(templates => {
         const def = templates.find(t => t.id === 'default');
-        if (!def?.content.prompts?.step1) return;
-        const resolved = resolveTemplatePrompt(def.content.prompts.step1, language, {
-          scenarioName: name,
-          description: desc,
-          agentCount,
-          workflowType: tpl.workflowType,
-          workflowDescription: getWorkflowDescription(tpl.workflowType, language),
-        });
-        if (resolved) setWzStep1Prompt(resolved);
-      }).catch(() => { /* prompts optional */ });
+        if (!def) return;
+        if (def.content.prompts?.step1) {
+          const resolved = resolveTemplatePrompt(def.content.prompts.step1, language, {
+            scenarioName: name,
+            description: desc,
+            agentCount,
+            workflowType: tpl.workflowType,
+            workflowDescription: getWorkflowDescription(tpl.workflowType, language),
+          });
+          if (resolved) setWzStep1Prompt(resolved);
+        }
+        // Load agentFile prompt template from default for step2
+        const agentFileLang = (language === 'zh' || language === 'zh-TW') ? 'zh' : 'en';
+        wzAgentFilePromptRef.current = def.content.prompts?.agentFile?.[agentFileLang]
+          ?? def.content.prompts?.agentFile?.['en']
+          ?? null;
+      }).catch(() => { wzAgentFilePromptRef.current = null; });
     }
   }, [stb, language]);
 
