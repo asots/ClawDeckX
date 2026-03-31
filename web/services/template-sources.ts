@@ -22,6 +22,7 @@ export interface TemplateSource {
   repo?: string;
   branch?: string;
   githubPath?: string;
+  manifestPath?: string; // override path for manifest.json (defaults to githubPath/manifest.json)
   requiresApproval?: boolean;
   
   // API source
@@ -75,6 +76,7 @@ export const DEFAULT_TEMPLATE_SOURCES: TemplateSource[] = [
     repo: 'ClawDeckX/ClawDeckX',
     branch: 'main',
     githubPath: 'templates/official',
+    manifestPath: 'templates/manifest.json',
     fallback: 'local',
     requiresApproval: false
   }

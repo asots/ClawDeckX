@@ -225,7 +225,10 @@ export class GitHubTemplateLoader {
     return `${this.rawBase}/${repo}/${branch}/${path}`;
   }
 
-  private getFullUrl(source: TemplateSource, path: string): string {
+  private getFullUrl(source: TemplateSource, path: string, useManifestPath = false): string {
+    if (useManifestPath && source.manifestPath) {
+      return this.getRawUrl(source.repo!, source.branch!, source.manifestPath);
+    }
     const basePath = source.githubPath || '';
     const fullPath = basePath ? `${basePath}/${path}` : path;
     return this.getRawUrl(source.repo!, source.branch!, fullPath);
@@ -286,7 +289,7 @@ export class GitHubTemplateLoader {
     if (!source.repo || !source.branch) {
       throw new Error('GitHub source missing repo or branch');
     }
-    const url = this.getFullUrl(source, 'manifest.json');
+    const url = this.getFullUrl(source, 'manifest.json', true);
     const cached = this.cache.get(url, this.manifestTTL);
     if (cached) {
       console.log(`[GitHub] Manifest from cache (${this.manifestTTL / 1000}s TTL)`);
