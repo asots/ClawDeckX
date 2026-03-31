@@ -1358,7 +1358,7 @@ export interface MultiAgentDeployRequest {
     }>;
     workflow: {
       type: 'sequential' | 'parallel' | 'collaborative' | 'event-driven' | 'routing';
-      description?: string;
+      description: string;
       steps: Array<{
         agent?: string;
         agents?: string[];
@@ -1404,7 +1404,51 @@ export interface MultiAgentStatus {
   standalone: string[];
 }
 
+export interface MultiAgentGenerateRequest {
+  scenarioName: string;
+  description: string;
+  teamSize?: 'small' | 'medium' | 'large';
+  workflowType?: 'sequential' | 'parallel' | 'collaborative' | 'event-driven' | 'routing';
+  language?: string;
+}
+
+export interface MultiAgentGenerateResult {
+  template: {
+    id: string;
+    name: string;
+    description: string;
+    agents: Array<{
+      id: string;
+      name: string;
+      role: string;
+      description?: string;
+      icon?: string;
+      color?: string;
+      soul?: string;
+      heartbeat?: string;
+    }>;
+    workflow: {
+      type: 'sequential' | 'parallel' | 'collaborative' | 'event-driven' | 'routing';
+      description: string;
+      steps: Array<{
+        agent?: string;
+        agents?: string[];
+        action: string;
+        parallel?: boolean;
+        condition?: string;
+      }>;
+    };
+  };
+  reasoning: string;
+}
+
 export const multiAgentApi = {
+  generate: (request: MultiAgentGenerateRequest, timeoutMs = 600_000) => {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+    return post<MultiAgentGenerateResult>('/api/v1/multi-agent/generate', request, { signal: ctrl.signal })
+      .finally(() => clearTimeout(timer));
+  },
   deploy: (request: MultiAgentDeployRequest) => 
     post<MultiAgentDeployResult>('/api/v1/multi-agent/deploy', request),
   previewDeploy: (request: MultiAgentDeployRequest) => 

@@ -2,12 +2,13 @@ import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { Language } from '../../types';
 import { getTranslation } from '../../locales';
 import { templateSystem, MultiAgentTemplate } from '../../services/template-system';
-import { multiAgentApi } from '../../services/api';
+import { multiAgentApi, MultiAgentDeployRequest } from '../../services/api';
 import { useToast } from '../Toast';
 import { FileApplyConfirm, FileApplyRequest } from '../FileApplyConfirm';
 import WorkflowVisualizer from './WorkflowVisualizer';
 import MultiAgentDeployWizard from './MultiAgentDeployWizard';
 import WorkflowRunner from './WorkflowRunner';
+import ScenarioTeamBuilder from './ScenarioTeamBuilder';
 import { resolveTemplateColor } from '../../utils/templateColors';
 
 interface MultiAgentCollaborationProps {
@@ -33,6 +34,8 @@ const MultiAgentCollaborationV2: React.FC<MultiAgentCollaborationProps> = ({ lan
   const [viewMode, setViewMode] = useState<'visual' | 'list'>('visual');
   const [deployWizardTemplate, setDeployWizardTemplate] = useState<MultiAgentTemplate | null>(null);
   const [workflowRunnerTemplate, setWorkflowRunnerTemplate] = useState<MultiAgentTemplate | null>(null);
+  const [showTeamBuilder, setShowTeamBuilder] = useState(false);
+  const [aiDeployRequest, setAiDeployRequest] = useState<{ request: MultiAgentDeployRequest; reasoning: string } | null>(null);
 
   // Load templates
   useEffect(() => {
@@ -247,6 +250,31 @@ ${blockEnd}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Template List */}
         <div className="lg:col-span-1 space-y-2">
+          {/* AI Custom Team Entry Card */}
+          <button
+            onClick={() => setShowTeamBuilder(true)}
+            className="w-full text-start p-3 rounded-xl border-2 border-dashed border-violet-400/40 dark:border-violet-500/30 bg-gradient-to-br from-violet-500/5 to-purple-600/5 hover:border-violet-500/60 hover:from-violet-500/10 hover:to-purple-600/10 transition-all group"
+          >
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 bg-gradient-to-br from-violet-500 to-purple-600 group-hover:shadow-lg group-hover:shadow-violet-500/30 transition-shadow">
+                <span className="material-symbols-outlined text-white text-[20px]">auto_awesome</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5 mb-0.5">
+                  <h4 className="text-[12px] font-bold text-violet-700 dark:text-violet-400">
+                    {(t.scenarioTeamBuilder as any)?.cardTitle || 'AI Custom Team'}
+                  </h4>
+                  <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-violet-500/10 text-violet-600 dark:text-violet-400">
+                    AI
+                  </span>
+                </div>
+                <p className="text-[10px] text-slate-500 dark:text-white/40 mt-0.5 line-clamp-2">
+                  {(t.scenarioTeamBuilder as any)?.cardDesc || 'Describe your scenario, AI auto-designs agents with SOUL.md & HEARTBEAT.md'}
+                </p>
+              </div>
+            </div>
+          </button>
+
           {templates.map((template) => (
             <button
               key={template.id}
@@ -533,6 +561,58 @@ ${blockEnd}
           </div>
         </div>
       </div>
+
+      {/* Scenario Team Builder Modal */}
+      {showTeamBuilder && (
+        <ScenarioTeamBuilder
+          language={language}
+          onClose={() => setShowTeamBuilder(false)}
+          onReadyToDeploy={(request, reasoning) => {
+            setShowTeamBuilder(false);
+            setAiDeployRequest({ request, reasoning });
+          }}
+        />
+      )}
+
+      {/* AI-Generated Deploy Wizard */}
+      {aiDeployRequest && (
+        <MultiAgentDeployWizard
+          template={{
+            id: aiDeployRequest.request.template.id,
+            version: '1.0.0',
+            type: 'multi-agent' as const,
+            metadata: {
+              name: aiDeployRequest.request.template.name,
+              description: aiDeployRequest.request.template.description,
+              category: 'custom',
+              difficulty: 'medium' as const,
+              icon: 'auto_awesome',
+              color: 'from-violet-500 to-purple-600',
+              tags: ['ai-generated', 'custom'],
+              author: 'AI',
+            },
+            requirements: { skills: [], channels: [] },
+            content: {
+              agents: aiDeployRequest.request.template.agents.map(a => ({
+                id: a.id,
+                name: a.name,
+                role: a.role,
+                description: a.description,
+                icon: a.icon,
+                color: a.color,
+                soulSnippet: a.soul,
+              })),
+              workflow: aiDeployRequest.request.template.workflow,
+              examples: [],
+            },
+          }}
+          language={language}
+          onClose={() => setAiDeployRequest(null)}
+          onDeployed={() => {
+            onDeploy?.(null as any);
+          }}
+        />
+      )}
 
       {/* Deploy Wizard Modal */}
       {deployWizardTemplate && (

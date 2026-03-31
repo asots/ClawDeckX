@@ -19,10 +19,20 @@ import (
 // MultiAgentHandler handles multi-agent deployment operations.
 type MultiAgentHandler struct {
 	client *openclaw.GWClient
+	wsHub  interface {
+		Broadcast(channel, msgType string, data interface{})
+	}
 }
 
 func NewMultiAgentHandler(client *openclaw.GWClient) *MultiAgentHandler {
 	return &MultiAgentHandler{client: client}
+}
+
+// SetWSHub injects the WSHub for broadcasting generation progress events.
+func (h *MultiAgentHandler) SetWSHub(hub interface {
+	Broadcast(channel, msgType string, data interface{})
+}) {
+	h.wsHub = hub
 }
 
 // AgentConfig represents a single agent configuration in a multi-agent template.
@@ -34,6 +44,9 @@ type AgentConfig struct {
 	Icon        string            `json:"icon,omitempty"`
 	Color       string            `json:"color,omitempty"`
 	Soul        string            `json:"soul,omitempty"`
+	AgentsMd    string            `json:"agentsMd,omitempty"`   // AGENTS.md workspace startup instructions
+	UserMd      string            `json:"userMd,omitempty"`     // USER.md profile of the user this agent serves
+	IdentityMd  string            `json:"identityMd,omitempty"` // IDENTITY.md agent name/creature/vibe/emoji
 	Heartbeat   string            `json:"heartbeat,omitempty"`
 	Tools       string            `json:"tools,omitempty"`
 	Skills      []string          `json:"skills,omitempty"`
@@ -107,6 +120,360 @@ type BindingStatus struct {
 	AgentID string `json:"agentId"`
 	Status  string `json:"status"` // configured, failed
 	Error   string `json:"error,omitempty"`
+}
+
+// GenerateRequest represents a request to generate a multi-agent team from a scenario description.
+type GenerateRequest struct {
+	ScenarioName string `json:"scenarioName"`
+	Description  string `json:"description"`
+	TeamSize     string `json:"teamSize"`     // small (3-4), medium (5-7), large (8+)
+	WorkflowType string `json:"workflowType"` // sequential, parallel, collaborative, event-driven, routing
+	Language     string `json:"language"`
+	ModelID      string `json:"modelId"` // optional: provider/model path override
+}
+
+// GenerateResult represents the AI-generated multi-agent team definition.
+type GenerateResult struct {
+	Template  MultiAgentTemplate `json:"template"`
+	Reasoning string             `json:"reasoning"`
+}
+
+// Generate uses the connected LLM to analyze a scenario and generate a multi-agent team definition.
+func (h *MultiAgentHandler) Generate(w http.ResponseWriter, r *http.Request) {
+	var req GenerateRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		web.Fail(w, r, "INVALID_REQUEST", fmt.Sprintf("invalid request body: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	if req.ScenarioName == "" || req.Description == "" {
+		web.Fail(w, r, "INVALID_REQUEST", "scenarioName and description are required", http.StatusBadRequest)
+		return
+	}
+
+	if req.TeamSize == "" {
+		req.TeamSize = "medium"
+	}
+	if req.WorkflowType == "" {
+		req.WorkflowType = "collaborative"
+	}
+	if req.Language == "" {
+		req.Language = "en"
+	}
+
+	agentCountHint := "5 to 7"
+	switch req.TeamSize {
+	case "small":
+		agentCountHint = "3 to 4"
+	case "large":
+		agentCountHint = "8 to 10"
+	}
+
+	langHint := "English"
+	if req.Language == "zh" || req.Language == "zh-TW" {
+		langHint = "Chinese"
+	} else if req.Language == "ja" {
+		langHint = "Japanese"
+	} else if req.Language == "ko" {
+		langHint = "Korean"
+	}
+
+	prompt := fmt.Sprintf(`You are an AI system architect. Analyze the following scenario and generate a multi-agent team configuration in strict JSON format.
+
+Scenario Name: %s
+Scenario Description: %s
+Team Size: %s agents
+Workflow Type: %s
+Output Language for agent names/roles/descriptions: %s
+
+Requirements:
+1. Generate %s specialized AI agents appropriate for this scenario
+2. Each agent should have a distinct role with clear responsibilities
+3. Design a workflow that shows how agents collaborate
+4. Generate detailed SOUL.md content for each agent (their persona, responsibilities, working style)
+5. Generate AGENTS.md content for each agent (workspace startup instructions: which files to read, memory rules, red lines, group chat rules, heartbeat behavior — tailored to this agent's role)
+6. Generate USER.md content for each agent (profile of the human/team member this agent primarily serves — name placeholder, context about what this role needs from the user, preferences)
+7. Generate IDENTITY.md content for each agent (Name, Creature, Vibe, Emoji fields — fit the agent's personality)
+8. Generate HEARTBEAT.md checklist items for each agent
+9. Use lowercase kebab-case for agent IDs (e.g., "project-manager", "backend-dev")
+10. Choose appropriate Material Symbols icon names for each agent
+11. Choose appropriate Tailwind color classes (e.g., "from-blue-500 to-cyan-500")
+
+Respond ONLY with a JSON object in this exact structure (no markdown, no explanation outside JSON):
+{
+  "reasoning": "Brief explanation of why you chose these agents and this workflow",
+  "template": {
+    "id": "kebab-case-id-based-on-scenario-name",
+    "name": "Human-readable team name",
+    "description": "Team purpose description",
+    "agents": [
+      {
+        "id": "agent-id",
+        "name": "Agent Display Name",
+        "role": "One-line role description",
+        "description": "Detailed description of agent responsibilities",
+        "icon": "material_symbol_name",
+        "color": "from-blue-500 to-cyan-500",
+        "soul": "Full SOUL.md content in markdown — persona, responsibilities, working style",
+        "agentsMd": "Full AGENTS.md content — workspace startup instructions tailored to this agent",
+        "userMd": "Full USER.md content — profile template for the human this agent serves",
+        "identityMd": "Full IDENTITY.md content — Name/Creature/Vibe/Emoji for this agent",
+        "heartbeat": "- [ ] Task 1\n- [ ] Task 2"
+      }
+    ],
+    "workflow": {
+      "type": "%s",
+      "description": "How agents collaborate",
+      "steps": [
+        {
+          "agent": "agent-id",
+          "action": "What this agent does in this step"
+        }
+      ]
+    }
+  }
+}`, req.ScenarioName, req.Description, agentCountHint, req.WorkflowType, langHint, agentCountHint, req.WorkflowType)
+
+	// Pre-flight: fail fast if gateway is not connected rather than waiting for a 600s timeout.
+	if !h.client.IsConnected() {
+		web.Fail(w, r, "GATEWAY_DISCONNECTED", "gateway is not connected", http.StatusServiceUnavailable)
+		return
+	}
+
+	// Call the main agent via sessions.send to generate the team definition
+	// First create a temporary session for generation
+	sessionParams := map[string]interface{}{
+		"agentId": "main",
+		"label":   fmt.Sprintf("__gen_team_%d", time.Now().UnixNano()),
+	}
+	if req.ModelID != "" {
+		sessionParams["model"] = req.ModelID
+	}
+
+	sessionData, err := h.client.RequestWithTimeout("sessions.create", sessionParams, 10*time.Second)
+	if err != nil {
+		web.Fail(w, r, "SESSION_CREATE_FAILED", fmt.Sprintf("failed to create generation session: %v", err), http.StatusBadGateway)
+		return
+	}
+
+	var sessionResp struct {
+		SessionKey string `json:"sessionKey"`
+		Key        string `json:"key"`
+	}
+	if err := json.Unmarshal(sessionData, &sessionResp); err != nil {
+		web.Fail(w, r, "SESSION_PARSE_FAILED", "failed to parse session response", http.StatusBadGateway)
+		return
+	}
+	sessionKey := sessionResp.SessionKey
+	if sessionKey == "" {
+		sessionKey = sessionResp.Key
+	}
+	if sessionKey == "" {
+		web.Fail(w, r, "SESSION_KEY_MISSING", "no session key returned", http.StatusBadGateway)
+		return
+	}
+
+	// Send the generation prompt, broadcasting keepalive progress while waiting.
+	sendParams := map[string]interface{}{
+		"sessionKey": sessionKey,
+		"message":    prompt,
+	}
+
+	// Keepalive: broadcast gen_progress so the frontend can subscribe to chat delta events
+	// using the sessionKey, and track elapsed time server-side.
+	type genProgressPayload struct {
+		RequestID  string `json:"requestId"`
+		SessionKey string `json:"sessionKey"`
+		Elapsed    int    `json:"elapsed"`
+		Phase      string `json:"phase"`
+		ErrorCode  string `json:"errorCode,omitempty"`
+		ErrorMsg   string `json:"errorMsg,omitempty"`
+	}
+	requestID := fmt.Sprintf("%d", time.Now().UnixNano())
+	progDone := make(chan struct{})
+	progStart := time.Now()
+	if h.wsHub != nil {
+		// Broadcast immediately so frontend gets the sessionKey before the first 5s tick
+		h.wsHub.Broadcast("gw_event", "gen_progress", genProgressPayload{
+			RequestID:  requestID,
+			SessionKey: sessionKey,
+			Elapsed:    0,
+			Phase:      "thinking",
+		})
+		go func() {
+			ticker := time.NewTicker(5 * time.Second)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-progDone:
+					return
+				case <-ticker.C:
+					elapsed := int(time.Since(progStart).Seconds())
+					h.wsHub.Broadcast("gw_event", "gen_progress", genProgressPayload{
+						RequestID:  requestID,
+						SessionKey: sessionKey,
+						Elapsed:    elapsed,
+						Phase:      "thinking",
+					})
+				}
+			}
+		}()
+	}
+
+	msgData, err := h.client.RequestWithTimeout("sessions.send", sendParams, 600*time.Second)
+	close(progDone)
+	if h.wsHub != nil {
+		// Signal completion/failure so frontend can stop waiting
+		prog := genProgressPayload{
+			RequestID:  requestID,
+			SessionKey: sessionKey,
+			Elapsed:    int(time.Since(progStart).Seconds()),
+			Phase:      "done",
+		}
+		if err != nil {
+			prog.Phase = "error"
+			errStr := err.Error()
+			switch {
+			case strings.Contains(errStr, "not connected") ||
+				strings.Contains(errStr, "connection closed") ||
+				strings.Contains(errStr, "use of closed") ||
+				strings.Contains(errStr, "broken pipe") ||
+				strings.Contains(errStr, "EOF"):
+				prog.ErrorCode = "GATEWAY_DISCONNECTED"
+				prog.ErrorMsg = "Gateway connection lost during generation"
+			case strings.Contains(errStr, "timeout") ||
+				strings.Contains(errStr, "deadline") ||
+				strings.Contains(errStr, "timed out"):
+				prog.ErrorCode = "TIMEOUT"
+				prog.ErrorMsg = "Generation timed out"
+			default:
+				prog.ErrorCode = "LLM_SEND_FAILED"
+				prog.ErrorMsg = errStr
+			}
+		}
+		h.wsHub.Broadcast("gw_event", "gen_progress", prog)
+	}
+	if err != nil {
+		web.Fail(w, r, "LLM_SEND_FAILED", fmt.Sprintf("failed to send generation request: %v", err), http.StatusBadGateway)
+		return
+	}
+
+	// Clean up the generation session asynchronously
+	go func() {
+		h.client.Request("sessions.delete", map[string]interface{}{"key": sessionKey, "deleteTranscript": true}) //nolint:errcheck
+	}()
+
+	// Parse the LLM response
+	var msgResp struct {
+		Content string `json:"content"`
+		Text    string `json:"text"`
+		Message struct {
+			Content string `json:"content"`
+			Text    string `json:"text"`
+		} `json:"message"`
+	}
+	if err := json.Unmarshal(msgData, &msgResp); err != nil {
+		web.Fail(w, r, "LLM_PARSE_FAILED", "failed to parse LLM response", http.StatusBadGateway)
+		return
+	}
+
+	rawContent := msgResp.Content
+	if rawContent == "" {
+		rawContent = msgResp.Text
+	}
+	if rawContent == "" {
+		rawContent = msgResp.Message.Content
+	}
+	if rawContent == "" {
+		rawContent = msgResp.Message.Text
+	}
+
+	if rawContent == "" {
+		web.Fail(w, r, "LLM_EMPTY_RESPONSE", "LLM returned empty response", http.StatusBadGateway)
+		return
+	}
+
+	// Extract JSON from response (handle cases where LLM wraps it in markdown)
+	jsonStr := extractJSON(rawContent)
+	if jsonStr == "" {
+		web.Fail(w, r, "LLM_NO_JSON", "could not extract JSON from LLM response", http.StatusBadGateway)
+		return
+	}
+
+	var result GenerateResult
+	if err := json.Unmarshal([]byte(jsonStr), &result); err != nil {
+		web.Fail(w, r, "LLM_JSON_INVALID", fmt.Sprintf("LLM returned invalid JSON: %v", err), http.StatusBadGateway)
+		return
+	}
+
+	// Validate and sanitize the generated template
+	if len(result.Template.Agents) == 0 {
+		web.Fail(w, r, "LLM_NO_AGENTS", "LLM generated no agents", http.StatusBadGateway)
+		return
+	}
+
+	// Ensure template has required fields
+	if result.Template.ID == "" {
+		result.Template.ID = sanitizeID(req.ScenarioName)
+	}
+	if result.Template.Name == "" {
+		result.Template.Name = req.ScenarioName
+	}
+	if result.Template.Description == "" {
+		result.Template.Description = req.Description
+	}
+
+	web.OK(w, r, result)
+}
+
+// extractJSON extracts a JSON object from a string that may contain markdown code fences or extra text.
+func extractJSON(s string) string {
+	// Try direct parse first
+	s = strings.TrimSpace(s)
+	if strings.HasPrefix(s, "{") {
+		return s
+	}
+
+	// Strip markdown code fences
+	for _, fence := range []string{"```json", "```JSON", "```"} {
+		if idx := strings.Index(s, fence); idx >= 0 {
+			s = s[idx+len(fence):]
+			if end := strings.LastIndex(s, "```"); end >= 0 {
+				s = s[:end]
+			}
+			s = strings.TrimSpace(s)
+			if strings.HasPrefix(s, "{") {
+				return s
+			}
+		}
+	}
+
+	// Find first { to last }
+	start := strings.Index(s, "{")
+	end := strings.LastIndex(s, "}")
+	if start >= 0 && end > start {
+		return s[start : end+1]
+	}
+
+	return ""
+}
+
+// sanitizeID converts a string to a valid kebab-case ID.
+func sanitizeID(s string) string {
+	s = strings.ToLower(s)
+	var result strings.Builder
+	for _, r := range s {
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') {
+			result.WriteRune(r)
+		} else if r == ' ' || r == '-' || r == '_' {
+			result.WriteRune('-')
+		}
+	}
+	id := strings.Trim(result.String(), "-")
+	if id == "" {
+		return "custom-team"
+	}
+	return id
 }
 
 // Deploy handles the multi-agent deployment request.
@@ -503,6 +870,33 @@ func (h *MultiAgentHandler) createAgentWorkspace(homeDir, agentID string, cfg Ag
 	}
 	if err := os.WriteFile(filepath.Join(workspace, "SOUL.md"), []byte(soulContent), 0644); err != nil {
 		return "", fmt.Errorf("%s", i18n.T(i18n.MsgFileCreateFailed, map[string]interface{}{"File": "SOUL.md", "Error": err.Error()}))
+	}
+
+	// Create AGENTS.md
+	agentsMdContent := fmt.Sprintf("# AGENTS.md - %s Workspace\n\nThis is the workspace for **%s** (%s).\n\n## Session Startup\n\n1. Read `SOUL.md` — this is who you are\n2. Read `USER.md` — this is who you're helping\n3. Read `memory/YYYY-MM-DD.md` for recent context\n\n## Red Lines\n\n- Don't exfiltrate private data. Ever.\n- Don't run destructive commands without asking.\n- When in doubt, ask.\n", cfg.Name, cfg.Name, cfg.Role)
+	if cfg.AgentsMd != "" {
+		agentsMdContent = cfg.AgentsMd
+	}
+	if err := os.WriteFile(filepath.Join(workspace, "AGENTS.md"), []byte(agentsMdContent), 0644); err != nil {
+		return "", fmt.Errorf("%s", i18n.T(i18n.MsgFileCreateFailed, map[string]interface{}{"File": "AGENTS.md", "Error": err.Error()}))
+	}
+
+	// Create USER.md if provided, else write a blank template
+	userMdContent := fmt.Sprintf("# USER.md - About Your Human\n\n_Learn about the person you're helping. Update this as you go._\n\n- **Name:**\n- **What to call them:**\n- **Pronouns:** _(optional)_\n- **Timezone:**\n- **Notes:**\n\n## Context\n\n_(What are their goals for the %s role? What do they care about? Build this over time.)_\n", cfg.Role)
+	if cfg.UserMd != "" {
+		userMdContent = cfg.UserMd
+	}
+	if err := os.WriteFile(filepath.Join(workspace, "USER.md"), []byte(userMdContent), 0644); err != nil {
+		return "", fmt.Errorf("%s", i18n.T(i18n.MsgFileCreateFailed, map[string]interface{}{"File": "USER.md", "Error": err.Error()}))
+	}
+
+	// Create IDENTITY.md if provided, else write defaults
+	identityMdContent := fmt.Sprintf("# IDENTITY.md - Who Am I?\n\n- **Name:** %s\n- **Creature:** AI agent\n- **Vibe:** professional, focused\n- **Emoji:** 🤖\n", cfg.Name)
+	if cfg.IdentityMd != "" {
+		identityMdContent = cfg.IdentityMd
+	}
+	if err := os.WriteFile(filepath.Join(workspace, "IDENTITY.md"), []byte(identityMdContent), 0644); err != nil {
+		return "", fmt.Errorf("%s", i18n.T(i18n.MsgFileCreateFailed, map[string]interface{}{"File": "IDENTITY.md", "Error": err.Error()}))
 	}
 
 	// Create HEARTBEAT.md if provided
