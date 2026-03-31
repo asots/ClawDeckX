@@ -376,9 +376,7 @@ const ScenarioTeamBuilder: React.FC<ScenarioTeamBuilderProps> = ({
         if (resolved) return resolved;
       }
     } catch { /* fall through */ }
-    // Hard fallback matching Go default exactly
-    const langHint = (language === 'zh' || language === 'zh-TW') ? 'Chinese' : language === 'ja' ? 'Japanese' : language === 'ko' ? 'Korean' : 'English';
-    return `Output ONLY valid JSON, no markdown.\n\nScenario: ${name}\nDescription: ${desc}\nAgents: ${agentCount}\nWorkflow: ${wfType}\nLanguage: ${langHint}\n\nFor each agent: id (kebab-case), name, role (\u22648 words), description (\u226420 words), icon (Material Symbol), color (Tailwind gradient e.g. from-blue-500 to-cyan-500). reasoning: \u226415 words. workflow: one step per agent.\n\n{"reasoning":"","template":{"id":"","name":"","description":"","agents":[{"id":"","name":"","role":"","description":"","icon":"","color":""}],"workflow":{"type":"${wfType}","description":"","steps":[{"agent":"","action":""}]}}}`;
+    return ''; // backend will use its built-in default
   }, [language]);
 
   const handlePreparePrompt = useCallback(async () => {
@@ -387,7 +385,7 @@ const ScenarioTeamBuilder: React.FC<ScenarioTeamBuilderProps> = ({
     // Always pre-fill with resolved prompt so user can see and edit it
     if (!wzStep1Prompt) {
       const prompt = await buildDefaultStep1Prompt(scenarioName.trim(), description.trim(), teamSize, workflowType);
-      setWzStep1Prompt(prompt);
+      if (prompt) setWzStep1Prompt(prompt);
     }
     setStep('prompt-review');
   }, [scenarioName, description, teamSize, workflowType, wzStep1Prompt, buildDefaultStep1Prompt]);
@@ -404,7 +402,7 @@ const ScenarioTeamBuilder: React.FC<ScenarioTeamBuilderProps> = ({
         setWzStep1Stream('');
         setWzStep1Error(null);
         wzStep1BufRef.current = '';
-        wzStartStep1Ref.current?.();
+        // Do not auto-start — user clicks Start manually
       }
     }, 0);
   }, []);
