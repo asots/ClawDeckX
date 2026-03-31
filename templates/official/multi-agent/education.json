@@ -1,4 +1,7 @@
 {
+  "id": "education",
+  "version": "1.0.0",
+  "type": "multi-agent",
   "metadata": {
     "name": "Education Content",
     "description": "Online education content team creating courses, quizzes, video scripts and learning materials",

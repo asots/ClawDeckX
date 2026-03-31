@@ -1,4 +1,7 @@
 {
+  "id": "ecommerce",
+  "version": "1.0.0",
+  "type": "multi-agent",
   "metadata": {
     "name": "E-Commerce Operations",
     "description": "E-commerce operations team managing listings, pricing, inventory, promotions and analytics",

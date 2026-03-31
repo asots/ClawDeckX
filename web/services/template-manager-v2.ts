@@ -497,6 +497,10 @@ class TemplateManagerV2 {
       ['devops-team', () => import('../../templates/official/multi-agent/devops-team.json')],
       ['customer-support', () => import('../../templates/official/multi-agent/customer-support.json')],
       ['data-pipeline', () => import('../../templates/official/multi-agent/data-pipeline.json')],
+      ['software-dev', () => import('../../templates/official/multi-agent/software-dev.json')],
+      ['ecommerce', () => import('../../templates/official/multi-agent/ecommerce.json')],
+      ['education', () => import('../../templates/official/multi-agent/education.json')],
+      ['finance', () => import('../../templates/official/multi-agent/finance.json')],
     ];
 
     const results = await Promise.allSettled(

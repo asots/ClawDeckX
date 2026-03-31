@@ -1,4 +1,7 @@
 {
+  "id": "software-dev",
+  "version": "1.0.0",
+  "type": "multi-agent",
   "metadata": {
     "name": "Software Dev Team",
     "description": "Full-stack software development team with PM, architects, frontend/backend devs and QA",

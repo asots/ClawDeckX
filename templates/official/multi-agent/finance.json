@@ -1,4 +1,7 @@
 {
+  "id": "finance",
+  "version": "1.0.0",
+  "type": "multi-agent",
   "metadata": {
     "name": "Financial Analysis",
     "description": "Financial analysis team covering market research, modeling, risk assessment and investment reporting",
