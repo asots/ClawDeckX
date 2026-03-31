@@ -157,9 +157,10 @@ const Agents: React.FC<AgentsProps> = ({ language }) => {
       // Templates not loaded yet — keep current prompt, will re-run when aiGenTemplates updates
       return;
     }
-    const agentName = identity?.name || selectedId || '';
-    const agentRole = identity?.role || '';
-    const agentDesc = identity?.description || '';
+    const agentIdentity = selectedId ? identity[selectedId] : null;
+    const agentName = agentIdentity?.name || selectedId || '';
+    const agentRole = agentIdentity?.role || '';
+    const agentDesc = agentIdentity?.description || '';
     const placeholders = { agentName, agentRole, agentDesc, scenarioName: agentRole || agentName };
     const fileKeyMap: Record<string, string> = { agents: 'agents', soul: 'soul', user: 'user', identity: 'identity', heartbeat: 'heartbeat' };
     const mappedKey = fileKeyMap[fileActive.replace('.md', '').toLowerCase()];
@@ -407,9 +408,10 @@ const Agents: React.FC<AgentsProps> = ({ language }) => {
 
   /** Build a generic fallback prompt for the given file type */
   const buildAiGenFallbackPrompt = useCallback((fileName: string) => {
-    const agentName = identity?.name || selectedId || '';
-    const agentRole = identity?.role || '';
-    const agentDesc = identity?.description || '';
+    const agentIdentity = selectedId ? identity[selectedId] : null;
+    const agentName = agentIdentity?.name || selectedId || '';
+    const agentRole = agentIdentity?.role || '';
+    const agentDesc = agentIdentity?.description || '';
     const isZh = language === 'zh' || language === 'zh-TW';
     const langHint = isZh ? 'Chinese' : language === 'ja' ? 'Japanese' : language === 'ko' ? 'Korean' : 'English';
     const fileKey = fileName.replace('.md', '').toLowerCase();
@@ -469,9 +471,10 @@ const Agents: React.FC<AgentsProps> = ({ language }) => {
       if (fileActive) setAiGenPrompt(buildAiGenFallbackPrompt(fileActive));
       return;
     }
-    const agentName = identity?.name || selectedId || '';
-    const agentRole = identity?.role || '';
-    const agentDesc = identity?.description || '';
+    const agentIdentity = selectedId ? identity[selectedId] : null;
+    const agentName = agentIdentity?.name || selectedId || '';
+    const agentRole = agentIdentity?.role || '';
+    const agentDesc = agentIdentity?.description || '';
     const placeholders = { agentName, agentRole, agentDesc, scenarioName: agentRole || agentName };
     // Map filename → files key
     const fileKeyMap: Record<string, string> = { 'agents': 'agents', 'soul': 'soul', 'user': 'user', 'identity': 'identity', 'heartbeat': 'heartbeat' };
