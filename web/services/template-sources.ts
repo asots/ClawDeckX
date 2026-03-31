@@ -109,7 +109,13 @@ export class TemplateSourceManager {
       const stored = localStorage.getItem(this.storageKey);
       if (stored) {
         const parsed = JSON.parse(stored);
-        return { ...DEFAULT_CONFIG, ...parsed };
+        // Merge per-source overrides onto the current DEFAULT_CONFIG sources so newly
+        // added sources (e.g. 'local') are never lost due to a stale stored list.
+        const mergedSources = DEFAULT_CONFIG.sources.map(def => {
+          const override = (parsed.sources as TemplateSource[] | undefined)?.find(s => s.id === def.id);
+          return override ? { ...def, ...override } : def;
+        });
+        return { ...DEFAULT_CONFIG, ...parsed, sources: mergedSources };
       }
     } catch (err) {
       console.error('Failed to load template source config:', err);
