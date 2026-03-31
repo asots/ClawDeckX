@@ -50,7 +50,8 @@
     "collaborationTipDesc": "Choose \"Enhance Agent\" to teach the main agent how to call subagents, or \"Deploy Subagents\" to create independent specialized agents. After deployment, the main agent will automatically use sessions_spawn to call appropriate subagents.",
     "legendSequential": "Sequential",
     "legendParallel": "Parallel",
-    "legendRunning": "Running"
+    "legendRunning": "Running",
+    "promptPlaceholder": "Leave empty to use the built-in default prompt (recommended). Paste a custom prompt here to override."
   },
   "workflow": {
     "runWorkflow": "Run Workflow",

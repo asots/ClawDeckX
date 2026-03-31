@@ -50,7 +50,8 @@
     "collaborationTipDesc": "\"에이전트 강화\"를 선택하여 메인 에이전트에게 서브에이전트 호출 방법을 가르치거나, \"서브에이전트 배포\"를 선택하여 독립적인 전문 에이전트를 생성하세요. 배포 후 메인 에이전트가 자동으로 sessions_spawn을 사용하여 적절한 서브에이전트를 호출합니다.",
     "legendSequential": "순차",
     "legendParallel": "병렬",
-    "legendRunning": "실행 중"
+    "legendRunning": "실행 중",
+    "promptPlaceholder": "비워두면 기본 프롬프트 사용(권장)이며, 커스텀 프롬프트를 붙여넣어 덮어쓸 수 있습니다."
   },
   "workflow": {
     "runWorkflow": "워크플로 실행",

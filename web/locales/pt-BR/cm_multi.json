@@ -50,7 +50,8 @@
     "collaborationTipDesc": "Escolha \"Aprimorar Agente\" para ensinar o agente principal a chamar subagentes, ou \"Implantar Subagentes\" para criar agentes especializados independentes. Após a implantação, o agente principal usará automaticamente sessions_spawn para chamar subagentes apropriados.",
     "legendSequential": "Sequencial",
     "legendParallel": "Paralelo",
-    "legendRunning": "Executando"
+    "legendRunning": "Executando",
+    "promptPlaceholder": "Deixe vazio para usar o prompt padrão (recomendado). Cole um prompt personalizado para substituir."
   },
   "workflow": {
     "runWorkflow": "Executar Fluxo",

@@ -50,7 +50,8 @@
     "collaborationTipDesc": "選擇「增強代理」讓主代理學會呼叫子代理，或選擇「部署子代理」建立獨立的專業代理。部署後，主代理會自動使用 sessions_spawn 工具呼叫合適的子代理完成任務。",
     "legendSequential": "順序流",
     "legendParallel": "並行/協作",
-    "legendRunning": "執行中"
+    "legendRunning": "執行中",
+    "promptPlaceholder": "留空則使用內建預設提示詞（推薦），貼上自訂提示詞可覆寫預設。"
   },
   "workflow": {
     "runWorkflow": "執行工作流",

@@ -50,7 +50,8 @@
     "collaborationTipDesc": "「エージェントを強化」を選択してメインエージェントにサブエージェントの呼び出し方を教えるか、「サブエージェントをデプロイ」を選択して独立した専門エージェントを作成します。デプロイ後、メインエージェントは sessions_spawn を使って適切なサブエージェントを自動的に呼び出します。",
     "legendSequential": "順次フロー",
     "legendParallel": "並列",
-    "legendRunning": "実行中"
+    "legendRunning": "実行中",
+    "promptPlaceholder": "空白にするとデフォルトプロンプトを使用（推奨）。カスタムプロンプトを貼り付けて上書きできます。"
   },
   "workflow": {
     "runWorkflow": "ワークフローを実行",

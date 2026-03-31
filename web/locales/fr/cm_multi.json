@@ -50,7 +50,8 @@
     "collaborationTipDesc": "Choisissez \"Améliorer l'agent\" pour apprendre à l'agent principal à appeler des sous-agents, ou \"Déployer des sous-agents\" pour créer des agents spécialisés indépendants. Après déploiement, l'agent principal utilisera automatiquement sessions_spawn.",
     "legendSequential": "Séquentiel",
     "legendParallel": "Parallèle",
-    "legendRunning": "En cours"
+    "legendRunning": "En cours",
+    "promptPlaceholder": "Laissez vide pour utiliser l’invite par défaut (recommandé). Collez une invite personnalisée pour la remplacer."
   },
   "workflow": {
     "runWorkflow": "Exécuter le workflow",

@@ -50,7 +50,8 @@
     "collaborationTipDesc": "Wählen Sie \"Agent erweitern\", um dem Hauptagent den Aufruf von Subagents beizubringen, oder \"Subagents bereitstellen\", um unabhängige spezialisierte Agents zu erstellen. Nach der Bereitstellung verwendet der Hauptagent automatisch sessions_spawn zum Aufrufen geeigneter Subagents.",
     "legendSequential": "Sequenziell",
     "legendParallel": "Parallel",
-    "legendRunning": "Läuft"
+    "legendRunning": "Läuft",
+    "promptPlaceholder": "Leer lassen für den Standard-Prompt (empfohlen). Eigenen Prompt einfügen, um zu überschreiben."
   },
   "workflow": {
     "runWorkflow": "Workflow ausführen",

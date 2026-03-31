@@ -50,7 +50,8 @@
     "collaborationTipDesc": "Pilih \"Tingkatkan Agen\" untuk mengajar agen utama cara memanggil subagen, atau \"Deploy Subagen\" untuk membuat agen khusus independen. Setelah deployment, agen utama akan otomatis menggunakan sessions_spawn untuk memanggil subagen yang tepat.",
     "legendSequential": "Berurutan",
     "legendParallel": "Paralel",
-    "legendRunning": "Berjalan"
+    "legendRunning": "Berjalan",
+    "promptPlaceholder": "Kosongkan untuk menggunakan prompt default (direkomendasikan). Tempel prompt kustom untuk menimpa."
   },
   "workflow": {
     "runWorkflow": "Jalankan Alur Kerja",

@@ -50,7 +50,8 @@
     "collaborationTipDesc": "Elija \"Mejorar agente\" para enseñar al agente principal cómo llamar subagentes, o \"Desplegar subagentes\" para crear agentes especializados independientes. Después del despliegue, el agente principal usará automáticamente sessions_spawn para llamar a los subagentes apropiados.",
     "legendSequential": "Secuencial",
     "legendParallel": "Paralelo",
-    "legendRunning": "En ejecución"
+    "legendRunning": "En ejecución",
+    "promptPlaceholder": "Déjalo vacío para usar el prompt predeterminado (recomendado). Pega un prompt personalizado para anularlo."
   },
   "workflow": {
     "runWorkflow": "Ejecutar flujo",
