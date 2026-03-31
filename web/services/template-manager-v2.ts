@@ -487,6 +487,7 @@ class TemplateManagerV2 {
 
   private async loadLocalMultiAgent(): Promise<MultiAgentTemplate[]> {
     const loaders: Record<string, () => Promise<any>> = {
+      '_default': () => import('../../templates/official/multi-agent/_default.json'),
       'content-factory': () => import('../../templates/official/multi-agent/content-factory.json'),
       'research-team': () => import('../../templates/official/multi-agent/research-team.json'),
       'devops-team': () => import('../../templates/official/multi-agent/devops-team.json'),
