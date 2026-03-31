@@ -1,0 +1,25 @@
+{
+  "id": "default",
+  "version": "1.0.0",
+  "type": "multi-agent",
+  "metadata": {
+    "name": "Generic",
+    "description": "Generic multi-agent team builder with a compact JSON-only prompt",
+    "category": "general",
+    "difficulty": "medium",
+    "icon": "hub",
+    "color": "from-slate-500 to-slate-600",
+    "tags": ["general"],
+    "author": "ClawDeckX Team"
+  },
+  "content": {
+    "agents": [],
+    "workflow": { "type": "collaborative", "description": "", "steps": [] },
+    "prompts": {
+      "step1": {
+        "en": "Output ONLY valid JSON, no markdown.\n\nScenario: {{scenarioName}}\nDescription: {{description}}\nAgents: {{agentCount}}\nWorkflow: {{workflowType}}\nLanguage: English\n\nFor each agent: id (kebab-case), name, role (≤8 words), description (≤20 words), icon (Material Symbol), color (Tailwind gradient e.g. from-blue-500 to-cyan-500). reasoning: ≤15 words. workflow: one step per agent.\n\n{\"reasoning\":\"\",\"template\":{\"id\":\"\",\"name\":\"\",\"description\":\"\",\"agents\":[{\"id\":\"\",\"name\":\"\",\"role\":\"\",\"description\":\"\",\"icon\":\"\",\"color\":\"\"}],\"workflow\":{\"type\":\"{{workflowType}}\",\"description\":\"\",\"steps\":[{\"agent\":\"\",\"action\":\"\"}]}}}",
+        "zh": "只输出合法JSON，不要Markdown。\n\n场景：{{scenarioName}}\n描述：{{description}}\n智能体数量：{{agentCount}}\n工作流：{{workflowType}}\n语言：中文\n\n每个智能体：id（短横线格式）、名称、角色（≤8字）、描述（≤20字）、图标（Material Symbol）、颜色（Tailwind渐变，如 from-blue-500 to-cyan-500）。推理：≤15字。工作流：每个智能体一个步骤。\n\n{\"reasoning\":\"\",\"template\":{\"id\":\"\",\"name\":\"\",\"description\":\"\",\"agents\":[{\"id\":\"\",\"name\":\"\",\"role\":\"\",\"description\":\"\",\"icon\":\"\",\"color\":\"\"}],\"workflow\":{\"type\":\"{{workflowType}}\",\"description\":\"\",\"steps\":[{\"agent\":\"\",\"action\":\"\"}]}}}"
+      }
+    }
+  }
+}

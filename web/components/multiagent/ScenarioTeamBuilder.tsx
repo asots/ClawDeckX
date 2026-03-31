@@ -345,7 +345,7 @@ const ScenarioTeamBuilder: React.FC<ScenarioTeamBuilderProps> = ({
       wzAgentFilePromptRef.current = null;
       const agentCount = tpl.teamSize === 'small' ? '3 to 4' : tpl.teamSize === 'large' ? '8 to 10' : '5 to 7';
       templateSystem.getMultiAgentTemplates(language).then(templates => {
-        const def = templates.find(t => t.id === '_default');
+        const def = templates.find(t => t.id === 'default');
         if (!def?.content.prompts?.step1) return;
         const resolved = resolveTemplatePrompt(def.content.prompts.step1, language, {
           scenarioName: name,
@@ -365,7 +365,7 @@ const ScenarioTeamBuilder: React.FC<ScenarioTeamBuilderProps> = ({
     const agentCount = size === 'small' ? '3 to 4' : size === 'large' ? '8 to 10' : '5 to 7';
     try {
       const templates = await templateSystem.getMultiAgentTemplates(language);
-      const def = templates.find(t => t.id === '_default');
+      const def = templates.find(t => t.id === 'default');
       if (def?.content.prompts?.step1) {
         const resolved = resolveTemplatePrompt(def.content.prompts.step1, language, {
           scenarioName: name,
@@ -629,7 +629,7 @@ const ScenarioTeamBuilder: React.FC<ScenarioTeamBuilderProps> = ({
     if (step !== 'wizard' || wzPhase !== 'step1' || wzStep1Prompt || wzStep1Running) return;
     const agentCount = teamSize === 'small' ? '3 to 4' : teamSize === 'large' ? '8 to 10' : '5 to 7';
     templateSystem.getMultiAgentTemplates(language).then(templates => {
-      const def = templates.find(t => t.id === '_default');
+      const def = templates.find(t => t.id === 'default');
       if (!def?.content.prompts?.step1) return;
       const resolved = resolveTemplatePrompt(def.content.prompts.step1, language, {
         scenarioName: scenarioName.trim(),
