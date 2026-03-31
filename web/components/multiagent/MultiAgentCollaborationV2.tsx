@@ -74,7 +74,7 @@ const MultiAgentCollaborationV2: React.FC<MultiAgentCollaborationProps> = ({ lan
     setLoading(true);
     templateSystem.getMultiAgentTemplates(language)
       .then(data => {
-        setTemplates(data);
+        setTemplates(data.filter(t => t.id !== 'default'));
         setError(null);
       })
       .catch(err => setError(err))
