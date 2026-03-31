@@ -44,6 +44,7 @@ export interface PromptPlaceholders {
   description?: string;
   agentCount?: string;
   workflowType?: string;
+  workflowDescription?: string;
   agentName?: string;
   agentRole?: string;
   agentDesc?: string;
@@ -69,6 +70,7 @@ export function resolveTemplatePrompt(
     .replace(/\{\{description\}\}/g, placeholders.description ?? '')
     .replace(/\{\{agentCount\}\}/g, placeholders.agentCount ?? '')
     .replace(/\{\{workflowType\}\}/g, placeholders.workflowType ?? '')
+    .replace(/\{\{workflowDescription\}\}/g, placeholders.workflowDescription ?? placeholders.workflowType ?? '')
     .replace(/\{\{agentName\}\}/g, placeholders.agentName ?? '')
     .replace(/\{\{agentRole\}\}/g, placeholders.agentRole ?? '')
     .replace(/\{\{agentDesc\}\}/g, placeholders.agentDesc ?? '');

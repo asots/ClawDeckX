@@ -73,6 +73,31 @@ const WORKFLOW_TYPES = [
   { value: 'routing', icon: 'route', labelKey: 'workflowRouting' },
 ] as const;
 
+const WORKFLOW_DESCRIPTIONS: Record<string, { en: string; zh: string }> = {
+  collaborative: {
+    en: 'collaborative — all agents work together simultaneously, sharing context and coordinating freely',
+    zh: '协作式 — 所有智能体同时协作，自由共享上下文和协调任务',
+  },
+  sequential: {
+    en: 'sequential — agents run one after another in a fixed pipeline, each passing results to the next',
+    zh: '顺序式 — 智能体按固定流水线依次执行，每个将结果传递给下一个',
+  },
+  parallel: {
+    en: 'parallel — agents run simultaneously on independent tasks, then results are merged',
+    zh: '并行式 — 智能体同时处理各自独立任务，最后汇总结果',
+  },
+  routing: {
+    en: 'routing — a router agent dispatches tasks to the most suitable specialist agent based on input',
+    zh: '路由式 — 由路由智能体根据输入将任务分发给最合适的专科智能体',
+  },
+};
+
+function getWorkflowDescription(wfType: string, language: string): string {
+  const map = WORKFLOW_DESCRIPTIONS[wfType];
+  if (!map) return wfType;
+  return (language === 'zh' || language === 'zh-TW') ? map.zh : map.en;
+}
+
 const TEAM_SIZES = [
   { value: 'small', range: '3-4', icon: 'group' },
   { value: 'medium', range: '5-7', icon: 'groups' },
@@ -332,6 +357,7 @@ const ScenarioTeamBuilder: React.FC<ScenarioTeamBuilderProps> = ({
           description: desc,
           agentCount,
           workflowType: tpl.workflowType,
+          workflowDescription: getWorkflowDescription(tpl.workflowType, language),
         });
         if (step1) setWzStep1Prompt(step1);
         // Store agentFile prompt template for later per-agent use
@@ -352,6 +378,7 @@ const ScenarioTeamBuilder: React.FC<ScenarioTeamBuilderProps> = ({
           description: desc,
           agentCount,
           workflowType: tpl.workflowType,
+          workflowDescription: getWorkflowDescription(tpl.workflowType, language),
         });
         if (resolved) setWzStep1Prompt(resolved);
       }).catch(() => { /* prompts optional */ });
@@ -373,6 +400,7 @@ const ScenarioTeamBuilder: React.FC<ScenarioTeamBuilderProps> = ({
           description: desc,
           agentCount,
           workflowType: wfType,
+          workflowDescription: getWorkflowDescription(wfType, language),
         });
         if (resolved) return resolved;
       }
@@ -643,6 +671,7 @@ const ScenarioTeamBuilder: React.FC<ScenarioTeamBuilderProps> = ({
         description: description.trim(),
         agentCount,
         workflowType,
+        workflowDescription: getWorkflowDescription(workflowType, language),
       });
       if (resolved) setWzStep1Prompt(resolved);
     }).catch(() => {});
