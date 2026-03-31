@@ -2059,11 +2059,11 @@ IDENTITY.md — The agent's name, creature, vibe, and emoji. Created during boot
     - **Emoji:** (one emoji that fits this agent's personality)
   - Do NOT add extra fields.
 
-HEARTBEAT.md — Short periodic checklist for background proactive work. Keep minimal to avoid token burn.
-  - Format: markdown checklist items "- [ ] task"
-  - 2–4 items MAX. Each item must be actionable and specific to this agent's role.
-  - Example items: check for pending tasks, review recent outputs, flag blockers.
-  - If nothing makes sense for this role, output a single comment line: "# No periodic tasks for this agent"
+HEARTBEAT.md — Optional periodic checklist for background proactive work. Keep minimal to avoid token burn.
+  - First, judge whether this agent genuinely has recurring background tasks worth checking periodically.
+  - If YES: write 2–4 specific, actionable "- [ ] task" checklist items for this agent's role.
+  - If NO (agent is purely reactive or session-driven with no background state to check): output exactly: # No periodic tasks for this agent
+  - Never pad with vague items just to fill space.
 
 Return JSON with these exact keys. Values are full markdown file contents (escape newlines as \n):
 {"soul":"","agentsMd":"","userMd":"","identityMd":"","heartbeat":""}`,
