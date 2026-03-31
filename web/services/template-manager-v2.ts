@@ -238,22 +238,17 @@ class TemplateManagerV2 {
 
     for (const source of sources) {
       try {
-        console.log(`[TemplateManager] Trying source: ${source.name} (${source.type})`);
         const data = await loader(source);
         return { data, source: source.id };
       } catch (err: any) {
-        console.warn(`[TemplateManager] Source ${source.name} failed:`, err.message);
-        
         // Try fallback source
         if (source.fallback) {
           const fallbackSource = templateSourceManager.getSource(source.fallback);
           if (fallbackSource && fallbackSource.enabled) {
             try {
-              console.log(`[TemplateManager] Trying fallback: ${fallbackSource.name}`);
               const data = await loader(fallbackSource);
               return { data, source: fallbackSource.id };
             } catch (fallbackErr: any) {
-              console.warn(`[TemplateManager] Fallback failed:`, fallbackErr.message);
             }
           }
         }
@@ -508,7 +503,6 @@ class TemplateManagerV2 {
           if (!tpl || !tpl.id) throw new Error(`Template ${id} missing id field`);
           return tpl as MultiAgentTemplate;
         } catch (err) {
-          console.warn(`[TemplateManager] Failed to load local multi-agent template '${id}':`, err);
           throw err;
         }
       })
@@ -518,7 +512,6 @@ class TemplateManagerV2 {
       .filter((r): r is PromiseFulfilledResult<MultiAgentTemplate> => r.status === 'fulfilled')
       .map(r => r.value);
 
-    console.log(`[TemplateManager] Loaded ${loaded.length}/${loaders.length} local multi-agent templates:`, loaded.map(t => t.id));
     return loaded;
   }
 

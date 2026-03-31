@@ -1317,15 +1317,16 @@ const ScenarioTeamBuilder: React.FC<ScenarioTeamBuilderProps> = ({
                         : wzStep1Result ? (stb.wzStep1Done || 'Structure ready — click Next to continue')
                         : (stb.wzStep1Waiting || 'Ready to generate')}
                     </p>
-                    {wzStep1Running ? (
+                    {wzStep1Running && (
                       <button onClick={wzHandleStep1Stop} className="px-2.5 py-1 rounded-lg text-[10px] font-bold text-red-500 hover:bg-red-500/10 border border-red-500/20 transition-colors flex items-center gap-1 shrink-0">
                         <span className="material-symbols-outlined text-[12px]">stop</span>
                         {stb.wzStop || 'Stop'}
                       </button>
-                    ) : (
+                    )}
+                    {!wzStep1Running && wzStep1Result && (
                       <button onClick={wzHandleStep1Start} className="px-2.5 py-1 rounded-lg text-[10px] font-bold text-violet-600 dark:text-violet-400 hover:bg-violet-500/10 border border-violet-500/20 transition-colors flex items-center gap-1 shrink-0">
-                        <span className="material-symbols-outlined text-[12px]">{wzStep1Result ? 'refresh' : 'play_arrow'}</span>
-                        {wzStep1Result ? (stb.wzRegenerate || 'Regenerate') : (stb.wzStart || 'Start')}
+                        <span className="material-symbols-outlined text-[12px]">refresh</span>
+                        {stb.wzRegenerate || 'Regenerate'}
                       </button>
                     )}
                   </div>
@@ -1378,16 +1379,6 @@ const ScenarioTeamBuilder: React.FC<ScenarioTeamBuilderProps> = ({
                     />
                   </div>
 
-                  {/* Next button */}
-                  {wzStep1Result && (
-                    <button
-                      onClick={() => setWzPhase('step2')}
-                      className="w-full py-2 rounded-xl bg-violet-500 hover:bg-violet-600 text-white text-[12px] font-bold flex items-center justify-center gap-2 transition-colors"
-                    >
-                      <span className="material-symbols-outlined text-[15px]">arrow_forward</span>
-                      {stb.wzNextToAgentFiles || 'Next: Generate Agent Files'}
-                    </button>
-                  )}
                 </div>
               )}
 
@@ -1858,6 +1849,24 @@ const ScenarioTeamBuilder: React.FC<ScenarioTeamBuilderProps> = ({
               >
                 <span className="material-symbols-outlined text-[16px]">{directLlm ? 'auto_fix_high' : 'auto_awesome'}</span>
                 {directLlm ? (stb.generateWizardBtn || '生成团队') : (stb.generateBtn || 'Generate Team with AI')}
+              </button>
+            )}
+            {step === 'wizard' && wzPhase === 'step1' && !wzStep1Running && !wzStep1Result && (
+              <button
+                onClick={wzHandleStep1Start}
+                className="px-5 py-2 rounded-lg text-[12px] font-bold bg-gradient-to-r from-violet-500 to-purple-600 text-white hover:from-violet-600 hover:to-purple-700 flex items-center gap-2 transition-all shadow-md shadow-violet-500/20"
+              >
+                <span className="material-symbols-outlined text-[16px]">play_arrow</span>
+                {stb.wzStart || '开始'}
+              </button>
+            )}
+            {step === 'wizard' && wzPhase === 'step1' && wzStep1Result && (
+              <button
+                onClick={() => setWzPhase('step2')}
+                className="px-5 py-2 rounded-lg text-[12px] font-bold bg-gradient-to-r from-violet-500 to-purple-600 text-white hover:from-violet-600 hover:to-purple-700 flex items-center gap-2 transition-all shadow-md shadow-violet-500/20"
+              >
+                <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+                {stb.wzNextToAgentFiles || 'Next: Generate Agent Files'}
               </button>
             )}
             {step === 'preview' && generateResult && (
