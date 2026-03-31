@@ -110,8 +110,12 @@ type GWClient struct {
 	backoffMs      int
 	backoffCapMs   int
 
-	pairingAutoApprove bool          // true while auto-approve is running
-	pairingApprovingMu sync.Mutex    // prevents concurrent approve attempts
+	pairingAutoApprove bool       // true while auto-approve is running
+	pairingApprovingMu sync.Mutex // prevents concurrent approve attempts
+
+	authRefreshPending bool          // true while auto token-refresh is in progress
+	authRefreshMu      sync.Mutex    // prevents concurrent token-refresh attempts
+	authRefreshAt      time.Time     // last time we attempted a token refresh (for cooldown)
 	reconnectNowCh     chan struct{} // signals connectLoop to skip the backoff delay
 
 	lastSeq      *int          // last received event seq for gap detection
@@ -130,6 +134,7 @@ type GWClient struct {
 	onRestart        func() error                      // restart callback (injected externally)
 	onNotify         func(string)                      // notify callback (injected externally)
 	onLifecycle      func(event string, detail string) // lifecycle event callback
+	onTokenRefreshed func(newToken string)             // called when autoRefreshToken updates the token
 }
 
 func NewGWClient(cfg GWClientConfig) *GWClient {
@@ -160,6 +165,12 @@ func (c *GWClient) SetNotifyCallback(fn func(string)) {
 	c.healthMu.Lock()
 	defer c.healthMu.Unlock()
 	c.onNotify = fn
+}
+
+func (c *GWClient) SetTokenRefreshedCallback(fn func(newToken string)) {
+	c.healthMu.Lock()
+	defer c.healthMu.Unlock()
+	c.onTokenRefreshed = fn
 }
 
 func (c *GWClient) SetLifecycleCallback(fn func(event string, detail string)) {
@@ -518,6 +529,7 @@ func (c *GWClient) Reconnect(newCfg GWClientConfig) {
 		Msg(i18n.T(i18n.MsgLogGatewayConfigUpdated))
 
 	c.mu.Lock()
+	// Close old connection so the current readLoop/connectLoop unblocks.
 	if c.conn != nil {
 		c.conn.Close()
 	}
@@ -526,10 +538,15 @@ func (c *GWClient) Reconnect(newCfg GWClientConfig) {
 		close(ch)
 		delete(c.pending, id)
 	}
-	if c.closed {
-		c.closed = false
-		c.stopCh = make(chan struct{})
+	// Always replace stopCh so the running connectLoop goroutine exits on the
+	// next iteration. Without this, every Reconnect() call spawns an additional
+	// concurrent connectLoop, which races to send on the same WS connection and
+	// triggers "1008: first request must be connect" from the gateway.
+	if !c.closed {
+		close(c.stopCh)
 	}
+	c.closed = false
+	c.stopCh = make(chan struct{})
 	c.cfg = newCfg
 	c.reconnectCount = 0
 	c.backoffMs = 1000
@@ -653,6 +670,14 @@ func (c *GWClient) connectLoop() {
 			if !c.pairingAutoApprove {
 				c.lastError = err.Error()
 			}
+			errMsg := err.Error()
+			// Auth errors: slow down immediately so the loop doesn't storm the
+			// gateway while autoRefreshToken (launched from sendConnect) runs.
+			// This also covers the case where the connect frame race delivers the
+			// auth rejection as a dial error rather than via sendConnect.
+			if isAuthError(errMsg) && c.backoffMs < 60000 {
+				c.backoffMs = 60000
+			}
 			c.mu.Unlock()
 			logger.Log.Warn().Err(err).
 				Str("host", c.cfg.Host).
@@ -660,7 +685,7 @@ func (c *GWClient) connectLoop() {
 				Msg(i18n.T(i18n.MsgLogGatewayWsConnectFailed))
 			// Close 1008 "pairing required" lands here when the server sends it
 			// before the JSON response can be delivered (close frame race).
-			if strings.Contains(err.Error(), "pairing required") && c.IsLocalGateway() {
+			if strings.Contains(errMsg, "pairing required") && c.IsLocalGateway() {
 				go c.autoApprovePairing()
 			}
 		}
@@ -1017,6 +1042,8 @@ func (c *GWClient) sendConnect(conn *websocket.Conn, nonce string) {
 			conn.Close()
 			if strings.Contains(msg, "pairing required") && c.IsLocalGateway() {
 				go c.autoApprovePairing()
+			} else if isAuthError(msg) {
+				go c.autoRefreshToken()
 			}
 		}
 	case <-time.After(10 * time.Second):
@@ -1068,6 +1095,97 @@ func (c *GWClient) autoApprovePairing() {
 		select {
 		case c.reconnectNowCh <- struct{}{}:
 		default:
+		}
+	}
+}
+
+// isAuthError returns true if the connect rejection message indicates a token/auth problem.
+func isAuthError(msg string) bool {
+	return strings.Contains(msg, "invalid-handshake") ||
+		strings.Contains(msg, "invalid handshake") ||
+		strings.Contains(msg, "unauthorized") ||
+		strings.Contains(msg, "invalid token") ||
+		strings.Contains(msg, "token expired") ||
+		strings.Contains(msg, "authentication failed")
+}
+
+// autoRefreshToken attempts to reload the gateway auth token from the OpenClaw
+// config file and trigger an immediate reconnect. Called when a connect response
+// returns an auth error (e.g. "invalid-handshake"). A 2-minute cooldown prevents
+// repeated refresh storms when the token is genuinely invalid.
+func (c *GWClient) autoRefreshToken() {
+	if !c.authRefreshMu.TryLock() {
+		return
+	}
+	defer c.authRefreshMu.Unlock()
+
+	// Cooldown: don't attempt more than once every 2 minutes.
+	c.mu.Lock()
+	if !c.authRefreshAt.IsZero() && time.Since(c.authRefreshAt) < 2*time.Minute {
+		c.mu.Unlock()
+		return
+	}
+	c.authRefreshPending = true
+	c.authRefreshAt = time.Now()
+	c.mu.Unlock()
+
+	defer func() {
+		c.mu.Lock()
+		c.authRefreshPending = false
+		c.mu.Unlock()
+	}()
+
+	logger.Log.Info().Msg("gateway auth rejected (invalid-handshake) — attempting token refresh from config")
+
+	// Brief wait to let the WS close frame propagate.
+	time.Sleep(500 * time.Millisecond)
+
+	newToken := readGatewayTokenFromConfig()
+
+	c.mu.Lock()
+	oldToken := c.cfg.Token
+	tokenChanged := newToken != "" && newToken != oldToken
+	logger.Log.Debug().
+		Int("oldTokenLen", len(oldToken)).
+		Int("newTokenLen", len(newToken)).
+		Bool("tokenChanged", tokenChanged).
+		Msg("autoRefreshToken: token comparison")
+	if tokenChanged {
+		c.cfg.Token = newToken
+		c.backoffMs = 1000 // reset backoff so reconnect happens quickly
+		c.lastError = ""
+	} else {
+		// Token unchanged or unavailable — slow down connectLoop to avoid storm.
+		// Set backoff to 60s so the loop won't hammer the gateway every second.
+		if c.backoffMs < 60000 {
+			c.backoffMs = 60000
+		}
+	}
+	notifyFn := c.onNotify
+	c.mu.Unlock()
+
+	if tokenChanged {
+		logger.Log.Info().Msg("gateway token updated from config — triggering immediate reconnect")
+		// Notify caller (e.g. serve.go) so it can persist the new token to DB.
+		c.healthMu.Lock()
+		refreshedFn := c.onTokenRefreshed
+		c.healthMu.Unlock()
+		if refreshedFn != nil {
+			go refreshedFn(newToken)
+		}
+		// Skip current backoff sleep so the reconnect happens right away.
+		select {
+		case c.reconnectNowCh <- struct{}{}:
+		default:
+		}
+	} else {
+		// Token unchanged or unavailable — cannot auto-fix; notify the user.
+		logger.Log.Warn().
+			Int("configTokenLen", len(newToken)).
+			Int("currentTokenLen", len(oldToken)).
+			Msg("gateway auth rejected: token in config matches current token or is empty — manual reconnect required")
+		if notifyFn != nil {
+			go notifyFn("Gateway authentication failed (invalid-handshake). Please update the gateway token in Settings → Gateway.")
 		}
 	}
 }

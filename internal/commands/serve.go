@@ -181,6 +181,16 @@ func RunServe(args []string) int {
 		if t := readOpenClawGatewayToken(cfg.OpenClaw.ConfigPath); t != "" {
 			gwToken = t
 			logger.Log.Info().Int("tokenLen", len(t)).Msg(i18n.T(i18n.MsgLogGatewayTokenRead))
+			// Persist the token back to the active DB profile so that subsequent
+			// Reconnect() calls (e.g. on profile switch) carry the correct token
+			// instead of empty string, which causes a cascade of re-reads and
+			// concurrent connectLoop goroutines triggering "1008: first request must be connect".
+			if activeProfile, err := profileRepo.GetActive(); err == nil && activeProfile != nil && activeProfile.Token == "" {
+				activeProfile.Token = t
+				if err := profileRepo.Update(activeProfile); err == nil {
+					logger.Log.Info().Msg("persisted openclaw.json token to active DB gateway profile")
+				}
+			}
 		} else {
 			logger.Log.Warn().
 				Str("configPath", cfg.OpenClaw.ConfigPath).
@@ -248,6 +258,25 @@ func RunServe(args []string) int {
 			gwClient.SetHealthCheckEnabled(true)
 		}
 	}
+	// When autoRefreshToken() reads a new token from the OpenClaw config file,
+	// persist it back to the DB active profile so restarts use the updated token.
+	gwClient.SetTokenRefreshedCallback(func(newToken string) {
+		activeProfile, err := profileRepo.GetActive()
+		if err != nil || activeProfile == nil {
+			return
+		}
+		if activeProfile.Token == newToken {
+			return
+		}
+		activeProfile.Token = newToken
+		if err := profileRepo.Update(activeProfile); err != nil {
+			logger.Log.Error().Err(err).Msg("failed to persist refreshed gateway token to DB profile")
+			return
+		}
+		svc.GatewayToken = newToken
+		logger.Log.Info().Msg("refreshed gateway token persisted to active DB profile")
+	})
+
 	refreshGatewayAuth := func() bool {
 		if gwClient.RefreshTokenFromConfig() {
 			cfg := gwClient.GetConfig()
@@ -696,6 +725,8 @@ func RunServe(args []string) int {
 	router.POST("/api/v1/mirror-config/apply", web.RequireAdmin(mirrorConfigHandler.ApplyToSystem))
 
 	multiAgentHandler := handlers.NewMultiAgentHandler(gwClient)
+	multiAgentHandler.SetWSHub(wsHub)
+	router.POST("/api/v1/multi-agent/generate", web.RequireAdmin(multiAgentHandler.Generate))
 	router.POST("/api/v1/multi-agent/deploy", web.RequireAdmin(multiAgentHandler.Deploy))
 	router.POST("/api/v1/multi-agent/preview", web.RequireAdmin(multiAgentHandler.Preview))
 	router.GET("/api/v1/multi-agent/status", multiAgentHandler.Status)
