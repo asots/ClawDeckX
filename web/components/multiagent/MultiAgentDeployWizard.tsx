@@ -6,6 +6,9 @@ import { MultiAgentTemplate } from '../../services/template-system';
 import { useToast } from '../Toast';
 import { resolveTemplateColor } from '../../utils/templateColors';
 
+type FileKey = 'soul' | 'agentsMd' | 'userMd' | 'identityMd' | 'heartbeat';
+type AgentFileEdits = Record<string, Partial<Record<FileKey, string>>>;
+
 interface MultiAgentDeployWizardProps {
   template: MultiAgentTemplate;
   language: Language;
@@ -33,6 +36,9 @@ const MultiAgentDeployWizard: React.FC<MultiAgentDeployWizardProps> = ({
   const [deployResult, setDeployResult] = useState<MultiAgentDeployResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [agentFileEdits, setAgentFileEdits] = useState<AgentFileEdits>({});
+  const [expandedAgents, setExpandedAgents] = useState<Record<string, boolean>>({});
+  const [expandedFiles, setExpandedFiles] = useState<Record<string, FileKey | null>>({});
 
   // Build deployment request
   const buildDeployRequest = useCallback((): MultiAgentDeployRequest => {
@@ -48,11 +54,11 @@ const MultiAgentDeployWizard: React.FC<MultiAgentDeployWizardProps> = ({
           description: agent.description,
           icon: agent.icon,
           color: agent.color,
-          soul: agent.soul || `# ${agent.name}\n\n**Role:** ${agent.role}\n\n${agent.description || ''}`,
-          agentsMd: agent.agentsMd,
-          userMd: agent.userMd,
-          identityMd: agent.identityMd,
-          heartbeat: agent.heartbeat || template.content.workflow.steps
+          soul: agentFileEdits[agent.id]?.soul ?? agent.soul ?? `# ${agent.name}\n\n**Role:** ${agent.role}\n\n${agent.description || ''}`,
+          agentsMd: agentFileEdits[agent.id]?.agentsMd ?? agent.agentsMd,
+          userMd: agentFileEdits[agent.id]?.userMd ?? agent.userMd,
+          identityMd: agentFileEdits[agent.id]?.identityMd ?? agent.identityMd,
+          heartbeat: (agentFileEdits[agent.id]?.heartbeat ?? agent.heartbeat) || template.content.workflow.steps
             .filter(s => s.agent === agent.id || s.agents?.includes(agent.id))
             .map((s, i) => `- [ ] Step ${i + 1}: ${s.action}`)
             .join('\n'),
@@ -64,7 +70,7 @@ const MultiAgentDeployWizard: React.FC<MultiAgentDeployWizardProps> = ({
       skipExisting,
       dryRun: false,
     };
-  }, [template, prefix, skipExisting]);
+  }, [template, prefix, skipExisting, agentFileEdits]);
 
   // Preview deployment
   const handlePreview = useCallback(async () => {
@@ -236,6 +242,87 @@ const MultiAgentDeployWizard: React.FC<MultiAgentDeployWizardProps> = ({
           {/* Step: Configure */}
           {step === 'configure' && (
             <div className="space-y-4">
+              {/* ── Agent file preview & edit ── */}
+              <div className="rounded-xl border border-slate-200 dark:border-white/10 overflow-hidden">
+                <div className="px-4 py-2 bg-slate-50 dark:bg-white/[0.02] border-b border-slate-200 dark:border-white/10">
+                  <h4 className="text-[11px] font-bold text-slate-600 dark:text-white/60 uppercase">
+                    {md.agentFiles || 'Agent Files'}
+                  </h4>
+                </div>
+                <div className="divide-y divide-slate-100 dark:divide-white/5">
+                  {template.content.agents.map((agent) => {
+                    const isExpanded = expandedAgents[agent.id] ?? false;
+                    const activeFile = expandedFiles[agent.id] ?? null;
+                    const FILE_LABELS: Record<FileKey, string> = { soul: 'SOUL.md', agentsMd: 'AGENTS.md', userMd: 'USER.md', identityMd: 'IDENTITY.md', heartbeat: 'HEARTBEAT.md' };
+                    const FILE_KEYS: FileKey[] = ['soul', 'agentsMd', 'userMd', 'identityMd', 'heartbeat'];
+                    return (
+                      <div key={agent.id}>
+                        {/* Agent header row */}
+                        <button
+                          className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-white/[0.02] text-start transition-colors"
+                          onClick={() => setExpandedAgents(prev => ({ ...prev, [agent.id]: !isExpanded }))}
+                        >
+                          <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={resolveTemplateColor(agent.color)}>
+                            <span className="material-symbols-outlined text-white text-[14px]">{agent.icon || 'person'}</span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[12px] font-bold text-slate-700 dark:text-white/80 truncate">{agent.name}</p>
+                            <p className="text-[10px] text-slate-400 dark:text-white/30 truncate">{agent.role}</p>
+                          </div>
+                          {Object.keys(agentFileEdits[agent.id] ?? {}).length > 0 && (
+                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-violet-500/10 text-violet-500 font-bold">{md.edited || 'Edited'}</span>
+                          )}
+                          <span className="material-symbols-outlined text-[15px] text-slate-400 shrink-0">
+                            {isExpanded ? 'expand_less' : 'expand_more'}
+                          </span>
+                        </button>
+                        {/* File tabs + editor */}
+                        {isExpanded && (
+                          <div className="border-t border-slate-100 dark:border-white/[0.05] bg-slate-50/50 dark:bg-white/[0.01]">
+                            {/* File tabs */}
+                            <div className="flex gap-1 px-3 pt-2 pb-0 overflow-x-auto no-scrollbar">
+                              {FILE_KEYS.map(fk => {
+                                const hasContent = !!(agentFileEdits[agent.id]?.[fk] ?? (agent as any)[fk]);
+                                return (
+                                  <button
+                                    key={fk}
+                                    onClick={() => setExpandedFiles(prev => ({ ...prev, [agent.id]: prev[agent.id] === fk ? null : fk }))}
+                                    className={`shrink-0 px-2 py-1 rounded-t text-[10px] font-mono font-bold transition-colors ${
+                                      activeFile === fk
+                                        ? 'bg-white dark:bg-white/[0.06] text-violet-600 dark:text-violet-400 border border-b-0 border-slate-200 dark:border-white/10'
+                                        : hasContent
+                                          ? 'text-slate-500 dark:text-white/40 hover:text-slate-700 dark:hover:text-white/60'
+                                          : 'text-slate-300 dark:text-white/15 hover:text-slate-400'
+                                    }`}
+                                  >
+                                    {FILE_LABELS[fk]}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                            {/* Active file editor */}
+                            {activeFile && (
+                              <div className="px-3 pb-3">
+                                <textarea
+                                  className="w-full h-40 px-2.5 py-2 rounded-lg bg-white dark:bg-white/[0.04] border border-slate-200 dark:border-white/10 text-[11px] font-mono text-slate-700 dark:text-white/70 resize-y focus:outline-none focus:ring-1 focus:ring-violet-500/30 leading-relaxed"
+                                  value={agentFileEdits[agent.id]?.[activeFile] ?? (agent as any)[activeFile] ?? ''}
+                                  onChange={e => setAgentFileEdits(prev => ({
+                                    ...prev,
+                                    [agent.id]: { ...prev[agent.id], [activeFile]: e.target.value },
+                                  }))}
+                                  placeholder={`${FILE_LABELS[activeFile]} content...`}
+                                  spellCheck={false}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
               <div>
                 <label className="text-[10px] font-bold text-slate-500 dark:text-white/40 uppercase block mb-1.5">
                   {md.prefixLabel || 'Agent ID Prefix'}
