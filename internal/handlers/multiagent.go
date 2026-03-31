@@ -1887,7 +1887,7 @@ func (h *MultiAgentHandler) GenerateWizardStep1(w http.ResponseWriter, r *http.R
 		)
 	}
 
-	ctx, cancel := context.WithTimeout(r.Context(), 300*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), 480*time.Second)
 	defer cancel()
 
 	var buf strings.Builder
@@ -1983,7 +1983,7 @@ func (h *MultiAgentHandler) GenerateWizardStep2(w http.ResponseWriter, r *http.R
 		)
 	}
 
-	ctx, cancel := context.WithTimeout(r.Context(), 300*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), 480*time.Second)
 	defer cancel()
 
 	var buf strings.Builder
