@@ -1610,19 +1610,18 @@ const Agents: React.FC<AgentsProps> = ({ language }) => {
                                 <span className="text-[10px] text-slate-500 dark:text-white/40 shrink-0">
                                   {a.aiGenTemplate || 'Template'}
                                 </span>
-                                <select
-                                  value={aiGenSelectedTplId}
-                                  onChange={e => handleAiGenSelectTemplate(e.target.value)}
-                                  disabled={aiGenRunning}
-                                  className="flex-1 px-2 py-1 rounded-lg bg-white dark:bg-white/[0.05] border border-violet-400/20 text-[10px] text-slate-700 dark:text-white/70 focus:outline-none focus:ring-1 focus:ring-violet-500/30 disabled:opacity-50 cursor-pointer"
-                                >
-                                  <option value="">{a.aiGenNoTemplate || '— Generic prompt —'}</option>
-                                  {aiGenTemplates.map(tpl => (
-                                    <option key={tpl.id} value={tpl.id}>
-                                      {tpl.metadata?.name || tpl.id}
-                                    </option>
-                                  ))}
-                                </select>
+                                <div className="flex-1">
+                                  <CustomSelect
+                                    value={aiGenSelectedTplId}
+                                    onChange={handleAiGenSelectTemplate}
+                                    disabled={aiGenRunning}
+                                    placeholder={a.aiGenNoTemplate || '— Generic prompt —'}
+                                    options={[
+                                      { value: '', label: a.aiGenNoTemplate || '— Generic prompt —' },
+                                      ...aiGenTemplates.map(tpl => ({ value: tpl.id, label: tpl.metadata?.name || tpl.id })),
+                                    ]}
+                                  />
+                                </div>
                               </div>
                             )}
                             <textarea

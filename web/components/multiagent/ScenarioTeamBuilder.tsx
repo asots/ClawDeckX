@@ -102,7 +102,6 @@ const ScenarioTeamBuilder: React.FC<ScenarioTeamBuilderProps> = ({
   const [editedAgents, setEditedAgents] = useState<Record<string, AgentEdit>>({});
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'agents' | 'workflow' | 'reasoning'>('agents');
-  const [editablePrompt, setEditablePrompt] = useState('');
 
   // Async task id for background generation
   const [genTaskId, setGenTaskId] = useState<string | null>(pendingTaskId ?? null);
@@ -348,72 +347,11 @@ const ScenarioTeamBuilder: React.FC<ScenarioTeamBuilderProps> = ({
     }
   }, [stb, language]);
 
-  const buildPrompt = useCallback(() => {
-    const agentCountHint = teamSize === 'small' ? '3 to 4' : teamSize === 'large' ? '8 to 10' : '5 to 7';
-    const langHint = language === 'zh' || language === 'zh-TW' ? 'Chinese' : language === 'ja' ? 'Japanese' : language === 'ko' ? 'Korean' : 'English';
-    return `You are an AI system architect. Analyze the following scenario and generate a multi-agent team configuration in strict JSON format.
-
-Scenario Name: ${scenarioName.trim()}
-Scenario Description: ${description.trim()}
-Team Size: ${agentCountHint} agents
-Workflow Type: ${workflowType}
-Output Language for agent names/roles/descriptions: ${langHint}
-
-Requirements:
-1. Generate ${agentCountHint} specialized AI agents appropriate for this scenario
-2. Each agent should have a distinct role with clear responsibilities
-3. Design a workflow that shows how agents collaborate
-4. Generate detailed SOUL.md content for each agent (their persona, responsibilities, working style)
-5. Generate AGENTS.md content for each agent (workspace startup instructions: which files to read, memory rules, red lines, group chat rules, heartbeat behavior — tailored to this agent's role)
-6. Generate USER.md content for each agent (profile of the human/team member this agent primarily serves — name placeholder, context about what this role needs from the user, preferences)
-7. Generate IDENTITY.md content for each agent (Name, Creature, Vibe, Emoji fields — fit the agent's personality)
-8. Generate HEARTBEAT.md checklist items for each agent
-9. Use lowercase kebab-case for agent IDs (e.g., "project-manager", "backend-dev")
-10. Choose appropriate Material Symbols icon names for each agent
-11. Choose appropriate Tailwind color classes (e.g., "from-blue-500 to-cyan-500")
-
-Respond ONLY with a JSON object in this exact structure (no markdown, no explanation outside JSON):
-{
-  "reasoning": "Brief explanation of why you chose these agents and this workflow",
-  "template": {
-    "id": "kebab-case-id-based-on-scenario-name",
-    "name": "Human-readable team name",
-    "description": "Team purpose description",
-    "agents": [
-      {
-        "id": "agent-id",
-        "name": "Agent Display Name",
-        "role": "One-line role description",
-        "description": "Detailed description of agent responsibilities",
-        "icon": "material_symbol_name",
-        "color": "from-blue-500 to-cyan-500",
-        "soul": "Full SOUL.md content in markdown — persona, responsibilities, working style",
-        "agentsMd": "Full AGENTS.md content — workspace startup instructions tailored to this agent",
-        "userMd": "Full USER.md content — profile template for the human this agent serves",
-        "identityMd": "Full IDENTITY.md content — Name/Creature/Vibe/Emoji for this agent",
-        "heartbeat": "- [ ] Task 1\n- [ ] Task 2"
-      }
-    ],
-    "workflow": {
-      "type": "${workflowType}",
-      "description": "How agents collaborate",
-      "steps": [
-        {
-          "agent": "agent-id",
-          "action": "What this agent does in this step"
-        }
-      ]
-    }
-  }
-}`;
-  }, [scenarioName, description, teamSize, workflowType, language]);
-
   const handlePreparePrompt = useCallback(() => {
     if (!scenarioName.trim() || !description.trim()) return;
-    setEditablePrompt(buildPrompt());
     setError(null);
     setStep('prompt-review');
-  }, [scenarioName, description, buildPrompt]);
+  }, [scenarioName, description]);
 
   const handleConfirmWizard = useCallback(() => {
     setError(null);
@@ -1192,7 +1130,7 @@ Respond ONLY with a JSON object in this exact structure (no markdown, no explana
                     {stb.promptLabel || 'AI Prompt'}
                   </label>
                   <button
-                    onClick={() => setEditablePrompt(buildPrompt())}
+                    onClick={() => setWzStep1Prompt('')}
                     className="flex items-center gap-1 text-[10px] text-slate-400 dark:text-white/30 hover:text-violet-600 dark:hover:text-violet-400 transition-colors"
                   >
                     <span className="material-symbols-outlined text-[12px]">restart_alt</span>
@@ -1200,10 +1138,11 @@ Respond ONLY with a JSON object in this exact structure (no markdown, no explana
                   </button>
                 </div>
                 <textarea
-                  value={editablePrompt}
-                  onChange={e => setEditablePrompt(e.target.value)}
+                  value={wzStep1Prompt}
+                  onChange={e => setWzStep1Prompt(e.target.value)}
                   rows={14}
-                  className="w-full px-3 py-3 rounded-xl bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/10 text-[11px] text-slate-700 dark:text-white/70 font-mono focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/50 resize-none leading-relaxed transition-all"
+                  placeholder={stb.promptPlaceholder || 'Leave empty to use the built-in default prompt (recommended). Paste a custom prompt here to override.'}
+                  className="w-full px-3 py-3 rounded-xl bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/10 text-[11px] text-slate-700 dark:text-white/70 font-mono focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/50 resize-none leading-relaxed transition-all placeholder:text-slate-300 dark:placeholder:text-white/15"
                 />
                 <p className="text-[10px] text-slate-400 dark:text-white/25 mt-1.5 flex items-center gap-1">
                   <span className="material-symbols-outlined text-[12px]">info</span>
@@ -1461,7 +1400,7 @@ Respond ONLY with a JSON object in this exact structure (no markdown, no explana
                     </div>
                   )}
 
-                  {/* Prompt editor — reuses editablePrompt from prompt-review */}
+                  {/* Prompt editor — shares wzStep1Prompt with prompt-review step */}
                   <div>
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-[10px] font-bold text-slate-500 dark:text-white/40 uppercase tracking-wider">{stb.promptLabel || 'AI Prompt'}</span>
@@ -1967,7 +1906,7 @@ Respond ONLY with a JSON object in this exact structure (no markdown, no explana
             {step === 'prompt-review' && (
               <button
                 onClick={directLlm ? handleConfirmWizard : handleConfirmGenerate}
-                disabled={!editablePrompt.trim()}
+                disabled={!scenarioName.trim() || !description.trim()}
                 className="px-5 py-2 rounded-lg text-[12px] font-bold bg-gradient-to-r from-violet-500 to-purple-600 text-white hover:from-violet-600 hover:to-purple-700 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2 transition-all shadow-md shadow-violet-500/20"
               >
                 <span className="material-symbols-outlined text-[16px]">{directLlm ? 'auto_fix_high' : 'auto_awesome'}</span>
