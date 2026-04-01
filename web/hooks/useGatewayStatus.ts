@@ -34,7 +34,7 @@ const INITIAL: GatewayStatus = {
 // ---------------------------------------------------------------------------
 
 const POLL_INTERVAL_MS = 5000;
-const RECONNECT_COOLDOWN_MS = 10000;
+const RECONNECT_COOLDOWN_MS = 30000;
 
 class GatewayStatusBus {
   private snapshot: GatewayStatus = { ...INITIAL };
@@ -111,10 +111,13 @@ class GatewayStatusBus {
           lastCheckAt: Date.now(),
         });
 
-        // Self-heal: gateway process is up but GW WS client is disconnected
+        // Self-heal: gateway process is up but GW WS client is disconnected.
+        // Only trigger if the backend connectLoop isn't already retrying with
+        // a high backoff (which would indicate it's handling reconnection).
         if (!rpcConnected && gwRunning) {
           const now = Date.now();
-          if (now - this.lastReconnectAt > RECONNECT_COOLDOWN_MS) {
+          const backoffMs = rpc.status === 'fulfilled' ? (rpc.value as any)?.backoff_ms ?? 0 : 0;
+          if (now - this.lastReconnectAt > RECONNECT_COOLDOWN_MS && backoffMs < 5000) {
             this.lastReconnectAt = now;
             gwApi.reconnect().catch(() => {});
           }

@@ -125,6 +125,9 @@ type GWClient struct {
 	backoffMs      int
 	backoffCapMs   int
 
+	connectLoopRunning bool       // true while connectLoop goroutine is active
+	connectLoopMu      sync.Mutex // guards connectLoopRunning
+
 	pairingAutoApprove bool       // true while auto-approve is running
 	pairingApprovingMu sync.Mutex // prevents concurrent approve attempts
 
@@ -548,6 +551,13 @@ func (c *GWClient) ConnectionStatus() map[string]interface{} {
 }
 
 func (c *GWClient) Start() {
+	c.connectLoopMu.Lock()
+	if c.connectLoopRunning {
+		c.connectLoopMu.Unlock()
+		return
+	}
+	c.connectLoopRunning = true
+	c.connectLoopMu.Unlock()
 	safego.GoLoopWithCooldown("gwclient/connectLoop", 3*time.Second, c.connectLoop)
 }
 
@@ -577,7 +587,9 @@ func (c *GWClient) Reconnect(newCfg GWClientConfig) {
 		Msg(i18n.T(i18n.MsgLogGatewayConfigUpdated))
 
 	c.mu.Lock()
-	// Close old connection so the current readLoop/connectLoop unblocks.
+	// Close old connection so the current readLoop unblocks and connectLoop
+	// proceeds to the next dial attempt. We do NOT replace stopCh or start a
+	// new connectLoop goroutine — the existing one will pick up the new config.
 	if c.conn != nil {
 		c.conn.Close()
 	}
@@ -586,35 +598,37 @@ func (c *GWClient) Reconnect(newCfg GWClientConfig) {
 		close(ch)
 		delete(c.pending, id)
 	}
-	// Always replace stopCh so the running connectLoop goroutine exits on the
-	// next iteration. Without this, every Reconnect() call spawns an additional
-	// concurrent connectLoop, which races to send on the same WS connection and
-	// triggers "1008: first request must be connect" from the gateway.
-	if !c.closed {
-		close(c.stopCh)
-	}
-	c.closed = false
-	c.stopCh = make(chan struct{})
 	c.cfg = newCfg
 	c.reconnectCount = 0
 	c.backoffMs = 1000
-	// Drain stale reconnect-now signal from previous cycle to prevent it
-	// from bypassing the new cycle's intended backoff (e.g. auth-error 60s).
-	select {
-	case <-c.reconnectNowCh:
-	default:
-	}
+	c.lastError = ""
 	c.mu.Unlock()
 
-	// Restart healthCheckLoop if it was running — closing the old stopCh killed it.
-	c.healthMu.Lock()
-	if c.healthEnabled && c.healthRunning {
-		// The old loop exited because stopCh was closed; restart with new stopCh.
-		safego.GoLoopWithCooldown("gwclient/healthCheck", 5*time.Second, c.healthCheckLoop)
+	// Signal connectLoop to skip the current backoff sleep and reconnect immediately.
+	select {
+	case c.reconnectNowCh <- struct{}{}:
+	default:
 	}
-	c.healthMu.Unlock()
 
-	safego.GoLoopWithCooldown("gwclient/connectLoop", 3*time.Second, c.connectLoop)
+	// If no connectLoop is running (e.g. it was never started or the client was
+	// stopped and restarted), start one now.
+	c.connectLoopMu.Lock()
+	needStart := !c.connectLoopRunning
+	if needStart {
+		// Ensure the client is not in a stopped state so the new loop can run.
+		c.mu.Lock()
+		if c.closed {
+			c.closed = false
+			c.stopCh = make(chan struct{})
+		}
+		c.mu.Unlock()
+		c.connectLoopRunning = true
+	}
+	c.connectLoopMu.Unlock()
+
+	if needStart {
+		safego.GoLoopWithCooldown("gwclient/connectLoop", 3*time.Second, c.connectLoop)
+	}
 }
 
 func (c *GWClient) GetConfig() GWClientConfig {
@@ -898,15 +912,6 @@ func (c *GWClient) readLoop(conn *websocket.Conn) error {
 				continue
 			}
 
-			if resp.OK && resp.Payload != nil {
-				var ack struct {
-					Status string `json:"status"`
-				}
-				if json.Unmarshal(resp.Payload, &ack) == nil && ack.Status == "accepted" {
-					continue
-				}
-			}
-
 			c.mu.Lock()
 			ch, ok := c.pending[resp.ID]
 			if ok {
@@ -1175,7 +1180,13 @@ func (c *GWClient) autoApprovePairing() {
 }
 
 // isAuthError returns true if the connect rejection message indicates a token/auth problem.
+// It excludes protocol-level errors like "first request must be connect" which are caused
+// by connectLoop races, not by invalid credentials.
 func isAuthError(msg string) bool {
+	// "first request must be connect" is a protocol race, not an auth problem.
+	if strings.Contains(msg, "first request must be connect") {
+		return false
+	}
 	return strings.Contains(msg, "invalid-handshake") ||
 		strings.Contains(msg, "invalid handshake") ||
 		strings.Contains(msg, "unauthorized") ||
