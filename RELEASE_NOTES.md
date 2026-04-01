@@ -2,17 +2,19 @@
 
 ### ✨ New Features / 新功能
 
-- add generation mode toggle (agent session vs direct LLM)
-- bypass agent session with direct LLM streaming via llmdirect
-- async AI team generation with background task + WS push
-- add AI team generation and scenario builder
+- enrich multi-agent soulSnippets and render persona examples in UI
 
 ### 🐛 Bug Fixes / 修复
 
-- two-step direct LLM generation to avoid max_tokens truncation
-- resolve connectLoop storm and invalid-handshake on restart
+- disable test send when config has unsaved changes
+- harden watchdog and notify flows
+
+### 🌐 Internationalization / 国际化
+
+- add stepIdentity/stepScenarios/stepMemory tab labels for all 13 locales
+- add category label keys for all 13 locales
 
 ---
-**Full Changelog**: [v0.0.36...v0.0.37](https://github.com/ClawDeckX/ClawDeckX/compare/v0.0.36...v0.0.37)
+**Full Changelog**: [v0.0.37...v0.0.38](https://github.com/ClawDeckX/ClawDeckX/compare/v0.0.37...v0.0.38)
 
 
