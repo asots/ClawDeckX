@@ -145,8 +145,8 @@ class GatewayStatusBus {
   private stop() {
     if (this.timer) { clearInterval(this.timer); this.timer = null; }
     document.removeEventListener('visibilitychange', this.onVisibilityChange);
-    // Reset to initial so next mount gets a fresh check
-    this.snapshot = { ...INITIAL };
+    // Keep last known state so re-subscribers get the correct initial value
+    // instead of flashing "disconnected" before the first async check resolves.
   }
 }
 

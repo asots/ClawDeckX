@@ -347,6 +347,9 @@ func RunServe(args []string) int {
 		switch event {
 		case "connected":
 			lifecycleRecorder.RecordStarted("ws_connected")
+			// Ensure MEMORY.md exists for the main agent on first connect
+			// so sessions don't error with "file not found" on fresh installs.
+			go ensureAgentMemoryFile(gwClient)
 		case "reconnected":
 			lifecycleRecorder.RecordStarted("ws_reconnected")
 		case "disconnected":
@@ -471,6 +474,7 @@ func RunServe(args []string) int {
 	router.POST("/api/v1/runtime/clawdeckx/update", web.RequireAdmin(runtimeHandler.UpdateClawDeckX))
 	router.POST("/api/v1/runtime/openclaw/update", web.RequireAdmin(runtimeHandler.UpdateOpenClaw))
 	router.POST("/api/v1/runtime/rollback", web.RequireAdmin(runtimeHandler.Rollback))
+	router.POST("/api/v1/runtime/restart", web.RequireAdmin(runtimeHandler.Restart))
 	router.POST("/api/v1/service/openclaw/install", web.RequireAdmin(serviceHandler.InstallOpenClaw))
 	router.POST("/api/v1/service/openclaw/uninstall", web.RequireAdmin(serviceHandler.UninstallOpenClaw))
 	router.POST("/api/v1/service/clawdeckx/install", web.RequireAdmin(serviceHandler.InstallClawDeckX))

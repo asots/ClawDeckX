@@ -2,6 +2,8 @@
 
 import (
 	"ClawDeckX/internal/i18n"
+	"ClawDeckX/internal/logger"
+	"ClawDeckX/internal/openclaw"
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
@@ -9,6 +11,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 )
 
 func expandPath(path string) string {
@@ -89,4 +92,39 @@ func writeEnvExports(path string, values map[string]string) error {
 		fmt.Fprintf(b, "export %s=\"%s\"\n", k, strings.ReplaceAll(values[k], "\"", "\\\""))
 	}
 	return os.WriteFile(target, []byte(b.String()), 0o600)
+}
+
+// ensureAgentMemoryFile creates an empty MEMORY.md for the main agent if it
+// doesn't exist yet.  This prevents "file not found" errors in sessions on
+// fresh installs where the user hasn't written any memory content.
+func ensureAgentMemoryFile(client *openclaw.GWClient) {
+	if client == nil || !client.IsConnected() {
+		return
+	}
+
+	// Brief delay — let the gateway settle after connect before issuing RPCs
+	time.Sleep(2 * time.Second)
+
+	// Check if MEMORY.md already exists via agents.files.get.
+	// If the RPC succeeds (no error), the file exists — nothing to do.
+	data, err := client.RequestWithTimeout("agents.files.get", map[string]interface{}{
+		"agentId": "main",
+		"name":    "MEMORY.md",
+	}, 5*time.Second)
+	if err == nil && len(data) > 0 {
+		// RPC succeeded → file exists (possibly empty, but that's fine)
+		return
+	}
+
+	// File doesn't exist — create an empty one
+	_, err = client.RequestWithTimeout("agents.files.set", map[string]interface{}{
+		"agentId": "main",
+		"name":    "MEMORY.md",
+		"content": "",
+	}, 5*time.Second)
+	if err != nil {
+		logger.Log.Debug().Err(err).Msg("failed to auto-create MEMORY.md for main agent (non-fatal)")
+	} else {
+		logger.Log.Info().Msg("auto-created empty MEMORY.md for main agent")
+	}
 }

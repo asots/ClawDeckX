@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"time"
 
 	"ClawDeckX/internal/constants"
@@ -167,6 +168,38 @@ func (h *RuntimeHandler) UpdateOpenClaw(w http.ResponseWriter, r *http.Request) 
 	logger.Log.Info().
 		Str("user", web.GetUsername(r)).
 		Msg("OpenClaw runtime overlay updated via API")
+}
+
+// Restart exits the process so Docker's restart policy brings the container back
+// with the entrypoint re-executing, picking up any updated overlay binaries.
+// POST /api/v1/runtime/restart
+func (h *RuntimeHandler) Restart(w http.ResponseWriter, r *http.Request) {
+	if h.mgr == nil {
+		web.Fail(w, r, "RUNTIME_NOT_AVAILABLE", "runtime manager not initialized", http.StatusServiceUnavailable)
+		return
+	}
+
+	h.auditRepo.Create(&database.AuditLog{
+		UserID: web.GetUserID(r), Username: web.GetUsername(r),
+		Action: constants.ActionRuntimeRestart, Result: "success",
+		Detail: "Docker container restart requested", IP: r.RemoteAddr,
+	})
+
+	logger.Log.Info().
+		Str("user", web.GetUsername(r)).
+		Msg("Docker container restart requested via API")
+
+	web.OK(w, r, map[string]interface{}{
+		"message": "restarting",
+	})
+
+	// Exit after a short delay so the HTTP response is flushed.
+	// Docker's restart policy (unless-stopped / always) will bring the container back.
+	go func() {
+		time.Sleep(2 * time.Second)
+		logger.Log.Info().Msg("Exiting process for Docker container restart")
+		os.Exit(0)
+	}()
 }
 
 // Rollback removes the runtime overlay for a component, reverting to image version.

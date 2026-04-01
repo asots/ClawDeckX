@@ -147,8 +147,25 @@ const UpdateTab: React.FC<UpdateTabProps> = ({ s, language, inputCls, rowCls }) 
                 if (p.done) {
                   toast('success', isDockerRuntime ? (sRef.current.runtimeUpdateOk || sRef.current.selfUpdateDone) : sRef.current.selfUpdateDone);
                   if (isDockerRuntime) {
-                    // Server restarts with new binary after ~2s; reload to pick up the new frontend bundle + version
-                    setTimeout(() => window.location.reload(), 5000);
+                    // ClawDeckX overlay updated — Go process auto-restarts with new binary;
+                    // prompt user to restart Docker container for a full restart.
+                    setTimeout(async () => {
+                      const ok = await confirm({
+                        title: sRef.current.dockerRestartTitle || 'Restart Docker Container',
+                        message: sRef.current.dockerRestartMsg || 'The update has been installed. Restart the Docker container now to activate the new version?',
+                        confirmText: sRef.current.dockerRestartBtn || 'Restart Now',
+                        danger: false,
+                      });
+                      if (ok) {
+                        try {
+                          await runtimeApi.restart();
+                          toast('success', sRef.current.dockerRestarting || 'Restarting Docker container...');
+                          setTimeout(() => window.location.reload(), 8000);
+                        } catch { window.location.reload(); }
+                      } else {
+                        window.location.reload();
+                      }
+                    }, 1500);
                   } else {
                     setTimeout(() => window.location.reload(), 3000);
                   }
@@ -166,7 +183,7 @@ const UpdateTab: React.FC<UpdateTabProps> = ({ s, language, inputCls, rowCls }) 
       toast('error', isDockerRuntime ? (sRef.current.runtimeUpdateFailed || sRef.current.selfUpdateFailed) : sRef.current.selfUpdateFailed);
     }
     setSelfUpdating(false);
-  }, [selfUpdateInfo, toast, isDockerRuntime]);
+  }, [selfUpdateInfo, toast, isDockerRuntime, confirm]);
 
   // Release notes translation — cached in SQLite via backend
   const handleTranslateNotes = useCallback(async (text: string, product?: string, ver?: string) => {
@@ -254,6 +271,24 @@ const UpdateTab: React.FC<UpdateTabProps> = ({ s, language, inputCls, rowCls }) 
                   await loadRuntimeStatus();
                   const res = await hostInfoApi.checkUpdate();
                   setOcUpdateInfo({ ...res, available: false });
+                  // Prompt Docker container restart so gateway picks up new OpenClaw
+                  setTimeout(async () => {
+                    const ok = await confirm({
+                      title: sRef.current.dockerRestartTitle || 'Restart Docker Container',
+                      message: sRef.current.dockerRestartOcMsg || 'OpenClaw has been updated. Restart the Docker container now to activate the new version?',
+                      confirmText: sRef.current.dockerRestartBtn || 'Restart Now',
+                      danger: false,
+                    });
+                    if (ok) {
+                      try {
+                        await runtimeApi.restart();
+                        toast('success', sRef.current.dockerRestarting || 'Restarting Docker container...');
+                        setTimeout(() => window.location.reload(), 8000);
+                      } catch (e: any) {
+                        toast('error', e?.message || 'Restart failed');
+                      }
+                    }
+                  }, 1000);
                 }
               } catch { }
             }

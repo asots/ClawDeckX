@@ -303,7 +303,9 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
 
   // Debounced gwReady: goes true immediately, delays 3s before going false.
   // Prevents brief connectivity blips from unmounting the entire chat UI.
-  const [gwReadyStable, setGwReadyStable] = useState(gwReady);
+  // Start optimistically true so the disconnected guard never flashes before
+  // the first async status check completes (which confirms the real state).
+  const [gwReadyStable, setGwReadyStable] = useState(true);
   useEffect(() => {
     if (gwReady) {
       setGwReadyStable(true);

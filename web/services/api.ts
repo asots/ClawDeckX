@@ -83,6 +83,7 @@ export interface RuntimeStatus {
 export const runtimeApi = {
   status: () => get<RuntimeStatus>('/api/v1/runtime/status'),
   rollback: (component: string) => post<{ message: string; status: RuntimeComponentStatus }>('/api/v1/runtime/rollback', { component }),
+  restart: () => post<{ message: string }>('/api/v1/runtime/restart'),
 };
 
 // ==================== 服务器访问配置 ====================

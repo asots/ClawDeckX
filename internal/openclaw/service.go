@@ -158,6 +158,23 @@ func (s *Service) isRunning() bool {
 	return processExists() || gatewayPortListening()
 }
 
+// gatewayHealthy checks if the local gateway is actually responding to HTTP /health.
+// This distinguishes a live gateway from a stale/zombie process holding the port.
+func (s *Service) gatewayHealthy() bool {
+	port := s.GatewayPort
+	if port == 0 {
+		port = 18789
+	}
+	addr := fmt.Sprintf("127.0.0.1:%d", port)
+	client := &http.Client{Timeout: 3 * time.Second}
+	resp, err := client.Get(fmt.Sprintf("http://%s/health", addr))
+	if err != nil {
+		return false
+	}
+	resp.Body.Close()
+	return resp.StatusCode < 500
+}
+
 func (s *Service) remoteStatus() Status {
 	port := s.GatewayPort
 	if port == 0 {
@@ -208,11 +225,19 @@ func (s *Service) Start() error {
 	if s.IsRemote() {
 		return errors.New(i18n.T(i18n.MsgErrRemoteGatewayNoStart))
 	}
-	// Skip if gateway is already running to avoid duplicate processes
+	// Skip if gateway is already running AND healthy to avoid duplicate processes.
+	// A stale/zombie process may hold the port without serving requests —
+	// in that case we must kill it and proceed with a fresh start.
 	st := s.Status()
 	if st.Running {
-		logger.Gateway.Info().Str("detail", st.Detail).Msg("gateway already running, skipping start")
-		return nil
+		if s.gatewayHealthy() {
+			logger.Gateway.Info().Str("detail", st.Detail).Msg("gateway already running and healthy, skipping start")
+			return nil
+		}
+		logger.Gateway.Warn().Str("detail", st.Detail).Msg("gateway port occupied but not healthy — killing stale process before start")
+		_ = s.Stop()
+		// Brief wait for the port to be released
+		time.Sleep(1 * time.Second)
 	}
 	switch s.DetectRuntime() {
 	case RuntimeSystemd:
