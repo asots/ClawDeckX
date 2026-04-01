@@ -112,6 +112,14 @@ function parseSessionKeyPeer(sessionKey: string): { channel: string; peerKind: s
   return { channel, peerKind, peerId: cleanPeerId, accountId: 'default' };
 }
 
+function isProtectedMainSessionKey(sessionKey: string | null | undefined): boolean {
+  if (!sessionKey) return false;
+  const trimmed = sessionKey.trim().toLowerCase();
+  if (trimmed === 'main') return true;
+  const parts = trimmed.split(':').filter(Boolean);
+  return parts.length === 3 && parts[0] === 'agent' && parts[2] === 'main';
+}
+
 interface MarkdownMessageBoundaryProps {
   content: string;
   streaming?: boolean;
@@ -2169,8 +2177,8 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
   // Delete session
   const handleDeleteSession = useCallback(async (key: string) => {
     if (!gwReady || deleting) return;
-    // Cannot delete main session
-    if (key === 'main') {
+    if (isProtectedMainSessionKey(key)) {
+      toast('error', c.confirmDeleteMain || 'The default main session cannot be deleted.');
       setDeleteConfirmKey(null);
       return;
     }
@@ -2195,7 +2203,7 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
       setDeleting(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [deleting, sessionKey]);
+  }, [deleting, sessionKey, gwReady, toast, c]);
 
   // Slash command selection
   const selectSlashCommand = useCallback((cmd: string) => {
@@ -2578,7 +2586,7 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
                       title={c.editSession || c.renameSession}>
                       <span className="material-symbols-outlined text-[14px]">edit</span>
                     </button>
-                    {s.key !== 'main' && (
+                    {!isProtectedMainSessionKey(s.key) && (
                       <button
                         onClick={(e) => { e.stopPropagation(); setDeleteConfirmKey(s.key); }}
                         className="p-1.5 rounded-lg hover:bg-red-100 dark:hover:bg-red-500/10 text-slate-400 hover:text-red-500 transition-all"
@@ -3725,32 +3733,39 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
           onClick={() => !deleting && setDeleteConfirmKey(null)}>
           <div className="w-full max-w-sm mx-4 rounded-2xl bg-white dark:bg-[#1a1a2e] border border-slate-200 dark:border-white/10 shadow-2xl p-5"
             onClick={e => e.stopPropagation()}>
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-500/10 flex items-center justify-center">
-                <span className="material-symbols-outlined text-[20px] text-red-500">delete</span>
-              </div>
-              <div>
-                <h3 className="text-sm font-bold text-slate-800 dark:text-white">{c.deleteSession}</h3>
-                <p className="text-[11px] text-slate-500 dark:text-white/40">{c.confirmDeleteSession}</p>
-              </div>
-            </div>
+            {(() => {
+              const protectedMain = isProtectedMainSessionKey(deleteConfirmKey);
+              return (
+                <div>
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className={`w-11 h-11 rounded-2xl flex items-center justify-center ${protectedMain ? 'bg-amber-500/10 text-amber-500' : 'bg-red-500/10 text-red-500'}`}>
+                      <span className="material-symbols-outlined text-[22px]">{protectedMain ? 'warning' : 'delete'}</span>
+                    </div>
+                    <div>
+                      <h3 className="text-[16px] font-bold text-slate-800 dark:text-white">{protectedMain ? c.protectedMainSessionTitle : c.deleteSession}</h3>
+                      <p className="text-[12px] text-slate-400 dark:text-white/30">{protectedMain ? c.protectedMainSessionDesc : c.confirmDeleteSession}</p>
+                    </div>
+                  </div>
 
-            <div className="bg-slate-50 dark:bg-white/[0.02] rounded-xl p-3 mb-4">
-              <p className="text-[10px] text-slate-400 dark:text-white/30 mb-1">Session Key</p>
-              <code className="text-[11px] font-mono text-slate-700 dark:text-white/70 break-all">{deleteConfirmKey}</code>
-            </div>
+                  <div className="bg-slate-50 dark:bg-white/[0.02] rounded-xl p-3 mb-4">
+                    <p className="text-[10px] text-slate-400 dark:text-white/30 mb-1">{c.sessionKey}</p>
+                    <code className="text-[11px] font-mono text-slate-700 dark:text-white/70 break-all">{deleteConfirmKey}</code>
+                  </div>
 
-            <div className="flex justify-end gap-2">
-              <button onClick={() => setDeleteConfirmKey(null)} disabled={deleting}
-                className="px-4 py-2 rounded-xl text-[11px] font-bold text-slate-500 dark:text-white/40 hover:bg-slate-100 dark:hover:bg-white/5 transition-all">
-                {c.cancel}
-              </button>
-              <button onClick={() => handleDeleteSession(deleteConfirmKey)} disabled={deleting}
-                className="px-4 py-2 rounded-xl bg-red-500 text-white text-[11px] font-bold disabled:opacity-40 transition-all flex items-center gap-1.5">
-                {deleting && <span className="material-symbols-outlined text-[14px] animate-spin">progress_activity</span>}
-                {deleting ? c.deleting : c.deleteSession}
-              </button>
-            </div>
+                  <div className="flex justify-end gap-2">
+                    <button onClick={() => setDeleteConfirmKey(null)} disabled={deleting}
+                      className="px-4 py-2 rounded-xl text-[11px] font-bold text-slate-500 dark:text-white/40 hover:bg-slate-100 dark:hover:bg-white/5 transition-all">
+                      {c.cancel}
+                    </button>
+                    <button onClick={() => protectedMain ? setDeleteConfirmKey(null) : handleDeleteSession(deleteConfirmKey)} disabled={deleting}
+                      className={`px-4 py-2 rounded-xl text-white text-[11px] font-bold disabled:opacity-40 transition-all flex items-center gap-1.5 ${protectedMain ? 'bg-amber-500' : 'bg-red-500'}`}>
+                      {deleting && !protectedMain && <span className="material-symbols-outlined text-[14px] animate-spin">progress_activity</span>}
+                      {protectedMain ? c.protectedMainSessionOk : (deleting ? c.deleting : c.deleteSession)}
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}

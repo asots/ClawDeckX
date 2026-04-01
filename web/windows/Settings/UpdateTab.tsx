@@ -147,25 +147,7 @@ const UpdateTab: React.FC<UpdateTabProps> = ({ s, language, inputCls, rowCls }) 
                 if (p.done) {
                   toast('success', isDockerRuntime ? (sRef.current.runtimeUpdateOk || sRef.current.selfUpdateDone) : sRef.current.selfUpdateDone);
                   if (isDockerRuntime) {
-                    // ClawDeckX overlay updated — Go process auto-restarts with new binary;
-                    // prompt user to restart Docker container for a full restart.
-                    setTimeout(async () => {
-                      const ok = await confirm({
-                        title: sRef.current.dockerRestartTitle || 'Restart Docker Container',
-                        message: sRef.current.dockerRestartMsg || 'The update has been installed. Restart the Docker container now to activate the new version?',
-                        confirmText: sRef.current.dockerRestartBtn || 'Restart Now',
-                        danger: false,
-                      });
-                      if (ok) {
-                        try {
-                          await runtimeApi.restart();
-                          toast('success', sRef.current.dockerRestarting || 'Restarting Docker container...');
-                          setTimeout(() => window.location.reload(), 8000);
-                        } catch { window.location.reload(); }
-                      } else {
-                        window.location.reload();
-                      }
-                    }, 1500);
+                    setTimeout(() => window.location.reload(), 3000);
                   } else {
                     setTimeout(() => window.location.reload(), 3000);
                   }
@@ -271,24 +253,6 @@ const UpdateTab: React.FC<UpdateTabProps> = ({ s, language, inputCls, rowCls }) 
                   await loadRuntimeStatus();
                   const res = await hostInfoApi.checkUpdate();
                   setOcUpdateInfo({ ...res, available: false });
-                  // Prompt Docker container restart so gateway picks up new OpenClaw
-                  setTimeout(async () => {
-                    const ok = await confirm({
-                      title: sRef.current.dockerRestartTitle || 'Restart Docker Container',
-                      message: sRef.current.dockerRestartOcMsg || 'OpenClaw has been updated. Restart the Docker container now to activate the new version?',
-                      confirmText: sRef.current.dockerRestartBtn || 'Restart Now',
-                      danger: false,
-                    });
-                    if (ok) {
-                      try {
-                        await runtimeApi.restart();
-                        toast('success', sRef.current.dockerRestarting || 'Restarting Docker container...');
-                        setTimeout(() => window.location.reload(), 8000);
-                      } catch (e: any) {
-                        toast('error', e?.message || 'Restart failed');
-                      }
-                    }
-                  }, 1000);
                 }
               } catch { }
             }
@@ -382,6 +346,16 @@ const UpdateTab: React.FC<UpdateTabProps> = ({ s, language, inputCls, rowCls }) 
       setRuntimeRollingBack(false);
     }
   }, [confirm, toast, s, loadRuntimeStatus]);
+
+  const handleRuntimeRestart = useCallback(async () => {
+    try {
+      await runtimeApi.restart();
+      toast('success', sRef.current.dockerRestarting || 'Restarting Docker container...');
+      setTimeout(() => window.location.reload(), 8000);
+    } catch (err: any) {
+      toast('error', err?.message || 'Restart failed');
+    }
+  }, [toast]);
 
   // 初始化数据加载
   useEffect(() => {
@@ -937,6 +911,25 @@ const UpdateTab: React.FC<UpdateTabProps> = ({ s, language, inputCls, rowCls }) 
                 </span>
               )}
             </div>
+            {isDockerRuntime && (
+              <div className="mt-3 flex items-start justify-between gap-3 rounded-lg border border-slate-200 dark:border-white/[0.06] bg-slate-50/70 dark:bg-white/[0.02] px-3 py-3">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-700 dark:text-white/70">
+                    <span className="material-symbols-outlined text-[14px] text-blue-500/70">restart_alt</span>
+                    {s.dockerRestartTitle || 'Restart Docker Container'}
+                  </div>
+                  <p className="mt-1 text-[10px] leading-relaxed text-slate-500 dark:text-white/35">
+                    {s.runtimeRestartHint || 'Restart the container to activate the updated binary'}
+                  </p>
+                </div>
+                <button
+                  onClick={handleRuntimeRestart}
+                  className="shrink-0 rounded-lg bg-primary/10 px-3 py-1.5 text-[10px] font-bold text-primary hover:bg-primary/15 transition-colors"
+                >
+                  {s.dockerRestartBtn || 'Restart Now'}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -1040,13 +1033,6 @@ const UpdateTab: React.FC<UpdateTabProps> = ({ s, language, inputCls, rowCls }) 
                 );
               })()}
             </div>
-
-            {(runtimeStatus.clawdeckx.using_overlay || runtimeStatus.openclaw.using_overlay) && (
-              <div className="flex items-center gap-1.5 mt-2.5 text-[10px] text-amber-500 dark:text-amber-400/70">
-                <span className="material-symbols-outlined text-[13px]">info</span>
-                {s.runtimeRestartHint || 'Restart the container to activate the updated binary'}
-              </div>
-            )}
           </div>
         </div>
       )}
