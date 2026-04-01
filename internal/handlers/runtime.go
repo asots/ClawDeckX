@@ -11,15 +11,24 @@ import (
 	"ClawDeckX/internal/constants"
 	"ClawDeckX/internal/database"
 	"ClawDeckX/internal/logger"
+	"ClawDeckX/internal/openclaw"
 	"ClawDeckX/internal/runtime"
 	"ClawDeckX/internal/updater"
 	"ClawDeckX/internal/web"
 )
 
+// GatewayService defines the interface for gateway lifecycle control.
+type GatewayService interface {
+	Stop() error
+	Start() error
+	Status() openclaw.Status
+}
+
 // RuntimeHandler handles Docker runtime overlay API endpoints.
 type RuntimeHandler struct {
 	mgr       *runtime.Manager
 	auditRepo *database.AuditLogRepo
+	svc       GatewayService
 }
 
 // NewRuntimeHandler creates a RuntimeHandler with the given runtime manager.
@@ -28,6 +37,11 @@ func NewRuntimeHandler(mgr *runtime.Manager) *RuntimeHandler {
 		mgr:       mgr,
 		auditRepo: database.NewAuditLogRepo(),
 	}
+}
+
+// SetService injects the gateway service for start/stop control during updates.
+func (h *RuntimeHandler) SetService(svc GatewayService) {
+	h.svc = svc
 }
 
 // Status returns the runtime overlay status for both components.
@@ -145,11 +159,28 @@ func (h *RuntimeHandler) UpdateOpenClaw(w http.ResponseWriter, r *http.Request) 
 		flusher.Flush()
 	}
 
+	// Stop gateway before update to release file locks (critical on Windows to avoid EPERM/EBUSY errors)
+	gwWasRunning := false
+	if h.svc != nil {
+		sendSSE(updater.ApplyProgress{Stage: "stopping", Percent: 5})
+		st := h.svc.Status()
+		if st.Running {
+			if err := h.svc.Stop(); err == nil {
+				gwWasRunning = true
+				time.Sleep(2 * time.Second) // Wait for process to fully exit and release locks
+			}
+		}
+	}
+
 	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Minute)
 	defer cancel()
 
 	err := h.mgr.InstallOpenClaw(ctx, sendSSE)
 	if err != nil {
+		// Try to restart gateway even if update failed
+		if gwWasRunning && h.svc != nil {
+			_ = h.svc.Start()
+		}
 		h.auditRepo.Create(&database.AuditLog{
 			UserID: web.GetUserID(r), Username: web.GetUsername(r),
 			Action: constants.ActionRuntimeUpdate, Result: "failed",
@@ -157,6 +188,12 @@ func (h *RuntimeHandler) UpdateOpenClaw(w http.ResponseWriter, r *http.Request) 
 		})
 		sendSSE(updater.ApplyProgress{Stage: "error", Error: err.Error()})
 		return
+	}
+
+	// Restart gateway if it was running before update
+	if gwWasRunning && h.svc != nil {
+		sendSSE(updater.ApplyProgress{Stage: "restarting", Percent: 95})
+		_ = h.svc.Start()
 	}
 
 	h.auditRepo.Create(&database.AuditLog{
