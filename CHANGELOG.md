@@ -6,6 +6,7 @@ _2026-04-01_
 
 ### 🐛 Bug Fixes / 修复
 
+- add reconnect diagnostics
 - stabilize gwclient reconnect and proxy flow
 - refine session delete prompts
 - avoid false session disconnect errors
@@ -915,6 +916,7 @@ _2026-03-15_
 
 
 ---
+
 
 
 

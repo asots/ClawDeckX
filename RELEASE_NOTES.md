@@ -2,6 +2,7 @@
 
 ### 🐛 Bug Fixes / 修复
 
+- add reconnect diagnostics
 - stabilize gwclient reconnect and proxy flow
 - refine session delete prompts
 - avoid false session disconnect errors
