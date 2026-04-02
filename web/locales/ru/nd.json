@@ -250,5 +250,14 @@
   "removeDevice": "Удалить устройство",
   "deviceRemoved": "Устройство удалено",
   "confirmRemoveTitle": "Удалить устройство",
-  "confirmRemoveDesc": "Удалить устройство {name}? Все токены будут отозваны, устройство потребуется привязать заново."
+  "confirmRemoveDesc": "Удалить устройство {name}? Все токены будут отозваны, устройство потребуется привязать заново.",
+  "securityPolicy": "Политика безопасности",
+  "secExec": "Исполнение",
+  "secExecHost": "Хост",
+  "secExecAsk": "Подтверждение",
+  "secAskFallback": "Откат",
+  "secFsWsOnly": "Только WS",
+  "secProfile": "Профиль",
+  "secSandbox": "Песочница",
+  "secToolPolicy": "Политика инструментов"
 }

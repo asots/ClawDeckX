@@ -112,6 +112,8 @@
     "secExecSecurity": "Exec Security",
     "secDenyList": "Deny List",
     "secAllowList": "Allow List",
-    "secFsWsOnly": "Workspace FS"
+    "secFsWsOnly": "Workspace FS",
+    "secExecHost": "निष्पादन होस्ट",
+    "secExecAsk": "निष्पादन पुष्टि"
   }
 }

@@ -1317,5 +1317,12 @@
   "wizWarnDmAllowlistEmpty": "DM 정책이 \"허용 목록\"이지만 Allow From이 비어 있습니다 — 모든 DM이 무시됩니다",
   "wizWarnGroupAllowlistEmpty": "그룹 정책이 \"허용 목록\"이지만 Allow From / Group Allow From이 비어 있습니다 — 모든 그룹 메시지가 무시됩니다",
   "mcpServers": "MCP 서버",
-  "mcpServersDesc": "명명된 MCP 서버 정의. 각 키는 command, args, env 필드를 가진 서버 이름입니다."
+  "mcpServersDesc": "명명된 MCP 서버 정의. 각 키는 command, args, env 필드를 가진 서버 이름입니다.",
+  "askFallback": "승인 폴백",
+  "askFallbackDesc": "승인 시간 초과 시 폴백 정책",
+  "strictInlineEval": "엄격한 인라인 평가",
+  "strictInlineEvalDesc": "인라인 셸 평가 차단 (예: $() 백틱)",
+  "safeBinTrustedDirs": "신뢰 디렉토리",
+  "safeBinTrustedDirsDesc": "안전한 바이너리가 신뢰되는 디렉토리",
+  "phSafeBinTrustedDirs": "/usr/local/bin, ~/bin"
 }

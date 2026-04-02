@@ -10,6 +10,7 @@ import { useToast } from '../components/Toast';
 import { useConfirm } from '../components/ConfirmDialog';
 import { parseEventTitle } from '../utils/parseEventText';
 import { saTranslateAlertTitle } from '../utils/saTranslate';
+import { normalizeExecSecurity, profileTextColor, execSecurityTextColor, execHostTextColor, execAskTextColor } from '../utils/exec-policy';
 
 interface DashboardProps {
   language: Language;
@@ -767,19 +768,11 @@ const Dashboard: React.FC<DashboardProps> = ({ language }) => {
           const parsed = userConfig?.parsed || userConfig?.config || userConfig || {};
           const toolsCfg = parsed?.tools || {};
           const agentsCfg = parsed?.agents || {};
-          const normalizeExecSecurity = (value: unknown) => {
-            if (typeof value !== 'string') return '—';
-            const trimmed = value.trim();
-            if (!trimmed) return '—';
-            if (trimmed === 'prompt') return 'allowlist';
-            if (trimmed === 'sandbox') return 'deny';
-            if (trimmed === 'none') return 'full';
-            if (trimmed === 'deny' || trimmed === 'allowlist' || trimmed === 'full') return trimmed;
-            return trimmed;
-          };
           const agentList: any[] = agentsCfg?.list || [];
           const globalProfile = toolsCfg.profile || 'full';
-          const globalExecSec = normalizeExecSecurity(toolsCfg.exec?.security);
+          const globalExecSec = normalizeExecSecurity(toolsCfg.exec?.security) || 'full';
+          const globalExecHost = toolsCfg.exec?.host || 'sandbox';
+          const globalExecAsk = toolsCfg.exec?.ask || 'off';
           const globalSandbox = agentsCfg?.defaults?.sandbox?.mode || agentsCfg?.defaults?.sandbox?.backend || 'Off';
           const denyCount = Array.isArray(toolsCfg.deny) ? toolsCfg.deny.length : 0;
           const allowCount = Array.isArray(toolsCfg.allow) ? toolsCfg.allow.length : 0;
@@ -790,9 +783,11 @@ const Dashboard: React.FC<DashboardProps> = ({ language }) => {
             window.dispatchEvent(new CustomEvent('clawdeck:open-window', { detail: { id: 'editor', section } }));
           };
           const items = [
-            { icon: 'build', label: d.secToolProfile || 'Tool Profile', value: globalProfile, color: globalProfile === 'full' ? 'text-amber-500' : globalProfile === 'minimal' ? 'text-emerald-500' : 'text-blue-500', section: 'tools' },
+            { icon: 'build', label: d.secToolProfile || 'Tool Profile', value: globalProfile, color: profileTextColor(globalProfile), section: 'tools' },
             { icon: 'shield', label: d.secSandbox || 'Sandbox', value: globalSandbox, color: globalSandbox !== 'Off' ? 'text-emerald-500' : 'text-slate-400', section: 'agents' },
-            { icon: 'terminal', label: d.secExecSecurity || 'Exec Security', value: globalExecSec, color: globalExecSec === 'deny' ? 'text-red-500' : globalExecSec === 'allowlist' ? 'text-blue-500' : globalExecSec === 'full' ? 'text-amber-500' : 'text-slate-400', section: 'tools' },
+            { icon: 'terminal', label: d.secExecSecurity || 'Exec Security', value: globalExecSec, color: execSecurityTextColor(globalExecSec), section: 'tools' },
+            { icon: 'dns', label: d.secExecHost || 'Exec Host', value: globalExecHost, color: execHostTextColor(globalExecHost), section: 'tools' },
+            { icon: 'help', label: d.secExecAsk || 'Exec Ask', value: globalExecAsk, color: execAskTextColor(globalExecAsk), section: 'tools' },
             { icon: 'block', label: d.secDenyList || 'Deny List', value: denyCount > 0 ? `${denyCount} tools` : '—', color: denyCount > 0 ? 'text-blue-500' : 'text-slate-400', section: 'tools' },
             { icon: 'check_circle', label: d.secAllowList || 'Allow List', value: allowCount > 0 ? `${allowCount} tools` : '—', color: allowCount > 0 ? 'text-blue-500' : 'text-slate-400', section: 'tools' },
             { icon: 'folder_managed', label: d.secFsWsOnly || 'Workspace FS', value: fsWsOnly ? 'Yes' : 'No', color: fsWsOnly ? 'text-emerald-500' : 'text-slate-400', section: 'tools' },
@@ -813,7 +808,7 @@ const Dashboard: React.FC<DashboardProps> = ({ language }) => {
                   </span>
                 )}
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
                 {items.map(item => (
                   <button key={item.label} onClick={() => openEditorSection(item.section)}
                     className="rounded-lg bg-slate-50 dark:bg-white/[0.02] border border-slate-100 dark:border-white/[0.04] p-2 text-start hover:border-primary/30 hover:bg-primary/[0.02] transition-all group cursor-pointer">

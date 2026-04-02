@@ -250,5 +250,14 @@
   "removeDevice": "Hapus Perangkat",
   "deviceRemoved": "Perangkat dihapus",
   "confirmRemoveTitle": "Hapus Perangkat",
-  "confirmRemoveDesc": "Hapus perangkat {name}? Semua token akan dicabut dan perangkat perlu dipasangkan ulang."
+  "confirmRemoveDesc": "Hapus perangkat {name}? Semua token akan dicabut dan perangkat perlu dipasangkan ulang.",
+  "securityPolicy": "Kebijakan Keamanan",
+  "secExec": "Eksekusi",
+  "secExecHost": "Host",
+  "secExecAsk": "Konfirmasi",
+  "secAskFallback": "Fallback",
+  "secFsWsOnly": "Hanya WS",
+  "secProfile": "Profil",
+  "secSandbox": "Sandbox",
+  "secToolPolicy": "Kebijakan Alat"
 }

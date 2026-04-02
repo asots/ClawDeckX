@@ -112,6 +112,8 @@
     "secExecSecurity": "执行安全",
     "secDenyList": "拒绝列表",
     "secAllowList": "允许列表",
-    "secFsWsOnly": "工作区文件系统"
+    "secFsWsOnly": "工作区文件系统",
+    "secExecHost": "执行主机",
+    "secExecAsk": "执行确认"
   }
 }

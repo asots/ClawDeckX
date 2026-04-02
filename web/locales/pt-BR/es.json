@@ -1317,5 +1317,12 @@
   "wizWarnDmAllowlistEmpty": "Política de DM é \"Lista de permissão\" mas Allow From está vazio — todas as DMs serão descartadas silenciosamente",
   "wizWarnGroupAllowlistEmpty": "Política de grupo é \"Lista de permissão\" mas Allow From / Group Allow From estão vazios — todas as mensagens de grupo serão descartadas silenciosamente",
   "mcpServers": "Servidores MCP",
-  "mcpServersDesc": "Definições de servidores MCP nomeados. Cada chave é um nome de servidor com campos command, args e env."
+  "mcpServersDesc": "Definições de servidores MCP nomeados. Cada chave é um nome de servidor com campos command, args e env.",
+  "askFallback": "Fallback de Aprovação",
+  "askFallbackDesc": "Política de fallback quando a aprovação expira",
+  "strictInlineEval": "Avaliação Inline Estrita",
+  "strictInlineEvalDesc": "Bloquear avaliação de shell inline (ex. $() backticks)",
+  "safeBinTrustedDirs": "Diretórios Confiáveis",
+  "safeBinTrustedDirsDesc": "Diretórios onde binários seguros são confiáveis",
+  "phSafeBinTrustedDirs": "/usr/local/bin, ~/bin"
 }

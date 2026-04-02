@@ -1317,5 +1317,12 @@
   "wizWarnDmAllowlistEmpty": "DM-Richtlinie ist \"Allowlist\", aber Allow From ist leer — alle DMs werden stillschweigend verworfen",
   "wizWarnGroupAllowlistEmpty": "Gruppenrichtlinie ist \"Allowlist\", aber Allow From / Group Allow From sind leer — alle Gruppennachrichten werden stillschweigend verworfen",
   "mcpServers": "MCP-Server",
-  "mcpServersDesc": "Benannte MCP-Server-Definitionen. Jeder Schlüssel ist ein Servername mit command-, args- und env-Feldern."
+  "mcpServersDesc": "Benannte MCP-Server-Definitionen. Jeder Schlüssel ist ein Servername mit command-, args- und env-Feldern.",
+  "askFallback": "Genehmigung-Fallback",
+  "askFallbackDesc": "Fallback-Richtlinie bei Genehmigungstimeout",
+  "strictInlineEval": "Strikte Inline-Auswertung",
+  "strictInlineEvalDesc": "Inline-Shell-Auswertung blockieren (z.B. $() Backticks)",
+  "safeBinTrustedDirs": "Vertrauenswürdige Verzeichnisse",
+  "safeBinTrustedDirsDesc": "Verzeichnisse, in denen sichere Binärdateien vertrauenswürdig sind",
+  "phSafeBinTrustedDirs": "/usr/local/bin, ~/bin"
 }

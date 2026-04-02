@@ -250,5 +250,14 @@
   "removeDevice": "Remover Dispositivo",
   "deviceRemoved": "Dispositivo removido",
   "confirmRemoveTitle": "Remover Dispositivo",
-  "confirmRemoveDesc": "Remover dispositivo {name}? Todos os tokens serão revogados e o dispositivo precisará ser pareado novamente."
+  "confirmRemoveDesc": "Remover dispositivo {name}? Todos os tokens serão revogados e o dispositivo precisará ser pareado novamente.",
+  "securityPolicy": "Política de Segurança",
+  "secExec": "Exec",
+  "secExecHost": "Host",
+  "secExecAsk": "Confirmação",
+  "secAskFallback": "Fallback",
+  "secFsWsOnly": "Apenas WS",
+  "secProfile": "Perfil",
+  "secSandbox": "Sandbox",
+  "secToolPolicy": "Política de Ferramentas"
 }

@@ -227,6 +227,13 @@
     "tasksByRuntime": "依執行環境",
     "tasksNoData": "暫無任務資料",
     "tasksNote": "任務摘要來自閘道狀態端點。個別任務詳情可透過 OpenClaw CLI 管理。",
-    "chAfPlaceholder": "群組/使用者 ID…"
+    "chAfPlaceholder": "群組/使用者 ID…",
+    "execAskOff": "關閉",
+    "execAskOnMiss": "未命中時",
+    "execAskAlways": "總是",
+    "toolExecAskFallback": "審批回退",
+    "execFallbackDeny": "拒絕",
+    "execFallbackAllowlist": "白名單",
+    "policyPreview": "策略預覽"
   }
 }

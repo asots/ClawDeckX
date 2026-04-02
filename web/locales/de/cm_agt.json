@@ -227,6 +227,13 @@
     "tasksByRuntime": "Nach Laufzeit",
     "tasksNoData": "Keine Aufgabendaten verfügbar",
     "tasksNote": "Aufgabenübersicht vom Gateway-Statusendpunkt. Einzelne Aufgabendetails werden über die OpenClaw CLI verwaltet.",
-    "chAfPlaceholder": "Group/User ID…"
+    "chAfPlaceholder": "Group/User ID…",
+    "execAskOff": "Aus",
+    "execAskOnMiss": "Bei Fehlschlag",
+    "execAskAlways": "Immer",
+    "toolExecAskFallback": "Genehmigungs-Fallback",
+    "execFallbackDeny": "Ablehnen",
+    "execFallbackAllowlist": "Zulassungsliste",
+    "policyPreview": "Richtlinienvorschau"
   }
 }

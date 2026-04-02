@@ -227,6 +227,13 @@
     "tasksByRuntime": "按运行时",
     "tasksNoData": "暂无任务数据",
     "tasksNote": "任务汇总来自网关状态接口。单个任务详情可通过 OpenClaw CLI 管理。",
-    "chAfPlaceholder": "群组/用户 ID…"
+    "chAfPlaceholder": "群组/用户 ID…",
+    "execAskOff": "关闭",
+    "execAskOnMiss": "未命中时",
+    "execAskAlways": "总是",
+    "toolExecAskFallback": "审批回退",
+    "execFallbackDeny": "拒绝",
+    "execFallbackAllowlist": "白名单",
+    "policyPreview": "策略预览"
   }
 }

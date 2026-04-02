@@ -250,5 +250,14 @@
   "removeDevice": "移除设备",
   "deviceRemoved": "设备已移除",
   "confirmRemoveTitle": "移除设备",
-  "confirmRemoveDesc": "移除设备 {name}？所有 Token 将被撤销，设备需要重新配对。"
+  "confirmRemoveDesc": "移除设备 {name}？所有 Token 将被撤销，设备需要重新配对。",
+  "securityPolicy": "安全策略",
+  "secExec": "执行",
+  "secExecHost": "主机",
+  "secExecAsk": "确认",
+  "secAskFallback": "回退",
+  "secFsWsOnly": "仅工作区",
+  "secProfile": "配置",
+  "secSandbox": "沙盒",
+  "secToolPolicy": "工具策略"
 }

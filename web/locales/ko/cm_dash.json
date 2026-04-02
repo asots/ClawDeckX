@@ -112,6 +112,8 @@
     "secExecSecurity": "실행 보안",
     "secDenyList": "거부 목록",
     "secAllowList": "허용 목록",
-    "secFsWsOnly": "워크스페이스 FS"
+    "secFsWsOnly": "워크스페이스 FS",
+    "secExecHost": "실행 호스트",
+    "secExecAsk": "실행 확인"
   }
 }

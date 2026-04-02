@@ -160,6 +160,8 @@
     "securityFullConfirm": "我了解风险，确认开启",
     "hashConflict": "配置已被其他终端修改，请刷新后重新编辑",
     "daysAgo": "天前",
-    "fwdTestDesc": "发送一条测试消息到已配置的转发目标，验证配置是否正确"
+    "fwdTestDesc": "发送一条测试消息到已配置的转发目标，验证配置是否正确",
+    "effectivePolicy": "生效策略",
+    "effectiveFromAgent": "代理覆盖"
   }
 }

@@ -250,5 +250,14 @@
   "removeDevice": "Gerät entfernen",
   "deviceRemoved": "Gerät entfernt",
   "confirmRemoveTitle": "Gerät entfernen",
-  "confirmRemoveDesc": "Gerät {name} entfernen? Alle Token werden widerrufen und das Gerät muss erneut gekoppelt werden."
+  "confirmRemoveDesc": "Gerät {name} entfernen? Alle Token werden widerrufen und das Gerät muss erneut gekoppelt werden.",
+  "securityPolicy": "Sicherheitsrichtlinie",
+  "secExec": "Exec",
+  "secExecHost": "Host",
+  "secExecAsk": "Abfrage",
+  "secAskFallback": "Fallback",
+  "secFsWsOnly": "Nur WS",
+  "secProfile": "Profil",
+  "secSandbox": "Sandbox",
+  "secToolPolicy": "Tool-Richtlinie"
 }

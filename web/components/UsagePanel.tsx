@@ -1,5 +1,7 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { MiniDonut, MiniBarChart, MiniSparkline } from './MiniChart';
+import { SecurityPolicyBadges } from './SecurityPolicyBadges';
+import type { ExecPolicy, ExecAsk, ExecSecurity, AskFallback } from '../utils/exec-policy';
 
 /* ── In-memory cache for usage data (avoids re-fetch on session switch) ── */
 const CACHE_TTL = 30_000;
@@ -47,6 +49,8 @@ interface SecurityInfo {
   toolProfile?: string;
   sandboxMode?: string;
   execSecurity?: string;
+  execHost?: string;
+  execAsk?: string;
 }
 
 interface UsagePanelProps {
@@ -217,51 +221,22 @@ export const UsagePanel: React.FC<UsagePanelProps> = ({ sessionKey, gwReady, loa
       <div className="p-3 space-y-3">
 
         {/* ═══ Security / Tool Policy ═══ */}
-        {sec && (sec.toolProfile || sec.sandboxMode || sec.execSecurity) && (
-          <div>
-            <div className={`flex items-center justify-between mb-1.5 ${onNavigateAgent ? 'cursor-pointer group' : ''}`} onClick={onNavigateAgent}>
-              <span className="text-[10px] font-bold text-slate-400 dark:text-white/30 uppercase flex items-center gap-1 group-hover:text-primary transition-colors">
-                <span className="material-symbols-outlined text-[11px]">security</span>
-                {a.secToolPolicy || 'Tool Policy'}
-              </span>
-              {onNavigateAgent && (
-                <span className="material-symbols-outlined text-[10px] text-slate-400 dark:text-white/20 opacity-0 group-hover:opacity-100 group-hover:text-primary transition-all">open_in_new</span>
-              )}
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {sec.toolProfile && (() => {
-                const p = sec.toolProfile;
-                const cls = p === 'full' ? 'text-amber-500 bg-amber-500/10 border-amber-500/15'
-                  : p === 'minimal' ? 'text-emerald-500 bg-emerald-500/10 border-emerald-500/15'
-                  : 'text-blue-500 bg-blue-500/10 border-blue-500/15';
-                return (
-                  <span className={`inline-flex items-center text-[9px] px-1.5 py-0.5 rounded-md border font-bold ${cls}`}>
-                    {a[`secProfile_${p}`] || p}
-                  </span>
-                );
-              })()}
-              {sec.sandboxMode && (() => {
-                const on = sec.sandboxMode !== 'Off' && sec.sandboxMode !== 'off';
-                const cls = on ? 'text-emerald-500 bg-emerald-500/10 border-emerald-500/15' : 'text-slate-400 bg-slate-100 dark:bg-white/5 border-slate-200 dark:border-white/10';
-                return (
-                  <span className={`inline-flex items-center text-[9px] px-1.5 py-0.5 rounded-md border font-bold ${cls}`}>
-                    {a.secSandbox || 'Sandbox'}: {sec.sandboxMode}
-                  </span>
-                );
-              })()}
-              {sec.execSecurity && (() => {
-                const v = sec.execSecurity;
-                const cls = v === 'sandbox' ? 'text-emerald-500 bg-emerald-500/10 border-emerald-500/15'
-                  : v === 'prompt' ? 'text-blue-500 bg-blue-500/10 border-blue-500/15'
-                  : 'text-amber-500 bg-amber-500/10 border-amber-500/15';
-                return (
-                  <span className={`inline-flex items-center text-[9px] px-1.5 py-0.5 rounded-md border font-bold ${cls}`}>
-                    {a.secExec || 'Exec'}: {v}
-                  </span>
-                );
-              })()}
-            </div>
-          </div>
+        {sec && (sec.toolProfile || sec.sandboxMode || sec.execSecurity || sec.execHost || sec.execAsk) && (
+          <SecurityPolicyBadges
+            policy={{
+              toolProfile: sec.toolProfile || 'full',
+              execSecurity: (sec.execSecurity || '') as ExecSecurity,
+              execHost: sec.execHost || 'sandbox',
+              execAsk: (sec.execAsk || 'off') as ExecAsk,
+              askFallback: '' as AskFallback,
+              sandboxMode: sec.sandboxMode || 'Off',
+              fsWsOnly: false,
+            }}
+            labels={a}
+            onClick={onNavigateAgent}
+            hideAskWhenOff
+            hideSandboxWhenOff
+          />
         )}
 
         {/* ═══ Model Picker ═══ */}

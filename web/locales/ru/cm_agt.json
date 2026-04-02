@@ -227,6 +227,13 @@
     "tasksByRuntime": "По среде выполнения",
     "tasksNoData": "Нет данных о задачах",
     "tasksNote": "Сводка задач из конечной точки статуса шлюза. Детали отдельных задач управляются через OpenClaw CLI.",
-    "chAfPlaceholder": "Group/User ID…"
+    "chAfPlaceholder": "Group/User ID…",
+    "execAskOff": "Выкл",
+    "execAskOnMiss": "При промахе",
+    "execAskAlways": "Всегда",
+    "toolExecAskFallback": "Откат утверждения",
+    "execFallbackDeny": "Отклонить",
+    "execFallbackAllowlist": "Список разрешённых",
+    "policyPreview": "Предпросмотр политики"
   }
 }

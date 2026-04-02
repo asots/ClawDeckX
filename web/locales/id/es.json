@@ -1317,5 +1317,12 @@
   "wizWarnDmAllowlistEmpty": "Kebijakan DM \"Daftar Izin\" tetapi Allow From kosong — semua DM akan diabaikan",
   "wizWarnGroupAllowlistEmpty": "Kebijakan grup \"Daftar Izin\" tetapi Allow From / Group Allow From kosong — semua pesan grup akan diabaikan",
   "mcpServers": "Server MCP",
-  "mcpServersDesc": "Definisi server MCP bernama. Setiap kunci adalah nama server dengan field command, args, dan env."
+  "mcpServersDesc": "Definisi server MCP bernama. Setiap kunci adalah nama server dengan field command, args, dan env.",
+  "askFallback": "Fallback Persetujuan",
+  "askFallbackDesc": "Kebijakan fallback saat persetujuan kedaluwarsa",
+  "strictInlineEval": "Evaluasi Inline Ketat",
+  "strictInlineEvalDesc": "Blokir evaluasi shell inline (mis. $() backtick)",
+  "safeBinTrustedDirs": "Direktori Tepercaya",
+  "safeBinTrustedDirsDesc": "Direktori tempat biner aman dipercaya",
+  "phSafeBinTrustedDirs": "/usr/local/bin, ~/bin"
 }

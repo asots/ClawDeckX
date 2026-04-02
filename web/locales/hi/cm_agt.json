@@ -227,6 +227,13 @@
     "tasksByRuntime": "रनटाइम अनुसार",
     "tasksNoData": "कोई कार्य डेटा उपलब्ध नहीं",
     "tasksNote": "गेटवे स्थिति एंडपॉइंट से कार्य सारांश। व्यक्तिगत कार्य विवरण OpenClaw CLI के माध्यम से प्रबंधित किए जा सकते हैं।",
-    "chAfPlaceholder": "Group/User ID…"
+    "chAfPlaceholder": "Group/User ID…",
+    "execAskOff": "बंद",
+    "execAskOnMiss": "मिस पर",
+    "execAskAlways": "हमेशा",
+    "toolExecAskFallback": "अनुमोदन फ़ॉलबैक",
+    "execFallbackDeny": "अस्वीकार",
+    "execFallbackAllowlist": "अनुमति सूची",
+    "policyPreview": "नीति पूर्वावलोकन"
   }
 }

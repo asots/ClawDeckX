@@ -160,6 +160,8 @@
     "securityFullConfirm": "リスクを理解した上で確認",
     "hashConflict": "設定が別のクライアントにより変更されています。更新して再編集してください",
     "daysAgo": "日前",
-    "fwdTestDesc": "設定済みのターゲットにテストメッセージを送信して設定を検証"
+    "fwdTestDesc": "設定済みのターゲットにテストメッセージを送信して設定を検証",
+    "effectivePolicy": "有効ポリシー",
+    "effectiveFromAgent": "エージェントオーバーライド"
   }
 }

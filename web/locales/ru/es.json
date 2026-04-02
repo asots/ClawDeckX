@@ -1317,5 +1317,12 @@
   "wizWarnDmAllowlistEmpty": "Политика ЛС — \"Список разрешённых\", но Allow From пуст — все ЛС будут молча отброшены",
   "wizWarnGroupAllowlistEmpty": "Групповая политика — \"Список разрешённых\", но Allow From / Group Allow From пусты — все групповые сообщения будут молча отброшены",
   "mcpServers": "Серверы MCP",
-  "mcpServersDesc": "Именованные определения серверов MCP. Каждый ключ  имя сервера с полями command, args и env."
+  "mcpServersDesc": "Именованные определения серверов MCP. Каждый ключ  имя сервера с полями command, args и env.",
+  "askFallback": "Откат утверждения",
+  "askFallbackDesc": "Политика отката при истечении срока утверждения",
+  "strictInlineEval": "Строгое inline-вычисление",
+  "strictInlineEvalDesc": "Блокировать inline shell-вычисления (напр. $() обратные кавычки)",
+  "safeBinTrustedDirs": "Доверенные каталоги",
+  "safeBinTrustedDirsDesc": "Каталоги, в которых доверяют безопасным исполняемым файлам",
+  "phSafeBinTrustedDirs": "/usr/local/bin, ~/bin"
 }

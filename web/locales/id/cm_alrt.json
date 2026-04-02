@@ -160,6 +160,8 @@
     "securityFullConfirm": "Saya memahami risikonya, konfirmasi",
     "hashConflict": "Konfigurasi telah diubah oleh klien lain. Silakan segarkan dan edit ulang",
     "daysAgo": "hari lalu",
-    "fwdTestDesc": "Kirim pesan tes ke target yang dikonfigurasi untuk memverifikasi pengaturan"
+    "fwdTestDesc": "Kirim pesan tes ke target yang dikonfigurasi untuk memverifikasi pengaturan",
+    "effectivePolicy": "Kebijakan Efektif",
+    "effectiveFromAgent": "penggantian agen"
   }
 }

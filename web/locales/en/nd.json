@@ -250,5 +250,14 @@
   "removeDevice": "Remove Device",
   "deviceRemoved": "Device removed",
   "confirmRemoveTitle": "Remove Device",
-  "confirmRemoveDesc": "Remove device {name}? All tokens will be revoked and the device will need to re-pair."
+  "confirmRemoveDesc": "Remove device {name}? All tokens will be revoked and the device will need to re-pair.",
+  "securityPolicy": "Security Policy",
+  "secExec": "Exec",
+  "secExecHost": "Host",
+  "secExecAsk": "Ask",
+  "secAskFallback": "Fallback",
+  "secFsWsOnly": "WS Only",
+  "secProfile": "Profile",
+  "secSandbox": "Sandbox",
+  "secToolPolicy": "Tool Policy"
 }

@@ -227,6 +227,13 @@
     "tasksByRuntime": "ランタイム別",
     "tasksNoData": "タスクデータがありません",
     "tasksNote": "ゲートウェイのステータスエンドポイントからのタスク概要です。個別のタスク詳細は OpenClaw CLI で管理できます。",
-    "chAfPlaceholder": "グループ/ユーザーID…"
+    "chAfPlaceholder": "グループ/ユーザーID…",
+    "execAskOff": "オフ",
+    "execAskOnMiss": "ミス時",
+    "execAskAlways": "常に",
+    "toolExecAskFallback": "承認フォールバック",
+    "execFallbackDeny": "拒否",
+    "execFallbackAllowlist": "許可リスト",
+    "policyPreview": "ポリシープレビュー"
   }
 }

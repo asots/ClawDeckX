@@ -250,5 +250,14 @@
   "removeDevice": "Supprimer l'appareil",
   "deviceRemoved": "Appareil supprimé",
   "confirmRemoveTitle": "Supprimer l'appareil",
-  "confirmRemoveDesc": "Supprimer l'appareil {name} ? Tous les jetons seront révoqués et l'appareil devra être réappairé."
+  "confirmRemoveDesc": "Supprimer l'appareil {name} ? Tous les jetons seront révoqués et l'appareil devra être réappairé.",
+  "securityPolicy": "Politique de sécurité",
+  "secExec": "Exec",
+  "secExecHost": "Hôte",
+  "secExecAsk": "Confirmation",
+  "secAskFallback": "Repli",
+  "secFsWsOnly": "WS seul",
+  "secProfile": "Profil",
+  "secSandbox": "Sandbox",
+  "secToolPolicy": "Politique d'outils"
 }

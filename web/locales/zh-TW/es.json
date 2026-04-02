@@ -1317,5 +1317,12 @@
   "wizWarnDmAllowlistEmpty": "私訊策略為「白名單」但 Allow From 為空 — 所有私訊訊息將被靜默丟棄",
   "wizWarnGroupAllowlistEmpty": "群組策略為「白名單」但 Allow From / Group Allow From 均為空 — 所有群組訊息將被靜默丟棄",
   "mcpServers": "MCP 伺服器",
-  "mcpServersDesc": "命名的 MCP 伺服器定義。每個鍵是一個伺服器名稱，包含 command、args 和 env 欄位。"
+  "mcpServersDesc": "命名的 MCP 伺服器定義。每個鍵是一個伺服器名稱，包含 command、args 和 env 欄位。",
+  "askFallback": "審批回退",
+  "askFallbackDesc": "審批逾時或無人回應時的回退策略",
+  "strictInlineEval": "嚴格內聯求值",
+  "strictInlineEvalDesc": "阻止內聯 shell 求值（如 $() 反引號）",
+  "safeBinTrustedDirs": "受信目錄",
+  "safeBinTrustedDirsDesc": "安全二進位檔案的受信目錄",
+  "phSafeBinTrustedDirs": "/usr/local/bin, ~/bin"
 }

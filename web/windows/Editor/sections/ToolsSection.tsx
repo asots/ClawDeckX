@@ -29,6 +29,10 @@ export const ToolsSection: React.FC<SectionProps> = ({ schema, setField, getFiel
     { value: 'off', label: es.optOff }, { value: 'on-miss', label: es.optOnMiss || 'On Miss' }, { value: 'always', label: es.optAlways || 'Always' },
   ], [es]);
 
+  const EXEC_ASK_FALLBACK_OPTIONS = useMemo(() => [
+    { value: 'deny', label: es.optDeny || 'Deny' }, { value: 'allowlist', label: es.optAllowlist || 'Allowlist' },
+  ], [es]);
+
   const SESSION_VISIBILITY_OPTIONS = useMemo(() => [
     { value: 'self', label: es.optSelf || 'Self' }, { value: 'tree', label: es.optTree || 'Tree' }, { value: 'agent', label: es.optAgent || 'Agent' }, { value: 'all', label: es.optAll || 'All' },
   ], [es]);
@@ -44,10 +48,13 @@ export const ToolsSection: React.FC<SectionProps> = ({ schema, setField, getFiel
 
       <ConfigSection title={es.exec} icon="terminal" iconColor="text-red-500">
         <SelectField label={es.execHost} tooltip={tip('tools.exec.host')} value={g(['exec', 'host']) || 'sandbox'} onChange={v => s(['exec', 'host'], v)} options={EXEC_HOST_OPTIONS} />
-        <SelectField label={es.security} tooltip={tip('tools.exec.security')} value={g(['exec', 'security']) || 'deny'} onChange={v => s(['exec', 'security'], v)} options={EXEC_SECURITY_OPTIONS} />
-        <SelectField label={es.askBeforeExec} tooltip={tip('tools.exec.ask')} value={g(['exec', 'ask']) || 'on-miss'} onChange={v => s(['exec', 'ask'], v)} options={EXEC_ASK_OPTIONS} />
+        <SelectField label={es.security} tooltip={tip('tools.exec.security')} value={g(['exec', 'security']) || 'full'} onChange={v => s(['exec', 'security'], v)} options={EXEC_SECURITY_OPTIONS} />
+        <SelectField label={es.askBeforeExec} tooltip={tip('tools.exec.ask')} value={g(['exec', 'ask']) || 'off'} onChange={v => s(['exec', 'ask'], v)} options={EXEC_ASK_OPTIONS} />
+        <SelectField label={es.askFallback || 'Ask Fallback'} desc={es.askFallbackDesc} tooltip={tip('tools.exec.askFallback')} value={g(['exec', 'askFallback']) || 'deny'} onChange={v => s(['exec', 'askFallback'], v)} options={EXEC_ASK_FALLBACK_OPTIONS} />
         <NumberField label={es.timeoutS} tooltip={tip('tools.exec.timeout')} value={g(['exec', 'timeout'])} onChange={v => s(['exec', 'timeout'], v)} min={0} />
+        <SwitchField label={es.strictInlineEval || 'Strict Inline Eval'} desc={es.strictInlineEvalDesc} tooltip={tip('tools.exec.strictInlineEval')} value={g(['exec', 'strictInlineEval']) === true} onChange={v => s(['exec', 'strictInlineEval'], v)} />
         <ArrayField label={es.safeBins} desc={es.safeBinsDesc} tooltip={tip('tools.exec.safeBins')} value={g(['exec', 'safeBins']) || []} onChange={v => s(['exec', 'safeBins'], v)} placeholder={es.phSafeBins} />
+        <ArrayField label={es.safeBinTrustedDirs || 'Trusted Directories'} desc={es.safeBinTrustedDirsDesc} tooltip={tip('tools.exec.safeBinTrustedDirs')} value={g(['exec', 'safeBinTrustedDirs']) || []} onChange={v => s(['exec', 'safeBinTrustedDirs'], v)} placeholder={es.phSafeBinTrustedDirs || '/usr/local/bin, ~/bin'} />
       </ConfigSection>
 
       <ConfigSection title={es.fsConfig || 'Filesystem'} icon="folder" iconColor="text-yellow-500" defaultOpen={false}>

@@ -250,5 +250,14 @@
   "removeDevice": "기기 제거",
   "deviceRemoved": "기기가 제거되었습니다",
   "confirmRemoveTitle": "기기 제거",
-  "confirmRemoveDesc": "기기 {name}을(를) 제거하시겠습니까? 모든 토큰이 해지되며 다시 페어링해야 합니다."
+  "confirmRemoveDesc": "기기 {name}을(를) 제거하시겠습니까? 모든 토큰이 해지되며 다시 페어링해야 합니다.",
+  "securityPolicy": "보안 정책",
+  "secExec": "실행",
+  "secExecHost": "호스트",
+  "secExecAsk": "확인",
+  "secAskFallback": "폴백",
+  "secFsWsOnly": "WS만",
+  "secProfile": "프로필",
+  "secSandbox": "샌드박스",
+  "secToolPolicy": "도구 정책"
 }

@@ -250,5 +250,14 @@
   "removeDevice": "إزالة الجهاز",
   "deviceRemoved": "تمت إزالة الجهاز",
   "confirmRemoveTitle": "إزالة الجهاز",
-  "confirmRemoveDesc": "إزالة الجهاز {name}؟ سيتم إلغاء جميع الرموز وسيحتاج الجهاز إلى إعادة الاقتران."
+  "confirmRemoveDesc": "إزالة الجهاز {name}؟ سيتم إلغاء جميع الرموز وسيحتاج الجهاز إلى إعادة الاقتران.",
+  "securityPolicy": "سياسة الأمان",
+  "secExec": "تنفيذ",
+  "secExecHost": "المضيف",
+  "secExecAsk": "تأكيد",
+  "secAskFallback": "احتياطي",
+  "secFsWsOnly": "مساحة العمل فقط",
+  "secProfile": "ملف تعريف",
+  "secSandbox": "صندوق رمل",
+  "secToolPolicy": "سياسة الأدوات"
 }

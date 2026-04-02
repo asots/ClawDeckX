@@ -10,6 +10,8 @@ import CustomSelect from '../components/CustomSelect';
 import NumberStepper from '../components/NumberStepper';
 import EmptyState from '../components/EmptyState';
 import { copyToClipboard } from '../utils/clipboard';
+import { SecurityPolicyBadges } from '../components/SecurityPolicyBadges';
+import { normalizeExecSecurity, type ExecPolicy, type ExecSecurity, type ExecAsk, type AskFallback } from '../utils/exec-policy';
 
 interface NodesProps { language: Language; }
 
@@ -1407,6 +1409,40 @@ const Nodes: React.FC<NodesProps> = ({ language }) => {
                                     <span className="text-slate-400 dark:text-white/35">{nd.paired}</span><span className={`font-bold ${nodeDetail.paired ? 'text-mac-green' : 'text-slate-400'}`}>{nodeDetail.paired ? '✓' : '✗'}</span>
                                     <span className="text-slate-400 dark:text-white/35">{nd.online}</span><span className={`font-bold ${nodeDetail.connected ? 'text-mac-green' : 'text-slate-400'}`}>{nodeDetail.connected ? '✓' : '✗'}</span>
                                   </div>
+
+                                  {/* Security Policy Summary */}
+                                  {config && (() => {
+                                    const toolsCfg = (config as any)?.tools || {};
+                                    const globalExecSec = normalizeExecSecurity(toolsCfg.exec?.security) || 'full';
+                                    const globalExecHost = toolsCfg.exec?.host || 'sandbox';
+                                    const globalExecAsk = toolsCfg.exec?.ask || 'off';
+                                    const globalAskFallback = toolsCfg.exec?.askFallback || 'deny';
+                                    const globalProfile = toolsCfg.profile || 'full';
+                                    const fsWsOnly = toolsCfg.fs?.workspaceOnly ?? false;
+                                    return (
+                                      <div className="p-2.5 rounded-xl bg-primary/[0.02] dark:bg-primary/[0.04] border border-primary/10">
+                                        <div className="flex items-center gap-1.5 mb-1.5">
+                                          <span className="material-symbols-outlined text-[11px] text-primary">security</span>
+                                          <span className="text-[9px] font-bold text-primary uppercase">{nd.securityPolicy || 'Security Policy'}</span>
+                                        </div>
+                                        <SecurityPolicyBadges
+                                          policy={{
+                                            toolProfile: globalProfile,
+                                            execSecurity: globalExecSec as ExecSecurity,
+                                            execHost: globalExecHost,
+                                            execAsk: globalExecAsk as ExecAsk,
+                                            askFallback: globalAskFallback as AskFallback,
+                                            sandboxMode: 'Off',
+                                            fsWsOnly: !!fsWsOnly,
+                                          }}
+                                          labels={nd}
+                                          hideAskWhenOff
+                                          hideSandboxWhenOff
+                                          compact
+                                        />
+                                      </div>
+                                    );
+                                  })()}
 
                                   <div>
                                     <div className="text-[11px] font-bold text-slate-400 dark:text-white/35 uppercase tracking-wider mb-1">{nd.capabilities}</div>

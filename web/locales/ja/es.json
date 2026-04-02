@@ -1317,5 +1317,12 @@
   "wizWarnDmAllowlistEmpty": "DMポリシーが「許可リスト」ですが Allow From が空です — すべてのDMが無視されます",
   "wizWarnGroupAllowlistEmpty": "グループポリシーが「許可リスト」ですが Allow From / Group Allow From が空です — すべてのグループメッセージが無視されます",
   "mcpServers": "MCP サーバー",
-  "mcpServersDesc": "名前付き MCP サーバー定義。各キーはコマンド、引数、環境変数フィールドを持つサーバー名です。"
+  "mcpServersDesc": "名前付き MCP サーバー定義。各キーはコマンド、引数、環境変数フィールドを持つサーバー名です。",
+  "askFallback": "承認フォールバック",
+  "askFallbackDesc": "承認タイムアウト時のフォールバックポリシー",
+  "strictInlineEval": "厳格インライン評価",
+  "strictInlineEvalDesc": "インラインシェル評価をブロック（例：$() バッククォート）",
+  "safeBinTrustedDirs": "信頼ディレクトリ",
+  "safeBinTrustedDirsDesc": "安全なバイナリを信頼するディレクトリ",
+  "phSafeBinTrustedDirs": "/usr/local/bin, ~/bin"
 }

@@ -1317,5 +1317,12 @@
   "wizWarnDmAllowlistEmpty": "سياسة الرسائل الخاصة \"قائمة السماح\" لكن Allow From فارغ — سيتم تجاهل جميع الرسائل الخاصة",
   "wizWarnGroupAllowlistEmpty": "سياسة المجموعة \"قائمة السماح\" لكن Allow From / Group Allow From فارغان — سيتم تجاهل جميع رسائل المجموعة",
   "mcpServers": "خوادم MCP",
-  "mcpServersDesc": "تعريفات خوادم MCP المسماة. كل مفتاح هو اسم خادم يحتوي على حقول command وargs وenv."
+  "mcpServersDesc": "تعريفات خوادم MCP المسماة. كل مفتاح هو اسم خادم يحتوي على حقول command وargs وenv.",
+  "askFallback": "الإجراء الاحتياطي للموافقة",
+  "askFallbackDesc": "السياسة الاحتياطية عند انتهاء مهلة الموافقة",
+  "strictInlineEval": "تقييم مضمن صارم",
+  "strictInlineEvalDesc": "حظر تقييم الصدفة المضمن",
+  "safeBinTrustedDirs": "الأدلة الموثوقة",
+  "safeBinTrustedDirsDesc": "الأدلة التي يتم الوثوق بالملفات الثنائية فيها",
+  "phSafeBinTrustedDirs": "/usr/local/bin, ~/bin"
 }

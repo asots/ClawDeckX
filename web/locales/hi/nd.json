@@ -250,5 +250,14 @@
   "removeDevice": "डिवाइस हटाएं",
   "deviceRemoved": "डिवाइस हटाया गया",
   "confirmRemoveTitle": "डिवाइस हटाएं",
-  "confirmRemoveDesc": "डिवाइस {name} हटाएं? सभी टोकन रद्द हो जाएंगे और डिवाइस को फिर से पेयर करना होगा।"
+  "confirmRemoveDesc": "डिवाइस {name} हटाएं? सभी टोकन रद्द हो जाएंगे और डिवाइस को फिर से पेयर करना होगा।",
+  "securityPolicy": "सुरक्षा नीति",
+  "secExec": "निष्पादन",
+  "secExecHost": "होस्ट",
+  "secExecAsk": "पुष्टि",
+  "secAskFallback": "फ़ॉलबैक",
+  "secFsWsOnly": "केवल WS",
+  "secProfile": "प्रोफ़ाइल",
+  "secSandbox": "सैंडबॉक्स",
+  "secToolPolicy": "उपकरण नीति"
 }

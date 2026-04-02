@@ -250,5 +250,14 @@
   "removeDevice": "デバイスを削除",
   "deviceRemoved": "デバイスが削除されました",
   "confirmRemoveTitle": "デバイスを削除",
-  "confirmRemoveDesc": "デバイス {name} を削除しますか？すべてのトークンが無効化され、再ペアリングが必要になります。"
+  "confirmRemoveDesc": "デバイス {name} を削除しますか？すべてのトークンが無効化され、再ペアリングが必要になります。",
+  "securityPolicy": "セキュリティポリシー",
+  "secExec": "実行",
+  "secExecHost": "ホスト",
+  "secExecAsk": "確認",
+  "secAskFallback": "フォールバック",
+  "secFsWsOnly": "WSのみ",
+  "secProfile": "プロファイル",
+  "secSandbox": "サンドボックス",
+  "secToolPolicy": "ツールポリシー"
 }

@@ -5,6 +5,8 @@ import { getTranslation } from '../locales';
 import { gwApi, workspaceMemoryApi, MemoryFileEntry, multiAgentApi, WizardStep2Request } from '../services/api';
 import { useGatewayStatus } from '../hooks/useGatewayStatus';
 import { fmtAgoCompact } from '../utils/time';
+import { normalizeExecSecurity, type ExecPolicy, type ExecPolicySource, type ExecSecurity, type ExecAsk, type AskFallback } from '../utils/exec-policy';
+import { SecurityPolicyBadges } from '../components/SecurityPolicyBadges';
 import { subscribeManagerWS } from '../services/manager-ws';
 import { templateSystem, WorkspaceTemplate, resolveTemplatePrompt, MultiAgentTemplate } from '../services/template-system';
 import { useToast } from '../components/Toast';
@@ -54,16 +56,6 @@ function extractRunText(content: unknown): string {
   return '';
 }
 
-function normalizeExecSecurity(value: unknown): string {
-  if (typeof value !== 'string') return '';
-  const trimmed = value.trim();
-  if (!trimmed) return '';
-  if (trimmed === 'prompt') return 'allowlist';
-  if (trimmed === 'sandbox') return 'deny';
-  if (trimmed === 'none') return 'full';
-  if (trimmed === 'deny' || trimmed === 'allowlist' || trimmed === 'full') return trimmed;
-  return '';
-}
 
 const Agents: React.FC<AgentsProps> = ({ language }) => {
   const t = useMemo(() => getTranslation(language), [language]);
@@ -1273,7 +1265,8 @@ const Agents: React.FC<AgentsProps> = ({ language }) => {
                       const liveExec = {
                         host: agentTools.exec?.host ?? globalTools.exec?.host ?? '',
                         security: normalizeExecSecurity(agentTools.exec?.security ?? globalTools.exec?.security ?? ''),
-                        ask: agentTools.exec?.ask ?? globalTools.exec?.ask ?? false,
+                        ask: agentTools.exec?.ask ?? globalTools.exec?.ask ?? 'off',
+                        askFallback: agentTools.exec?.askFallback ?? globalTools.exec?.askFallback ?? 'deny',
                       };
                       const liveFsWsOnly = agentTools.fs?.workspaceOnly ?? globalTools.fs?.workspaceOnly ?? false;
                       const liveAllow: string[] = Array.isArray(agentTools.allow) ? agentTools.allow : (Array.isArray(globalTools.allow) ? globalTools.allow : []);
@@ -1283,11 +1276,12 @@ const Agents: React.FC<AgentsProps> = ({ language }) => {
                       const execHost = draft.execHost ?? liveExec.host;
                       const execSecurity = normalizeExecSecurity(draft.execSecurity ?? liveExec.security);
                       const execAsk = draft.execAsk ?? liveExec.ask;
+                      const execAskFallback = draft.execAskFallback ?? liveExec.askFallback;
                       const fsWsOnly = draft.fsWsOnly ?? liveFsWsOnly;
                       const PROFILES = ['minimal', 'coding', 'messaging', 'full'];
                       const PROFILE_LABELS: Record<string, string> = { minimal: a.toolProfileMinimal || 'Minimal', coding: a.toolProfileCoding || 'Coding', messaging: a.toolProfileMessaging || 'Messaging', full: a.toolProfileFull || 'Full' };
                       const toolDirty = toolDraft !== null;
-                      const initDraft = () => toolDraft || { profile: liveProfile, allow: [...liveAllow], deny: [...liveDeny], alsoAllow: [...liveAlsoAllow], execHost: liveExec.host, execSecurity: liveExec.security, execAsk: liveExec.ask, fsWsOnly: liveFsWsOnly };
+                      const initDraft = () => toolDraft || { profile: liveProfile, allow: [...liveAllow], deny: [...liveDeny], alsoAllow: [...liveAlsoAllow], execHost: liveExec.host, execSecurity: liveExec.security, execAsk: liveExec.ask, execAskFallback: liveExec.askFallback, fsWsOnly: liveFsWsOnly };
 
                       const saveSecConfig = async () => {
                         if (!toolDraft) return;
@@ -1301,7 +1295,7 @@ const Agents: React.FC<AgentsProps> = ({ language }) => {
                             toolsPatch.allow = toolDraft.allow?.length > 0 ? toolDraft.allow : [];
                             toolsPatch.deny = toolDraft.deny?.length > 0 ? toolDraft.deny : [];
                             toolsPatch.alsoAllow = toolDraft.alsoAllow?.length > 0 ? toolDraft.alsoAllow : [];
-                            toolsPatch.exec = { host: toolDraft.execHost || undefined, security: normalizedExecSecurity || undefined, ask: toolDraft.execAsk || undefined };
+                            toolsPatch.exec = { host: toolDraft.execHost || undefined, security: normalizedExecSecurity || undefined, ask: toolDraft.execAsk || undefined, askFallback: toolDraft.execAskFallback || undefined };
                             toolsPatch.fs = { workspaceOnly: toolDraft.fsWsOnly || undefined };
                             return { ...e, tools: toolsPatch };
                           });
@@ -1346,7 +1340,7 @@ const Agents: React.FC<AgentsProps> = ({ language }) => {
                           {/* Exec & FS settings */}
                           <div className="mb-1">
                             <p className="text-[9px] font-bold text-slate-400 dark:text-white/25 uppercase mb-2">{a.secExecSecurity || 'Exec Security'}</p>
-                            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
                               <div>
                                 <label className="text-[9px] font-bold text-slate-400 dark:text-white/20 uppercase block mb-1">{a.toolExecHost || 'Host'}</label>
                                 <input value={execHost} onChange={e => { const d = initDraft(); setToolDraft({ ...d, execHost: e.target.value }); }}
@@ -1365,14 +1359,29 @@ const Agents: React.FC<AgentsProps> = ({ language }) => {
                                   ]}
                                   className="w-full max-w-[140px] h-7 px-2 bg-white dark:bg-white/[0.03] border border-slate-200 dark:border-white/10 rounded-md text-[10px] text-slate-600 dark:text-white/60" />
                               </div>
-                              <label className="flex items-center gap-2.5 cursor-pointer select-none py-1">
-                                <button type="button" role="switch" aria-checked={execAsk} disabled={toolSaving}
-                                  onClick={() => { const d = initDraft(); setToolDraft({ ...d, execAsk: !execAsk }); }}
-                                  className={`relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${execAsk ? 'bg-primary' : 'bg-slate-300 dark:bg-white/15'}`}>
-                                  <span className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-sm transform transition duration-200 ease-in-out ${execAsk ? 'translate-x-4' : 'translate-x-0'}`} />
-                                </button>
-                                <span className="text-[10px] font-bold text-slate-500 dark:text-white/40">{a.toolExecAsk || 'Ask'}</span>
-                              </label>
+                              <div>
+                                <label className="text-[9px] font-bold text-slate-400 dark:text-white/20 uppercase block mb-1">{a.toolExecAsk || 'Ask'}</label>
+                                <CustomSelect value={execAsk || 'off'}
+                                  onChange={v => { const d = initDraft(); setToolDraft({ ...d, execAsk: v }); }}
+                                  options={[
+                                    { value: 'off', label: a.execAskOff || 'Off' },
+                                    { value: 'on-miss', label: a.execAskOnMiss || 'On Miss' },
+                                    { value: 'always', label: a.execAskAlways || 'Always' },
+                                  ]}
+                                  className="w-full max-w-[140px] h-7 px-2 bg-white dark:bg-white/[0.03] border border-slate-200 dark:border-white/10 rounded-md text-[10px] text-slate-600 dark:text-white/60" />
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end mt-3">
+                              <div>
+                                <label className="text-[9px] font-bold text-slate-400 dark:text-white/20 uppercase block mb-1">{a.toolExecAskFallback || 'Ask Fallback'}</label>
+                                <CustomSelect value={execAskFallback || 'deny'}
+                                  onChange={v => { const d = initDraft(); setToolDraft({ ...d, execAskFallback: v }); }}
+                                  options={[
+                                    { value: 'deny', label: a.execFallbackDeny || 'Deny' },
+                                    { value: 'allowlist', label: a.execFallbackAllowlist || 'Allowlist' },
+                                  ]}
+                                  className="w-full max-w-[140px] h-7 px-2 bg-white dark:bg-white/[0.03] border border-slate-200 dark:border-white/10 rounded-md text-[10px] text-slate-600 dark:text-white/60" />
+                              </div>
                               <label className="flex items-center gap-2.5 cursor-pointer select-none py-1">
                                 <button type="button" role="switch" aria-checked={fsWsOnly} disabled={toolSaving}
                                   onClick={() => { const d = initDraft(); setToolDraft({ ...d, fsWsOnly: !fsWsOnly }); }}
@@ -1383,6 +1392,31 @@ const Agents: React.FC<AgentsProps> = ({ language }) => {
                               </label>
                             </div>
                           </div>
+
+                          {/* Policy Preview (before save) */}
+                          {toolDirty && (
+                            <div className="mt-3 pt-3 border-t border-primary/10">
+                              <div className="flex items-center gap-1.5 mb-2">
+                                <span className="material-symbols-outlined text-[11px] text-primary">preview</span>
+                                <span className="text-[9px] font-bold text-primary uppercase">{a.policyPreview || 'Policy Preview'}</span>
+                              </div>
+                              <SecurityPolicyBadges
+                                policy={{
+                                  toolProfile: profile,
+                                  execSecurity: (execSecurity || 'full') as ExecSecurity,
+                                  execHost: execHost || 'sandbox',
+                                  execAsk: (execAsk || 'off') as ExecAsk,
+                                  askFallback: (execAskFallback || 'deny') as AskFallback,
+                                  sandboxMode: 'Off',
+                                  fsWsOnly: fsWsOnly,
+                                }}
+                                labels={a}
+                                hideAskWhenOff
+                                hideSandboxWhenOff
+                                compact
+                              />
+                            </div>
+                          )}
 
                           {/* Save / Reset */}
                           {(toolDirty || toolSaving) && (

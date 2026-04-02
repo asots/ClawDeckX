@@ -1317,5 +1317,12 @@
   "wizWarnDmAllowlistEmpty": "DM policy is \"Allowlist\" but Allow From is empty — all DMs will be silently dropped",
   "wizWarnGroupAllowlistEmpty": "Group policy is \"Allowlist\" but Allow From / Group Allow From are both empty — all group messages will be silently dropped",
   "mcpServers": "MCP Servers",
-  "mcpServersDesc": "Named MCP server definitions. Each key is a server name with command, args, and env fields."
+  "mcpServersDesc": "Named MCP server definitions. Each key is a server name with command, args, and env fields.",
+  "askFallback": "Ask Fallback",
+  "askFallbackDesc": "Fallback policy when approval times out",
+  "strictInlineEval": "Strict Inline Eval",
+  "strictInlineEvalDesc": "Block inline shell evaluation (e.g. $() backticks)",
+  "safeBinTrustedDirs": "Trusted Directories",
+  "safeBinTrustedDirsDesc": "Directories where safe binaries are trusted",
+  "phSafeBinTrustedDirs": "/usr/local/bin, ~/bin"
 }

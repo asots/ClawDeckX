@@ -1317,5 +1317,12 @@
   "wizWarnDmAllowlistEmpty": "私聊策略为「白名单」但 Allow From 为空 — 所有私聊消息将被静默丢弃",
   "wizWarnGroupAllowlistEmpty": "群聊策略为「白名单」但 Allow From / Group Allow From 均为空 — 所有群聊消息将被静默丢弃",
   "mcpServers": "MCP 服务器",
-  "mcpServersDesc": "命名的 MCP 服务器定义。每个键是一个服务器名称，包含 command、args 和 env 字段。"
+  "mcpServersDesc": "命名的 MCP 服务器定义。每个键是一个服务器名称，包含 command、args 和 env 字段。",
+  "askFallback": "审批回退",
+  "askFallbackDesc": "审批超时或无人响应时的回退策略",
+  "strictInlineEval": "严格内联求值",
+  "strictInlineEvalDesc": "阻止内联 shell 求值（如 $() 反引号）",
+  "safeBinTrustedDirs": "受信目录",
+  "safeBinTrustedDirsDesc": "安全二进制文件的受信目录",
+  "phSafeBinTrustedDirs": "/usr/local/bin, ~/bin"
 }

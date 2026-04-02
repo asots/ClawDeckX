@@ -112,6 +112,8 @@
     "secExecSecurity": "執行安全",
     "secDenyList": "拒絕列表",
     "secAllowList": "允許列表",
-    "secFsWsOnly": "工作區檔案系統"
+    "secFsWsOnly": "工作區檔案系統",
+    "secExecHost": "執行主機",
+    "secExecAsk": "執行確認"
   }
 }

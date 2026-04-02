@@ -1317,5 +1317,12 @@
   "wizWarnDmAllowlistEmpty": "La politique DM est \"Liste autorisée\" mais Allow From est vide — tous les DMs seront ignorés",
   "wizWarnGroupAllowlistEmpty": "La politique de groupe est \"Liste autorisée\" mais Allow From / Group Allow From sont vides — tous les messages de groupe seront ignorés",
   "mcpServers": "Serveurs MCP",
-  "mcpServersDesc": "Définitions de serveurs MCP nommés. Chaque clé est un nom de serveur avec des champs command, args et env."
+  "mcpServersDesc": "Définitions de serveurs MCP nommés. Chaque clé est un nom de serveur avec des champs command, args et env.",
+  "askFallback": "Repli d'approbation",
+  "askFallbackDesc": "Politique de repli en cas d'expiration de l'approbation",
+  "strictInlineEval": "Évaluation en ligne stricte",
+  "strictInlineEvalDesc": "Bloquer l'évaluation shell en ligne (ex. $() backticks)",
+  "safeBinTrustedDirs": "Répertoires de confiance",
+  "safeBinTrustedDirsDesc": "Répertoires où les binaires sûrs sont approuvés",
+  "phSafeBinTrustedDirs": "/usr/local/bin, ~/bin"
 }

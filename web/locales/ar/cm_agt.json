@@ -227,6 +227,13 @@
     "tasksByRuntime": "حسب بيئة التشغيل",
     "tasksNoData": "لا توجد بيانات مهام",
     "tasksNote": "ملخص المهام من نقطة نهاية حالة البوابة. يمكن إدارة تفاصيل المهام الفردية عبر OpenClaw CLI.",
-    "chAfPlaceholder": "Group/User ID…"
+    "chAfPlaceholder": "Group/User ID…",
+    "execAskOff": "إيقاف",
+    "execAskOnMiss": "عند عدم التطابق",
+    "execAskAlways": "دائماً",
+    "toolExecAskFallback": "الإجراء الاحتياطي",
+    "execFallbackDeny": "رفض",
+    "execFallbackAllowlist": "قائمة السماح",
+    "policyPreview": "معاينة السياسة"
   }
 }

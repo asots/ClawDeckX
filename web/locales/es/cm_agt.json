@@ -227,6 +227,13 @@
     "tasksByRuntime": "Por entorno",
     "tasksNoData": "No hay datos de tareas",
     "tasksNote": "Resumen de tareas del endpoint de estado del gateway. Los detalles individuales se gestionan a través de OpenClaw CLI.",
-    "chAfPlaceholder": "Group/User ID…"
+    "chAfPlaceholder": "Group/User ID…",
+    "execAskOff": "Desactivado",
+    "execAskOnMiss": "Al fallar",
+    "execAskAlways": "Siempre",
+    "toolExecAskFallback": "Fallback de aprobación",
+    "execFallbackDeny": "Denegar",
+    "execFallbackAllowlist": "Lista permitida",
+    "policyPreview": "Vista previa de política"
   }
 }

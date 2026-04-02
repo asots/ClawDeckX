@@ -3542,6 +3542,8 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
             toolProfile: agentTools.profile || globalTools.profile || 'full',
             sandboxMode: sandboxCfg.mode || sandboxCfg.backend || 'Off',
             execSecurity: agentTools.exec?.security || globalTools.exec?.security || '—',
+            execHost: agentTools.exec?.host || globalTools.exec?.host || 'sandbox',
+            execAsk: agentTools.exec?.ask || globalTools.exec?.ask || 'off',
           };
         })()}
         session={(() => {

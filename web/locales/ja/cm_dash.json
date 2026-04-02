@@ -112,6 +112,8 @@
     "secExecSecurity": "実行セキュリティ",
     "secDenyList": "拒否リスト",
     "secAllowList": "許可リスト",
-    "secFsWsOnly": "ワークスペースFS"
+    "secFsWsOnly": "ワークスペースFS",
+    "secExecHost": "実行ホスト",
+    "secExecAsk": "実行確認"
   }
 }

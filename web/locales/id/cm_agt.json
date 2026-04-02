@@ -227,6 +227,13 @@
     "tasksByRuntime": "Berdasarkan Runtime",
     "tasksNoData": "Tidak ada data tugas",
     "tasksNote": "Ringkasan tugas dari endpoint status gateway. Detail tugas individual dikelola melalui OpenClaw CLI.",
-    "chAfPlaceholder": "Group/User ID…"
+    "chAfPlaceholder": "Group/User ID…",
+    "execAskOff": "Mati",
+    "execAskOnMiss": "Saat Gagal",
+    "execAskAlways": "Selalu",
+    "toolExecAskFallback": "Fallback Persetujuan",
+    "execFallbackDeny": "Tolak",
+    "execFallbackAllowlist": "Daftar Izin",
+    "policyPreview": "Pratinjau Kebijakan"
   }
 }

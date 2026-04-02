@@ -227,6 +227,13 @@
     "tasksByRuntime": "런타임별",
     "tasksNoData": "작업 데이터가 없습니다",
     "tasksNote": "게이트웨이 상태 엔드포인트의 작업 요약입니다. 개별 작업 세부 정보는 OpenClaw CLI를 통해 관리할 수 있습니다.",
-    "chAfPlaceholder": "그룹/사용자 ID…"
+    "chAfPlaceholder": "그룹/사용자 ID…",
+    "execAskOff": "꺼짐",
+    "execAskOnMiss": "미스 시",
+    "execAskAlways": "항상",
+    "toolExecAskFallback": "승인 폴백",
+    "execFallbackDeny": "거부",
+    "execFallbackAllowlist": "허용 목록",
+    "policyPreview": "정책 미리보기"
   }
 }

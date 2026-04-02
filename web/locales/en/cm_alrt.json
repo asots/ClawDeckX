@@ -160,6 +160,8 @@
     "securityFullConfirm": "I understand the risk, confirm",
     "hashConflict": "Config has been modified by another client. Please refresh and re-edit",
     "daysAgo": "days ago",
-    "fwdTestDesc": "Send a test message to configured targets to verify the setup"
+    "fwdTestDesc": "Send a test message to configured targets to verify the setup",
+    "effectivePolicy": "Effective Policy",
+    "effectiveFromAgent": "agent override"
   }
 }

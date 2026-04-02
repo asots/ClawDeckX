@@ -227,6 +227,13 @@
     "tasksByRuntime": "By Runtime",
     "tasksNoData": "No task data available",
     "tasksNote": "Task summary from the gateway status endpoint. Individual task details are managed via the OpenClaw CLI.",
-    "chAfPlaceholder": "Group/User ID…"
+    "chAfPlaceholder": "Group/User ID…",
+    "execAskOff": "Off",
+    "execAskOnMiss": "On Miss",
+    "execAskAlways": "Always",
+    "toolExecAskFallback": "Ask Fallback",
+    "execFallbackDeny": "Deny",
+    "execFallbackAllowlist": "Allowlist",
+    "policyPreview": "Policy Preview"
   }
 }

@@ -160,6 +160,8 @@
     "securityFullConfirm": "Je comprends le risque, confirmer",
     "hashConflict": "La config a été modifiée par un autre client. Veuillez actualiser et rééditer",
     "daysAgo": "j",
-    "fwdTestDesc": "Envoyer un message de test aux cibles configurées pour vérifier la configuration"
+    "fwdTestDesc": "Envoyer un message de test aux cibles configurées pour vérifier la configuration",
+    "effectivePolicy": "Politique effective",
+    "effectiveFromAgent": "remplacement agent"
   }
 }

@@ -250,5 +250,14 @@
   "removeDevice": "Eliminar dispositivo",
   "deviceRemoved": "Dispositivo eliminado",
   "confirmRemoveTitle": "Eliminar dispositivo",
-  "confirmRemoveDesc": "¿Eliminar dispositivo {name}? Se revocarán todos los tokens y el dispositivo deberá emparejarse de nuevo."
+  "confirmRemoveDesc": "¿Eliminar dispositivo {name}? Se revocarán todos los tokens y el dispositivo deberá emparejarse de nuevo.",
+  "securityPolicy": "Política de seguridad",
+  "secExec": "Exec",
+  "secExecHost": "Host",
+  "secExecAsk": "Confirmar",
+  "secAskFallback": "Fallback",
+  "secFsWsOnly": "Solo WS",
+  "secProfile": "Perfil",
+  "secSandbox": "Sandbox",
+  "secToolPolicy": "Política de herramientas"
 }

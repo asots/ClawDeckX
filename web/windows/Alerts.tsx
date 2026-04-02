@@ -9,6 +9,8 @@ import { useConfirm } from '../components/ConfirmDialog';
 import CustomSelect from '../components/CustomSelect';
 import NumberStepper from '../components/NumberStepper';
 import { subscribeManagerWS } from '../services/manager-ws';
+import { SecurityPolicyBadges } from '../components/SecurityPolicyBadges';
+import { normalizeExecSecurity, normalizeExecAsk, type ExecPolicy, type ExecPolicySource, type ExecSecurity, type ExecAsk, type AskFallback } from '../utils/exec-policy';
 
 interface AlertsProps { language: Language; }
 
@@ -859,6 +861,72 @@ const Alerts: React.FC<AlertsProps> = ({ language }) => {
               ))}
             </div>
 
+            {/* ── Effective Policy Summary ── */}
+            <div className="rounded-2xl border border-primary/20 bg-primary/[0.02] dark:bg-primary/[0.04] p-4 sci-card">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="material-symbols-outlined text-[16px] text-primary">verified_user</span>
+                <h3 className="text-[11px] font-bold text-primary uppercase tracking-wider">{a.effectivePolicy || 'Effective Policy'}</h3>
+                {!isDefaults && (
+                  <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold bg-amber-500/10 text-amber-500">
+                    {selectedScope}
+                  </span>
+                )}
+              </div>
+              {(() => {
+                const effectiveSec = (!isDefaults && scopeData.security) ? scopeData.security : (defaults.security || 'full');
+                const effectiveAsk = (!isDefaults && scopeData.ask) ? scopeData.ask : (defaults.ask || 'off');
+                const effectiveFallback = (!isDefaults && scopeData.askFallback) ? scopeData.askFallback : (defaults.askFallback || 'deny');
+                const effectiveTimeout = scopeData.askTimeout ?? defaults.askTimeout ?? 120;
+                const effectiveAutoAllow = scopeData.autoAllowSkills ?? defaults.autoAllowSkills ?? false;
+
+                const policy: ExecPolicy = {
+                  toolProfile: 'full',
+                  execSecurity: (effectiveSec || 'full') as ExecSecurity,
+                  execHost: 'sandbox',
+                  execAsk: (effectiveAsk || 'off') as ExecAsk,
+                  askFallback: (effectiveFallback || 'deny') as AskFallback,
+                  sandboxMode: 'Off',
+                  fsWsOnly: false,
+                };
+                const source: ExecPolicySource = {
+                  toolProfile: 'global',
+                  execSecurity: (!isDefaults && scopeData.security) ? 'agent' : 'global',
+                  execHost: 'global',
+                  execAsk: (!isDefaults && scopeData.ask) ? 'agent' : 'global',
+                  askFallback: (!isDefaults && scopeData.askFallback) ? 'agent' : 'global',
+                  sandboxMode: 'global',
+                  fsWsOnly: 'global',
+                };
+
+                return (
+                  <div className="space-y-2.5">
+                    <SecurityPolicyBadges
+                      policy={policy}
+                      source={source}
+                      labels={a}
+                      showSource={!isDefaults}
+                      hideAskWhenOff={false}
+                      hideSandboxWhenOff
+                      compact
+                    />
+                    <div className="flex flex-wrap gap-3 text-[10px] mt-2 pt-2 border-t border-primary/10">
+                      <span className="text-slate-500 dark:text-white/40">
+                        <span className="font-bold">{a.timeoutConfig || 'Timeout'}:</span> {effectiveTimeout}s
+                      </span>
+                      <span className="text-slate-500 dark:text-white/40">
+                        <span className="font-bold">{a.autoAllowSkills || 'Auto-allow skills'}:</span> {effectiveAutoAllow ? (a.on || 'On') : (a.off || 'Off')}
+                      </span>
+                      {!isDefaults && (
+                        <span className="text-[9px] text-slate-400 dark:text-white/25 italic">
+                          ⬤ = {a.effectiveFromAgent || 'agent override'}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+
             <div className="rounded-2xl border border-slate-200/60 dark:border-white/[0.06] bg-white dark:bg-white/[0.02] p-4 sci-card">
               <h3 className="text-[11px] font-bold theme-text-secondary uppercase tracking-wider mb-4">{a.policy} — {isDefaults ? a.defaults : selectedScope}</h3>
               <div className="space-y-3">
@@ -867,13 +935,13 @@ const Alerts: React.FC<AlertsProps> = ({ language }) => {
                   <div className="flex-1 min-w-0">
                     <p className="text-[11px] font-bold text-slate-700 dark:text-white/70">{a.security}</p>
                     <p className="text-[11px] text-slate-400 dark:text-white/35 mt-0.5">{a.securityDesc}</p>
-                    {!isDefaults && <p className="text-[11px] text-slate-400 dark:text-white/20 mt-0.5">{a.defaults}: {securityLabel(defaults.security || 'deny')}</p>}
+                    {!isDefaults && <p className="text-[11px] text-slate-400 dark:text-white/20 mt-0.5">{a.defaults}: {securityLabel(defaults.security || 'full')}</p>}
                   </div>
                   <CustomSelect
-                    value={isDefaults ? (scopeData.security || 'deny') : (scopeData.security ?? '__default__')}
+                    value={isDefaults ? (scopeData.security || 'full') : (scopeData.security ?? '__default__')}
                     onChange={v => handleSecurityChange(v, isDefaults ? ['defaults'] : ['agents', selectedScope])}
                     options={[
-                      ...(!isDefaults ? [{ value: '__default__', label: `${a.useDefault} (${securityLabel(defaults.security || 'deny')})` }] : []),
+                      ...(!isDefaults ? [{ value: '__default__', label: `${a.useDefault} (${securityLabel(defaults.security || 'full')})` }] : []),
                       { value: 'deny', label: a.optDeny },
                       { value: 'allowlist', label: a.optAllowlist },
                       { value: 'full', label: `${a.optFull}` },
@@ -885,17 +953,17 @@ const Alerts: React.FC<AlertsProps> = ({ language }) => {
                   <div className="flex-1 min-w-0">
                     <p className="text-[11px] font-bold text-slate-700 dark:text-white/70">{a.ask}</p>
                     <p className="text-[11px] text-slate-400 dark:text-white/35 mt-0.5">{a.askDesc}</p>
-                    {!isDefaults && <p className="text-[11px] text-slate-400 dark:text-white/20 mt-0.5">{a.defaults}: {askLabel(defaults.ask || 'on-miss')}</p>}
+                    {!isDefaults && <p className="text-[11px] text-slate-400 dark:text-white/20 mt-0.5">{a.defaults}: {askLabel(defaults.ask || 'off')}</p>}
                   </div>
                   <CustomSelect
-                    value={isDefaults ? (scopeData.ask || 'on-miss') : (scopeData.ask ?? '__default__')}
+                    value={isDefaults ? (scopeData.ask || 'off') : (scopeData.ask ?? '__default__')}
                     onChange={v => {
                       const base = isDefaults ? ['defaults'] : ['agents', selectedScope];
                       if (!isDefaults && v === '__default__') removeFromForm([...base, 'ask']);
                       else patchForm([...base, 'ask'], v);
                     }}
                     options={[
-                      ...(!isDefaults ? [{ value: '__default__', label: `${a.useDefault} (${askLabel(defaults.ask || 'on-miss')})` }] : []),
+                      ...(!isDefaults ? [{ value: '__default__', label: `${a.useDefault} (${askLabel(defaults.ask || 'off')})` }] : []),
                       { value: 'off', label: a.optAskOff },
                       { value: 'on-miss', label: a.optAskOnMiss },
                       { value: 'always', label: a.optAskAlways },
