@@ -965,13 +965,14 @@ export const gwApi = {
     rpc('sessions.preview', { keys: [key], limit: opts?.limit ?? 12, maxChars: opts?.maxChars ?? 240 }),
   sessionsMessages: (key: string, limit = 20) =>
     rpc('sessions.preview', { keys: [key], limit, maxChars: 500 }),
-  sessionsHistory: (key: string) =>
-    rpc('chat.history', { sessionKey: key }),
-  sessionsHistoryPaginated: (key: string, limit?: number, cursor?: string) => {
+  sessionsHistory: (key: string, opts?: { limit?: number; maxChars?: number }) =>
+    rpc('chat.history', { sessionKey: key, ...(opts?.limit ? { limit: opts.limit } : {}), ...(opts?.maxChars ? { maxChars: opts.maxChars } : {}) }),
+  sessionsHistoryPaginated: (key: string, limit?: number, cursor?: string, maxChars?: number) => {
     const qs = new URLSearchParams();
     qs.set('key', key);
     if (limit) qs.set('limit', String(limit));
     if (cursor) qs.set('cursor', cursor);
+    if (maxChars) qs.set('maxChars', String(maxChars));
     return get<{ sessionKey: string; messages: any[]; hasMore: boolean; nextCursor?: string }>(`/api/v1/gw/sessions/history-paginated?${qs.toString()}`);
   },
   sessionsReset: (key: string) =>

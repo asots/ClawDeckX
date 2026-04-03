@@ -204,6 +204,7 @@ const Dashboard: React.FC<DashboardProps> = ({ language }) => {
     data: any; gwStatus: any; sessions: any[]; models: any[]; skills: any[];
     agents: any[]; cronStatus: any; channels: any; usageCost: any; health: any;
     instances: any[]; hostInfo: any; userConfig: any; activeGateway: any;
+    taskSummary: any; taskAudit: any;
   }
   const cachedFast = readCachedFastData();
   const cachedSlow = readCachedSlowData();
@@ -213,6 +214,8 @@ const Dashboard: React.FC<DashboardProps> = ({ language }) => {
     sessions: [], models: [], skills: [],
     agents: [],
     cronStatus: cachedSlow?.cronStatus ?? null,
+    taskSummary: cachedSlow?.taskSummary ?? null,
+    taskAudit: cachedSlow?.taskAudit ?? null,
     channels: cachedFast?.channels ?? null,
     usageCost: cachedSlow?.usageCost ?? null,
     health: cachedFast?.health ?? null,
@@ -234,7 +237,7 @@ const Dashboard: React.FC<DashboardProps> = ({ language }) => {
   const [refreshCountdown, setRefreshCountdown] = useState(FAST_INTERVAL / 1000);
   const [hasFirstDashboardData, setHasFirstDashboardData] = useState(!!cachedFast?.data || !!cachedFast?.gwStatus);
 
-  const { data, gwStatus, sessions, models, skills, agents, cronStatus, channels, usageCost, health, instances, hostInfo, userConfig, activeGateway } = ds;
+  const { data, gwStatus, sessions, models, skills, agents, cronStatus, channels, usageCost, health, instances, hostInfo, userConfig, activeGateway, taskSummary, taskAudit } = ds;
 
   const abortRef = useRef(false);
   const fastFetchingRef = useRef(false);
@@ -289,10 +292,11 @@ const Dashboard: React.FC<DashboardProps> = ({ language }) => {
     if (slowFetchingRef.current) return;
     slowFetchingRef.current = true;
     try {
-      const [sessRes, modelsRes, skillsRes, agentsRes, cronRes, costRes, gwCfgRes, doctorRes] = await Promise.all([
+      const [sessRes, modelsRes, skillsRes, agentsRes, cronRes, costRes, gwCfgRes, doctorRes, infoRes] = await Promise.all([
         settle(gwApi.sessions()), settle(gwApi.models()), settle(gwApi.skills()),
         settle(gwApi.agents()), settle(gwApi.cronStatus()), settle(gwApi.usageCost({ days: 7 })),
         settle(gwApi.configGet()), settle(doctorApi.summaryCached(30000)),
+        settle(gwApi.info()),
       ]);
       if (abortRef.current) return;
       let cfgObj = gwCfgRes.data?.config || gwCfgRes.data;
@@ -312,6 +316,9 @@ const Dashboard: React.FC<DashboardProps> = ({ language }) => {
       const resolvedModels = modelsData ? (Array.isArray(modelsData) ? modelsData : modelsData?.list || modelsData?.models || []) : null;
       const resolvedSkills = skillsData ? (Array.isArray(skillsData) ? skillsData : skillsData?.skills || []) : null;
       const resolvedAgents = agentsData ? (Array.isArray(agentsData) ? agentsData : agentsData?.agents || []) : null;
+      const infoData = infoRes.data as any;
+      const newTaskSummary = infoData?.tasks ?? null;
+      const newTaskAudit = infoData?.taskAudit ?? null;
       setDs(prev => ({
         ...prev,
         sessions: resolvedSessions ?? prev.sessions,
@@ -321,11 +328,15 @@ const Dashboard: React.FC<DashboardProps> = ({ language }) => {
         cronStatus: cronRes.data ?? prev.cronStatus,
         usageCost: costRes.data ?? prev.usageCost,
         userConfig: cfgObj ?? prev.userConfig,
+        taskSummary: newTaskSummary ?? prev.taskSummary,
+        taskAudit: newTaskAudit ?? prev.taskAudit,
       }));
       // Cache slow data for instant display on next launch (only lightweight fields to avoid localStorage bloat)
       writeCachedSlowData({
         usageCost: costRes.data ?? null,
         cronStatus: cronRes.data ?? null,
+        taskSummary: newTaskSummary,
+        taskAudit: newTaskAudit,
       } as any);
     } finally { slowFetchingRef.current = false; }
   }, [settle]);
@@ -717,6 +728,177 @@ const Dashboard: React.FC<DashboardProps> = ({ language }) => {
             </button>
           ))}
         </div>
+
+        {/* Background Work — Busy Banner */}
+        {taskSummary && taskSummary.active > 0 && (
+          <div className="rounded-xl border border-cyan-200/60 dark:border-cyan-500/20 bg-gradient-to-r from-cyan-50/80 to-white dark:from-cyan-500/[0.06] dark:to-transparent px-4 py-2.5 flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-cyan-500/15 flex items-center justify-center shrink-0 animate-glow-pulse">
+              <span className="material-symbols-outlined text-[18px] text-cyan-500">pending_actions</span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[11px] font-bold text-cyan-700 dark:text-cyan-300">
+                {(d.taskBusyBanner || '{{count}} background task(s) running').replace('{{count}}', String(taskSummary.active))}
+              </p>
+              <div className="flex items-center gap-2 mt-0.5">
+                {taskSummary.byStatus?.running > 0 && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 font-bold">{taskSummary.byStatus.running} {d.taskRunning || 'running'}</span>}
+                {taskSummary.byStatus?.queued > 0 && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold">{taskSummary.byStatus.queued} {d.taskQueued || 'queued'}</span>}
+              </div>
+            </div>
+            <button onClick={() => openWindow('agents')} className="text-[10px] text-cyan-600 dark:text-cyan-400 font-bold hover:underline shrink-0 flex items-center gap-0.5">
+              {d.taskViewAgents || 'View Agents'}<span className="material-symbols-outlined text-[12px]">chevron_right</span>
+            </button>
+          </div>
+        )}
+
+        {/* Background Work — Task Summary Section */}
+        {taskSummary && (
+          <div className="rounded-2xl border border-slate-200/60 dark:border-white/[0.06] bg-white dark:bg-white/[0.02] overflow-hidden sci-card">
+            <div className="px-4 py-3 border-b border-slate-100 dark:border-white/5 flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500/15 to-indigo-500/15 flex items-center justify-center border border-violet-500/10">
+                <span className="material-symbols-outlined text-[18px] text-violet-500">task_alt</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-[12px] font-bold text-slate-700 dark:text-white/80">{d.taskTitle || 'Background Work'}</h3>
+                <p className="text-[10px] text-slate-400 dark:text-white/35">
+                  {taskSummary.total > 0
+                    ? `${taskSummary.total} ${d.taskTotal || 'total'} · ${taskSummary.active} ${d.taskActive || 'active'} · ${taskSummary.failures} ${d.taskFailures || 'failures'}`
+                    : (d.taskAllClear || 'All clear — no background tasks')}
+                </p>
+              </div>
+              {/* Audit health badge */}
+              {taskAudit && taskAudit.total > 0 ? (
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${taskAudit.errors > 0 ? 'bg-red-500/10 text-red-500' : 'bg-amber-500/10 text-amber-500'}`}>
+                  {taskAudit.errors > 0
+                    ? (d.taskAuditErrors || '{{count}} error(s)').replace('{{count}}', String(taskAudit.errors))
+                    : (d.taskAuditWarnings || '{{count}} warning(s)').replace('{{count}}', String(taskAudit.warnings))}
+                </span>
+              ) : taskSummary.total === 0 ? (
+                <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-emerald-500/10 text-emerald-500">{d.taskAuditOk || 'All clear'}</span>
+              ) : null}
+              <button onClick={() => openWindow('agents')} className="text-[10px] text-primary font-bold hover:underline shrink-0">{d.taskViewAgents || 'View Agents'}</button>
+            </div>
+
+            {taskSummary.total > 0 && (
+              <div className="p-4 space-y-3">
+                {/* Summary KPI cards */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {[
+                    { label: d.taskActive || 'Active', value: taskSummary.active, icon: 'play_circle', color: taskSummary.active > 0 ? 'text-cyan-500' : 'text-slate-400', bg: taskSummary.active > 0 ? 'bg-cyan-500/10' : 'bg-slate-100 dark:bg-white/5' },
+                    { label: d.taskTerminal || 'Completed', value: taskSummary.terminal, icon: 'check_circle', color: 'text-mac-green', bg: 'bg-emerald-500/10' },
+                    { label: d.taskFailures || 'Failures', value: taskSummary.failures, icon: 'warning', color: taskSummary.failures > 0 ? 'text-red-500' : 'text-slate-400', bg: taskSummary.failures > 0 ? 'bg-red-500/10' : 'bg-slate-100 dark:bg-white/5' },
+                    { label: d.taskTotal || 'Total', value: taskSummary.total, icon: 'task_alt', color: 'text-violet-500', bg: 'bg-violet-500/10' },
+                  ].map(card => (
+                    <div key={card.label} className="px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-white/[0.03] border border-slate-100 dark:border-white/5">
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <div className={`w-5 h-5 rounded-md ${card.bg} flex items-center justify-center`}>
+                          <span className={`material-symbols-outlined text-[12px] ${card.color}`}>{card.icon}</span>
+                        </div>
+                        <span className="text-[9px] font-bold text-slate-400 dark:text-white/30 uppercase">{card.label}</span>
+                      </div>
+                      <p className={`text-lg font-black tabular-nums ${card.color}`}>{card.value}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Status + Runtime breakdown — side by side */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* By Status */}
+                  {taskSummary.byStatus && (() => {
+                    const statusEntries = Object.entries(taskSummary.byStatus as Record<string, number>).filter(([, v]) => v > 0);
+                    if (statusEntries.length === 0) return null;
+                    const statusColors: Record<string, string> = {
+                      queued: 'bg-blue-100 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400',
+                      running: 'bg-cyan-100 dark:bg-cyan-500/10 text-cyan-600 dark:text-cyan-400',
+                      succeeded: 'bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+                      failed: 'bg-red-100 dark:bg-red-500/10 text-red-600 dark:text-red-400',
+                      timed_out: 'bg-orange-100 dark:bg-orange-500/10 text-orange-600 dark:text-orange-400',
+                      cancelled: 'bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-white/40',
+                      lost: 'bg-red-100 dark:bg-red-500/10 text-red-600 dark:text-red-400',
+                    };
+                    const statusLabels: Record<string, string> = {
+                      queued: d.taskQueued || 'Queued', running: d.taskRunning || 'Running',
+                      succeeded: d.taskSucceeded || 'Succeeded', failed: d.taskFailed || 'Failed',
+                      timed_out: d.taskTimedOut || 'Timed Out', cancelled: d.taskCancelled || 'Cancelled',
+                      lost: d.taskLost || 'Lost',
+                    };
+                    return (
+                      <div className="rounded-xl bg-slate-50 dark:bg-white/[0.03] border border-slate-100 dark:border-white/5 p-3">
+                        <h4 className="text-[10px] font-bold text-slate-500 dark:text-white/40 uppercase mb-2">{d.taskByStatus || 'By Status'}</h4>
+                        <div className="flex flex-wrap gap-1.5">
+                          {statusEntries.map(([status, count]) => (
+                            <span key={status} className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold ${statusColors[status] || 'bg-slate-100 dark:bg-white/5 text-slate-400'}`}>
+                              {statusLabels[status] || status} <b>{count}</b>
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                  {/* By Runtime */}
+                  {taskSummary.byRuntime && (() => {
+                    const rtEntries = Object.entries(taskSummary.byRuntime as Record<string, number>).filter(([, v]) => v > 0);
+                    if (rtEntries.length === 0) return null;
+                    const rtColors: Record<string, string> = {
+                      subagent: 'bg-violet-100 dark:bg-violet-500/10 text-violet-600 dark:text-violet-400',
+                      acp: 'bg-indigo-100 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400',
+                      cli: 'bg-sky-100 dark:bg-sky-500/10 text-sky-600 dark:text-sky-400',
+                      cron: 'bg-amber-100 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400',
+                    };
+                    const rtLabels: Record<string, string> = {
+                      subagent: d.taskSubagent || 'Subagent', acp: d.taskAcp || 'ACP',
+                      cli: d.taskCli || 'CLI', cron: d.taskCron || 'Cron',
+                    };
+                    return (
+                      <div className="rounded-xl bg-slate-50 dark:bg-white/[0.03] border border-slate-100 dark:border-white/5 p-3">
+                        <h4 className="text-[10px] font-bold text-slate-500 dark:text-white/40 uppercase mb-2">{d.taskByRuntime || 'By Runtime'}</h4>
+                        <div className="flex flex-wrap gap-1.5">
+                          {rtEntries.map(([rt, count]) => (
+                            <span key={rt} className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold ${rtColors[rt] || 'bg-slate-100 dark:bg-white/5 text-slate-400'}`}>
+                              {rtLabels[rt] || rt} <b>{count}</b>
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+
+                {/* Task Audit Health */}
+                {taskAudit && taskAudit.total > 0 && (
+                  <div className={`rounded-xl border p-3 ${taskAudit.errors > 0 ? 'border-red-200/60 dark:border-red-500/20 bg-red-50/50 dark:bg-red-500/[0.04]' : 'border-amber-200/60 dark:border-amber-500/20 bg-amber-50/50 dark:bg-amber-500/[0.04]'}`}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className={`material-symbols-outlined text-[14px] ${taskAudit.errors > 0 ? 'text-red-500' : 'text-amber-500'}`}>health_and_safety</span>
+                      <h4 className="text-[10px] font-bold text-slate-600 dark:text-white/60 uppercase">{d.taskAuditTitle || 'Task Health'}</h4>
+                      <span className={`text-[10px] font-bold ${taskAudit.errors > 0 ? 'text-red-500' : 'text-amber-500'}`}>
+                        {(d.taskAuditFindings || '{{total}} finding(s)').replace('{{total}}', String(taskAudit.total))}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {(() => {
+                        const auditLabels: Record<string, string> = {
+                          stale_queued: d.taskAuditStaleQueued || 'Stale queued',
+                          stale_running: d.taskAuditStaleRunning || 'Stale running',
+                          lost: d.taskAuditLost || 'Lost tasks',
+                          delivery_failed: d.taskAuditDeliveryFailed || 'Delivery failed',
+                          missing_cleanup: d.taskAuditMissingCleanup || 'Missing cleanup',
+                          inconsistent_timestamps: d.taskAuditInconsistent || 'Inconsistent',
+                        };
+                        const errorCodes = ['stale_running', 'lost'];
+                        return Object.entries(taskAudit.byCode as Record<string, number>)
+                          .filter(([, v]) => v > 0)
+                          .map(([code, count]) => (
+                            <span key={code} className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold ${errorCodes.includes(code) ? 'bg-red-100 dark:bg-red-500/10 text-red-600 dark:text-red-400' : 'bg-amber-100 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400'}`}>
+                              {auditLabels[code] || code} <b>{count}</b>
+                            </span>
+                          ));
+                      })()}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Security Status Card */}
         {secSummary && (

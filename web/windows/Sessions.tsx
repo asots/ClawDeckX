@@ -1174,13 +1174,14 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
     if (!gwReadyRef.current) return;
     const requestSeq = ++historyRequestSeqRef.current;
     const targetSessionKey = sessionKey;
+    const historyMaxChars = 12000;
     const showSpinner = !opts?.silent && messagesLenRef.current === 0;
     if (showSpinner) setChatLoading(true);
     if (!opts?.silent) setError(null);
     try {
       const loadViaRpc = async (): Promise<ChatMsg[] | null> => {
         if (pendingRunRef.current && streamTextRef.current) return null;
-        const res = await gwApi.proxy('chat.history', { sessionKey: targetSessionKey, limit: 200 }) as any;
+        const res = await gwApi.sessionsHistory(targetSessionKey, { limit: 200, maxChars: historyMaxChars }) as any;
         if (historyRequestSeqRef.current !== requestSeq || sessionKeyRef.current !== targetSessionKey) return null;
         return mapMessages(Array.isArray(res?.messages) ? res.messages : []);
       };
@@ -1192,7 +1193,7 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
         if (!mapped) return;
       } else {
         // Initial load: use paginated endpoint for fast first render.
-        const res = await gwApi.sessionsHistoryPaginated(targetSessionKey, 50) as any;
+        const res = await gwApi.sessionsHistoryPaginated(targetSessionKey, 50, undefined, historyMaxChars) as any;
         if (historyRequestSeqRef.current !== requestSeq || sessionKeyRef.current !== targetSessionKey) return;
         const msgs = Array.isArray(res?.messages) ? res.messages : [];
         mapped = mapMessages(msgs);
@@ -1251,8 +1252,9 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
     setLoadingOlder(true);
     const targetSessionKey = sessionKeyRef.current;
     const cursor = nextCursorRef.current;
+    const historyMaxChars = 12000;
     try {
-      const res = await gwApi.sessionsHistoryPaginated(targetSessionKey, 50, cursor) as any;
+      const res = await gwApi.sessionsHistoryPaginated(targetSessionKey, 50, cursor, historyMaxChars) as any;
       if (sessionKeyRef.current !== targetSessionKey) return;
       const msgs = Array.isArray(res?.messages) ? res.messages : [];
       if (msgs.length === 0) {

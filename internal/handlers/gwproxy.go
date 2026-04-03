@@ -403,9 +403,15 @@ func (h *GWProxyHandler) SessionsHistory(w http.ResponseWriter, r *http.Request)
 		web.Fail(w, r, "INVALID_PARAMS", "key is required", http.StatusBadRequest)
 		return
 	}
-	data, err := h.client.RequestWithTimeout("chat.history", map[string]interface{}{
+	rpcParams := map[string]interface{}{
 		"sessionKey": key,
-	}, 30*time.Second)
+	}
+	if v := r.URL.Query().Get("maxChars"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			rpcParams["maxChars"] = n
+		}
+	}
+	data, err := h.client.RequestWithTimeout("chat.history", rpcParams, 30*time.Second)
 	if err != nil {
 		web.Fail(w, r, "GW_SESSIONS_HISTORY_FAILED", err.Error(), http.StatusBadGateway)
 		return
@@ -421,11 +427,15 @@ type sessionHistoryPage struct {
 	NextCursor string            `json:"nextCursor,omitempty"`
 }
 
-func loadPaginatedHistoryFromRPC(h *GWProxyHandler, key, cursor string, limit int) (sessionHistoryPage, error) {
-	data, err := h.client.RequestWithTimeout("chat.history", map[string]interface{}{
+func loadPaginatedHistoryFromRPC(h *GWProxyHandler, key, cursor string, limit int, maxChars int) (sessionHistoryPage, error) {
+	rpcParams := map[string]interface{}{
 		"sessionKey": key,
 		"limit":      1000,
-	}, 30*time.Second)
+	}
+	if maxChars > 0 {
+		rpcParams["maxChars"] = maxChars
+	}
+	data, err := h.client.RequestWithTimeout("chat.history", rpcParams, 30*time.Second)
 	if err != nil {
 		return sessionHistoryPage{}, err
 	}
@@ -499,7 +509,7 @@ func paginateHistoryMessages(messages []json.RawMessage, limit int, cursor strin
 	return page, hasMore, nextCursor
 }
 
-func buildHistoryPageRequest(req *http.Request, cfg openclaw.GWClientConfig, key string, limit int, cursor string) (*http.Request, error) {
+func buildHistoryPageRequest(req *http.Request, cfg openclaw.GWClientConfig, key string, limit int, cursor string, maxChars int) (*http.Request, error) {
 	gwURL := fmt.Sprintf("http://%s:%d/sessions/%s/history", cfg.Host, cfg.Port, url.PathEscape(key))
 	q := url.Values{}
 	if limit > 0 {
@@ -507,6 +517,9 @@ func buildHistoryPageRequest(req *http.Request, cfg openclaw.GWClientConfig, key
 	}
 	if cursor != "" {
 		q.Set("cursor", cursor)
+	}
+	if maxChars > 0 {
+		q.Set("maxChars", strconv.Itoa(maxChars))
 	}
 	if qs := q.Encode(); qs != "" {
 		gwURL += "?" + qs
@@ -523,8 +536,8 @@ func buildHistoryPageRequest(req *http.Request, cfg openclaw.GWClientConfig, key
 	return req, nil
 }
 
-func fetchHistoryPageViaHTTP(req *http.Request, cfg openclaw.GWClientConfig, key string, limit int, cursor string) (int, []byte, error) {
-	httpReq, err := buildHistoryPageRequest(req, cfg, key, limit, cursor)
+func fetchHistoryPageViaHTTP(req *http.Request, cfg openclaw.GWClientConfig, key string, limit int, cursor string, maxChars int) (int, []byte, error) {
+	httpReq, err := buildHistoryPageRequest(req, cfg, key, limit, cursor, maxChars)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -555,11 +568,17 @@ func (h *GWProxyHandler) SessionsHistoryPaginated(w http.ResponseWriter, r *http
 			limit = n
 		}
 	}
+	maxChars := 0
+	if v := r.URL.Query().Get("maxChars"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			maxChars = n
+		}
+	}
 	cursor := r.URL.Query().Get("cursor")
 
 	cfg := h.client.GetConfig()
 	if cfg.Host != "" && cfg.Port != 0 && cfg.Token != "" {
-		status, body, err := fetchHistoryPageViaHTTP(r, cfg, key, limit, cursor)
+		status, body, err := fetchHistoryPageViaHTTP(r, cfg, key, limit, cursor, maxChars)
 		if err == nil {
 			switch status {
 			case http.StatusOK:
@@ -571,7 +590,7 @@ func (h *GWProxyHandler) SessionsHistoryPaginated(w http.ResponseWriter, r *http
 			case http.StatusUnauthorized, http.StatusForbidden:
 				if h.refreshAuthOnFail != nil && h.refreshAuthOnFail() {
 					cfg = h.client.GetConfig()
-					status, body, err = fetchHistoryPageViaHTTP(r, cfg, key, limit, cursor)
+					status, body, err = fetchHistoryPageViaHTTP(r, cfg, key, limit, cursor, maxChars)
 					if err == nil {
 						switch status {
 						case http.StatusOK:
@@ -591,7 +610,7 @@ func (h *GWProxyHandler) SessionsHistoryPaginated(w http.ResponseWriter, r *http
 		}
 	}
 
-	history, err := loadPaginatedHistoryFromRPC(h, key, cursor, limit)
+	history, err := loadPaginatedHistoryFromRPC(h, key, cursor, limit, maxChars)
 	if err != nil {
 		if openclaw.IsGatewayRPCError(err) {
 			// Business logic error (e.g. session deleted / not found) — return empty history

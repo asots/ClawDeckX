@@ -18,7 +18,7 @@ export const ToolsSection: React.FC<SectionProps> = ({ schema, setField, getFiel
   ], [es]);
 
   const EXEC_HOST_OPTIONS = useMemo(() => [
-    { value: 'sandbox', label: es.optSandbox || 'Sandbox' }, { value: 'gateway', label: es.optGateway || 'Gateway' }, { value: 'node', label: es.optNode || 'Node' },
+    { value: 'auto', label: es.optAuto || 'Auto' }, { value: 'sandbox', label: es.optSandbox || 'Sandbox' }, { value: 'gateway', label: es.optGateway || 'Gateway' }, { value: 'node', label: es.optNode || 'Node' },
   ], [es]);
 
   const EXEC_SECURITY_OPTIONS = useMemo(() => [
@@ -47,7 +47,7 @@ export const ToolsSection: React.FC<SectionProps> = ({ schema, setField, getFiel
       </ConfigSection>
 
       <ConfigSection title={es.exec} icon="terminal" iconColor="text-red-500">
-        <SelectField label={es.execHost} tooltip={tip('tools.exec.host')} value={g(['exec', 'host']) || 'sandbox'} onChange={v => s(['exec', 'host'], v)} options={EXEC_HOST_OPTIONS} />
+        <SelectField label={es.execHost} tooltip={tip('tools.exec.host')} value={g(['exec', 'host']) || 'auto'} onChange={v => s(['exec', 'host'], v)} options={EXEC_HOST_OPTIONS} />
         <SelectField label={es.security} tooltip={tip('tools.exec.security')} value={g(['exec', 'security']) || 'full'} onChange={v => s(['exec', 'security'], v)} options={EXEC_SECURITY_OPTIONS} />
         <SelectField label={es.askBeforeExec} tooltip={tip('tools.exec.ask')} value={g(['exec', 'ask']) || 'off'} onChange={v => s(['exec', 'ask'], v)} options={EXEC_ASK_OPTIONS} />
         <SelectField label={es.askFallback || 'Ask Fallback'} desc={es.askFallbackDesc} tooltip={tip('tools.exec.askFallback')} value={g(['exec', 'askFallback']) || 'deny'} onChange={v => s(['exec', 'askFallback'], v)} options={EXEC_ASK_FALLBACK_OPTIONS} />
