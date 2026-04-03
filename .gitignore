@@ -56,8 +56,8 @@ openclawmanager-*
 build.txt
 
 # Version files (managed via web/package.json)
-VERSION
-OPENCLAW_COMPAT
+/VERSION
+/OPENCLAW_COMPAT
 
 # Local scripts
 scripts/
