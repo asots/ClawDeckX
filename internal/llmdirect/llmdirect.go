@@ -12,6 +12,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -52,7 +53,15 @@ type openclawJSON struct {
 // config for the given modelRef (e.g. "mteapi/gpt-5.4") or the default model.
 // If modelRef is empty the default primary model is used.
 func ResolveProvider(configPath, modelRef string) (*ProviderConfig, error) {
-	data, err := os.ReadFile(configPath)
+	resolvedPath := strings.TrimSpace(configPath)
+	if resolvedPath == "" {
+		return nil, fmt.Errorf("llmdirect: openclaw config path is empty")
+	}
+	if info, err := os.Stat(resolvedPath); err == nil && info.IsDir() {
+		resolvedPath = filepath.Join(resolvedPath, "openclaw.json")
+	}
+
+	data, err := os.ReadFile(resolvedPath)
 	if err != nil {
 		return nil, fmt.Errorf("llmdirect: read openclaw.json: %w", err)
 	}
@@ -65,6 +74,10 @@ func ResolveProvider(configPath, modelRef string) (*ProviderConfig, error) {
 	ref := strings.TrimSpace(modelRef)
 	if ref == "" {
 		ref = cfg.Agents.Defaults.Model.Primary
+	}
+	ref = strings.TrimSpace(ref)
+	if ref == "" {
+		return nil, fmt.Errorf("llmdirect: no model specified and agents.defaults.model.primary is empty")
 	}
 
 	// ref may be "providerID/modelID" or just "modelID"
@@ -105,6 +118,9 @@ func ResolveProvider(configPath, modelRef string) (*ProviderConfig, error) {
 	for pid, p := range cfg.Models.Providers {
 		for _, m := range p.Models {
 			if m.ID == modelID {
+				if p.BaseURL == "" || p.APIKey == "" {
+					return nil, fmt.Errorf("llmdirect: provider %q missing baseUrl or apiKey", pid)
+				}
 				return &ProviderConfig{
 					ProviderID: pid,
 					BaseURL:    strings.TrimRight(p.BaseURL, "/"),

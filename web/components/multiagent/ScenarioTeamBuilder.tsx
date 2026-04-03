@@ -55,6 +55,12 @@ interface ScenarioTemplate {
   multiAgentTemplateId?: string;
 }
 
+function isMissingDefaultModelError(message?: string | null): boolean {
+  const text = (message || '').toLowerCase();
+  return text.includes('agents.defaults.model.primary is empty')
+    || text.includes('no model specified and agents.defaults.model.primary is empty');
+}
+
 const SCENARIO_TEMPLATES: ScenarioTemplate[] = [
   { icon: 'code', color: 'from-blue-500 to-cyan-500', nameKey: 'tpl_softdev_name', descKey: 'tpl_softdev_desc', workflowType: 'collaborative', teamSize: 'medium', name: 'Software Dev Team', desc: 'Full-stack software development team with PM, architects, frontend/backend devs and QA. Responsible for requirement analysis, system design, coding, code review, testing, and delivery management.', multiAgentTemplateId: 'software-dev' },
   { icon: 'campaign', color: 'from-pink-500 to-rose-500', nameKey: 'tpl_marketing_name', descKey: 'tpl_marketing_desc', workflowType: 'parallel', teamSize: 'medium', name: 'Content Marketing', desc: 'Content creation and marketing team producing SEO articles, social media posts, email newsletters, and marketing copy. Handles content strategy, writing, editing, distribution, and analytics.', multiAgentTemplateId: 'content-factory' },
@@ -850,6 +856,11 @@ const ScenarioTeamBuilder: React.FC<ScenarioTeamBuilderProps> = ({
   }, [step]);
 
   const selectedModelLabel = modelOptions.find(o => o.value === selectedModel)?.label;
+  const missingModelConfig = isMissingDefaultModelError(error)
+    || isMissingDefaultModelError(genWsError?.msg)
+    || isMissingDefaultModelError(wzStep1Error);
+  const missingModelTitle = stb.modelRequiredTitle || 'Choose a generation model first';
+  const missingModelDesc = stb.modelRequiredDesc || 'Choose a generation model below, or configure a default model in OpenClaw and try again.';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
@@ -928,7 +939,25 @@ const ScenarioTeamBuilder: React.FC<ScenarioTeamBuilderProps> = ({
               {error && (
                 <div className="px-3 py-2.5 rounded-xl bg-red-500/10 border border-red-500/20 text-[11px] text-red-600 dark:text-red-400 flex items-start gap-2">
                   <span className="material-symbols-outlined text-[15px] shrink-0 mt-0.5">error</span>
-                  {error}
+                  <div className="flex-1 min-w-0 space-y-1">
+                    <p className="font-semibold">
+                      {missingModelConfig ? missingModelTitle : error}
+                    </p>
+                    {missingModelConfig && (
+                      <>
+                        <p className="text-red-500/80 dark:text-red-400/70">{missingModelDesc}</p>
+                        {modelOptions.length > 0 && (
+                          <button
+                            onClick={() => setModelPickerOpen(true)}
+                            className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg border border-red-500/20 hover:bg-red-500/10 transition-colors text-[10px] font-bold"
+                          >
+                            <span className="material-symbols-outlined text-[12px]">memory</span>
+                            {stb.chooseModelNow || 'Choose model now'}
+                          </button>
+                        )}
+                      </>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -1182,6 +1211,8 @@ const ScenarioTeamBuilder: React.FC<ScenarioTeamBuilderProps> = ({
                       <p className="text-[12px] font-bold text-red-600 dark:text-red-400">
                         {genWsError.code === 'GATEWAY_DISCONNECTED'
                           ? (stb.genErrGateway || 'Gateway disconnected')
+                          : missingModelConfig
+                            ? missingModelTitle
                           : genWsError.code === 'TIMEOUT'
                             ? (stb.timeoutTitle || 'AI is taking longer than expected')
                             : (stb.generateFailed || 'Generation failed')}
@@ -1189,6 +1220,8 @@ const ScenarioTeamBuilder: React.FC<ScenarioTeamBuilderProps> = ({
                       <p className="text-[11px] text-red-500/80 dark:text-red-400/70 mt-0.5 break-words">
                         {genWsError.code === 'GATEWAY_DISCONNECTED'
                           ? (stb.genErrGatewayDesc || 'The gateway connection was lost. Check gateway status and retry.')
+                          : missingModelConfig
+                            ? missingModelDesc
                           : genWsError.msg}
                       </p>
                     </div>
@@ -1402,7 +1435,23 @@ const ScenarioTeamBuilder: React.FC<ScenarioTeamBuilderProps> = ({
                   {/* Error */}
                   {wzStep1Error && (
                     <div className="rounded-xl bg-red-500/10 border border-red-500/20 p-3">
-                      <p className="text-xs text-red-600 dark:text-red-400 font-mono break-all">{wzStep1Error}</p>
+                      {missingModelConfig ? (
+                        <div className="space-y-2">
+                          <p className="text-xs font-semibold text-red-600 dark:text-red-400">{missingModelTitle}</p>
+                          <p className="text-xs text-red-500/80 dark:text-red-400/70">{missingModelDesc}</p>
+                          {modelOptions.length > 0 && (
+                            <button
+                              onClick={() => setModelPickerOpen(true)}
+                              className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg border border-red-500/20 hover:bg-red-500/10 transition-colors text-[10px] font-bold text-red-600 dark:text-red-400"
+                            >
+                              <span className="material-symbols-outlined text-[12px]">memory</span>
+                              {stb.chooseModelNow || 'Choose model now'}
+                            </button>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-red-600 dark:text-red-400 font-mono break-all">{wzStep1Error}</p>
+                      )}
                     </div>
                   )}
 
