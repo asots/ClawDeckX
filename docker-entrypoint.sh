@@ -269,5 +269,8 @@ if [ -x "$RUNTIME_DIR/clawdeckx/clawdeckx" ] && [ -f "$RUNTIME_DIR/clawdeckx/man
     CLAWDECKX_BIN="$RUNTIME_DIR/clawdeckx/clawdeckx"
 fi
 
+# Ensure ClawDeckX picks up the correct OpenClaw config path regardless of binary version
+export OCD_OPENCLAW_CONFIG_PATH="${OCD_OPENCLAW_CONFIG_PATH:-$OPENCLAW_STATE_DIR}"
+
 # Start ClawDeckX (exec replaces shell so tini can manage signals)
 exec "$CLAWDECKX_BIN" serve "$@"
