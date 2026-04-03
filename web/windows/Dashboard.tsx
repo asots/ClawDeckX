@@ -2,7 +2,7 @@
 import React, { useMemo, useState, useEffect, useCallback, useRef, useId } from 'react';
 import { Language } from '../types';
 import { getTranslation } from '../locales';
-import { dashboardApi, gwApi, gatewayApi, hostInfoApi, configApi, doctorApi, gatewayProfileApi } from '../services/api';
+import { dashboardApi, gwApi, gatewayApi, hostInfoApi, configApi, doctorApi, gatewayProfileApi, selfUpdateApi } from '../services/api';
 import { settleTyped } from '../utils/settle';
 import { useGatewayEvents } from '../hooks/useGatewayEvents';
 import { subscribeManagerWS } from '../services/manager-ws';
@@ -231,6 +231,7 @@ const Dashboard: React.FC<DashboardProps> = ({ language }) => {
   // New state: doctor, version, gateway action, UI toggles
   const [doctorData, setDoctorData] = useState<any>(null);
   const [updateInfo, setUpdateInfo] = useState<{ available: boolean; version?: string; checking: boolean }>({ available: false, checking: false });
+  const [overviewInfo, setOverviewInfo] = useState<any>(null);
   const [gwAction, setGwAction] = useState<'idle' | 'starting' | 'stopping' | 'restarting'>('idle');
   const [showAllDisks, setShowAllDisks] = useState(false);
   const [chartTooltip, setChartTooltip] = useState<{ x: number; y: number; label: string } | null>(null);
@@ -354,20 +355,33 @@ const Dashboard: React.FC<DashboardProps> = ({ language }) => {
     finally { hostFetchingRef.current = false; }
   }, []);
 
+  const fetchOverview = useCallback(async (force = false) => {
+    try {
+      const overview = await selfUpdateApi.overview(force);
+      if (abortRef.current || !overview) return;
+      setOverviewInfo(overview);
+      const hasAnyUpdate = !!overview?.clawdeckx?.updateAvailable || !!overview?.openclaw?.updateAvailable;
+      setUpdateInfo({
+        available: hasAnyUpdate,
+        version: overview?.clawdeckx?.latestVersion || overview?.openclaw?.latestVersion,
+        checking: false,
+      });
+    } catch {
+      if (!abortRef.current) setUpdateInfo(prev => ({ ...prev, checking: false }));
+    }
+  }, []);
+
   const refreshAll = useCallback(async () => {
     if (refreshing) return;
     setRefreshing(true);
-    try { await fetchFast(); void fetchSlow(); void fetchHostInfo(); }
+    try { await fetchFast(); void fetchSlow(); void fetchHostInfo(); void fetchOverview(true); }
     finally { if (!abortRef.current) setRefreshing(false); }
-  }, [fetchFast, fetchHostInfo, fetchSlow, refreshing]);
+  }, [fetchFast, fetchHostInfo, fetchOverview, fetchSlow, refreshing]);
 
   // Check for updates on mount
   useEffect(() => {
     setUpdateInfo(prev => ({ ...prev, checking: true }));
-    hostInfoApi.checkUpdate().then((res: any) => {
-      if (abortRef.current) return;
-      setUpdateInfo({ available: !!res?.updateAvailable, version: res?.latestVersion || res?.latest, checking: false });
-    }).catch(() => { if (!abortRef.current) setUpdateInfo(prev => ({ ...prev, checking: false })); });
+    void fetchOverview(false);
   }, []);
 
   // Refresh countdown timer
@@ -620,6 +634,29 @@ const Dashboard: React.FC<DashboardProps> = ({ language }) => {
           </button>
         </div>
       </div>
+
+      {/* OpenClaw Compatibility Banner */}
+      {overviewInfo?.compatibility && overviewInfo.compatibility.compatible === false && (
+        <div className="rounded-xl border border-red-200/60 dark:border-red-500/20 bg-gradient-to-r from-red-50/80 to-white dark:from-red-500/[0.06] dark:to-transparent px-4 py-2.5 flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-red-500/15 flex items-center justify-center shrink-0">
+            <span className="material-symbols-outlined text-[18px] text-red-500">error</span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[11px] font-bold text-red-700 dark:text-red-300">
+              {d.compatIncompatTitle || 'OpenClaw version incompatible'}
+            </p>
+            <p className="text-[10px] text-red-600/70 dark:text-red-400/60 mt-0.5">
+              {(d.compatIncompatDesc || 'Current: {{current}} · Required: {{required}}')
+                .replace('{{current}}', (overviewInfo?.compatibility?.currentVersion || hostInfo?.openclawVersion || '').replace(/^v?openclaw\s*/i, ''))
+                .replace('{{required}}', overviewInfo?.compatibility?.required || '')}
+            </p>
+          </div>
+          <button onClick={() => { window.dispatchEvent(new CustomEvent('clawdeck:open-window', { detail: { id: 'settings', tab: 'update' } })); }}
+            className="text-[10px] text-red-600 dark:text-red-400 font-bold hover:underline shrink-0 flex items-center gap-0.5">
+            {d.compatGoUpdate || 'Update'}<span className="material-symbols-outlined text-[12px]">chevron_right</span>
+          </button>
+        </div>
+      )}
 
       {/* Resource Alerts Banner */}
       {resourceAlerts.length > 0 && (

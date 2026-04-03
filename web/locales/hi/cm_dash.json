@@ -147,6 +147,9 @@
     "taskNoData": "No task data available",
     "taskAllClear": "All clear — no background tasks",
     "taskBusyBanner": "{{count}} background task(s) running",
-    "taskViewAgents": "View Agents"
+    "taskViewAgents": "View Agents",
+    "compatIncompatTitle": "OpenClaw version incompatible",
+    "compatIncompatDesc": "Current: {{current}} · Required: {{required}}",
+    "compatGoUpdate": "Update"
   }
 }

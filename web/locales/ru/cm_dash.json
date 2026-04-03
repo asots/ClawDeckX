@@ -147,6 +147,9 @@
     "taskNoData": "Нет данных о задачах",
     "taskAllClear": "Всё в порядке — нет фоновых задач",
     "taskBusyBanner": "{{count}} фоновых задач выполняется",
-    "taskViewAgents": "Показать агентов"
+    "taskViewAgents": "Показать агентов",
+    "compatIncompatTitle": "Версия OpenClaw несовместима",
+    "compatIncompatDesc": "Текущая: {{current}} · Требуется: {{required}}",
+    "compatGoUpdate": "Обновить"
   }
 }

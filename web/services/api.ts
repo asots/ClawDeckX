@@ -44,12 +44,31 @@ export interface UpdateCheckResult {
   assetName?: string; assetSize?: number; downloadUrl?: string; error?: string;
   channel?: string;
 }
+export interface UpdateOverviewProductStatus {
+  currentVersion?: string;
+  latestVersion?: string;
+  updateAvailable: boolean;
+  error?: string;
+}
+export interface UpdateOverviewCompatibility {
+  currentVersion?: string;
+  required?: string;
+  compatible: boolean;
+}
+export interface UpdateOverview {
+  checkedAt?: string;
+  nextCheckAt?: string;
+  clawdeckx: UpdateOverviewProductStatus;
+  openclaw: UpdateOverviewProductStatus;
+  compatibility: UpdateOverviewCompatibility;
+}
 export interface UpdateHistoryEntry {
   id: number; user_id: number; username: string; action: string;
   result: string; detail: string; ip: string; created_at: string;
 }
 export const selfUpdateApi = {
   info: () => get<SelfUpdateInfo>('/api/v1/self-update/info'),
+  overview: (force = false) => get<UpdateOverview>(`/api/v1/self-update/overview${force ? '?force=1' : ''}`),
   check: () => get<UpdateCheckResult>('/api/v1/self-update/check'),
   checkChannel: (channel: string) => get<UpdateCheckResult>(`/api/v1/self-update/check-channel?channel=${channel}`),
   history: () => get<UpdateHistoryEntry[]>('/api/v1/self-update/history'),

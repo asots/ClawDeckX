@@ -147,6 +147,9 @@
     "taskNoData": "暫無任務資料",
     "taskAllClear": "一切正常 — 無背景任務",
     "taskBusyBanner": "{{count}} 個背景任務運行中",
-    "taskViewAgents": "查看代理"
+    "taskViewAgents": "查看代理",
+    "compatIncompatTitle": "OpenClaw 版本不相容",
+    "compatIncompatDesc": "目前: {{current}} · 需要: {{required}}",
+    "compatGoUpdate": "去更新"
   }
 }

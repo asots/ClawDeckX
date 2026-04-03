@@ -469,6 +469,7 @@ func RunServe(args []string) int {
 	router.GET("/api/v1/host-info/device-id", hostInfoHandler.DeviceID)
 
 	router.GET("/api/v1/self-update/info", selfUpdateHandler.Info)
+	router.GET("/api/v1/self-update/overview", selfUpdateHandler.Overview)
 	router.GET("/api/v1/self-update/check", selfUpdateHandler.Check)
 	router.GET("/api/v1/self-update/check-channel", selfUpdateHandler.CheckChannel)
 	router.GET("/api/v1/self-update/history", selfUpdateHandler.History)

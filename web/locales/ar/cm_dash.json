@@ -147,6 +147,9 @@
     "taskNoData": "لا توجد بيانات مهام",
     "taskAllClear": "كل شيء على ما يرام — لا مهام خلفية",
     "taskBusyBanner": "{{count}} مهمة خلفية قيد التشغيل",
-    "taskViewAgents": "عرض الوكلاء"
+    "taskViewAgents": "عرض الوكلاء",
+    "compatIncompatTitle": "إصدار OpenClaw غير متوافق",
+    "compatIncompatDesc": "الحالي: {{current}} · المطلوب: {{required}}",
+    "compatGoUpdate": "تحديث"
   }
 }

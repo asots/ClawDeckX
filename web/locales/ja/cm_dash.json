@@ -147,6 +147,9 @@
     "taskNoData": "タスクデータなし",
     "taskAllClear": "問題なし — バックグラウンドタスクなし",
     "taskBusyBanner": "{{count}} 件のバックグラウンドタスク実行中",
-    "taskViewAgents": "エージェントを表示"
+    "taskViewAgents": "エージェントを表示",
+    "compatIncompatTitle": "OpenClaw バージョン非互換",
+    "compatIncompatDesc": "現在: {{current}} · 必要: {{required}}",
+    "compatGoUpdate": "更新"
   }
 }

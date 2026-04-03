@@ -6,6 +6,7 @@ import (
 
 	"ClawDeckX/internal/database"
 	"ClawDeckX/internal/openclaw"
+	"ClawDeckX/internal/updatecheck"
 	"ClawDeckX/internal/web"
 )
 
@@ -52,6 +53,14 @@ func (h *BadgeHandler) Counts(w http.ResponseWriter, r *http.Request) {
 	settingRepo := database.NewSettingRepo()
 	if v, err := settingRepo.Get("snapshot_schedule_last_status"); err == nil && v == "failed" {
 		result["scheduler"] = 1
+	}
+
+	// Settings: show a badge when the 12-hour unified update overview indicates
+	// ClawDeckX/OpenClaw updates are available or the current OpenClaw version is incompatible.
+	if overview, err := updatecheck.GetOverview(r.Context(), false); err == nil && overview != nil {
+		if overview.ClawDeckX.UpdateAvailable || overview.OpenClaw.UpdateAvailable || !overview.Compatibility.Compatible {
+			result["settings"] = result["settings"] + 1
+		}
 	}
 
 	web.OK(w, r, result)

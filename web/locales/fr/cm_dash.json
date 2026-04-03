@@ -147,6 +147,9 @@
     "taskNoData": "Aucune donnée de tâche",
     "taskAllClear": "Tout est en ordre — aucune tâche en arrière-plan",
     "taskBusyBanner": "{{count}} tâche(s) en arrière-plan en cours",
-    "taskViewAgents": "Voir les agents"
+    "taskViewAgents": "Voir les agents",
+    "compatIncompatTitle": "Version OpenClaw incompatible",
+    "compatIncompatDesc": "Actuelle: {{current}} · Requise: {{required}}",
+    "compatGoUpdate": "Mettre à jour"
   }
 }

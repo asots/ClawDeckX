@@ -17,6 +17,7 @@ import (
 	"ClawDeckX/internal/logger"
 	"ClawDeckX/internal/openclaw"
 	"ClawDeckX/internal/translate"
+	"ClawDeckX/internal/updatecheck"
 	"ClawDeckX/internal/updater"
 	"ClawDeckX/internal/version"
 	"ClawDeckX/internal/web"
@@ -144,6 +145,17 @@ func (h *SelfUpdateHandler) Info(w http.ResponseWriter, r *http.Request) {
 		"openclawCompat": version.OpenClawCompat,
 		"goVersion":      runtime.Version(),
 	})
+}
+
+// Overview returns a cached 12-hour overview of ClawDeckX/OpenClaw updates and compatibility.
+func (h *SelfUpdateHandler) Overview(w http.ResponseWriter, r *http.Request) {
+	force := r.URL.Query().Get("force") == "1" || strings.EqualFold(r.URL.Query().Get("force"), "true")
+	overview, err := updatecheck.GetOverview(r.Context(), force)
+	if err != nil {
+		web.Fail(w, r, "UPDATE_OVERVIEW_FAILED", err.Error(), http.StatusInternalServerError)
+		return
+	}
+	web.OK(w, r, overview)
 }
 
 // History returns recent self-update audit log entries.
