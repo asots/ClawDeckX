@@ -20,6 +20,7 @@ services:
       OPENCLAW_HOME: /data/openclaw/home
       OPENCLAW_STATE_DIR: /data/openclaw/state
       OPENCLAW_CONFIG_PATH: /data/openclaw/state/openclaw.json
+      OCD_OPENCLAW_CONFIG_PATH: /data/openclaw/state
       NPM_CONFIG_PREFIX: /data/openclaw/npm
       OCD_DB_SQLITE_PATH: /data/clawdeckx/ClawDeckX.db
       OCD_LOG_FILE: /data/clawdeckx/ClawDeckX.log

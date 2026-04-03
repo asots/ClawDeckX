@@ -93,6 +93,15 @@ func defaultDataDir() string {
 }
 
 func defaultOpenClawConfigDir() string {
+	if configPath := strings.TrimSpace(os.Getenv("OCD_OPENCLAW_CONFIG_PATH")); configPath != "" {
+		return configPath
+	}
+	if configPath := strings.TrimSpace(os.Getenv("OPENCLAW_CONFIG_PATH")); configPath != "" {
+		return configPath
+	}
+	if stateDir := strings.TrimSpace(os.Getenv("OPENCLAW_STATE_DIR")); stateDir != "" {
+		return stateDir
+	}
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return ""
@@ -282,6 +291,10 @@ func applyEnvOverrides(cfg *Config) {
 		cfg.Log.FilePath = v
 	}
 	if v := os.Getenv("OCD_OPENCLAW_CONFIG_PATH"); v != "" {
+		cfg.OpenClaw.ConfigPath = v
+	} else if v := os.Getenv("OPENCLAW_CONFIG_PATH"); v != "" {
+		cfg.OpenClaw.ConfigPath = v
+	} else if v := os.Getenv("OPENCLAW_STATE_DIR"); v != "" {
 		cfg.OpenClaw.ConfigPath = v
 	}
 	if v := os.Getenv("OCD_OPENCLAW_GATEWAY_HOST"); v != "" {
