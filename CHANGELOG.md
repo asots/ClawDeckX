@@ -1,4 +1,25 @@
-﻿# v0.1.1
+﻿# v0.1.2
+
+_2026-04-03_
+
+## What's Changed
+
+### ✨ New Features / 新功能
+
+- add dashboard update checks
+
+### 🐛 Bug Fixes / 修复
+
+- guide model setup in team builder
+
+---
+**Full Changelog**: [v0.1.1...v0.1.2](https://github.com/ClawDeckX/ClawDeckX/compare/v0.1.1...v0.1.2)
+
+
+
+---
+
+# v0.1.1
 
 _2026-04-03_
 
@@ -1077,6 +1098,7 @@ _2026-03-15_
 
 
 ---
+
 
 
 
