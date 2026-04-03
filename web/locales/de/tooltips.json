@@ -76,7 +76,7 @@
   "tools.allow": "Tool-Allowlist. Nur aufgelistete Tools sind verfügbar (überschreibt Profil)",
   "tools.deny": "Tool-Denylist. Aufgelistete Tools sind deaktiviert",
   "tools.exec.host": "Befehlsausführungs-Host. local = lokal ausführen; docker = in Docker-Container (sicherer); ssh = über Remote-SSH",
-  "tools.exec.security": "Ausführungs-Sicherheitslevel. standard = Standard (empfohlen); strict = streng (mehr Einschränkungen); permissive = freizügig (⚠️ höheres Risiko)",
+  "tools.exec.security": "Ausführungs-Sicherheitslevel. deny = Befehlsausführung blockieren; allowlist = nur freigegebene Befehle erlauben; full = volle Ausführungsfähigkeit erlauben (⚠️ höheres Risiko)",
   "tools.exec.ask": "Vor der Befehlsausführung Benutzerbestätigung anfordern",
   "tools.exec.timeout": "Befehlsausführungs-Timeout in Sekunden. 0 = kein Timeout",
   "tools.exec.safeBins": "Sichere Befehls-Allowlist. Diese Befehle können ohne Bestätigung ausgeführt werden, z. B. ls, cat, grep",

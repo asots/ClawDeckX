@@ -88,7 +88,7 @@ func (s *genTaskStore) evictLoop() {
 // MultiAgentHandler handles multi-agent deployment operations.
 type MultiAgentHandler struct {
 	client     *openclaw.GWClient
-	configPath string // path to ~/.openclaw directory for direct LLM calls
+	configPath string // full openclaw.json file path for direct LLM calls
 	taskStore  *genTaskStore
 	wsHub      interface {
 		Broadcast(channel, msgType string, data interface{})
@@ -102,7 +102,7 @@ func NewMultiAgentHandler(client *openclaw.GWClient) *MultiAgentHandler {
 	}
 }
 
-// SetOpenClawConfigPath sets the openclaw config directory used for direct LLM calls.
+// SetOpenClawConfigPath sets the full openclaw.json file path used for direct LLM calls.
 func (h *MultiAgentHandler) SetOpenClawConfigPath(p string) {
 	h.configPath = p
 }

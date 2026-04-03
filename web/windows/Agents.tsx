@@ -5,7 +5,7 @@ import { getTranslation } from '../locales';
 import { gwApi, workspaceMemoryApi, MemoryFileEntry, multiAgentApi, WizardStep2Request } from '../services/api';
 import { useGatewayStatus } from '../hooks/useGatewayStatus';
 import { fmtAgoCompact } from '../utils/time';
-import { normalizeExecSecurity, type ExecPolicy, type ExecPolicySource, type ExecSecurity, type ExecAsk, type AskFallback } from '../utils/exec-policy';
+import { normalizeExecSecurity, type ExecSecurity, type ExecAsk, type AskFallback } from '../utils/exec-policy';
 import { SecurityPolicyBadges } from '../components/SecurityPolicyBadges';
 import { subscribeManagerWS } from '../services/manager-ws';
 import { templateSystem, WorkspaceTemplate, resolveTemplatePrompt, MultiAgentTemplate } from '../services/template-system';
@@ -60,6 +60,7 @@ function extractRunText(content: unknown): string {
 const Agents: React.FC<AgentsProps> = ({ language }) => {
   const t = useMemo(() => getTranslation(language), [language]);
   const a = (t as any).agt as any;
+  const es = (t as any).es as any;
   const na = (t as any).na || '-';
   const menuAgentsLabel = typeof (t as any).menu?.agents === 'string' ? (t as any).menu.agents : 'Agents';
   const { toast } = useToast();
@@ -1353,9 +1354,9 @@ const Agents: React.FC<AgentsProps> = ({ language }) => {
                                   onChange={v => { const d = initDraft(); setToolDraft({ ...d, execSecurity: v }); }}
                                   options={[
                                     { value: '', label: a.execSecDefault || 'Default' },
-                                    { value: 'deny', label: a.execSecDeny || a.optDeny || 'Deny' },
-                                    { value: 'allowlist', label: a.execSecAllowlist || a.optAllowlist || 'Allowlist' },
-                                    { value: 'full', label: a.execSecFull || a.optFull || 'Full' },
+                                    { value: 'deny', label: a.execSecDeny || es.optDeny || 'Deny' },
+                                    { value: 'allowlist', label: a.execSecAllowlist || es.optAllowlist || 'Allowlist' },
+                                    { value: 'full', label: a.execSecFull || es.optFull || 'Full' },
                                   ]}
                                   className="w-full max-w-[140px] h-7 px-2 bg-white dark:bg-white/[0.03] border border-slate-200 dark:border-white/10 rounded-md text-[10px] text-slate-600 dark:text-white/60" />
                               </div>
@@ -1364,9 +1365,9 @@ const Agents: React.FC<AgentsProps> = ({ language }) => {
                                 <CustomSelect value={execAsk || 'off'}
                                   onChange={v => { const d = initDraft(); setToolDraft({ ...d, execAsk: v }); }}
                                   options={[
-                                    { value: 'off', label: a.execAskOff || 'Off' },
-                                    { value: 'on-miss', label: a.execAskOnMiss || 'On Miss' },
-                                    { value: 'always', label: a.execAskAlways || 'Always' },
+                                    { value: 'off', label: a.execAskOff || es.optOff || 'Off' },
+                                    { value: 'on-miss', label: a.execAskOnMiss || es.optOnMiss || 'On Miss' },
+                                    { value: 'always', label: a.execAskAlways || es.optAlways || 'Always' },
                                   ]}
                                   className="w-full max-w-[140px] h-7 px-2 bg-white dark:bg-white/[0.03] border border-slate-200 dark:border-white/10 rounded-md text-[10px] text-slate-600 dark:text-white/60" />
                               </div>
@@ -1377,8 +1378,8 @@ const Agents: React.FC<AgentsProps> = ({ language }) => {
                                 <CustomSelect value={execAskFallback || 'deny'}
                                   onChange={v => { const d = initDraft(); setToolDraft({ ...d, execAskFallback: v }); }}
                                   options={[
-                                    { value: 'deny', label: a.execFallbackDeny || 'Deny' },
-                                    { value: 'allowlist', label: a.execFallbackAllowlist || 'Allowlist' },
+                                    { value: 'deny', label: a.execFallbackDeny || es.optDeny || 'Deny' },
+                                    { value: 'allowlist', label: a.execFallbackAllowlist || es.optAllowlist || 'Allowlist' },
                                   ]}
                                   className="w-full max-w-[140px] h-7 px-2 bg-white dark:bg-white/[0.03] border border-slate-200 dark:border-white/10 rounded-md text-[10px] text-slate-600 dark:text-white/60" />
                               </div>
@@ -1410,7 +1411,7 @@ const Agents: React.FC<AgentsProps> = ({ language }) => {
                                   sandboxMode: 'Off',
                                   fsWsOnly: fsWsOnly,
                                 }}
-                                labels={a}
+                                labels={{ ...es, ...a }}
                                 hideAskWhenOff
                                 hideSandboxWhenOff
                                 compact
@@ -2173,7 +2174,7 @@ const Agents: React.FC<AgentsProps> = ({ language }) => {
                                             : 'bg-slate-100 dark:bg-white/[0.06] text-slate-500 dark:text-white/40'
                                           }`}>{style.label}</span>
                                           {info?.defaultProfiles?.map(p => (
-                                            <span key={p} className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${profileColorFn(p)}`}>{p}</span>
+                                            <span key={p} className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${profileColorFn(p)}`}>{getProfileLabel(p)}</span>
                                           ))}
                                         </div>
                                       </button>

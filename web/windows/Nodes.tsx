@@ -11,7 +11,7 @@ import NumberStepper from '../components/NumberStepper';
 import EmptyState from '../components/EmptyState';
 import { copyToClipboard } from '../utils/clipboard';
 import { SecurityPolicyBadges } from '../components/SecurityPolicyBadges';
-import { normalizeExecSecurity, type ExecPolicy, type ExecSecurity, type ExecAsk, type AskFallback } from '../utils/exec-policy';
+import { resolveEffectivePolicy } from '../utils/exec-policy';
 
 interface NodesProps { language: Language; }
 
@@ -173,6 +173,8 @@ function groupNodes(list: NodeEntry[], key: GroupKey, nd: any): { label: string;
 const Nodes: React.FC<NodesProps> = ({ language }) => {
   const t = useMemo(() => getTranslation(language), [language]);
   const nd = (t as any).nd;
+  const es = (t as any).es as any;
+  const chat = (t as any).chat as any;
   const ndRef = useRef(nd);
   ndRef.current = nd;
   const { toast } = useToast();
@@ -1412,13 +1414,8 @@ const Nodes: React.FC<NodesProps> = ({ language }) => {
 
                                   {/* Security Policy Summary */}
                                   {config && (() => {
-                                    const toolsCfg = (config as any)?.tools || {};
-                                    const globalExecSec = normalizeExecSecurity(toolsCfg.exec?.security) || 'full';
-                                    const globalExecHost = toolsCfg.exec?.host || 'sandbox';
-                                    const globalExecAsk = toolsCfg.exec?.ask || 'off';
-                                    const globalAskFallback = toolsCfg.exec?.askFallback || 'deny';
-                                    const globalProfile = toolsCfg.profile || 'full';
-                                    const fsWsOnly = toolsCfg.fs?.workspaceOnly ?? false;
+                                    const parsedCfg = (config as any) || {};
+                                    const { policy } = resolveEffectivePolicy(parsedCfg?.tools || {}, parsedCfg?.agents?.defaults || {}, undefined);
                                     return (
                                       <div className="p-2.5 rounded-xl bg-primary/[0.02] dark:bg-primary/[0.04] border border-primary/10">
                                         <div className="flex items-center gap-1.5 mb-1.5">
@@ -1426,16 +1423,8 @@ const Nodes: React.FC<NodesProps> = ({ language }) => {
                                           <span className="text-[9px] font-bold text-primary uppercase">{nd.securityPolicy || 'Security Policy'}</span>
                                         </div>
                                         <SecurityPolicyBadges
-                                          policy={{
-                                            toolProfile: globalProfile,
-                                            execSecurity: globalExecSec as ExecSecurity,
-                                            execHost: globalExecHost,
-                                            execAsk: globalExecAsk as ExecAsk,
-                                            askFallback: globalAskFallback as AskFallback,
-                                            sandboxMode: 'Off',
-                                            fsWsOnly: !!fsWsOnly,
-                                          }}
-                                          labels={nd}
+                                          policy={policy}
+                                          labels={{ ...es, ...chat, ...nd }}
                                           hideAskWhenOff
                                           hideSandboxWhenOff
                                           compact

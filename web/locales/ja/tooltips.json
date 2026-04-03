@@ -76,7 +76,7 @@
   "tools.allow": "ツールホワイトリスト。リストされたツールのみ使用可能（profileより優先）",
   "tools.deny": "ツールブラックリスト。リストされたツールは無効化",
   "tools.exec.host": "コマンド実行環境。local = ローカル；docker = Dockerコンテナ内（より安全）；ssh = リモートSSH",
-  "tools.exec.security": "実行セキュリティレベル。standard = 標準（推奨）；strict = 厳格；permissive = 緩い（⚠️ リスク高）",
+  "tools.exec.security": "実行セキュリティレベル。deny = コマンド実行を禁止；allowlist = 承認済みコマンドのみ許可；full = 完全な実行能力を許可（⚠️ リスク高）",
   "tools.exec.ask": "コマンド実行前にユーザー確認を求めるか",
   "tools.exec.timeout": "コマンド実行タイムアウト（秒）。0 = タイムアウトなし",
   "tools.exec.safeBins": "安全なコマンドホワイトリスト。確認なしで実行可能。例：ls, cat, grep",

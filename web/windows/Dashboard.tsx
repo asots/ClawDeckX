@@ -136,6 +136,8 @@ const FAST_INTERVAL = 25000;
 const Dashboard: React.FC<DashboardProps> = ({ language }) => {
   const t = useMemo(() => getTranslation(language), [language]);
   const d = (t as any).dash as any;
+  const es = (t as any).es as any;
+  const chat = (t as any).chat as any;
   const dr = (t as any).dr as any;
   const hi = (t as any).hi as any;
   const gwL = (t as any).gw as any;
@@ -779,18 +781,50 @@ const Dashboard: React.FC<DashboardProps> = ({ language }) => {
           const fsWsOnly = toolsCfg.fs?.workspaceOnly ? true : false;
           const agentsWithOverrides = agentList.filter((e: any) => e?.tools && Object.keys(e.tools).length > 0).length;
           const agentsWithSandbox = agentList.filter((e: any) => e?.sandbox?.mode || e?.sandbox?.backend).length;
+          const profileLabel = chat?.[`secProfile_${globalProfile}`] || globalProfile;
+          const sandboxLabel = globalSandbox === 'Off' || globalSandbox === 'off'
+            ? (es.optOff || 'Off')
+            : globalSandbox === 'sandbox'
+              ? (es.optSandbox || 'Sandbox')
+              : globalSandbox === 'gateway'
+                ? (es.optGateway || 'Gateway')
+                : globalSandbox === 'node'
+                  ? (es.optNode || 'Node')
+                  : globalSandbox;
+          const execSecLabel = globalExecSec === 'deny'
+            ? (es.optDeny || 'Deny')
+            : globalExecSec === 'allowlist'
+              ? (es.optAllowlist || 'Allowlist')
+              : globalExecSec === 'full'
+                ? (es.optFull || 'Full')
+                : globalExecSec;
+          const execHostLabel = globalExecHost === 'sandbox'
+            ? (es.optSandbox || 'Sandbox')
+            : globalExecHost === 'gateway'
+              ? (es.optGateway || 'Gateway')
+              : globalExecHost === 'node'
+                ? (es.optNode || 'Node')
+                : globalExecHost;
+          const execAskLabel = globalExecAsk === 'off'
+            ? (es.optOff || 'Off')
+            : globalExecAsk === 'on-miss'
+              ? (es.optOnMiss || 'On Miss')
+              : globalExecAsk === 'always'
+                ? (es.optAlways || 'Always')
+                : globalExecAsk;
+          const fsWsOnlyLabel = fsWsOnly ? ((d as any).yes || 'Yes') : ((d as any).no || 'No');
           const openEditorSection = (section: string) => {
             window.dispatchEvent(new CustomEvent('clawdeck:open-window', { detail: { id: 'editor', section } }));
           };
           const items = [
-            { icon: 'build', label: d.secToolProfile || 'Tool Profile', value: globalProfile, color: profileTextColor(globalProfile), section: 'tools' },
-            { icon: 'shield', label: d.secSandbox || 'Sandbox', value: globalSandbox, color: globalSandbox !== 'Off' ? 'text-emerald-500' : 'text-slate-400', section: 'agents' },
-            { icon: 'terminal', label: d.secExecSecurity || 'Exec Security', value: globalExecSec, color: execSecurityTextColor(globalExecSec), section: 'tools' },
-            { icon: 'dns', label: d.secExecHost || 'Exec Host', value: globalExecHost, color: execHostTextColor(globalExecHost), section: 'tools' },
-            { icon: 'help', label: d.secExecAsk || 'Exec Ask', value: globalExecAsk, color: execAskTextColor(globalExecAsk), section: 'tools' },
+            { icon: 'build', label: d.secToolProfile || 'Tool Profile', value: profileLabel, color: profileTextColor(globalProfile), section: 'tools' },
+            { icon: 'shield', label: d.secSandbox || 'Sandbox', value: sandboxLabel, color: globalSandbox !== 'Off' ? 'text-emerald-500' : 'text-slate-400', section: 'agents' },
+            { icon: 'terminal', label: d.secExecSecurity || 'Exec Security', value: execSecLabel, color: execSecurityTextColor(globalExecSec), section: 'tools' },
+            { icon: 'dns', label: d.secExecHost || 'Exec Host', value: execHostLabel, color: execHostTextColor(globalExecHost), section: 'tools' },
+            { icon: 'help', label: d.secExecAsk || 'Exec Ask', value: execAskLabel, color: execAskTextColor(globalExecAsk), section: 'tools' },
             { icon: 'block', label: d.secDenyList || 'Deny List', value: denyCount > 0 ? `${denyCount} tools` : '—', color: denyCount > 0 ? 'text-blue-500' : 'text-slate-400', section: 'tools' },
             { icon: 'check_circle', label: d.secAllowList || 'Allow List', value: allowCount > 0 ? `${allowCount} tools` : '—', color: allowCount > 0 ? 'text-blue-500' : 'text-slate-400', section: 'tools' },
-            { icon: 'folder_managed', label: d.secFsWsOnly || 'Workspace FS', value: fsWsOnly ? 'Yes' : 'No', color: fsWsOnly ? 'text-emerald-500' : 'text-slate-400', section: 'tools' },
+            { icon: 'folder_managed', label: d.secFsWsOnly || 'Workspace FS', value: fsWsOnlyLabel, color: fsWsOnly ? 'text-emerald-500' : 'text-slate-400', section: 'tools' },
           ];
           return (
             <div className="rounded-2xl border border-slate-200/60 dark:border-white/[0.06] bg-white dark:bg-white/[0.02] p-4 sci-card">

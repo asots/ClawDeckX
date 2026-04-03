@@ -1832,6 +1832,14 @@ export interface McpServerConfig {
   baseUrl?: string;
   env?: Record<string, string>;
   headers?: Record<string, string>;
+  /** HTTP transport type for remote MCP servers. */
+  transport?: 'sse' | 'streamable-http';
+  /** Optional connection timeout in milliseconds (per-server). */
+  connectionTimeoutMs?: number;
+  /** Working directory for stdio server. */
+  cwd?: string;
+  /** Alias for cwd. */
+  workingDirectory?: string;
   [key: string]: unknown;
 }
 

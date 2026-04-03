@@ -76,7 +76,7 @@
   "tools.allow": "Lista de ferramentas permitidas. Apenas ferramentas listadas estão disponíveis (sobrescreve perfil)",
   "tools.deny": "Lista de ferramentas bloqueadas. Ferramentas listadas são desativadas",
   "tools.exec.host": "Host de execução de comandos. local = executar localmente; docker = executar em container Docker (mais seguro); ssh = executar via SSH remoto",
-  "tools.exec.security": "Nível de segurança de execução. standard = padrão (recomendado); strict = restrito (mais restrições); permissive = permissivo (⚠️ maior risco)",
+  "tools.exec.security": "Nível de segurança de execução. deny = bloquear execução de comandos; allowlist = permitir apenas comandos aprovados; full = permitir capacidade total de execução (⚠️ maior risco)",
   "tools.exec.ask": "Se deve pedir confirmação do usuário antes de executar comandos",
   "tools.exec.timeout": "Timeout de execução de comandos em segundos. 0 = sem timeout",
   "tools.exec.safeBins": "Lista de comandos seguros. Estes comandos podem executar sem confirmação, ex. ls, cat, grep",

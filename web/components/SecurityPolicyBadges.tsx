@@ -38,6 +38,44 @@ export interface SecurityPolicyBadgesProps {
 
 const src = (s?: 'agent' | 'global') => s === 'agent' ? ' ⬤' : '';
 
+const profileLabel = (a: Record<string, string>, value: string) =>
+  a[`secProfile_${value}`] || a[`toolProfile${value.charAt(0).toUpperCase()}${value.slice(1)}`] || value;
+
+const sandboxLabel = (a: Record<string, string>, value: string) => {
+  if (value === 'Off' || value === 'off') return a.optOff || a.off || value;
+  if (value === 'sandbox') return a.optSandbox || 'Sandbox';
+  if (value === 'gateway') return a.optGateway || 'Gateway';
+  if (value === 'node') return a.optNode || 'Node';
+  return value;
+};
+
+const execSecurityLabel = (a: Record<string, string>, value: string) => {
+  if (value === 'deny') return a.optDeny || a.execSecDeny || 'Deny';
+  if (value === 'allowlist') return a.optAllowlist || a.execSecAllowlist || 'Allowlist';
+  if (value === 'full') return a.execSecFull || a.optFull || 'Full';
+  return value;
+};
+
+const execHostLabel = (a: Record<string, string>, value: string) => {
+  if (value === 'sandbox') return a.optSandbox || 'Sandbox';
+  if (value === 'gateway') return a.optGateway || 'Gateway';
+  if (value === 'node') return a.optNode || 'Node';
+  return value;
+};
+
+const execAskLabel = (a: Record<string, string>, value: string) => {
+  if (value === 'off') return a.execAskOff || a.optAskOff || a.optOff || 'Off';
+  if (value === 'on-miss') return a.execAskOnMiss || a.optAskOnMiss || a.optOnMiss || 'On Miss';
+  if (value === 'always') return a.execAskAlways || a.optAskAlways || a.optAlways || 'Always';
+  return value;
+};
+
+const askFallbackLabel = (a: Record<string, string>, value: string) => {
+  if (value === 'deny') return a.execFallbackDeny || a.optFallbackDeny || a.optDeny || 'Deny';
+  if (value === 'allowlist') return a.execFallbackAllowlist || a.optFallbackAllowlist || a.optAllowlist || 'Allowlist';
+  return value;
+};
+
 export const SecurityPolicyBadges: React.FC<SecurityPolicyBadgesProps> = ({
   policy: p,
   source: s,
@@ -53,41 +91,41 @@ export const SecurityPolicyBadges: React.FC<SecurityPolicyBadgesProps> = ({
     <div className="flex flex-wrap gap-1.5">
       {/* Tool Profile */}
       <Badge cls={profileColor(p.toolProfile)}>
-        {a.secProfile || p.toolProfile}{showSource ? src(s?.toolProfile) : ''}
+        {profileLabel(a, p.toolProfile)}{showSource ? src(s?.toolProfile) : ''}
       </Badge>
 
       {/* Sandbox */}
       {!(hideSandboxWhenOff && (!p.sandboxMode || p.sandboxMode === 'Off' || p.sandboxMode === 'off')) && (
         <Badge cls={sandboxColor(p.sandboxMode)}>
-          {a.secSandbox || 'Sandbox'}: {p.sandboxMode}{showSource ? src(s?.sandboxMode) : ''}
+          {a.secSandbox || 'Sandbox'}: {sandboxLabel(a, p.sandboxMode)}{showSource ? src(s?.sandboxMode) : ''}
         </Badge>
       )}
 
       {/* Exec Security */}
       {p.execSecurity && (
         <Badge cls={execSecurityColor(p.execSecurity)}>
-          {a.secExec || 'Exec'}: {p.execSecurity}{showSource ? src(s?.execSecurity) : ''}
+          {a.secExec || 'Exec'}: {execSecurityLabel(a, p.execSecurity)}{showSource ? src(s?.execSecurity) : ''}
         </Badge>
       )}
 
       {/* Exec Host */}
       {p.execHost && (
         <Badge cls={execHostColor(p.execHost)}>
-          {a.secExecHost || 'Host'}: {p.execHost}{showSource ? src(s?.execHost) : ''}
+          {a.secExecHost || 'Host'}: {execHostLabel(a, p.execHost)}{showSource ? src(s?.execHost) : ''}
         </Badge>
       )}
 
       {/* Exec Ask */}
       {!(hideAskWhenOff && (!p.execAsk || p.execAsk === 'off')) && (
         <Badge cls={execAskColor(p.execAsk)}>
-          {a.secExecAsk || 'Ask'}: {p.execAsk}{showSource ? src(s?.execAsk) : ''}
+          {a.secExecAsk || 'Ask'}: {execAskLabel(a, p.execAsk)}{showSource ? src(s?.execAsk) : ''}
         </Badge>
       )}
 
       {/* Ask Fallback — only show when ask is not 'off' */}
       {p.execAsk && p.execAsk !== 'off' && p.askFallback && (
         <Badge cls={p.askFallback === 'allowlist' ? 'text-blue-500 bg-blue-500/10 border-blue-500/15' : 'text-red-500 bg-red-500/10 border-red-500/15'}>
-          {a.secAskFallback || 'Fallback'}: {p.askFallback}{showSource ? src(s?.askFallback) : ''}
+          {a.secAskFallback || 'Fallback'}: {askFallbackLabel(a, p.askFallback)}{showSource ? src(s?.askFallback) : ''}
         </Badge>
       )}
 

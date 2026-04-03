@@ -1311,7 +1311,7 @@ func (h *WizardHandler) validateChannelTokens(channel string, tokens map[string]
 		if tokens["appSecret"] == "" {
 			return fmt.Errorf("WeChat App Secret is required")
 		}
-	case "qq":
+	case "qqbot", "qq":
 		if tokens["appId"] == "" {
 			return fmt.Errorf("QQ App ID is required")
 		}

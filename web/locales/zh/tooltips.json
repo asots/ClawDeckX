@@ -76,7 +76,7 @@
   "tools.allow": "工具白名单。仅列出的工具可用（优先级高于 profile）",
   "tools.deny": "工具黑名单。列出的工具将被禁用",
   "tools.exec.host": "命令执行环境。local = 本机直接执行；docker = Docker 容器内执行（更安全）；ssh = 远程 SSH 执行",
-  "tools.exec.security": "执行安全级别。standard = 标准（推荐）；strict = 严格（限制更多命令）；permissive = 宽松（⚠️ 风险较高）",
+  "tools.exec.security": "执行安全级别。deny = 禁止命令执行；allowlist = 仅允许已批准命令；full = 允许完整执行能力（⚠️ 风险较高）",
   "tools.exec.ask": "执行命令前是否需要用户确认",
   "tools.exec.timeout": "命令执行超时时间（秒）。0 = 无超时",
   "tools.exec.safeBins": "安全命令白名单。这些命令可以不经确认直接执行，如 ls, cat, grep",

@@ -11,19 +11,53 @@ interface McpCenterProps {
 }
 
 // Server type options
-const SERVER_TYPES = ['stdio', 'sse'] as const;
+const SERVER_TYPES = ['stdio', 'sse', 'streamable-http'] as const;
 type ServerType = typeof SERVER_TYPES[number];
 
 // Default config templates per type
 const TYPE_DEFAULTS: Record<ServerType, McpServerConfig> = {
   stdio: { type: 'stdio', command: '', args: [], env: {} },
   sse: { type: 'sse', url: '', env: {} },
+  'streamable-http': { type: 'streamable-http', url: '', env: {} },
+};
+
+// Display labels for server types
+const SERVER_TYPE_LABELS: Record<ServerType, string> = {
+  stdio: 'STDIO',
+  sse: 'SSE',
+  'streamable-http': 'Streamable HTTP',
 };
 
 // Detect server type from config
 function detectType(cfg: McpServerConfig): ServerType {
-  if (cfg.type === 'sse' || cfg.url || (cfg as any).baseUrl) return 'sse';
+  const transport = ((cfg.transport ?? cfg.type ?? '') as string).toLowerCase();
+  if (transport === 'streamable-http') return 'streamable-http';
+  if (transport === 'sse' || cfg.type === 'sse' || cfg.url || (cfg as any).baseUrl) return 'sse';
   return 'stdio';
+}
+
+// Sensitive header keys that should be redacted in display
+const SENSITIVE_HEADER_KEYS = new Set([
+  'authorization', 'x-api-key', 'api-key', 'cookie', 'x-auth-token',
+  'proxy-authorization', 'x-secret', 'bearer',
+]);
+const SENSITIVE_ENV_PATTERNS = [/token/i, /secret/i, /key/i, /password/i, /credential/i];
+
+function isSensitiveHeader(key: string): boolean {
+  return SENSITIVE_HEADER_KEYS.has(key.toLowerCase());
+}
+
+function isSensitiveEnv(key: string): boolean {
+  return SENSITIVE_ENV_PATTERNS.some(p => p.test(key));
+}
+
+function redactValue(value: string): string {
+  if (value.length <= 8) return '••••••••';
+  return value.slice(0, 4) + '••••' + value.slice(-4);
+}
+
+function isHttpType(type: ServerType): boolean {
+  return type === 'sse' || type === 'streamable-http';
 }
 
 // ─── Env pair editor ─────────────────────────────────────────────────────────
@@ -157,8 +191,13 @@ function normalizeConfig(raw: any): McpServerConfig {
   // transport / type field; baseUrl is an alias for url (used by some MCP configs)
   const transport = (raw.transport ?? raw.type ?? '').toLowerCase();
   const resolvedUrl = raw.url ?? raw.baseUrl ?? '';
-  if (transport === 'http' || transport === 'sse' || transport === 'streamable-http' || resolvedUrl) {
+  if (transport === 'streamable-http') {
+    cfg.type = 'streamable-http';
+    cfg.transport = 'streamable-http';
+    cfg.url = resolvedUrl;
+  } else if (transport === 'http' || transport === 'sse' || resolvedUrl) {
     cfg.type = 'sse';
+    cfg.transport = 'sse';
     cfg.url = resolvedUrl;
   } else {
     cfg.type = 'stdio';
@@ -167,8 +206,13 @@ function normalizeConfig(raw: any): McpServerConfig {
   }
   if (raw.env && typeof raw.env === 'object') cfg.env = raw.env;
   if (raw.headers && typeof raw.headers === 'object') cfg.headers = raw.headers;
+  if (typeof raw.connectionTimeoutMs === 'number' && raw.connectionTimeoutMs > 0) {
+    cfg.connectionTimeoutMs = raw.connectionTimeoutMs;
+  }
+  if (typeof raw.cwd === 'string') cfg.cwd = raw.cwd;
+  if (typeof raw.workingDirectory === 'string') cfg.workingDirectory = raw.workingDirectory;
   // preserve any extra fields
-  const known = new Set(['type', 'transport', 'command', 'args', 'url', 'baseUrl', 'env', 'headers']);
+  const known = new Set(['type', 'transport', 'command', 'args', 'url', 'baseUrl', 'env', 'headers', 'connectionTimeoutMs', 'cwd', 'workingDirectory']);
   for (const [k, v] of Object.entries(raw)) {
     if (!known.has(k)) (cfg as any)[k] = v;
   }
@@ -211,6 +255,8 @@ const EditModal: React.FC<{
   const [url, setUrl] = useState(entry?.config.url ?? '');
   const [headers, setHeaders] = useState<Record<string, string>>(entry?.config.headers ?? {});
   const [env, setEnv] = useState<Record<string, string>>(entry?.config.env ?? {});
+  const [connectionTimeoutMs, setConnectionTimeoutMs] = useState<number | ''>(entry?.config.connectionTimeoutMs ?? '');
+  const [cwd, setCwd] = useState(entry?.config.cwd ?? entry?.config.workingDirectory ?? '');
   const [extraJson, setExtraJson] = useState('');
   const [saving, setSaving] = useState(false);
   const [nameError, setNameError] = useState('');
@@ -243,6 +289,8 @@ const EditModal: React.FC<{
     setUrl(p.config.url ?? '');
     setHeaders(p.config.headers ?? {});
     setEnv(p.config.env ?? {});
+    setConnectionTimeoutMs(p.config.connectionTimeoutMs ?? '');
+    setCwd(p.config.cwd ?? p.config.workingDirectory ?? '');
     setMode('form');
   };
 
@@ -277,18 +325,23 @@ const EditModal: React.FC<{
     let valid = true;
     if (!trimmed) { setNameError(t.nameRequired || '名称不能为空'); valid = false; } else setNameError('');
     if (serverType === 'stdio' && !command.trim()) { setCommandError(t.commandRequired || '命令不能为空'); valid = false; } else setCommandError('');
-    if (serverType === 'sse' && !url.trim()) { setUrlError(t.urlRequired || '服务器地址不能为空'); valid = false; } else setUrlError('');
+    if (isHttpType(serverType) && !url.trim()) { setUrlError(t.urlRequired || '服务器地址不能为空'); valid = false; } else setUrlError('');
     if (!valid) return null;
 
-    let config: McpServerConfig = { type: serverType };
+    let config: McpServerConfig = {};
     if (serverType === 'stdio') {
       config.command = command.trim();
       if (args.length > 0) config.args = args;
+      if (cwd.trim()) config.cwd = cwd.trim();
     } else {
       config.url = url.trim();
+      config.transport = serverType as 'sse' | 'streamable-http';
       if (Object.keys(headers).length > 0) config.headers = headers;
     }
     if (Object.keys(env).length > 0) config.env = env;
+    if (typeof connectionTimeoutMs === 'number' && connectionTimeoutMs > 0) {
+      config.connectionTimeoutMs = connectionTimeoutMs;
+    }
     if (extraJson.trim()) {
       try { const extra = JSON.parse(extraJson.trim()); config = { ...config, ...extra }; } catch { /* ignore */ }
     }
@@ -341,7 +394,7 @@ const EditModal: React.FC<{
         type: serverType,
         ok: false,
         message: err?.message || t.testFailed || '测试失败',
-        target: serverType === 'sse' ? built.config.url : built.config.command,
+        target: isHttpType(serverType) ? built.config.url : built.config.command,
       });
     } finally {
       setModalTesting(false);
@@ -460,13 +513,15 @@ const EditModal: React.FC<{
                   <p className="text-[10px] font-bold theme-text-muted uppercase tracking-wider">
                     {t.pastePreview || 'Detected'} ({parsed.length})
                   </p>
-                  {parsed.map((p, i) => (
+                  {parsed.map((p, i) => {
+                    const pType = detectType(p.config);
+                    return (
                     <div key={i} className="flex items-center gap-2 p-2.5 rounded-lg theme-field">
                       <span className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 ${
-                        detectType(p.config) === 'sse' ? 'bg-blue-500/10' : 'bg-primary/10'
+                        isHttpType(pType) ? 'bg-blue-500/10' : 'bg-primary/10'
                       }`}>
                         <span className="material-symbols-outlined text-[13px] text-primary">
-                          {detectType(p.config) === 'sse' ? 'wifi' : 'terminal'}
+                          {isHttpType(pType) ? 'wifi' : 'terminal'}
                         </span>
                       </span>
                       <div className="flex-1 min-w-0">
@@ -476,11 +531,11 @@ const EditModal: React.FC<{
                           <p className="text-[11px] text-amber-500 italic">{t.pasteNoName || 'Name required — fill in form'}</p>
                         )}
                         <p className="text-[10px] theme-text-muted truncate font-mono">
-                          {detectType(p.config) === 'sse' ? p.config.url : p.config.command}
+                          {isHttpType(pType) ? p.config.url : p.config.command}
                         </p>
                       </div>
                       <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold bg-primary/10 text-primary shrink-0">
-                        {detectType(p.config).toUpperCase()}
+                        {SERVER_TYPE_LABELS[pType]}
                       </span>
                       {/* Edit in form button for single unnamed server */}
                       {parsed.length === 1 && (
@@ -494,7 +549,8 @@ const EditModal: React.FC<{
                         </button>
                       )}
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -537,7 +593,7 @@ const EditModal: React.FC<{
                 <label className="text-[10px] font-bold theme-text-muted uppercase tracking-wider mb-1.5 block">
                   {t.serverType}
                 </label>
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap">
                   {SERVER_TYPES.map(tp => (
                     <button
                       key={tp}
@@ -549,7 +605,7 @@ const EditModal: React.FC<{
                           : 'theme-field theme-text-secondary hover:bg-slate-200 dark:hover:bg-white/10'
                       }`}
                     >
-                      {tp.toUpperCase()}
+                      {SERVER_TYPE_LABELS[tp]}
                     </button>
                   ))}
                 </div>
@@ -581,11 +637,22 @@ const EditModal: React.FC<{
                       placeholder={t.argPlaceholder}
                     />
                   </div>
+                  <div>
+                    <label className="text-[10px] font-bold theme-text-muted uppercase tracking-wider mb-1.5 block">
+                      {t.cwd || 'Working Directory'}
+                    </label>
+                    <input
+                      value={cwd}
+                      onChange={e => setCwd(e.target.value)}
+                      placeholder={t.cwdPlaceholder || '/path/to/project'}
+                      className="w-full h-9 px-3 theme-field rounded-lg text-xs font-mono outline-none focus:border-primary sci-input"
+                    />
+                  </div>
                 </>
               )}
 
-              {/* sse fields */}
-              {serverType === 'sse' && (
+              {/* HTTP fields (sse / streamable-http) */}
+              {isHttpType(serverType) && (
                 <>
                   <div>
                     <label className="text-[10px] font-bold theme-text-muted uppercase tracking-wider mb-1.5 block">
@@ -614,6 +681,23 @@ const EditModal: React.FC<{
                 </>
               )}
 
+              {/* Connection Timeout */}
+              <div>
+                <label className="text-[10px] font-bold theme-text-muted uppercase tracking-wider mb-1.5 block">
+                  {t.connectionTimeout || 'Connection Timeout (ms)'}
+                </label>
+                <input
+                  type="number"
+                  value={connectionTimeoutMs}
+                  onChange={e => setConnectionTimeoutMs(e.target.value ? Number(e.target.value) : '')}
+                  placeholder={t.connectionTimeoutPlaceholder || '30000'}
+                  min={0}
+                  step={1000}
+                  className="w-full h-9 px-3 theme-field rounded-lg text-xs font-mono outline-none focus:border-primary sci-input"
+                />
+                <p className="text-[10px] theme-text-muted mt-0.5">{t.connectionTimeoutHint || 'Default: 30000ms (30s). Leave empty for default.'}</p>
+              </div>
+
               {/* Env */}
               <div>
                 <label className="text-[10px] font-bold theme-text-muted uppercase tracking-wider mb-1.5 block">
@@ -628,8 +712,8 @@ const EditModal: React.FC<{
                 />
               </div>
 
-              {/* mcp-remote bridge — shown only for SSE servers */}
-              {serverType === 'sse' && (
+              {/* mcp-remote bridge — shown for HTTP servers */}
+              {isHttpType(serverType) && (
                 <div className="pt-1">
                   <button
                     type="button"
@@ -787,21 +871,21 @@ const ServerCard: React.FC<{
       <div className="flex items-center gap-3">
         <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary/10 to-purple-500/10 flex items-center justify-center border border-slate-200/50 dark:border-white/5 shrink-0">
           <span className="material-symbols-outlined text-[16px] text-primary">
-            {type === 'sse' ? 'wifi' : 'terminal'}
+            {isHttpType(type) ? 'wifi' : 'terminal'}
           </span>
         </div>
         <div className="flex-1 min-w-0">
           <h4 className="font-bold text-[13px] text-slate-800 dark:text-white truncate">{entry.name}</h4>
           <p className="text-[10px] theme-text-muted truncate font-mono">
-            {type === 'sse' ? (cfg.url || '—') : (cfg.command || '—')}
+            {isHttpType(type) ? (cfg.url || '—') : (cfg.command || '—')}
           </p>
         </div>
         <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold shrink-0 ${
-          type === 'sse'
+          isHttpType(type)
             ? 'bg-blue-500/10 text-blue-500'
             : 'bg-primary/10 text-primary'
         }`}>
-          {type.toUpperCase()}
+          {SERVER_TYPE_LABELS[type]}
         </span>
       </div>
 
@@ -815,6 +899,21 @@ const ServerCard: React.FC<{
         {cfg.env && Object.keys(cfg.env).length > 0 && (
           <span className="text-[10px] px-1.5 py-0.5 rounded-full theme-field theme-text-muted">
             {Object.keys(cfg.env).length} {t.envCount}
+          </span>
+        )}
+        {cfg.headers && Object.keys(cfg.headers).length > 0 && (
+          <span className="text-[10px] px-1.5 py-0.5 rounded-full theme-field theme-text-muted">
+            {Object.keys(cfg.headers).length} {t.headersCount || 'headers'}
+          </span>
+        )}
+        {cfg.connectionTimeoutMs && (
+          <span className="text-[10px] px-1.5 py-0.5 rounded-full theme-field theme-text-muted">
+            {cfg.connectionTimeoutMs}ms {t.timeout || 'timeout'}
+          </span>
+        )}
+        {(cfg.cwd || cfg.workingDirectory) && (
+          <span className="text-[10px] px-1.5 py-0.5 rounded-full theme-field theme-text-muted" title={cfg.cwd || cfg.workingDirectory}>
+            cwd
           </span>
         )}
       </div>
@@ -935,10 +1034,16 @@ const ServerCard: React.FC<{
         </div>
       )}
 
-      {/* Expanded JSON view */}
+      {/* Expanded JSON view — redact sensitive values */}
       {expanded && (
         <pre className="text-[10px] theme-field rounded-lg p-3 font-mono overflow-x-auto whitespace-pre-wrap break-all theme-text-secondary max-h-48 overflow-y-auto custom-scrollbar neon-scrollbar">
-          {JSON.stringify(cfg, null, 2)}
+          {JSON.stringify(cfg, (key, value) => {
+            if (typeof value !== 'string') return value;
+            if (key === 'headers' || key === 'env') return value;
+            const parent = key;
+            if (isSensitiveHeader(parent) || isSensitiveEnv(parent)) return redactValue(value);
+            return value;
+          }, 2)}
         </pre>
       )}
 

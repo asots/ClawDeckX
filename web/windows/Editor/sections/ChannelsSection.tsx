@@ -39,7 +39,7 @@ const CHANNEL_TYPES: ChannelDef[] = [
   { id: 'wecom', icon: 'business', labelKey: 'chWecom', category: 'china', descKey: 'chDescWecom' },
   { id: 'wecom_kf', icon: 'support_agent', labelKey: 'chWecomKf', category: 'china', descKey: 'chDescWecomKf' },
   { id: 'openclaw-weixin', icon: 'mark_chat_unread', labelKey: 'chWeixin', category: 'china', descKey: 'chDescWeixin' },
-  { id: 'qq', icon: 'smart_toy', labelKey: 'chQq', category: 'china', descKey: 'chDescQq' },
+  { id: 'qqbot', icon: 'smart_toy', labelKey: 'chQq', category: 'china', descKey: 'chDescQq' },
   { id: 'yuanbao', icon: 'token', labelKey: 'chYuanbao', category: 'china', descKey: 'chDescYuanbao' },
   { id: 'dingtalk', icon: 'notifications', labelKey: 'chDingtalk', category: 'china', descKey: 'chDescDingtalk' },
   { id: 'doubao', icon: 'auto_awesome', labelKey: 'chDoubao', category: 'china', descKey: 'chDescDoubao', disabled: true },
@@ -505,7 +505,7 @@ export const ChannelsSection: React.FC<SectionProps> = ({ config, setField, getF
       wecom: '@wecom/wecom-openclaw-plugin',
       wecom_kf: '@openclaw-china/wecom-app',
       'openclaw-weixin': '@tencent-weixin/openclaw-weixin',
-      qq: '@sliverp/qqbot@latest',
+      qqbot: '@openclaw/qqbot',
       yuanbao: 'openclaw-plugin-yuanbao@latest',
       msteams: '@openclaw/msteams',
       zalo: '@openclaw/zalo',
@@ -1551,12 +1551,61 @@ export const ChannelsSection: React.FC<SectionProps> = ({ config, setField, getF
           </>
         )}
 
-        {/* QQ */}
-        {ch === 'qq' && (
+        {/* QQ Bot */}
+        {ch === 'qqbot' && (
           <>
             <TextField label={labelAppId} value={g(['appId']) || ''} onChange={v => s(['appId'], v)} tooltip={es.tipQQAppId} />
             <PasswordField label={labelClientSecret} value={g(['clientSecret']) || ''} onChange={v => s(['clientSecret'], v)} tooltip={es.tipQQClientSecret} />
+            <TextField label={es.qqClientSecretFile || 'Client Secret File'} value={g(['clientSecretFile']) || ''} onChange={v => s(['clientSecretFile'], v)} tooltip={es.tipQQClientSecretFile} />
             <SwitchField label={es.chMarkdownSupport} value={g(['markdownSupport']) === true} onChange={v => s(['markdownSupport'], v)} tooltip={es.tipQQMarkdown} />
+            <ArrayField label={es.allowFrom} value={g(['allowFrom']) || []} onChange={v => s(['allowFrom'], v)} placeholder={es.phQQAllowFrom || 'qqbot:user-xxx'} tooltip={es.tipQQAllowFrom} />
+            <TextField label={es.systemPrompt || 'System Prompt'} value={g(['systemPrompt']) || ''} onChange={v => s(['systemPrompt'], v)} tooltip={es.tipQQSystemPrompt} />
+            <SwitchField label={es.qqUrlDirectUpload || 'URL Direct Upload'} value={g(['urlDirectUpload']) === true} onChange={v => s(['urlDirectUpload'], v)} tooltip={es.tipQQUrlDirectUpload} />
+            <TextField label={es.qqUpgradeUrl || 'Upgrade URL'} value={g(['upgradeUrl']) || ''} onChange={v => s(['upgradeUrl'], v)} tooltip={es.tipQQUpgradeUrl} />
+            <SelectField label={es.qqUpgradeMode || 'Upgrade Mode'} value={g(['upgradeMode']) || 'doc'} onChange={v => s(['upgradeMode'], v)} options={[
+              { value: 'doc', label: es.optDoc || 'Doc' },
+              { value: 'hot-reload', label: es.optHotReload || 'Hot Reload' },
+            ]} tooltip={es.tipQQUpgradeMode} />
+            <ArrayField label={es.qqVoiceDirectFormats || 'Voice Direct Upload Formats'} value={g(['voiceDirectUploadFormats']) || []} onChange={v => s(['voiceDirectUploadFormats'], v)} placeholder="silk,amr" tooltip={es.tipQQVoiceDirectFormats} />
+            {/* Audio Format Policy */}
+            <div className="pt-2 pb-1">
+              <span className="text-[11px] font-bold theme-text-muted">{es.qqAudioFormatPolicy || 'Audio Format Policy'}</span>
+            </div>
+            <ArrayField label={es.qqSttDirectFormats || 'STT Direct Formats'} value={g(['audioFormatPolicy', 'sttDirectFormats']) || []} onChange={v => s(['audioFormatPolicy', 'sttDirectFormats'], v)} placeholder="silk,amr,wav" tooltip={es.tipQQSttDirectFormats} />
+            <ArrayField label={es.qqUploadDirectFormats || 'Upload Direct Formats'} value={g(['audioFormatPolicy', 'uploadDirectFormats']) || []} onChange={v => s(['audioFormatPolicy', 'uploadDirectFormats'], v)} placeholder="silk,amr" tooltip={es.tipQQUploadDirectFormats} />
+            <SwitchField label={es.qqTranscodeEnabled || 'Transcode Enabled'} value={g(['audioFormatPolicy', 'transcodeEnabled']) !== false} onChange={v => s(['audioFormatPolicy', 'transcodeEnabled'], v)} tooltip={es.tipQQTranscodeEnabled} />
+            {/* STT */}
+            <div className="pt-2 pb-1">
+              <span className="text-[11px] font-bold theme-text-muted">{es.qqSttTitle || 'Speech-to-Text (STT)'}</span>
+            </div>
+            <SwitchField label={es.enabled || 'Enabled'} value={g(['stt', 'enabled']) === true} onChange={v => s(['stt', 'enabled'], v)} tooltip={es.tipQQSttEnabled} />
+            {g(['stt', 'enabled']) === true && (
+              <>
+                <TextField label={es.qqSttProvider || 'Provider'} value={g(['stt', 'provider']) || ''} onChange={v => s(['stt', 'provider'], v)} placeholder="openai" tooltip={es.tipQQSttProvider} />
+                <TextField label={labelBaseUrl} value={g(['stt', 'baseUrl']) || ''} onChange={v => s(['stt', 'baseUrl'], v)} placeholder="https://api.openai.com/v1" tooltip={es.tipQQSttBaseUrl} />
+                <PasswordField label={labelApiKey} value={g(['stt', 'apiKey']) || ''} onChange={v => s(['stt', 'apiKey'], v)} tooltip={es.tipQQSttApiKey} />
+                <TextField label={es.qqSttModel || 'Model'} value={g(['stt', 'model']) || ''} onChange={v => s(['stt', 'model'], v)} placeholder="whisper-1" tooltip={es.tipQQSttModel} />
+              </>
+            )}
+            {/* TTS */}
+            <div className="pt-2 pb-1">
+              <span className="text-[11px] font-bold theme-text-muted">{es.qqTtsTitle || 'Text-to-Speech (TTS)'}</span>
+            </div>
+            <SwitchField label={es.enabled || 'Enabled'} value={g(['tts', 'enabled']) === true} onChange={v => s(['tts', 'enabled'], v)} tooltip={es.tipQQTtsEnabled} />
+            {g(['tts', 'enabled']) === true && (
+              <>
+                <TextField label={es.qqTtsProvider || 'Provider'} value={g(['tts', 'provider']) || ''} onChange={v => s(['tts', 'provider'], v)} placeholder="openai" tooltip={es.tipQQTtsProvider} />
+                <TextField label={labelBaseUrl} value={g(['tts', 'baseUrl']) || ''} onChange={v => s(['tts', 'baseUrl'], v)} placeholder="https://api.openai.com/v1" tooltip={es.tipQQTtsBaseUrl} />
+                <PasswordField label={labelApiKey} value={g(['tts', 'apiKey']) || ''} onChange={v => s(['tts', 'apiKey'], v)} tooltip={es.tipQQTtsApiKey} />
+                <TextField label={es.qqTtsModel || 'Model'} value={g(['tts', 'model']) || ''} onChange={v => s(['tts', 'model'], v)} placeholder="tts-1" tooltip={es.tipQQTtsModel} />
+                <TextField label={es.qqTtsVoice || 'Voice'} value={g(['tts', 'voice']) || ''} onChange={v => s(['tts', 'voice'], v)} placeholder="alloy" tooltip={es.tipQQTtsVoice} />
+                <SelectField label={es.qqTtsAuthStyle || 'Auth Style'} value={g(['tts', 'authStyle']) || 'bearer'} onChange={v => s(['tts', 'authStyle'], v)} options={[
+                  { value: 'bearer', label: 'Bearer' },
+                  { value: 'api-key', label: 'API Key' },
+                ]} tooltip={es.tipQQTtsAuthStyle} />
+                <NumberField label={es.qqTtsSpeed || 'Speed'} value={g(['tts', 'speed'])} onChange={v => s(['tts', 'speed'], v)} placeholder="1.0" tooltip={es.tipQQTtsSpeed} />
+              </>
+            )}
           </>
         )}
 

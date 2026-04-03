@@ -12,7 +12,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 )
@@ -49,12 +48,11 @@ type openclawJSON struct {
 	} `json:"agents"`
 }
 
-// ResolveProvider reads openclaw.json from configDir and returns the provider
+// ResolveProvider reads a full openclaw.json file path and returns the provider
 // config for the given modelRef (e.g. "mteapi/gpt-5.4") or the default model.
 // If modelRef is empty the default primary model is used.
-func ResolveProvider(configDir, modelRef string) (*ProviderConfig, error) {
-	path := filepath.Join(configDir, "openclaw.json")
-	data, err := os.ReadFile(path)
+func ResolveProvider(configPath, modelRef string) (*ProviderConfig, error) {
+	data, err := os.ReadFile(configPath)
 	if err != nil {
 		return nil, fmt.Errorf("llmdirect: read openclaw.json: %w", err)
 	}

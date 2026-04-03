@@ -17,6 +17,7 @@ import { ToolCallCard } from '../components/ToolCallCard';
 import { UsagePanel } from '../components/UsagePanel';
 import { extractImages, extractThinking, hasImages, hasThinking } from '../utils/content-blocks';
 import { groupMessages, isFirstInGroup, isLastInGroup } from '../utils/message-grouping';
+import { resolveEffectivePolicy } from '../utils/exec-policy';
 
 interface SessionsProps {
   language: Language;
@@ -292,6 +293,7 @@ function getSessionModelKey(session?: { model?: string; modelProvider?: string }
 const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSessionKeyConsumed }) => {
   const t = useMemo(() => getTranslation(language), [language]);
   const c = t.chat as any;
+  const es = (t as any).es as any;
   const sessionDefault = (t as any).dash?.sessionDefault || c.sessionKey;
   const { toast } = useToast();
   const { confirm } = useConfirm();
@@ -3527,7 +3529,7 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
         gwReady={gwReady}
         loadUsage={loadUsageData}
         loadTimeseries={loadTimeseriesData}
-        labels={c}
+        labels={{ ...es, ...c }}
         securityInfo={(() => {
           if (!securityCfg) return undefined;
           const parsed = securityCfg?.parsed || securityCfg?.config || securityCfg || {};
@@ -3536,14 +3538,13 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
           const agentId = sessionKey?.split(':')?.[1] || '';
           const agentList: any[] = agentsCfg?.list || [];
           const agentEntry = agentList.find((e: any) => e?.id === agentId) || {};
-          const agentTools = agentEntry.tools || {};
-          const sandboxCfg = agentEntry.sandbox || agentsCfg?.defaults?.sandbox || {};
+          const { policy } = resolveEffectivePolicy(globalTools, agentsCfg?.defaults || {}, agentEntry);
           return {
-            toolProfile: agentTools.profile || globalTools.profile || 'full',
-            sandboxMode: sandboxCfg.mode || sandboxCfg.backend || 'Off',
-            execSecurity: agentTools.exec?.security || globalTools.exec?.security || '—',
-            execHost: agentTools.exec?.host || globalTools.exec?.host || 'sandbox',
-            execAsk: agentTools.exec?.ask || globalTools.exec?.ask || 'off',
+            toolProfile: policy.toolProfile,
+            sandboxMode: policy.sandboxMode,
+            execSecurity: policy.execSecurity || '—',
+            execHost: policy.execHost,
+            execAsk: policy.execAsk,
           };
         })()}
         session={(() => {

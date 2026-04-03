@@ -76,7 +76,7 @@
   "tools.allow": "도구 허용 목록. 나열된 도구만 사용할 수 있습니다 (프로필 설정을 재정의)",
   "tools.deny": "도구 차단 목록. 나열된 도구가 비활성화됩니다",
   "tools.exec.host": "명령 실행 호스트. local = 로컬 실행; docker = Docker 컨테이너에서 실행 (더 안전); ssh = 원격 SSH를 통해 실행",
-  "tools.exec.security": "실행 보안 수준. standard = 표준 (권장); strict = 엄격 (더 많은 제한); permissive = 허용 (⚠️ 위험도 높음)",
+  "tools.exec.security": "실행 보안 수준. deny = 명령 실행 차단; allowlist = 승인된 명령만 허용; full = 전체 실행 권한 허용 (⚠️ 위험도 높음)",
   "tools.exec.ask": "명령 실행 전 사용자 확인을 요청할지 여부",
   "tools.exec.timeout": "명령 실행 타임아웃 (초). 0 = 타임아웃 없음",
   "tools.exec.safeBins": "안전한 명령 허용 목록. 이 명령들은 확인 없이 실행할 수 있습니다, 예: ls, cat, grep",

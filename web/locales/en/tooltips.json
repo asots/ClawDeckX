@@ -76,7 +76,7 @@
   "tools.allow": "Tool allowlist. Only listed tools are available (overrides profile)",
   "tools.deny": "Tool denylist. Listed tools are disabled",
   "tools.exec.host": "Command execution host. local = execute locally; docker = execute in Docker container (safer); ssh = execute via remote SSH",
-  "tools.exec.security": "Execution security level. standard = standard (recommended); strict = strict (more restrictions); permissive = permissive (⚠️ higher risk)",
+  "tools.exec.security": "Execution security level. deny = block command execution; allowlist = only allow approved commands; full = allow full execution capability (⚠️ higher risk)",
   "tools.exec.ask": "Whether to ask for user confirmation before executing commands",
   "tools.exec.timeout": "Command execution timeout in seconds. 0 = no timeout",
   "tools.exec.safeBins": "Safe command allowlist. These commands can execute without confirmation, e.g. ls, cat, grep",

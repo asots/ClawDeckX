@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { MiniDonut, MiniBarChart, MiniSparkline } from './MiniChart';
 import { SecurityPolicyBadges } from './SecurityPolicyBadges';
-import type { ExecPolicy, ExecAsk, ExecSecurity, AskFallback } from '../utils/exec-policy';
+import type { ExecAsk, ExecSecurity, AskFallback } from '../utils/exec-policy';
 
 /* ── In-memory cache for usage data (avoids re-fetch on session switch) ── */
 const CACHE_TTL = 30_000;

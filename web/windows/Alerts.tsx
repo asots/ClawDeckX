@@ -10,7 +10,7 @@ import CustomSelect from '../components/CustomSelect';
 import NumberStepper from '../components/NumberStepper';
 import { subscribeManagerWS } from '../services/manager-ws';
 import { SecurityPolicyBadges } from '../components/SecurityPolicyBadges';
-import { normalizeExecSecurity, normalizeExecAsk, type ExecPolicy, type ExecPolicySource, type ExecSecurity, type ExecAsk, type AskFallback } from '../utils/exec-policy';
+import type { ExecPolicy, ExecPolicySource, ExecSecurity, ExecAsk, AskFallback } from '../utils/exec-policy';
 
 interface AlertsProps { language: Language; }
 
@@ -105,6 +105,9 @@ const LS_SOUND_NOTIFY = 'alerts_sound_notify';
 const Alerts: React.FC<AlertsProps> = ({ language }) => {
   const t = useMemo(() => getTranslation(language), [language]);
   const a = (t as any).alrt as any;
+  const es = (t as any).es as any;
+  const chat = (t as any).chat as any;
+  const agt = (t as any).agt as any;
   const { toast } = useToast();
   const { confirm } = useConfirm();
 
@@ -903,7 +906,7 @@ const Alerts: React.FC<AlertsProps> = ({ language }) => {
                     <SecurityPolicyBadges
                       policy={policy}
                       source={source}
-                      labels={a}
+                      labels={{ ...es, ...chat, ...agt, ...a }}
                       showSource={!isDefaults}
                       hideAskWhenOff={false}
                       hideSandboxWhenOff
