@@ -10,6 +10,7 @@ _2026-04-03_
 
 ### 🐛 Bug Fixes / 修复
 
+- track version/compat.go and anchor gitignore VERSION rule
 - guide model setup in team builder
 
 ---
@@ -1098,6 +1099,7 @@ _2026-03-15_
 
 
 ---
+
 
 
 
