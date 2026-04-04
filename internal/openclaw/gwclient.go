@@ -84,11 +84,12 @@ type ConnectDevice struct {
 }
 
 type ConnectClient struct {
-	ID          string `json:"id"`
-	DisplayName string `json:"displayName,omitempty"`
-	Version     string `json:"version"`
-	Platform    string `json:"platform"`
-	Mode        string `json:"mode"`
+	ID           string `json:"id"`
+	DisplayName  string `json:"displayName,omitempty"`
+	Version      string `json:"version"`
+	Platform     string `json:"platform"`
+	DeviceFamily string `json:"deviceFamily,omitempty"`
+	Mode         string `json:"mode"`
 }
 
 type ConnectAuth struct {
@@ -968,7 +969,7 @@ func (c *GWClient) sendConnect(conn *websocket.Conn, nonce string) {
 			ID:          "gateway-client",
 			DisplayName: "ClawDeckX",
 			Version:     "0.2.0",
-			Platform:    "go",
+			Platform:    runtime.GOOS,
 			Mode:        "backend",
 		},
 		Role:   "operator",
@@ -1008,8 +1009,11 @@ func (c *GWClient) sendConnect(conn *websocket.Conn, nonce string) {
 			scopesStr = strings.Join(params.Scopes, ",")
 		}
 
+		// v3 payload includes platform and deviceFamily for metadata pinning
+		platform := strings.ToLower(strings.TrimSpace(params.Client.Platform))
+		deviceFamily := strings.ToLower(strings.TrimSpace(params.Client.DeviceFamily))
 		payloadParts := []string{
-			"v2",
+			"v3",
 			identity.DeviceID,
 			params.Client.ID,
 			params.Client.Mode,
@@ -1018,6 +1022,8 @@ func (c *GWClient) sendConnect(conn *websocket.Conn, nonce string) {
 			fmt.Sprintf("%d", signedAt),
 			token,
 			nonce,
+			platform,
+			deviceFamily,
 		}
 		payload := strings.Join(payloadParts, "|")
 
