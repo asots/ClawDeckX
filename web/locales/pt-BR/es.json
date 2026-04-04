@@ -1371,5 +1371,12 @@
   "strictInlineEvalDesc": "Bloquear avaliação de shell inline (ex. $() backticks)",
   "safeBinTrustedDirs": "Diretórios Confiáveis",
   "safeBinTrustedDirsDesc": "Diretórios onde binários seguros são confiáveis",
-  "phSafeBinTrustedDirs": "/usr/local/bin, ~/bin"
+  "phSafeBinTrustedDirs": "/usr/local/bin, ~/bin",
+  "otelHeaders": "Cabeçalhos OTel",
+  "nodeHostBrowserProxy": "Proxy de navegador do nó",
+  "nhBpEnabled": "Proxy de navegador ativado",
+  "nhBpAllowProfiles": "Perfis permitidos",
+  "webReconnectFactor": "Fator de recuo",
+  "webReconnectJitter": "Jitter (0-1)",
+  "wideAreaDomain": "Domínio de área ampla"
 }

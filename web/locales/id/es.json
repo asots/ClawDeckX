@@ -1371,5 +1371,12 @@
   "strictInlineEvalDesc": "Blokir evaluasi shell inline (mis. $() backtick)",
   "safeBinTrustedDirs": "Direktori Tepercaya",
   "safeBinTrustedDirsDesc": "Direktori tempat biner aman dipercaya",
-  "phSafeBinTrustedDirs": "/usr/local/bin, ~/bin"
+  "phSafeBinTrustedDirs": "/usr/local/bin, ~/bin",
+  "otelHeaders": "Header OTel",
+  "nodeHostBrowserProxy": "Proksi Browser Node",
+  "nhBpEnabled": "Proksi Browser Aktif",
+  "nhBpAllowProfiles": "Profil yang Diizinkan",
+  "webReconnectFactor": "Faktor Backoff",
+  "webReconnectJitter": "Jitter (0-1)",
+  "wideAreaDomain": "Domain Area Luas"
 }

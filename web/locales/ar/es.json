@@ -1371,5 +1371,12 @@
   "strictInlineEvalDesc": "حظر تقييم الصدفة المضمن",
   "safeBinTrustedDirs": "الأدلة الموثوقة",
   "safeBinTrustedDirsDesc": "الأدلة التي يتم الوثوق بالملفات الثنائية فيها",
-  "phSafeBinTrustedDirs": "/usr/local/bin, ~/bin"
+  "phSafeBinTrustedDirs": "/usr/local/bin, ~/bin",
+  "otelHeaders": "رؤوس OTel",
+  "nodeHostBrowserProxy": "وكيل متصفح العقدة",
+  "nhBpEnabled": "تمكين وكيل المتصفح",
+  "nhBpAllowProfiles": "الملفات الشخصية المسموحة",
+  "webReconnectFactor": "عامل التراجع",
+  "webReconnectJitter": "الارتعاش (0-1)",
+  "wideAreaDomain": "نطاق الاكتشاف الواسع"
 }

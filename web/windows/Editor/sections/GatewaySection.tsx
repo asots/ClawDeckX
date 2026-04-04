@@ -167,6 +167,7 @@ const GatewaySection: React.FC<SectionProps> = ({ schema, setField, getField, la
 
       <ConfigSection title={es.discovery} icon="explore" iconColor="text-green-500" defaultOpen={false}>
         <SwitchField label={es.wideArea} tooltip={tip('discovery.wideArea.enabled')} value={getField(['discovery', 'wideArea', 'enabled']) === true} onChange={v => setField(['discovery', 'wideArea', 'enabled'], v)} />
+        <TextField label={es.wideAreaDomain || 'Wide-Area Domain'} tooltip={tip('discovery.wideArea.domain')} value={getField(['discovery', 'wideArea', 'domain']) || ''} onChange={v => setField(['discovery', 'wideArea', 'domain'], v)} placeholder="openclaw.internal" />
         <SelectField label={es.mdns} tooltip={tip('discovery.mdns.mode')} value={getField(['discovery', 'mdns', 'mode']) || 'off'} onChange={v => setField(['discovery', 'mdns', 'mode'], v)} options={mdnsModeOptions} />
       </ConfigSection>
 
@@ -176,6 +177,8 @@ const GatewaySection: React.FC<SectionProps> = ({ schema, setField, getField, la
         <NumberField label={es.webReconnectInitialMs} tooltip={tip('web.reconnect.initialMs')} value={getField(['web', 'reconnect', 'initialMs'])} onChange={v => setField(['web', 'reconnect', 'initialMs'], v)} min={0} step={100} />
         <NumberField label={es.webReconnectMaxMs} tooltip={tip('web.reconnect.maxMs')} value={getField(['web', 'reconnect', 'maxMs'])} onChange={v => setField(['web', 'reconnect', 'maxMs'], v)} min={0} step={1000} />
         <NumberField label={es.webReconnectMaxAttempts} tooltip={tip('web.reconnect.maxAttempts')} value={getField(['web', 'reconnect', 'maxAttempts'])} onChange={v => setField(['web', 'reconnect', 'maxAttempts'], v)} min={0} />
+        <NumberField label={es.webReconnectFactor || 'Backoff Factor'} tooltip={tip('web.reconnect.factor')} value={getField(['web', 'reconnect', 'factor'])} onChange={v => setField(['web', 'reconnect', 'factor'], v)} min={1} step={0.1} />
+        <NumberField label={es.webReconnectJitter || 'Jitter (0-1)'} tooltip={tip('web.reconnect.jitter')} value={getField(['web', 'reconnect', 'jitter'])} onChange={v => setField(['web', 'reconnect', 'jitter'], v)} min={0} max={1} step={0.05} />
       </ConfigSection>
 
       <ConfigSection title={es.gwNodes} icon="hub" iconColor="text-slate-500" defaultOpen={false}>

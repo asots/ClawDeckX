@@ -1371,5 +1371,12 @@
   "strictInlineEvalDesc": "インラインシェル評価をブロック（例：$() バッククォート）",
   "safeBinTrustedDirs": "信頼ディレクトリ",
   "safeBinTrustedDirsDesc": "安全なバイナリを信頼するディレクトリ",
-  "phSafeBinTrustedDirs": "/usr/local/bin, ~/bin"
+  "phSafeBinTrustedDirs": "/usr/local/bin, ~/bin",
+  "otelHeaders": "OTel ヘッダー",
+  "nodeHostBrowserProxy": "ノードブラウザプロキシ",
+  "nhBpEnabled": "ブラウザプロキシ有効",
+  "nhBpAllowProfiles": "許可プロファイル",
+  "webReconnectFactor": "バックオフ係数",
+  "webReconnectJitter": "ジッター (0-1)",
+  "wideAreaDomain": "ワイドエリアドメイン"
 }

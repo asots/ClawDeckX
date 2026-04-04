@@ -1371,5 +1371,12 @@
   "strictInlineEvalDesc": "阻止內聯 shell 求值（如 $() 反引號）",
   "safeBinTrustedDirs": "受信目錄",
   "safeBinTrustedDirsDesc": "安全二進位檔案的受信目錄",
-  "phSafeBinTrustedDirs": "/usr/local/bin, ~/bin"
+  "phSafeBinTrustedDirs": "/usr/local/bin, ~/bin",
+  "otelHeaders": "OTel 請求標頭",
+  "nodeHostBrowserProxy": "節點瀏覽器代理",
+  "nhBpEnabled": "啟用瀏覽器代理",
+  "nhBpAllowProfiles": "允許的設定檔",
+  "webReconnectFactor": "退避因子",
+  "webReconnectJitter": "抖動 (0-1)",
+  "wideAreaDomain": "廣域探索網域"
 }

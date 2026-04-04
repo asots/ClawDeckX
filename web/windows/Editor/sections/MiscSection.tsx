@@ -86,6 +86,12 @@ export const MiscSection: React.FC<SectionProps> = ({ schema, setField, getField
         </div>
       </ConfigSection>
 
+      {/* Node Host */}
+      <ConfigSection title={es.nodeHostBrowserProxy || 'Node Browser Proxy'} icon="devices" iconColor="text-violet-500" defaultOpen={false}>
+        <SwitchField label={es.nhBpEnabled || 'Enabled'} tooltip={tip('nodeHost.browserProxy.enabled')} value={getField(['nodeHost', 'browserProxy', 'enabled']) === true} onChange={v => setField(['nodeHost', 'browserProxy', 'enabled'], v)} />
+        <ArrayField label={es.nhBpAllowProfiles || 'Allowed Profiles'} tooltip={tip('nodeHost.browserProxy.allowProfiles')} value={getField(['nodeHost', 'browserProxy', 'allowProfiles']) || []} onChange={v => setField(['nodeHost', 'browserProxy', 'allowProfiles'], v)} placeholder="profile-name" />
+      </ConfigSection>
+
       {/* Env */}
       <ConfigSection title={es.envVars} icon="settings_system_daydream" iconColor="text-slate-500" defaultOpen={false}>
         <SwitchField label={es.shellEnvEnabled} tooltip={tip('env.shellEnv.enabled')} value={getField(['env', 'shellEnv', 'enabled']) === true} onChange={v => setField(['env', 'shellEnv', 'enabled'], v)} />

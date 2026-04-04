@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { SectionProps } from '../sectionTypes';
-import { ConfigSection, TextField, SelectField, SwitchField, NumberField, ArrayField } from '../fields';
+import { ConfigSection, TextField, SelectField, SwitchField, NumberField, ArrayField, KeyValueField } from '../fields';
 import { getTranslation } from '../../../locales';
 import { schemaTooltip } from '../schemaTooltip';
 
@@ -52,6 +52,7 @@ export const LoggingSection: React.FC<SectionProps> = ({ schema, setField, getFi
         <SwitchField label={es.otelLogs} tooltip={tip('diagnostics.otel.logs')} value={getField(['diagnostics', 'otel', 'logs']) !== false} onChange={v => setField(['diagnostics', 'otel', 'logs'], v)} />
         <NumberField label={es.otelSampleRate} tooltip={tip('diagnostics.otel.sampleRate')} value={getField(['diagnostics', 'otel', 'sampleRate'])} onChange={v => setField(['diagnostics', 'otel', 'sampleRate'], v)} min={0} max={1} step={0.1} />
         <NumberField label={es.otelFlushMs} tooltip={tip('diagnostics.otel.flushIntervalMs')} value={getField(['diagnostics', 'otel', 'flushIntervalMs'])} onChange={v => setField(['diagnostics', 'otel', 'flushIntervalMs'], v)} min={0} step={1000} />
+        <KeyValueField label={es.otelHeaders || 'OTel Headers'} tooltip={tip('diagnostics.otel.headers')} value={getField(['diagnostics', 'otel', 'headers']) || {}} onChange={v => setField(['diagnostics', 'otel', 'headers'], v)} />
       </ConfigSection>
 
       <ConfigSection title={es.cacheTrace} icon="timeline" iconColor="text-amber-500" defaultOpen={false}>

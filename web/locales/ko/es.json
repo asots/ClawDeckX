@@ -1371,5 +1371,12 @@
   "strictInlineEvalDesc": "인라인 셸 평가 차단 (예: $() 백틱)",
   "safeBinTrustedDirs": "신뢰 디렉토리",
   "safeBinTrustedDirsDesc": "안전한 바이너리가 신뢰되는 디렉토리",
-  "phSafeBinTrustedDirs": "/usr/local/bin, ~/bin"
+  "phSafeBinTrustedDirs": "/usr/local/bin, ~/bin",
+  "otelHeaders": "OTel 헤더",
+  "nodeHostBrowserProxy": "노드 브라우저 프록시",
+  "nhBpEnabled": "브라우저 프록시 활성화",
+  "nhBpAllowProfiles": "허용 프로필",
+  "webReconnectFactor": "백오프 팩터",
+  "webReconnectJitter": "지터 (0-1)",
+  "wideAreaDomain": "광역 도메인"
 }

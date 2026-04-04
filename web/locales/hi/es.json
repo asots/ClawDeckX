@@ -1371,5 +1371,12 @@
   "strictInlineEvalDesc": "इनलाइन शेल मूल्यांकन को ब्लॉक करें",
   "safeBinTrustedDirs": "विश्वसनीय निर्देशिकाएँ",
   "safeBinTrustedDirsDesc": "निर्देशिकाएँ जहाँ सुरक्षित बाइनरी विश्वसनीय हैं",
-  "phSafeBinTrustedDirs": "/usr/local/bin, ~/bin"
+  "phSafeBinTrustedDirs": "/usr/local/bin, ~/bin",
+  "otelHeaders": "OTel हेडर",
+  "nodeHostBrowserProxy": "नोड ब्राउज़र प्रॉक्सी",
+  "nhBpEnabled": "ब्राउज़र प्रॉक्सी सक्षम",
+  "nhBpAllowProfiles": "अनुमत प्रोफ़ाइल",
+  "webReconnectFactor": "बैकऑफ़ फ़ैक्टर",
+  "webReconnectJitter": "जिटर (0-1)",
+  "wideAreaDomain": "वाइड-एरिया डोमेन"
 }

@@ -1371,5 +1371,12 @@
   "strictInlineEvalDesc": "Блокировать inline shell-вычисления (напр. $() обратные кавычки)",
   "safeBinTrustedDirs": "Доверенные каталоги",
   "safeBinTrustedDirsDesc": "Каталоги, в которых доверяют безопасным исполняемым файлам",
-  "phSafeBinTrustedDirs": "/usr/local/bin, ~/bin"
+  "phSafeBinTrustedDirs": "/usr/local/bin, ~/bin",
+  "otelHeaders": "Заголовки OTel",
+  "nodeHostBrowserProxy": "Прокси браузера узла",
+  "nhBpEnabled": "Прокси браузера включен",
+  "nhBpAllowProfiles": "Разрешённые профили",
+  "webReconnectFactor": "Фактор отката",
+  "webReconnectJitter": "Джиттер (0-1)",
+  "wideAreaDomain": "Домен широкой зоны"
 }
