@@ -1017,10 +1017,10 @@ const Agents: React.FC<AgentsProps> = ({ language }) => {
             if (!a2aDraft) return;
             setA2aSaving(true);
             try {
-              // When enabled with empty allow → default to * (all); when disabled → clear allow list
+              // When enabled with empty allow → default to * (all); when disabled → explicitly null to clear via merge-patch
               const resolvedAllow = a2aDraft.enabled
                 ? (a2aDraft.allow.length > 0 ? a2aDraft.allow : ['*'])
-                : undefined;
+                : null;
               const fresh = await gwApi.configSafePatch({
                 tools: { agentToAgent: { enabled: a2aDraft.enabled, allow: resolvedAllow } },
                 session: { agentToAgent: { maxPingPongTurns: a2aDraft.ppTurns } },
@@ -1289,18 +1289,13 @@ const Agents: React.FC<AgentsProps> = ({ language }) => {
                         setToolSaving(true);
                         try {
                           const normalizedExecSecurity = normalizeExecSecurity(toolDraft.execSecurity);
-                          const list2: any[] = agentsCfg?.list || [];
-                          const updatedList = list2.map((e: any) => {
-                            if (e?.id !== selected.id) return e;
-                            const toolsPatch: Record<string, any> = { profile: toolDraft.profile };
-                            toolsPatch.allow = toolDraft.allow?.length > 0 ? toolDraft.allow : [];
-                            toolsPatch.deny = toolDraft.deny?.length > 0 ? toolDraft.deny : [];
-                            toolsPatch.alsoAllow = toolDraft.alsoAllow?.length > 0 ? toolDraft.alsoAllow : [];
-                            toolsPatch.exec = { host: toolDraft.execHost || undefined, security: normalizedExecSecurity || undefined, ask: toolDraft.execAsk || undefined, askFallback: toolDraft.execAskFallback || undefined };
-                            toolsPatch.fs = { workspaceOnly: toolDraft.fsWsOnly || undefined };
-                            return { ...e, tools: toolsPatch };
-                          });
-                          const fresh = await gwApi.configSafePatch({ agents: { ...agentsCfg, list: updatedList } });
+                          const toolsPatch: Record<string, any> = { profile: toolDraft.profile };
+                          toolsPatch.allow = toolDraft.allow?.length > 0 ? toolDraft.allow : [];
+                          toolsPatch.deny = toolDraft.deny?.length > 0 ? toolDraft.deny : [];
+                          toolsPatch.alsoAllow = toolDraft.alsoAllow?.length > 0 ? toolDraft.alsoAllow : [];
+                          toolsPatch.exec = { host: toolDraft.execHost || undefined, security: normalizedExecSecurity || undefined, ask: toolDraft.execAsk || undefined };
+                          toolsPatch.fs = { workspaceOnly: toolDraft.fsWsOnly || undefined };
+                          const fresh = await gwApi.configSafePatch({ agents: { list: [{ id: selected.id, tools: toolsPatch }] } });
                           setConfig(fresh);
                           setToolDraft(null);
                           toast('success', a.toolSaved || 'Saved');
@@ -1464,13 +1459,11 @@ const Agents: React.FC<AgentsProps> = ({ language }) => {
                         if (subDraft === null) return;
                         setSubSaving(true);
                         try {
-                          const updatedList = list.map((e: any) => {
-                            if (e?.id !== selected.id) return e;
-                            const sub = { ...(e.subagents || {}), allowAgents: subDraft.length > 0 ? subDraft : undefined };
-                            if (!sub.allowAgents && !sub.model && !sub.thinking) return { ...e, subagents: undefined };
-                            return { ...e, subagents: sub };
-                          });
-                          const fresh = await gwApi.configSafePatch({ agents: { ...cfg0, list: updatedList } });
+                          const currentEntry = list.find((e: any) => e?.id === selected.id) || {};
+                          const sub = { ...(currentEntry.subagents || {}), allowAgents: subDraft.length > 0 ? subDraft : undefined };
+                          // Use null (not undefined) to delete the field via merge-patch semantics
+                          const subPatch: any = (!sub.allowAgents && !sub.model && !sub.thinking) ? null : sub;
+                          const fresh = await gwApi.configSafePatch({ agents: { list: [{ id: selected.id, subagents: subPatch }] } });
                           setConfig(fresh);
                           setSubDraft(null);
                           toast('success', a.subSaved || 'Saved');
@@ -1844,20 +1837,13 @@ const Agents: React.FC<AgentsProps> = ({ language }) => {
                   setToolSaving(true);
                   try {
                     const normalizedExecSecurity = normalizeExecSecurity(toolDraft.execSecurity);
-                    const parsed = config?.parsed || config?.config || config || {};
-                    const agentsCfg = parsed?.agents || {};
-                    const list: any[] = agentsCfg?.list || [];
-                    const updatedList = list.map((e: any) => {
-                      if (e?.id !== selected.id) return e;
-                      const toolsPatch: Record<string, any> = { profile: toolDraft.profile };
-                      toolsPatch.allow = toolDraft.allow?.length > 0 ? toolDraft.allow : [];
-                      toolsPatch.deny = toolDraft.deny?.length > 0 ? toolDraft.deny : [];
-                      toolsPatch.alsoAllow = toolDraft.alsoAllow?.length > 0 ? toolDraft.alsoAllow : [];
-                      toolsPatch.exec = { host: toolDraft.execHost || undefined, security: normalizedExecSecurity || undefined, ask: toolDraft.execAsk || undefined };
-                      toolsPatch.fs = { workspaceOnly: toolDraft.fsWsOnly || undefined };
-                      return { ...e, tools: toolsPatch };
-                    });
-                    const fresh = await gwApi.configSafePatch({ agents: { ...agentsCfg, list: updatedList } });
+                    const toolsPatch: Record<string, any> = { profile: toolDraft.profile };
+                    toolsPatch.allow = toolDraft.allow?.length > 0 ? toolDraft.allow : [];
+                    toolsPatch.deny = toolDraft.deny?.length > 0 ? toolDraft.deny : [];
+                    toolsPatch.alsoAllow = toolDraft.alsoAllow?.length > 0 ? toolDraft.alsoAllow : [];
+                    toolsPatch.exec = { host: toolDraft.execHost || undefined, security: normalizedExecSecurity || undefined, ask: toolDraft.execAsk || undefined };
+                    toolsPatch.fs = { workspaceOnly: toolDraft.fsWsOnly || undefined };
+                    const fresh = await gwApi.configSafePatch({ agents: { list: [{ id: selected.id, tools: toolsPatch }] } });
                     setConfig(fresh);
                     setToolDraft(null);
                     toast('success', a.toolSaved || 'Saved');

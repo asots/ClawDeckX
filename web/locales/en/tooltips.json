@@ -273,13 +273,13 @@
 
   "web.reconnect.initialMs": "Web client reconnect initial wait time (ms)",
   "web.reconnect.maxMs": "Web client reconnect max wait time (ms). Retry interval grows exponentially up to this cap",
-  "web.reconnect.maxAttempts": "Web client max reconnect attempts. 0 = unlimited retries",
+  "web.reconnect.maxAttempts": "Maximum reconnect attempts before giving up for the current failure sequence. 0 = no retries",
   "web.reconnect.factor": "Exponential backoff multiplier for reconnect intervals. e.g. 2 = double the wait each retry",
   "web.reconnect.jitter": "Random jitter added to reconnect intervals (0-1). Prevents multiple clients from reconnecting simultaneously",
 
-  "gateway.webchat.chatHistoryMaxChars": "Maximum characters retained in WebChat conversation history. Older messages are trimmed when exceeded",
-  "gateway.channelStaleEventThresholdMinutes": "Minutes without events before a channel is considered stale and eligible for health-check restart. 0 = disabled",
-  "gateway.channelMaxRestartsPerHour": "Maximum automatic channel restarts allowed per hour. Prevents restart loops for persistently unhealthy channels. 0 = unlimited",
+  "gateway.webchat.chatHistoryMaxChars": "Maximum characters per text field in chat.history responses before truncation. Default: 12000",
+  "gateway.channelStaleEventThresholdMinutes": "How many minutes a connected channel can go without receiving any event before the health monitor treats it as a stale socket and restarts it. Default: 30",
+  "gateway.channelMaxRestartsPerHour": "Maximum number of health-monitor-initiated channel restarts allowed within a rolling one-hour window. Default: 10",
   "gateway.reload.deferralTimeoutMs": "Maximum time (ms) to defer a pending reload while the gateway is busy (e.g. mid-request). After this timeout the reload proceeds regardless",
   "gateway.http.securityHeaders.permissionsPolicy": "Value for the Permissions-Policy response header. Controls browser feature access, e.g. camera=(), microphone=(), geolocation=()",
 
@@ -287,6 +287,6 @@
 
   "diagnostics.otel.headers": "Custom HTTP headers sent with OpenTelemetry export requests. Useful for authentication tokens or routing metadata",
 
-  "nodeHost.browserProxy.enabled": "Enable browser proxy on this node. Allows remote nodes to route browser operations through this host",
-  "nodeHost.browserProxy.allowProfiles": "Browser profile names that remote nodes are allowed to use through the proxy"
+  "nodeHost.browserProxy.enabled": "Enable the browser proxy on the node host. Default: true",
+  "nodeHost.browserProxy.allowProfiles": "Optional allowlist of browser profile names exposed via the proxy. When set, create/delete profile routes are blocked on the proxy surface"
 }

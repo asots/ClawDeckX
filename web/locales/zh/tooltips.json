@@ -273,13 +273,13 @@
 
   "web.reconnect.initialMs": "Web 客户端断线重连初始等待时间（毫秒）",
   "web.reconnect.maxMs": "Web 客户端断线重连最大等待时间（毫秒）。重试间隔会指数增长直到此上限",
-  "web.reconnect.maxAttempts": "Web 客户端最大重连尝试次数。0 = 无限重试",
+  "web.reconnect.maxAttempts": "当前故障序列中放弃前允许的最大重连次数。0 = 不重试",
   "web.reconnect.factor": "重连间隔的指数退避乘数。如 2 = 每次重试等待时间翻倍",
   "web.reconnect.jitter": "重连间隔的随机抖动系数（0-1）。防止多个客户端同时重连",
 
-  "gateway.webchat.chatHistoryMaxChars": "网页聊天对话历史保留的最大字符数。超出后自动裁剪较早的消息",
-  "gateway.channelStaleEventThresholdMinutes": "通道无事件多少分钟后视为过期，符合健康检查重启条件。0 = 禁用",
-  "gateway.channelMaxRestartsPerHour": "每小时允许自动重启通道的最大次数。防止持续异常的通道触发重启循环。0 = 不限制",
+  "gateway.webchat.chatHistoryMaxChars": "chat.history 响应中每个文本字段在截断前允许的最大字符数。默认：12000",
+  "gateway.channelStaleEventThresholdMinutes": "已连接通道在多少分钟内未收到任何事件后，会被健康监测视为陈旧 socket 并触发重启。默认：30",
+  "gateway.channelMaxRestartsPerHour": "滚动一小时窗口内，健康监测允许触发的通道重启最大次数。默认：10",
   "gateway.reload.deferralTimeoutMs": "网关繁忙时（如正在处理请求）延迟重载的最大等待时间（毫秒）。超时后强制执行重载",
   "gateway.http.securityHeaders.permissionsPolicy": "Permissions-Policy 响应头的值。控制浏览器功能访问权限，如 camera=(), microphone=(), geolocation=()",
 
@@ -287,6 +287,6 @@
 
   "diagnostics.otel.headers": "随 OpenTelemetry 导出请求发送的自定义 HTTP 请求头。可用于认证令牌或路由元数据",
 
-  "nodeHost.browserProxy.enabled": "在此节点上启用浏览器代理。允许远程节点通过此主机路由浏览器操作",
-  "nodeHost.browserProxy.allowProfiles": "允许远程节点通过代理使用的浏览器配置文件名称"
+  "nodeHost.browserProxy.enabled": "在节点主机上启用浏览器代理。默认：true",
+  "nodeHost.browserProxy.allowProfiles": "通过代理暴露的浏览器配置文件名称允许列表。设置后，代理面上的创建/删除配置文件路由会被阻止"
 }
