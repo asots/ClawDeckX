@@ -1582,6 +1582,23 @@ export const multiAgentApi = {
             }
           }
         }
+        // Flush any remaining data in buffer after stream closes
+        if (buf.trim()) {
+          const remaining = buf.split('\n');
+          let event = '';
+          for (const line of remaining) {
+            if (line.startsWith('event: ')) { event = line.slice(7).trim(); continue; }
+            if (line.startsWith('data: ')) {
+              try {
+                const d = JSON.parse(line.slice(6));
+                if (event === 'token') onToken(d.token ?? '');
+                else if (event === 'done') onDone(d);
+                else if (event === 'error') onError(d.code ?? 'ERROR', d.msg ?? 'Unknown error');
+              } catch { /* ignore parse errors */ }
+              event = '';
+            }
+          }
+        }
       } catch (e: any) {
         if (e?.name !== 'AbortError') onError('FETCH_ERROR', e?.message ?? 'Fetch failed');
       }
@@ -1612,6 +1629,23 @@ export const multiAgentApi = {
           buf = lines.pop() ?? '';
           let event = '';
           for (const line of lines) {
+            if (line.startsWith('event: ')) { event = line.slice(7).trim(); continue; }
+            if (line.startsWith('data: ')) {
+              try {
+                const d = JSON.parse(line.slice(6));
+                if (event === 'token') onToken(d.token ?? '', d.agentId ?? '');
+                else if (event === 'done') onDone(d);
+                else if (event === 'error') onError(d.code ?? 'ERROR', d.msg ?? 'Unknown error');
+              } catch { /* ignore parse errors */ }
+              event = '';
+            }
+          }
+        }
+        // Flush any remaining data in buffer after stream closes
+        if (buf.trim()) {
+          const remaining = buf.split('\n');
+          let event = '';
+          for (const line of remaining) {
             if (line.startsWith('event: ')) { event = line.slice(7).trim(); continue; }
             if (line.startsWith('data: ')) {
               try {

@@ -743,15 +743,56 @@ const ScenarioTeamBuilder: React.FC<ScenarioTeamBuilderProps> = ({
 
   // Stable ref so the done callback always calls the latest version (avoids stale closure in setTimeout)
   const wzRunAgentRef = useRef<(idx: number, agents: WzAgentState[], singleOnly?: boolean) => void>(() => {});
+  // Stale-stream watchdog: fires when no new tokens arrive for STALE_MS after content started
+  const wzStaleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const wzStaleResolvedRef = useRef(false); // true once done/error already handled
 
   // Step2: run a single agent by index. Pass singleOnly=true to prevent auto-chaining to next pending agent.
   const wzRunAgent = useCallback((idx: number, agents: WzAgentState[], singleOnly = false) => {
     const agent = agents[idx];
     if (!agent) return;
     wzStep2AbortRef.current?.abort();
+    if (wzStaleTimerRef.current) { clearTimeout(wzStaleTimerRef.current); wzStaleTimerRef.current = null; }
+    wzStaleResolvedRef.current = false;
     wzStep2ActiveIdxRef.current = idx;
     setWzStep2Running(true);
     setWzAgents(prev => prev.map((a, i) => i === idx ? { ...a, status: 'running', streamBuf: '', error: undefined, startedAt: Date.now(), tokenCount: 0 } : a));
+
+    const STALE_MS = 15_000; // 15s no-token watchdog
+
+    // Helper: attempt to parse accumulated streamBuf as JSON and mark done
+    const tryRecoverFromStream = () => {
+      if (wzStaleResolvedRef.current) return;
+      wzStaleResolvedRef.current = true;
+      const current = wzAgentsRef.current[idx];
+      if (!current || current.status !== 'running') return;
+      const raw = (current.streamBuf || '').replace(/^```(?:json)?\s*/, '').replace(/\s*```$/, '').trim();
+      try {
+        const parsed = JSON.parse(raw);
+        const updatedAgents = wzAgentsRef.current.map((a, i) => i === idx ? {
+          ...a, status: 'done' as WzAgentStatus, streamBuf: '',
+          soul: parsed.soul ?? raw, agentsMd: parsed.agentsMd ?? '',
+          userMd: parsed.userMd ?? '', identityMd: parsed.identityMd ?? '',
+          heartbeat: parsed.heartbeat ?? '',
+        } : a);
+        wzAgentsRef.current = updatedAgents;
+        setWzAgents(updatedAgents);
+        if (!singleOnly) {
+          const nextIdx = updatedAgents.findIndex((a, i) => i > idx && a.status === 'pending');
+          if (nextIdx >= 0) { setTimeout(() => wzRunAgentRef.current(nextIdx, wzAgentsRef.current), 200); }
+          else { setWzStep2Running(false); }
+        } else { setWzStep2Running(false); }
+      } catch {
+        // JSON parse failed — mark as error so user can retry
+        setWzAgents(prev => prev.map((a, i) => i === idx ? { ...a, status: 'error', error: 'Stream stalled — no completion signal received. Tap retry.' } : a));
+        setWzStep2Running(false);
+      }
+    };
+
+    const resetStaleTimer = () => {
+      if (wzStaleTimerRef.current) clearTimeout(wzStaleTimerRef.current);
+      wzStaleTimerRef.current = setTimeout(tryRecoverFromStream, STALE_MS);
+    };
 
     const req: WizardStep2Request = {
       agentId: agent.id, agentName: agent.name, agentRole: agent.role, agentDesc: agent.description,
@@ -764,8 +805,12 @@ const ScenarioTeamBuilder: React.FC<ScenarioTeamBuilderProps> = ({
       req,
       (_token, _agentId) => {
         setWzAgents(prev => prev.map((a, i) => i === idx ? { ...a, streamBuf: a.streamBuf + _token, tokenCount: (a.tokenCount ?? 0) + _token.length } : a));
+        resetStaleTimer();
       },
       (doneData) => {
+        if (wzStaleTimerRef.current) { clearTimeout(wzStaleTimerRef.current); wzStaleTimerRef.current = null; }
+        if (wzStaleResolvedRef.current) return; // watchdog already handled
+        wzStaleResolvedRef.current = true;
         // Build the updated agents list
         const updatedAgents = wzAgentsRef.current.map((a, i) => i === idx ? {
           ...a, status: 'done' as WzAgentStatus, streamBuf: '',
@@ -788,10 +833,15 @@ const ScenarioTeamBuilder: React.FC<ScenarioTeamBuilderProps> = ({
         }
       },
       (code, msg) => {
+        if (wzStaleTimerRef.current) { clearTimeout(wzStaleTimerRef.current); wzStaleTimerRef.current = null; }
+        if (wzStaleResolvedRef.current) return;
+        wzStaleResolvedRef.current = true;
         setWzAgents(prev => prev.map((a, i) => i === idx ? { ...a, status: 'error', error: `${code}: ${msg}` } : a));
         setWzStep2Running(false);
       },
     );
+    // Start the initial watchdog (will be reset on first token)
+    resetStaleTimer();
   }, [scenarioName, language, selectedModel]);
   wzRunAgentRef.current = wzRunAgent;
   // Keep wzAgentsRef in sync so async callbacks always see the latest state
