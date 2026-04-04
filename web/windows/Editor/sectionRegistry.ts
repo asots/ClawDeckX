@@ -25,7 +25,7 @@ const GATEWAY_KEYS = [
   'gateway.reload.*',
   'gateway.controlUi.*',
   'gateway.http.*',
-  'gateway.tools.*', 'gateway.nodes.*',
+  'gateway.tools.*', 'gateway.nodes.*', 'gateway.webchat.*',
   'gateway.trustedProxies',
   'gateway.push.*',
   'discovery.*',
