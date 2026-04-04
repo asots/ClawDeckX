@@ -2,7 +2,7 @@
 import { Language } from '../types';
 import { getTranslation } from '../locales';
 import { authApi, auditApi, notifyApi, serverConfigApi, gatewayApi } from '../services/api';
-import type { ServerConfig } from '../services/api';
+import type { ServerConfig, NotifyEventItem } from '../services/api';
 import { useToast } from '../components/Toast';
 import { useConfirm } from '../components/ConfirmDialog';
 import CustomSelect from '../components/CustomSelect';
@@ -95,6 +95,8 @@ const Settings: React.FC<SettingsProps> = ({ language, onLogout, pendingTab, onT
   const [notifySaving, setNotifySaving] = useState(false);
   const [notifyTesting, setNotifyTesting] = useState(false);
   const [notifyShutdown, setNotifyShutdown] = useState(false);
+  const [eventConfig, setEventConfig] = useState<NotifyEventItem[]>([]);
+  const [eventActiveChannels, setEventActiveChannels] = useState<string[]>([]);
 
   // ── 访问安全 ──
   const [srvCfg, setSrvCfg] = useState<ServerConfig>({ bind: '0.0.0.0', port: 18788, cors_origins: [], clawhub_query_url: 'https://wry-manatee-359.convex.cloud/api/query', skillhub_data_url: 'https://cloudcache.tencentcs.com/qcloud/tea/app/data/skills.33d56946.json' });
@@ -188,6 +190,10 @@ const Settings: React.FC<SettingsProps> = ({ language, onLogout, pendingTab, onT
     gatewayApi.lifecycleNotifyConfig().then((data: any) => {
       if (data?.notify_shutdown !== undefined) setNotifyShutdown(data.notify_shutdown);
     }).catch(() => { });
+    notifyApi.getEventConfig().then((data) => {
+      setEventConfig(data?.events || []);
+      setEventActiveChannels(data?.active_channels || []);
+    }).catch(() => { });
   }, []);
 
   const handleNotifySave = useCallback(async () => {
@@ -214,6 +220,34 @@ const Settings: React.FC<SettingsProps> = ({ language, onLogout, pendingTab, onT
     setNotifyCfg(prev => ({ ...prev, [key]: value }));
     setNotifyDirty(true);
   }, []);
+
+  const handleChannelToggle = useCallback((channelId: string, enabled: boolean) => {
+    const key = `notify_${channelId}_enabled`;
+    setNotifyCfg(prev => ({ ...prev, [key]: enabled ? 'true' : 'false' }));
+    setNotifyDirty(true);
+  }, []);
+
+  const handleEventToggle = useCallback(async (event: string, enabled: boolean) => {
+    const prev = eventConfig;
+    setEventConfig(items => items.map(e => e.event === event ? { ...e, enabled } : e));
+    try {
+      await notifyApi.updateEventConfig([{ event, enabled }]);
+    } catch {
+      setEventConfig(prev);
+      toast('error', s.notifySaveFail);
+    }
+  }, [eventConfig, s, toast]);
+
+  const handleEventChannels = useCallback(async (event: string, channels: string[]) => {
+    const prev = eventConfig;
+    setEventConfig(items => items.map(e => e.event === event ? { ...e, channels: channels.length > 0 ? channels : undefined } : e));
+    try {
+      await notifyApi.updateEventConfig([{ event, channels }]);
+    } catch {
+      setEventConfig(prev);
+      toast('error', s.notifySaveFail);
+    }
+  }, [eventConfig, s, toast]);
 
   // ── 访问安全 handlers ──
   const fetchServerConfig = useCallback(() => {
@@ -584,29 +618,77 @@ const Settings: React.FC<SettingsProps> = ({ language, onLogout, pendingTab, onT
                   <span className="material-symbols-outlined text-[18px] text-amber-500">tune</span>
                   <span className="text-[13px] font-bold text-slate-700 dark:text-white/80">{s.notifyEventsTitle || 'Notification Events'}</span>
                 </div>
-                <div className="px-5 py-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2.5">
-                      <span className="material-symbols-outlined text-[16px] text-slate-400 dark:text-white/30">power_settings_new</span>
-                      <div>
-                        <p className="text-[12px] font-medium text-slate-700 dark:text-white/70">{t.gw?.lifecycleNotifyShutdown || 'Notify shutdown'}</p>
-                        <p className="text-[10px] text-slate-400 dark:text-white/30">{t.gw?.lifecycleNotifyShutdownHint || 'Send notification when gateway shuts down'}</p>
+                <div className="divide-y divide-slate-100 dark:divide-white/[0.06]">
+                  {eventConfig.map(evt => {
+                    const meta: Record<string, { icon: string; label: string; hint: string }> = {
+                      shutdown:          { icon: 'power_settings_new', label: s.notifyEvtShutdown || 'Shutdown',          hint: s.notifyEvtShutdownHint || 'Gateway gracefully shut down' },
+                      crashed:           { icon: 'error',              label: s.notifyEvtCrashed || 'Crashed',             hint: s.notifyEvtCrashedHint || 'Gateway process crashed unexpectedly' },
+                      unreachable:       { icon: 'cloud_off',          label: s.notifyEvtUnreachable || 'Unreachable',     hint: s.notifyEvtUnreachableHint || 'Gateway health check failed' },
+                      recovered:         { icon: 'check_circle',       label: s.notifyEvtRecovered || 'Recovered',         hint: s.notifyEvtRecoveredHint || 'Gateway recovered after failure' },
+                      started:           { icon: 'play_circle',        label: s.notifyEvtStarted || 'Started',             hint: s.notifyEvtStartedHint || 'Gateway started (disabled by default)' },
+                      heartbeat_restart: { icon: 'restart_alt',        label: s.notifyEvtHeartbeat || 'Heartbeat Restart', hint: s.notifyEvtHeartbeatHint || 'Watchdog auto-restart triggered' },
+                      pairing_required:  { icon: 'vpn_key',            label: s.notifyEvtPairing || 'Pairing Required',    hint: s.notifyEvtPairingHint || 'Device pairing or auth failure' },
+                    };
+                    const m = meta[evt.event] || { icon: 'notifications', label: evt.event, hint: '' };
+                    const evtChannels = evt.channels || [];
+                    return (
+                      <div key={evt.event} className="px-5 py-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <span className="material-symbols-outlined text-[16px] text-slate-400 dark:text-white/30">{m.icon}</span>
+                            <div className="min-w-0">
+                              <p className="text-[12px] font-medium text-slate-700 dark:text-white/70">{m.label}</p>
+                              <p className="text-[10px] text-slate-400 dark:text-white/30 truncate">{m.hint}</p>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => handleEventToggle(evt.event, !evt.enabled)}
+                            className={`relative w-9 h-5 rounded-full transition-colors shrink-0 ${evt.enabled ? 'bg-primary' : 'bg-slate-300 dark:bg-white/15'}`}
+                          >
+                            <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${evt.enabled ? 'translate-x-4' : ''}`} />
+                          </button>
+                        </div>
+                        {evt.enabled && eventActiveChannels.length > 1 && (
+                          <div className="mt-2 ms-7 flex flex-wrap gap-1.5">
+                            {eventActiveChannels.map(ch => {
+                              const selected = evtChannels.length === 0 || evtChannels.includes(ch);
+                              return (
+                                <button
+                                  key={ch}
+                                  onClick={() => {
+                                    if (evtChannels.length === 0) {
+                                      handleEventChannels(evt.event, [ch]);
+                                    } else if (selected && evtChannels.length === 1) {
+                                      handleEventChannels(evt.event, []);
+                                    } else if (selected) {
+                                      handleEventChannels(evt.event, evtChannels.filter(c => c !== ch));
+                                    } else {
+                                      const next = [...evtChannels, ch];
+                                      if (next.length === eventActiveChannels.length) {
+                                        handleEventChannels(evt.event, []);
+                                      } else {
+                                        handleEventChannels(evt.event, next);
+                                      }
+                                    }
+                                  }}
+                                  className={`px-2 py-0.5 rounded-md text-[10px] font-medium transition-colors ${
+                                    selected
+                                      ? 'bg-primary/10 text-primary dark:bg-primary/20'
+                                      : 'bg-slate-100 text-slate-400 dark:bg-white/5 dark:text-white/20'
+                                  }`}
+                                >
+                                  {ch}
+                                </button>
+                              );
+                            })}
+                            {evtChannels.length === 0 && (
+                              <span className="text-[10px] text-slate-400 dark:text-white/20 italic">{s.notifyEvtAllChannels || 'all channels'}</span>
+                            )}
+                          </div>
+                        )}
                       </div>
-                    </div>
-                    <button
-                      onClick={() => {
-                        const next = !notifyShutdown;
-                        setNotifyShutdown(next);
-                        gatewayApi.setLifecycleNotifyConfig({ notify_shutdown: next }).catch(() => {
-                          setNotifyShutdown(!next);
-                          toast('error', s.notifySaveFail || 'Failed to save');
-                        });
-                      }}
-                      className={`relative w-9 h-5 rounded-full transition-colors shrink-0 ${notifyShutdown ? 'bg-primary' : 'bg-slate-300 dark:bg-white/15'}`}
-                    >
-                      <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${notifyShutdown ? 'translate-x-4' : ''}`} />
-                    </button>
-                  </div>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -623,6 +705,8 @@ const Settings: React.FC<SettingsProps> = ({ language, onLogout, pendingTab, onT
                   inputClassName={inputCls}
                   labelClassName={labelCls}
                   rowClassName={rowCls}
+                  enabled={notifyCfg[`notify_${ch.id}_enabled`] !== 'false'}
+                  onToggle={(v) => handleChannelToggle(ch.id, v)}
                 />
               ))}
 

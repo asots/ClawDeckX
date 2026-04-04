@@ -152,10 +152,10 @@ type GWClient struct {
 	healthGraceUntil            time.Time     // skip health checks until this time (post-restart grace period)
 	healthStopCh                chan struct{}
 	healthRunning               bool
-	onRestart                   func() error                      // restart callback (injected externally)
-	onNotify                    func(string)                      // notify callback (injected externally)
-	onLifecycle                 func(event string, detail string) // lifecycle event callback
-	onTokenRefreshed            func(newToken string)             // called when autoRefreshToken updates the token
+	onRestart                   func() error                           // restart callback (injected externally)
+	onNotify                    func(eventType string, message string) // notify callback (injected externally)
+	onLifecycle                 func(event string, detail string)      // lifecycle event callback
+	onTokenRefreshed            func(newToken string)                  // called when autoRefreshToken updates the token
 	pendingRestartSuccessNotify *time.Timer
 }
 
@@ -183,7 +183,7 @@ func (c *GWClient) SetRestartCallback(fn func() error) {
 	c.onRestart = fn
 }
 
-func (c *GWClient) SetNotifyCallback(fn func(string)) {
+func (c *GWClient) SetNotifyCallback(fn func(eventType string, message string)) {
 	c.healthMu.Lock()
 	defer c.healthMu.Unlock()
 	c.onNotify = fn
@@ -277,7 +277,7 @@ func (c *GWClient) scheduleRestartSuccessNotify(msg string) {
 		notifyFn := c.onNotify
 		c.healthMu.Unlock()
 		if notifyFn != nil {
-			go notifyFn(msg)
+			go notifyFn("heartbeat_restart", msg)
 		}
 	})
 	c.pendingRestartSuccessNotify = timer
@@ -393,7 +393,7 @@ func (c *GWClient) healthCheckLoop() {
 					if restartErr := restartFn(); restartErr != nil {
 						logger.Gateway.Error().Err(restartErr).Msg(i18n.T(i18n.MsgLogHeartbeatRestartFailed))
 						if notifyFn != nil {
-							go notifyFn(i18n.T(i18n.MsgNotifyHeartbeatRestartFailed) + restartErr.Error())
+							go notifyFn("heartbeat_restart", i18n.T(i18n.MsgNotifyHeartbeatRestartFailed)+restartErr.Error())
 						}
 					} else {
 						logger.Gateway.Info().Msg(i18n.T(i18n.MsgLogHeartbeatRestartSuccess))
@@ -1310,7 +1310,7 @@ func (c *GWClient) autoRefreshToken() {
 			Int("currentTokenLen", len(oldToken)).
 			Msg("gateway auth rejected: token in config matches current token or is empty — manual reconnect required")
 		if notifyFn != nil {
-			go notifyFn("Gateway authentication failed (invalid-handshake). Please update the gateway token in Settings → Gateway.")
+			go notifyFn("pairing_required", "Gateway authentication failed (invalid-handshake). Please update the gateway token in Settings → Gateway.")
 		}
 	}
 }

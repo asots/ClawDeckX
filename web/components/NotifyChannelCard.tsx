@@ -32,6 +32,8 @@ interface NotifyChannelCardProps {
   inputClassName: string;
   labelClassName: string;
   rowClassName: string;
+  enabled?: boolean;
+  onToggle?: (enabled: boolean) => void;
 }
 
 const NotifyChannelCard: React.FC<NotifyChannelCardProps> = ({
@@ -45,6 +47,8 @@ const NotifyChannelCard: React.FC<NotifyChannelCardProps> = ({
   inputClassName,
   labelClassName,
   rowClassName,
+  enabled = true,
+  onToggle,
 }) => {
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<'ok' | 'fail' | null>(null);
@@ -154,32 +158,48 @@ const NotifyChannelCard: React.FC<NotifyChannelCardProps> = ({
   };
 
   return (
-    <div className={rowClassName}>
+    <div className={`${rowClassName} ${!enabled ? 'opacity-60' : ''}`}>
       <div className="px-4 py-3">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <span className={`material-symbols-outlined text-[16px] ${channel.iconColor}`}>{channel.icon}</span>
             <p className="text-[13px] font-semibold text-slate-700 dark:text-white/80">{channel.title}</p>
           </div>
-          <button
-            onClick={handleTest}
-            disabled={testing || testDisabled}
-            className="flex items-center gap-1 px-2 py-1 rounded-md bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-[10px] font-bold text-slate-500 dark:text-white/50 disabled:opacity-40 transition-colors"
-          >
-            <span className={`material-symbols-outlined text-[12px] ${testing ? 'animate-spin' : ''}`}>
-              {testing ? 'progress_activity' : testResult === 'ok' ? 'check_circle' : testResult === 'fail' ? 'error' : 'send'}
-            </span>
-            <span className={testResult === 'ok' ? 'text-emerald-500' : testResult === 'fail' ? 'text-red-500' : ''}>
-              {testing ? (testingLabel || testLabel) : testResult === 'ok' ? '✓' : testResult === 'fail' ? '✗' : testLabel}
-            </span>
-          </button>
+          <div className="flex items-center gap-2">
+            {enabled && (
+              <button
+                onClick={handleTest}
+                disabled={testing || testDisabled}
+                className="flex items-center gap-1 px-2 py-1 rounded-md bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-[10px] font-bold text-slate-500 dark:text-white/50 disabled:opacity-40 transition-colors"
+              >
+                <span className={`material-symbols-outlined text-[12px] ${testing ? 'animate-spin' : ''}`}>
+                  {testing ? 'progress_activity' : testResult === 'ok' ? 'check_circle' : testResult === 'fail' ? 'error' : 'send'}
+                </span>
+                <span className={testResult === 'ok' ? 'text-emerald-500' : testResult === 'fail' ? 'text-red-500' : ''}>
+                  {testing ? (testingLabel || testLabel) : testResult === 'ok' ? '✓' : testResult === 'fail' ? '✗' : testLabel}
+                </span>
+              </button>
+            )}
+            {onToggle && (
+              <button
+                onClick={() => onToggle(!enabled)}
+                className={`relative w-9 h-5 rounded-full transition-colors shrink-0 ${enabled ? 'bg-primary' : 'bg-slate-300 dark:bg-white/15'}`}
+              >
+                <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${enabled ? 'translate-x-4' : ''}`} />
+              </button>
+            )}
+          </div>
         </div>
-        {testDisabled && testDisabledReason && (
-          <p className="mb-3 text-[10px] text-amber-600 dark:text-amber-400">{testDisabledReason}</p>
+        {enabled && (
+          <>
+            {testDisabled && testDisabledReason && (
+              <p className="mb-3 text-[10px] text-amber-600 dark:text-amber-400">{testDisabledReason}</p>
+            )}
+            <div className="space-y-3">
+              {renderFields()}
+            </div>
+          </>
         )}
-        <div className="space-y-3">
-          {renderFields()}
-        </div>
       </div>
     </div>
   );

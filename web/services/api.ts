@@ -309,11 +309,23 @@ export interface NotifyUpdateResponse {
   message: string;
   active_channels: string[];
 }
+export interface NotifyEventItem {
+  event: string;
+  enabled: boolean;
+  channels?: string[];
+}
+export interface NotifyEventConfigResponse {
+  events: NotifyEventItem[];
+  active_channels: string[];
+}
 export const notifyApi = {
   getConfig: () => get<NotifyConfigResponse>('/api/v1/notify/config'),
   getConfigCached: (ttlMs = 15000, force = false) => getCached<NotifyConfigResponse>('/api/v1/notify/config', ttlMs, force),
   updateConfig: (data: Record<string, string>) => put<NotifyUpdateResponse>('/api/v1/notify/config', data),
   testSend: (message?: string, channel?: string) => post('/api/v1/notify/test', { message: message || '', ...(channel ? { channel } : {}) }),
+  getEventConfig: () => get<NotifyEventConfigResponse>('/api/v1/notify/events'),
+  updateEventConfig: (events: Array<{ event: string; enabled?: boolean; channels?: string[] }>) =>
+    put<{ message: string }>('/api/v1/notify/events', { events }),
 };
 
 // ==================== 告警 ====================

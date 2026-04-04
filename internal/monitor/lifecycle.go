@@ -14,7 +14,7 @@ import (
 type LifecycleRecorder struct {
 	repo   *database.GatewayLifecycleRepo
 	wsHub  *web.WSHub
-	notify func(string) // notification callback
+	notify func(eventType string, message string) // notification callback
 
 	mu             sync.Mutex
 	lastEventType  string
@@ -66,7 +66,7 @@ func NewLifecycleRecorder(wsHub *web.WSHub) *LifecycleRecorder {
 	}
 }
 
-func (lr *LifecycleRecorder) SetNotifyCallback(fn func(string)) {
+func (lr *LifecycleRecorder) SetNotifyCallback(fn func(eventType string, message string)) {
 	lr.mu.Lock()
 	defer lr.mu.Unlock()
 	lr.notify = fn
@@ -408,7 +408,7 @@ func (lr *LifecycleRecorder) flushNotifications() {
 		lr.notifyLastSent[agg.eventType] = now
 		lr.mu.Unlock()
 
-		go notifyFn(msg)
+		go notifyFn(agg.eventType, msg)
 	}
 }
 

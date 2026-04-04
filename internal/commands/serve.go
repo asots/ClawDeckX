@@ -330,14 +330,14 @@ func RunServe(args []string) int {
 		}
 		notifyMgr.Reload(settingRepo, gwChannels)
 	}
-	gwClient.SetNotifyCallback(func(msg string) {
-		notifyMgr.Send(msg)
+	gwClient.SetNotifyCallback(func(eventType string, msg string) {
+		notifyMgr.SendEvent(notify.EventType(eventType), msg)
 	})
 
 	lifecycleRecorder := monitor.NewLifecycleRecorder(wsHub)
 	lifecycleRecorder.SetGatewayInfo(svc.GatewayHost, svc.GatewayPort, "", svc.IsRemote())
-	lifecycleRecorder.SetNotifyCallback(func(msg string) {
-		notifyMgr.Send(msg)
+	lifecycleRecorder.SetNotifyCallback(func(eventType string, msg string) {
+		notifyMgr.SendEvent(notify.EventType(eventType), msg)
 	})
 	// Inject local process detection for crash vs unreachable distinction
 	lifecycleRecorder.SetLocalProcessAliveCallback(func() bool {
@@ -522,6 +522,8 @@ func RunServe(args []string) int {
 	router.GET("/api/v1/notify/config", notifyHandler.GetConfig)
 	router.PUT("/api/v1/notify/config", web.RequireAdmin(notifyHandler.UpdateConfig))
 	router.POST("/api/v1/notify/test", web.RequireAdmin(notifyHandler.TestSend))
+	router.GET("/api/v1/notify/events", notifyHandler.GetEventConfig)
+	router.PUT("/api/v1/notify/events", web.RequireAdmin(notifyHandler.UpdateEventConfig))
 
 	router.GET("/api/v1/audit-logs", auditHandler.List)
 

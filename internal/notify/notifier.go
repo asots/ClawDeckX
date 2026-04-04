@@ -21,12 +21,37 @@ import (
 	nfytg "github.com/nikoksr/notify/service/telegram"
 )
 
+// EventType identifies a notification event category.
+type EventType string
+
+const (
+	EventShutdown         EventType = "shutdown"          // gateway graceful shutdown
+	EventCrashed          EventType = "crashed"           // gateway crashed (process died)
+	EventUnreachable      EventType = "unreachable"       // gateway health check failed
+	EventRecovered        EventType = "recovered"         // gateway recovered after crash/unreachable
+	EventStarted          EventType = "started"           // gateway started
+	EventHeartbeatRestart EventType = "heartbeat_restart" // watchdog auto-restart triggered
+	EventPairingRequired  EventType = "pairing_required"  // device pairing required
+)
+
+// AllEventTypes lists every supported event type in display order.
+var AllEventTypes = []EventType{
+	EventShutdown,
+	EventCrashed,
+	EventUnreachable,
+	EventRecovered,
+	EventStarted,
+	EventHeartbeatRestart,
+	EventPairingRequired,
+}
+
 // Manager wraps nikoksr/notify.Notify and manages channel lifecycle.
 type Manager struct {
 	mu               sync.RWMutex
 	notifier         *nfy.Notify
 	channelNames     []string
 	channelNotifiers map[string]*nfy.Notify
+	settingRepo      *database.SettingRepo
 }
 
 // NewManager creates an empty notification manager.
@@ -36,11 +61,34 @@ func NewManager() *Manager {
 	}
 }
 
+// channelEnabledKey returns the settings key for a channel's enabled flag.
+func channelEnabledKey(channel string) string {
+	return "notify_" + channel + "_enabled"
+}
+
+// eventEnabledKey returns the settings key for an event type's enabled flag.
+func eventEnabledKey(evt EventType) string {
+	return "notify_event_" + string(evt) + "_enabled"
+}
+
+// eventChannelsKey returns the settings key for an event type's channel list.
+func eventChannelsKey(evt EventType) string {
+	return "notify_event_" + string(evt) + "_channels"
+}
+
+// isChannelEnabled checks the DB setting; defaults to true (enabled) if unset.
+func isChannelEnabled(settingRepo *database.SettingRepo, channel string) bool {
+	v, _ := settingRepo.Get(channelEnabledKey(channel))
+	return v != "false"
+}
+
 // Reload reads notification settings from the database and rebuilds channels.
 // It reuses openclaw channel config (e.g. Telegram bot token) when available.
 func (m *Manager) Reload(settingRepo *database.SettingRepo, gwChannels map[string]interface{}) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+
+	m.settingRepo = settingRepo
 
 	// Create a fresh notifier instance (drops old services)
 	n := nfy.New()
@@ -48,182 +96,192 @@ func (m *Manager) Reload(settingRepo *database.SettingRepo, gwChannels map[strin
 	var names []string
 
 	// ── Telegram (via nikoksr/notify/service/telegram) ──
-	tgToken, _ := settingRepo.Get("notify_telegram_token")
-	if tgToken == "" {
-		if ch, ok := gwChannels["telegram"]; ok {
-			if cfg, ok := ch.(map[string]interface{}); ok {
-				if t, ok := cfg["botToken"].(string); ok && t != "" {
-					tgToken = t
+	if isChannelEnabled(settingRepo, "telegram") {
+		tgToken, _ := settingRepo.Get("notify_telegram_token")
+		if tgToken == "" {
+			if ch, ok := gwChannels["telegram"]; ok {
+				if cfg, ok := ch.(map[string]interface{}); ok {
+					if t, ok := cfg["botToken"].(string); ok && t != "" {
+						tgToken = t
+					}
 				}
 			}
 		}
-	}
-	tgChatID, _ := settingRepo.Get("notify_telegram_chat_id")
-	if tgToken != "" && tgChatID != "" {
-		tgSvc, err := nfytg.New(tgToken)
-		if err == nil {
-			// AddReceivers accepts int64 chat IDs
-			if id, err := strconv.ParseInt(strings.TrimSpace(tgChatID), 10, 64); err == nil {
-				tgSvc.AddReceivers(id)
-				n.UseServices(tgSvc)
-				pc := nfy.New()
-				pc.UseServices(tgSvc)
-				perChannel["telegram"] = pc
-				names = append(names, "telegram")
+		tgChatID, _ := settingRepo.Get("notify_telegram_chat_id")
+		if tgToken != "" && tgChatID != "" {
+			tgSvc, err := nfytg.New(tgToken)
+			if err == nil {
+				if id, err := strconv.ParseInt(strings.TrimSpace(tgChatID), 10, 64); err == nil {
+					tgSvc.AddReceivers(id)
+					n.UseServices(tgSvc)
+					pc := nfy.New()
+					pc.UseServices(tgSvc)
+					perChannel["telegram"] = pc
+					names = append(names, "telegram")
+				} else {
+					logger.Log.Warn().Str("chat_id", tgChatID).Msg(i18n.T(i18n.MsgLogTelegramChatIdInvalid))
+				}
 			} else {
-				logger.Log.Warn().Str("chat_id", tgChatID).Msg(i18n.T(i18n.MsgLogTelegramChatIdInvalid))
+				logger.Log.Warn().Err(err).Msg(i18n.T(i18n.MsgLogTelegramInitFailed))
 			}
-		} else {
-			logger.Log.Warn().Err(err).Msg(i18n.T(i18n.MsgLogTelegramInitFailed))
+		}
+	}
+	// ── DingTalk (via nikoksr/notify/service/dingding) ──
+	if isChannelEnabled(settingRepo, "dingtalk") {
+		ddToken, _ := settingRepo.Get("notify_dingtalk_token")
+		ddSecret, _ := settingRepo.Get("notify_dingtalk_secret")
+		if ddToken != "" {
+			ddSvc := nfydd.New(&nfydd.Config{Token: ddToken, Secret: ddSecret})
+			n.UseServices(ddSvc)
+			pc := nfy.New()
+			pc.UseServices(ddSvc)
+			perChannel["dingtalk"] = pc
+			names = append(names, "dingtalk")
 		}
 	}
 
-	// ── DingTalk (via nikoksr/notify/service/dingding) ──
-	ddToken, _ := settingRepo.Get("notify_dingtalk_token")
-	ddSecret, _ := settingRepo.Get("notify_dingtalk_secret")
-	if ddToken != "" {
-		ddSvc := nfydd.New(&nfydd.Config{Token: ddToken, Secret: ddSecret})
-		n.UseServices(ddSvc)
-		pc := nfy.New()
-		pc.UseServices(ddSvc)
-		perChannel["dingtalk"] = pc
-		names = append(names, "dingtalk")
-	}
-
-	larkURL, _ := settingRepo.Get("notify_lark_webhook_url")
-	if larkURL != "" {
-		larkSvc := nfylark.NewWebhookService(larkURL)
-		n.UseServices(larkSvc)
-		pc := nfy.New()
-		pc.UseServices(larkSvc)
-		perChannel["lark"] = pc
-		names = append(names, "lark")
+	// ── Lark / Feishu ──
+	if isChannelEnabled(settingRepo, "lark") {
+		larkURL, _ := settingRepo.Get("notify_lark_webhook_url")
+		if larkURL != "" {
+			larkSvc := nfylark.NewWebhookService(larkURL)
+			n.UseServices(larkSvc)
+			pc := nfy.New()
+			pc.UseServices(larkSvc)
+			perChannel["lark"] = pc
+			names = append(names, "lark")
+		}
 	}
 
 	// ── Discord (via nikoksr/notify/service/discord) ──
-	dcToken, _ := settingRepo.Get("notify_discord_token")
-	if dcToken == "" {
-		if ch, ok := gwChannels["discord"]; ok {
-			if cfg, ok := ch.(map[string]interface{}); ok {
-				if t, ok := cfg["token"].(string); ok && t != "" {
-					dcToken = t
+	if isChannelEnabled(settingRepo, "discord") {
+		dcToken, _ := settingRepo.Get("notify_discord_token")
+		if dcToken == "" {
+			if ch, ok := gwChannels["discord"]; ok {
+				if cfg, ok := ch.(map[string]interface{}); ok {
+					if t, ok := cfg["token"].(string); ok && t != "" {
+						dcToken = t
+					}
 				}
 			}
 		}
-	}
-	dcChannelID, _ := settingRepo.Get("notify_discord_channel_id")
-	if dcToken != "" && dcChannelID != "" {
-		dcSvc := nfydc.New()
-		if err := dcSvc.AuthenticateWithBotToken(dcToken); err == nil {
-			dcSvc.AddReceivers(strings.TrimSpace(dcChannelID))
-			n.UseServices(dcSvc)
-			pc := nfy.New()
-			pc.UseServices(dcSvc)
-			perChannel["discord"] = pc
-			names = append(names, "discord")
-		} else {
-			logger.Log.Warn().Err(err).Msg(i18n.T(i18n.MsgLogDiscordInitFailed))
+		dcChannelID, _ := settingRepo.Get("notify_discord_channel_id")
+		if dcToken != "" && dcChannelID != "" {
+			dcSvc := nfydc.New()
+			if err := dcSvc.AuthenticateWithBotToken(dcToken); err == nil {
+				dcSvc.AddReceivers(strings.TrimSpace(dcChannelID))
+				n.UseServices(dcSvc)
+				pc := nfy.New()
+				pc.UseServices(dcSvc)
+				perChannel["discord"] = pc
+				names = append(names, "discord")
+			} else {
+				logger.Log.Warn().Err(err).Msg(i18n.T(i18n.MsgLogDiscordInitFailed))
+			}
 		}
 	}
 
 	// ── Slack (via nikoksr/notify/service/slack) ──
-	slackToken, _ := settingRepo.Get("notify_slack_token")
-	if slackToken == "" {
-		if ch, ok := gwChannels["slack"]; ok {
-			if cfg, ok := ch.(map[string]interface{}); ok {
-				if t, ok := cfg["botToken"].(string); ok && t != "" {
-					slackToken = t
+	if isChannelEnabled(settingRepo, "slack") {
+		slackToken, _ := settingRepo.Get("notify_slack_token")
+		if slackToken == "" {
+			if ch, ok := gwChannels["slack"]; ok {
+				if cfg, ok := ch.(map[string]interface{}); ok {
+					if t, ok := cfg["botToken"].(string); ok && t != "" {
+						slackToken = t
+					}
 				}
 			}
 		}
-	}
-	slackChannelID, _ := settingRepo.Get("notify_slack_channel_id")
-	if slackToken != "" && slackChannelID != "" {
-		slackSvc := nfyslack.New(slackToken)
-		slackSvc.AddReceivers(strings.TrimSpace(slackChannelID))
-		n.UseServices(slackSvc)
-		pc := nfy.New()
-		pc.UseServices(slackSvc)
-		perChannel["slack"] = pc
-		names = append(names, "slack")
+		slackChannelID, _ := settingRepo.Get("notify_slack_channel_id")
+		if slackToken != "" && slackChannelID != "" {
+			slackSvc := nfyslack.New(slackToken)
+			slackSvc.AddReceivers(strings.TrimSpace(slackChannelID))
+			n.UseServices(slackSvc)
+			pc := nfy.New()
+			pc.UseServices(slackSvc)
+			perChannel["slack"] = pc
+			names = append(names, "slack")
+		}
 	}
 
-	wecomURL, _ := settingRepo.Get("notify_wecom_webhook_url")
-	if wecomURL != "" {
-		wecomSvc := nfyhttp.New()
-		wecomSvc.AddReceivers(&nfyhttp.Webhook{
-			URL:         wecomURL,
-			Header:      http.Header{"Content-Type": []string{"application/json; charset=utf-8"}},
-			ContentType: "application/json; charset=utf-8",
-			Method:      "POST",
-			BuildPayload: func(subject, message string) (payload any) {
-				// WeCom webhook expects {"msgtype":"text","text":{"content":"..."}}
-				return fmt.Sprintf(`{"msgtype":"text","text":{"content":"%s\n%s"}}`,
-					escapeJSON(subject), escapeJSON(message))
-			},
-		})
-		n.UseServices(wecomSvc)
-		pc := nfy.New()
-		pc.UseServices(wecomSvc)
-		perChannel["wecom"] = pc
-		names = append(names, "wecom")
+	// ── WeCom ──
+	if isChannelEnabled(settingRepo, "wecom") {
+		wecomURL, _ := settingRepo.Get("notify_wecom_webhook_url")
+		if wecomURL != "" {
+			wecomSvc := nfyhttp.New()
+			wecomSvc.AddReceivers(&nfyhttp.Webhook{
+				URL:         wecomURL,
+				Header:      http.Header{"Content-Type": []string{"application/json; charset=utf-8"}},
+				ContentType: "application/json; charset=utf-8",
+				Method:      "POST",
+				BuildPayload: func(subject, message string) (payload any) {
+					return fmt.Sprintf(`{"msgtype":"text","text":{"content":"%s\n%s"}}`,
+						escapeJSON(subject), escapeJSON(message))
+				},
+			})
+			n.UseServices(wecomSvc)
+			pc := nfy.New()
+			pc.UseServices(wecomSvc)
+			perChannel["wecom"] = pc
+			names = append(names, "wecom")
+		}
 	}
 
 	// ── Webhook (via nikoksr/notify/service/http) ──
-	whURL, _ := settingRepo.Get("notify_webhook_url")
-	if whURL != "" {
-		whMethod, _ := settingRepo.Get("notify_webhook_method")
-		whHeaders, _ := settingRepo.Get("notify_webhook_headers")
-		whTemplate, _ := settingRepo.Get("notify_webhook_template")
+	if isChannelEnabled(settingRepo, "webhook") {
+		whURL, _ := settingRepo.Get("notify_webhook_url")
+		if whURL != "" {
+			whMethod, _ := settingRepo.Get("notify_webhook_method")
+			whHeaders, _ := settingRepo.Get("notify_webhook_headers")
+			whTemplate, _ := settingRepo.Get("notify_webhook_template")
 
-		if whMethod == "" {
-			whMethod = "POST"
-		}
+			if whMethod == "" {
+				whMethod = "POST"
+			}
 
-		// Build the HTTP service with a custom payload builder
-		httpSvc := nfyhttp.New()
+			httpSvc := nfyhttp.New()
 
-		// Build http.Header
-		hdrs := make(http.Header)
-		if whHeaders != "" {
-			for _, h := range strings.Split(whHeaders, ",") {
-				parts := strings.SplitN(strings.TrimSpace(h), ":", 2)
-				if len(parts) == 2 {
-					hdrs.Set(strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1]))
+			hdrs := make(http.Header)
+			if whHeaders != "" {
+				for _, h := range strings.Split(whHeaders, ",") {
+					parts := strings.SplitN(strings.TrimSpace(h), ":", 2)
+					if len(parts) == 2 {
+						hdrs.Set(strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1]))
+					}
 				}
 			}
-		}
 
-		// Detect content type from template
-		contentType := "text/plain; charset=utf-8"
-		if whTemplate != "" {
-			trimmed := strings.TrimSpace(whTemplate)
-			if (strings.HasPrefix(trimmed, "{") && strings.HasSuffix(trimmed, "}")) ||
-				(strings.HasPrefix(trimmed, "[") && strings.HasSuffix(trimmed, "]")) {
-				contentType = "application/json; charset=utf-8"
-			}
-		}
-
-		tmpl := whTemplate // capture for closure
-		httpSvc.AddReceivers(&nfyhttp.Webhook{
-			URL:         whURL,
-			Header:      hdrs,
-			ContentType: contentType,
-			Method:      whMethod,
-			BuildPayload: func(subject, message string) (payload any) {
-				text := subject + "\n" + message
-				if tmpl != "" {
-					text = strings.ReplaceAll(tmpl, "{message}", subject+"\n"+message)
+			contentType := "text/plain; charset=utf-8"
+			if whTemplate != "" {
+				trimmed := strings.TrimSpace(whTemplate)
+				if (strings.HasPrefix(trimmed, "{") && strings.HasSuffix(trimmed, "}")) ||
+					(strings.HasPrefix(trimmed, "[") && strings.HasSuffix(trimmed, "]")) {
+					contentType = "application/json; charset=utf-8"
 				}
-				return text
-			},
-		})
+			}
 
-		n.UseServices(httpSvc)
-		pc := nfy.New()
-		pc.UseServices(httpSvc)
-		perChannel["webhook"] = pc
-		names = append(names, "webhook")
+			tmpl := whTemplate
+			httpSvc.AddReceivers(&nfyhttp.Webhook{
+				URL:         whURL,
+				Header:      hdrs,
+				ContentType: contentType,
+				Method:      whMethod,
+				BuildPayload: func(subject, message string) (payload any) {
+					text := subject + "\n" + message
+					if tmpl != "" {
+						text = strings.ReplaceAll(tmpl, "{message}", subject+"\n"+message)
+					}
+					return text
+				},
+			})
+
+			n.UseServices(httpSvc)
+			pc := nfy.New()
+			pc.UseServices(httpSvc)
+			perChannel["webhook"] = pc
+			names = append(names, "webhook")
+		}
 	}
 
 	m.notifier = n
@@ -296,6 +354,88 @@ func (m *Manager) ChannelNames() []string {
 	defer m.mu.RUnlock()
 	result := make([]string, len(m.channelNames))
 	copy(result, m.channelNames)
+	return result
+}
+
+// SendEvent dispatches a notification for a specific event type.
+// It checks if the event is enabled and routes to the configured channels.
+// If no per-event channel routing is configured, it falls back to all active channels.
+func (m *Manager) SendEvent(evt EventType, text string) {
+	m.mu.RLock()
+	settingRepo := m.settingRepo
+	m.mu.RUnlock()
+
+	// Check if this event type is enabled (default: true for all except started)
+	if settingRepo != nil {
+		v, _ := settingRepo.Get(eventEnabledKey(evt))
+		if v == "false" {
+			return
+		}
+		// Default: started events are disabled unless explicitly enabled
+		if v == "" && evt == EventStarted {
+			return
+		}
+	}
+
+	// Check if specific channels are configured for this event
+	if settingRepo != nil {
+		channelsStr, _ := settingRepo.Get(eventChannelsKey(evt))
+		if channelsStr != "" {
+			channels := strings.Split(channelsStr, ",")
+			for _, ch := range channels {
+				ch = strings.TrimSpace(ch)
+				if ch == "" {
+					continue
+				}
+				if err := m.SendToChannel(ch, text); err != nil {
+					logger.Log.Warn().Err(err).Str("channel", ch).Str("event", string(evt)).Msg("notify: event send to channel failed")
+				}
+			}
+			return
+		}
+	}
+
+	// Fallback: send to all channels
+	m.Send(text)
+}
+
+// IsEventEnabled returns whether a given event type is enabled for notifications.
+func (m *Manager) IsEventEnabled(evt EventType) bool {
+	m.mu.RLock()
+	settingRepo := m.settingRepo
+	m.mu.RUnlock()
+	if settingRepo == nil {
+		return evt != EventStarted
+	}
+	v, _ := settingRepo.Get(eventEnabledKey(evt))
+	if v == "false" {
+		return false
+	}
+	if v == "" && evt == EventStarted {
+		return false
+	}
+	return true
+}
+
+// GetEventChannels returns the configured channels for a specific event, or nil for "all".
+func (m *Manager) GetEventChannels(evt EventType) []string {
+	m.mu.RLock()
+	settingRepo := m.settingRepo
+	m.mu.RUnlock()
+	if settingRepo == nil {
+		return nil
+	}
+	channelsStr, _ := settingRepo.Get(eventChannelsKey(evt))
+	if channelsStr == "" {
+		return nil
+	}
+	var result []string
+	for _, ch := range strings.Split(channelsStr, ",") {
+		ch = strings.TrimSpace(ch)
+		if ch != "" {
+			result = append(result, ch)
+		}
+	}
 	return result
 }
 
