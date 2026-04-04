@@ -55,15 +55,17 @@ func TestGWClient_SetRestartCallback(t *testing.T) {
 func TestGWClient_SetNotifyCallback(t *testing.T) {
 	client := NewGWClient(GWClientConfig{})
 
-	var receivedMsg string
-	callback := func(msg string) {
-		receivedMsg = msg
+	var receivedType, receivedMsg string
+	callback := func(eventType string, message string) {
+		receivedType = eventType
+		receivedMsg = message
 	}
 
 	client.SetNotifyCallback(callback)
 	assert.NotNil(t, client.onNotify)
 
-	client.onNotify("test message")
+	client.onNotify("shutdown", "test message")
+	assert.Equal(t, "shutdown", receivedType)
 	assert.Equal(t, "test message", receivedMsg)
 }
 
