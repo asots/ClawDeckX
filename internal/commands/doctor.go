@@ -19,7 +19,11 @@ func Doctor(args []string) int {
 	fix := fs.Bool("fix", false, i18n.T(i18n.MsgDoctorFixFlag))
 	fixRuntime := fs.Bool("fix-runtime", false, i18n.T(i18n.MsgDoctorFixRuntimeFlag))
 	rollbackRuntimeFix := fs.Bool("rollback-runtime-fix", false, i18n.T(i18n.MsgDoctorRollbackRuntimeFlag))
-	path := fs.String("path", "~/.openclaw/openclaw.json", i18n.T(i18n.MsgDoctorPathFlag))
+	defaultPath := openclaw.ResolveConfigPath()
+	if defaultPath == "" {
+		defaultPath = "~/.openclaw/openclaw.json"
+	}
+	path := fs.String("path", defaultPath, i18n.T(i18n.MsgDoctorPathFlag))
 	if err := fs.Parse(args); err != nil {
 		if err == flag.ErrHelp {
 			return 0

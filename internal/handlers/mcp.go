@@ -16,6 +16,7 @@ import (
 	"strings"
 	"time"
 
+	"ClawDeckX/internal/openclaw"
 	"ClawDeckX/internal/web"
 )
 
@@ -39,11 +40,10 @@ func NewMcpHandler() *McpHandler {
 
 // readOpenClawConfig reads and parses openclaw.json, returning the config map and path.
 func readOpenClawConfig() (map[string]interface{}, string, error) {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return nil, "", err
+	path := openclaw.ResolveConfigPath()
+	if path == "" {
+		return nil, "", fmt.Errorf("cannot resolve openclaw config path")
 	}
-	path := filepath.Join(home, ".openclaw", "openclaw.json")
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, path, err
@@ -701,8 +701,7 @@ func (h *McpHandler) Set(w http.ResponseWriter, r *http.Request) {
 		if os.IsNotExist(err) {
 			// Bootstrap an empty config
 			cfg = map[string]interface{}{}
-			home, _ := os.UserHomeDir()
-			path = filepath.Join(home, ".openclaw", "openclaw.json")
+			path = openclaw.ResolveConfigPath()
 			if err2 := os.MkdirAll(filepath.Dir(path), 0o755); err2 != nil {
 				web.FailErr(w, r, web.ErrConfigWriteFailed, err2.Error())
 				return

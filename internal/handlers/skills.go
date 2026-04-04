@@ -55,13 +55,13 @@ func (h *SkillsHandler) List(w http.ResponseWriter, r *http.Request) {
 
 // listLocal scans local ~/.openclaw/skills directory (legacy fallback).
 func (h *SkillsHandler) listLocal(w http.ResponseWriter, r *http.Request) {
-	home, err := os.UserHomeDir()
-	if err != nil {
+	stateDir := openclaw.ResolveStateDir()
+	if stateDir == "" {
 		web.FailErr(w, r, web.ErrSkillsPathError)
 		return
 	}
 
-	skillsDir := filepath.Join(home, ".openclaw", "skills")
+	skillsDir := filepath.Join(stateDir, "skills")
 	entries, err := os.ReadDir(skillsDir)
 	if err != nil {
 		if os.IsNotExist(err) {

@@ -132,21 +132,21 @@ func (h *GatewayLogHandler) getLocalLog(w http.ResponseWriter, r *http.Request, 
 func (h *GatewayLogHandler) findLogPaths() []string {
 	var paths []string
 
-	home, err := os.UserHomeDir()
-	if err != nil {
+	stateDir := openclaw.ResolveStateDir()
+	if stateDir == "" {
 		return paths
 	}
 
 	candidates := []string{
-		filepath.Join(home, ".openclaw", "gateway.log"),
-		filepath.Join(home, ".openclaw", "openclaw-gateway.log"),
-		filepath.Join(home, ".openclaw", "openclaw.log"),
+		filepath.Join(stateDir, "gateway.log"),
+		filepath.Join(stateDir, "openclaw-gateway.log"),
+		filepath.Join(stateDir, "openclaw.log"),
 		"/tmp/openclaw-gateway.log",
 		"/var/log/openclaw/gateway.log",
 	}
 
-	// also search .openclaw dir for all .log files
-	ocDir := filepath.Join(home, ".openclaw")
+	// also search stateDir for all .log files
+	ocDir := stateDir
 	entries, _ := os.ReadDir(ocDir)
 	for _, e := range entries {
 		if !e.IsDir() && strings.HasSuffix(e.Name(), ".log") {

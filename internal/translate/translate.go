@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"ClawDeckX/internal/logger"
+	"ClawDeckX/internal/openclaw"
 )
 
 // LLMConfig holds the configuration for using an LLM model as the translation engine.
@@ -235,13 +236,13 @@ func resolvePreferredModel(pref string, providers map[string]interface{}) *LLMCo
 	}
 }
 
-// loadLocalProviders reads the providers map from ~/.openclaw/openclaw.json.
+// loadLocalProviders reads the providers map from openclaw.json.
 func loadLocalProviders() map[string]interface{} {
-	home, err := os.UserHomeDir()
-	if err != nil {
+	cfgPath := openclaw.ResolveConfigPath()
+	if cfgPath == "" {
 		return nil
 	}
-	data, err := os.ReadFile(filepath.Join(home, ".openclaw", "openclaw.json"))
+	data, err := os.ReadFile(cfgPath)
 	if err != nil {
 		return nil
 	}
@@ -319,13 +320,13 @@ func extractProviderConfig(pid string, providers map[string]interface{}) *LLMCon
 }
 
 func resolveEnvFromFile(key string) string {
-	home, err := os.UserHomeDir()
-	if err != nil {
+	stateDir := openclaw.ResolveStateDir()
+	if stateDir == "" {
 		return ""
 	}
 	for _, p := range []string{
-		filepath.Join(home, ".openclaw", ".env"),
-		filepath.Join(home, ".openclaw", "env"),
+		filepath.Join(stateDir, ".env"),
+		filepath.Join(stateDir, "env"),
 	} {
 		data, err := os.ReadFile(p)
 		if err != nil {

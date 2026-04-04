@@ -950,8 +950,7 @@ func (h *DoctorHandler) checkInstalled() CheckItem {
 
 func (h *DoctorHandler) checkConfig() CheckItem {
 	if openclaw.ConfigFileExists() {
-		home, _ := os.UserHomeDir()
-		path := filepath.Join(home, ".openclaw", "openclaw.json")
+		path := openclaw.ResolveConfigPath()
 		info, _ := os.Stat(path)
 		if info != nil {
 			if runtime.GOOS != "windows" {
@@ -1029,8 +1028,7 @@ func (h *DoctorHandler) checkGateway() CheckItem {
 }
 
 func (h *DoctorHandler) checkPIDLock() CheckItem {
-	home, _ := os.UserHomeDir()
-	pidFile := filepath.Join(home, ".openclaw", "gateway.pid")
+	pidFile := filepath.Join(openclaw.ResolveStateDir(), "gateway.pid")
 	if _, err := os.Stat(pidFile); err == nil {
 		st := h.svc.Status()
 		if !st.Running {
@@ -1168,8 +1166,7 @@ func (h *DoctorHandler) collectChecks() []CheckItem {
 // checkConfigValues inspects the config JSON for common misconfigurations
 // and returns fixable CheckItems for each issue found.
 func (h *DoctorHandler) checkConfigValues() []CheckItem {
-	home, _ := os.UserHomeDir()
-	configPath := filepath.Join(home, ".openclaw", "openclaw.json")
+	configPath := openclaw.ResolveConfigPath()
 	data, err := os.ReadFile(configPath)
 	if err != nil {
 		return nil
@@ -1271,7 +1268,7 @@ func (h *DoctorHandler) checkConfigValues() []CheckItem {
 	}
 
 	// Check for missing backup directory
-	backupDir := filepath.Join(home, ".openclaw", "backups")
+	backupDir := filepath.Join(openclaw.ResolveStateDir(), "backups")
 	if _, err := os.Stat(backupDir); err != nil {
 		items = append(items, CheckItem{
 			ID:         "config.backup_dir",
@@ -1460,7 +1457,6 @@ func (h *DoctorHandler) collectRecentExceptionIssues(now time.Time, limit int) [
 }
 
 func (h *DoctorHandler) runFix(item CheckItem) fixItemResult {
-	home, _ := os.UserHomeDir()
 	if strings.HasPrefix(item.ID, "security.") {
 		checkID := strings.TrimPrefix(item.ID, "security.")
 		mode, ok := securityPermissionFixMode(checkID)
@@ -1525,7 +1521,7 @@ func (h *DoctorHandler) runFix(item CheckItem) fixItemResult {
 	}
 	switch item.ID {
 	case "pid.lock":
-		pidFile := filepath.Join(home, ".openclaw", "gateway.pid")
+		pidFile := filepath.Join(openclaw.ResolveStateDir(), "gateway.pid")
 		if _, err := os.Stat(pidFile); err != nil {
 			return fixItemResult{ID: item.ID, Code: item.Code, Name: item.Name, Status: "skipped", Message: "pid file not found"}
 		}
@@ -1541,7 +1537,7 @@ func (h *DoctorHandler) runFix(item CheckItem) fixItemResult {
 		if runtime.GOOS == "windows" {
 			return fixItemResult{ID: item.ID, Code: item.Code, Name: item.Name, Status: "skipped", Message: "permission fix skipped on windows"}
 		}
-		configPath := filepath.Join(home, ".openclaw", "openclaw.json")
+		configPath := openclaw.ResolveConfigPath()
 		if _, err := os.Stat(configPath); err != nil {
 			return fixItemResult{ID: item.ID, Code: item.Code, Name: item.Name, Status: "skipped", Message: "config file not found"}
 		}
@@ -1559,19 +1555,19 @@ func (h *DoctorHandler) runFix(item CheckItem) fixItemResult {
 		}
 		return fixItemResult{ID: item.ID, Code: item.Code, Name: item.Name, Status: "success", Message: "gateway started"}
 	case "config.mode":
-		return h.fixConfigKey(home, "gateway", "mode", "local", "set gateway.mode to local")
+		return h.fixConfigKey("gateway", "mode", "local", "set gateway.mode to local")
 	case "config.bind":
-		return h.fixConfigKey(home, "gateway", "bind", "loopback", "set gateway.bind to loopback")
+		return h.fixConfigKey("gateway", "bind", "loopback", "set gateway.bind to loopback")
 	case "config.auth_token":
 		token := generateFixToken(32)
 		if token == "" {
 			return fixItemResult{ID: item.ID, Code: item.Code, Name: item.Name, Status: "failed", Message: "failed to generate random token"}
 		}
-		return h.fixConfigAuthToken(home, token)
+		return h.fixConfigAuthToken(token)
 	case "config.deprecated_auth":
-		return h.fixConfigRemoveKey(home, []string{"gateway", "auth"}, "enabled", "removed deprecated auth.enabled key")
+		return h.fixConfigRemoveKey([]string{"gateway", "auth"}, "enabled", "removed deprecated auth.enabled key")
 	case "config.backup_dir":
-		backupDir := filepath.Join(home, ".openclaw", "backups")
+		backupDir := filepath.Join(openclaw.ResolveStateDir(), "backups")
 		if err := os.MkdirAll(backupDir, 0o755); err != nil {
 			return fixItemResult{ID: item.ID, Code: item.Code, Name: item.Name, Status: "failed", Message: err.Error()}
 		}
@@ -1591,10 +1587,10 @@ func generateFixToken(n int) string {
 }
 
 // fixConfigKey reads openclaw.json, sets a top-level gateway key, backs up, and writes.
-func (h *DoctorHandler) fixConfigKey(home, section, key, value, msg string) fixItemResult {
+func (h *DoctorHandler) fixConfigKey(section, key, value, msg string) fixItemResult {
 	id := section + "." + key
 	res := fixItemResult{ID: "config." + key, Code: "config." + key, Name: "Config " + key}
-	configPath := filepath.Join(home, ".openclaw", "openclaw.json")
+	configPath := openclaw.ResolveConfigPath()
 	data, err := os.ReadFile(configPath)
 	if err != nil {
 		res.Status = "failed"
@@ -1632,9 +1628,9 @@ func (h *DoctorHandler) fixConfigKey(home, section, key, value, msg string) fixI
 }
 
 // fixConfigAuthToken sets gateway.auth.token in openclaw.json.
-func (h *DoctorHandler) fixConfigAuthToken(home, token string) fixItemResult {
+func (h *DoctorHandler) fixConfigAuthToken(token string) fixItemResult {
 	res := fixItemResult{ID: "config.auth_token", Code: "config.auth_token", Name: "Gateway Auth Token"}
-	configPath := filepath.Join(home, ".openclaw", "openclaw.json")
+	configPath := openclaw.ResolveConfigPath()
 	data, err := os.ReadFile(configPath)
 	if err != nil {
 		res.Status = "failed"
@@ -1674,9 +1670,9 @@ func (h *DoctorHandler) fixConfigAuthToken(home, token string) fixItemResult {
 }
 
 // fixConfigRemoveKey removes a key from a nested config section.
-func (h *DoctorHandler) fixConfigRemoveKey(home string, path []string, key, msg string) fixItemResult {
+func (h *DoctorHandler) fixConfigRemoveKey(path []string, key, msg string) fixItemResult {
 	res := fixItemResult{ID: "config.deprecated_auth", Code: "config.deprecated_auth", Name: "Deprecated Auth Config"}
-	configPath := filepath.Join(home, ".openclaw", "openclaw.json")
+	configPath := openclaw.ResolveConfigPath()
 	data, err := os.ReadFile(configPath)
 	if err != nil {
 		res.Status = "failed"

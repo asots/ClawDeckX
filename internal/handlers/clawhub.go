@@ -465,13 +465,13 @@ func (h *ClawHubHandler) Uninstall(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// local gateway: delete skill directory
-	home, err := os.UserHomeDir()
-	if err != nil {
+	stateDir := openclaw.ResolveStateDir()
+	if stateDir == "" {
 		web.FailErr(w, r, web.ErrPathError)
 		return
 	}
 
-	skillPath, ok := resolveInstalledSkillPath(home, params.Slug)
+	skillPath, ok := resolveInstalledSkillPath(stateDir, params.Slug)
 	if !ok {
 		web.FailErr(w, r, web.ErrSkillNotFound)
 		return
@@ -483,7 +483,7 @@ func (h *ClawHubHandler) Uninstall(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.removeLockEntry(home, params.Slug)
+	h.removeLockEntry(stateDir, params.Slug)
 
 	logger.Log.Info().Str("slug", params.Slug).Msg("skill uninstalled")
 	web.OK(w, r, map[string]interface{}{
@@ -580,8 +580,8 @@ func (h *ClawHubHandler) InstalledList(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// local gateway: scan local filesystem
-	home, err := os.UserHomeDir()
-	if err != nil {
+	stateDir := openclaw.ResolveStateDir()
+	if stateDir == "" {
 		web.FailErr(w, r, web.ErrPathError)
 		return
 	}
@@ -598,8 +598,8 @@ func (h *ClawHubHandler) InstalledList(w http.ResponseWriter, r *http.Request) {
 
 	// Try workspace directory first (openclaw's new location)
 	lockPaths := []string{
-		filepath.Join(home, ".openclaw", "workspace", ".clawhub", "lock.json"),
-		filepath.Join(home, ".openclaw", "skills", ".clawhub", "lock.json"),
+		filepath.Join(stateDir, "workspace", ".clawhub", "lock.json"),
+		filepath.Join(stateDir, "skills", ".clawhub", "lock.json"),
 	}
 	for _, lockPath := range lockPaths {
 		if data, err := os.ReadFile(lockPath); err == nil {
@@ -622,7 +622,7 @@ func (h *ClawHubHandler) InstalledList(w http.ResponseWriter, r *http.Request) {
 	var skills []installedSkill
 	// only list skills recorded in lockfile (installed via ClawHub)
 	for slug, lockInfo := range lockData.Skills {
-		skillPath, ok := resolveInstalledSkillPath(home, slug)
+		skillPath, ok := resolveInstalledSkillPath(stateDir, slug)
 		if !ok {
 			continue
 		}
@@ -664,7 +664,7 @@ func (h *ClawHubHandler) InstalledList(w http.ResponseWriter, r *http.Request) {
 
 	web.OK(w, r, map[string]interface{}{
 		"skills":    skills,
-		"skillsDir": filepath.Join(home, ".openclaw", "workspace"),
+		"skillsDir": filepath.Join(stateDir, "workspace"),
 	})
 }
 
@@ -684,9 +684,8 @@ func (h *ClawHubHandler) runClawHub(args []string) (string, error) {
 	executil.HideWindow(cmd)
 	cmd.Env = append(os.Environ(), "CLAWHUB_DISABLE_TELEMETRY=1")
 
-	// set working directory to ~/.openclaw/skills
-	home, _ := os.UserHomeDir()
-	skillsDir := filepath.Join(home, ".openclaw", "skills")
+	// set working directory to <stateDir>/skills
+	skillsDir := filepath.Join(openclaw.ResolveStateDir(), "skills")
 	os.MkdirAll(skillsDir, 0755)
 	cmd.Dir = skillsDir
 
@@ -711,15 +710,15 @@ func (h *ClawHubHandler) runClawHub(args []string) (string, error) {
 	return string(output), nil
 }
 
-func resolveInstalledSkillPath(home, slug string) (string, bool) {
+func resolveInstalledSkillPath(stateDir, slug string) (string, bool) {
 	candidates := []string{
 		// Primary: clawhub CLI ignores --dir and always installs to workspace
-		filepath.Join(home, ".openclaw", "workspace", slug),
+		filepath.Join(stateDir, "workspace", slug),
 		// Legacy: older openclaw versions used skills directory
-		filepath.Join(home, ".openclaw", "skills", slug),
+		filepath.Join(stateDir, "skills", slug),
 		// Backward compatibility: older ClawDeckX builds invoked clawhub from
-		// ~/.openclaw/skills without "--dir .", which installs into ./skills/<slug>.
-		filepath.Join(home, ".openclaw", "skills", "skills", slug),
+		// <stateDir>/skills without "--dir .", which installs into ./skills/<slug>.
+		filepath.Join(stateDir, "skills", "skills", slug),
 	}
 	for _, candidate := range candidates {
 		if info, err := os.Stat(candidate); err == nil && info.IsDir() {
@@ -730,11 +729,11 @@ func resolveInstalledSkillPath(home, slug string) (string, bool) {
 }
 
 // removeLockEntry removes a skill entry from the lockfile.
-func (h *ClawHubHandler) removeLockEntry(home, slug string) {
+func (h *ClawHubHandler) removeLockEntry(stateDir, slug string) {
 	// Try workspace directory first (openclaw's new location), then skills (legacy)
 	lockPaths := []string{
-		filepath.Join(home, ".openclaw", "workspace", ".clawhub", "lock.json"),
-		filepath.Join(home, ".openclaw", "skills", ".clawhub", "lock.json"),
+		filepath.Join(stateDir, "workspace", ".clawhub", "lock.json"),
+		filepath.Join(stateDir, "skills", ".clawhub", "lock.json"),
 	}
 
 	for _, lockPath := range lockPaths {

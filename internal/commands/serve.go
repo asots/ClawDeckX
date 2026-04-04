@@ -1249,12 +1249,11 @@ func readOpenClawGatewayToken(configPath string) string {
 	if token != "" {
 		return token
 	}
-	home, err := os.UserHomeDir()
-	if err != nil {
-		logger.Log.Debug().Err(err).Msg(i18n.T(i18n.MsgLogCannotGetHomeDir))
+	fallback := openclaw.ResolveStateDir()
+	if fallback == "" {
+		logger.Log.Debug().Msg(i18n.T(i18n.MsgLogCannotGetHomeDir))
 		return ""
 	}
-	fallback := filepath.Join(home, ".openclaw")
 	if fallback != configPath {
 		logger.Log.Debug().Str("fallback", fallback).Msg(i18n.T(i18n.MsgLogFallbackOpenclawPath))
 		return tryReadTokenFromPath(fallback)
@@ -1264,11 +1263,10 @@ func readOpenClawGatewayToken(configPath string) string {
 
 func tryReadTokenFromPath(configPath string) string {
 	if configPath == "" {
-		home, err := os.UserHomeDir()
-		if err != nil {
+		configPath = openclaw.ResolveStateDir()
+		if configPath == "" {
 			return ""
 		}
-		configPath = filepath.Join(home, ".openclaw")
 	}
 	info, err := os.Stat(configPath)
 	if err != nil {

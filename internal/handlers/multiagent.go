@@ -1428,11 +1428,11 @@ func (h *MultiAgentHandler) getOpenClawHome() (string, error) {
 	}
 
 	// Fallback to default
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return "", err
+	stateDir := openclaw.ResolveStateDir()
+	if stateDir == "" {
+		return "", fmt.Errorf("cannot resolve OpenClaw state directory")
 	}
-	return filepath.Join(homeDir, ".openclaw"), nil
+	return stateDir, nil
 }
 
 func (h *MultiAgentHandler) getExistingAgents() ([]string, error) {

@@ -37,14 +37,7 @@ func defaultRegistry() []ResourceDefinition {
 }
 
 func resolveStateDir() string {
-	if dir := strings.TrimSpace(openclaw.ResolveStateDir()); dir != "" {
-		return dir
-	}
-	h, err := os.UserHomeDir()
-	if err != nil {
-		return ""
-	}
-	return filepath.Join(h, ".openclaw")
+	return strings.TrimSpace(openclaw.ResolveStateDir())
 }
 
 func discoverAgentMarkdownResources(stateDir string) []ResourceDefinition {

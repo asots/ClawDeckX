@@ -15,6 +15,7 @@ import (
 
 	"ClawDeckX/internal/executil"
 	"ClawDeckX/internal/logger"
+	"ClawDeckX/internal/openclaw"
 )
 
 // InstallStreamSSE installs a ClawHub skill via SSE, streaming install logs in real time.
@@ -112,8 +113,7 @@ func (h *ClawHubHandler) InstallStreamSSE(w http.ResponseWriter, r *http.Request
 	}
 	args = append(args, "--no-input")
 
-	home, _ := os.UserHomeDir()
-	skillsDir := filepath.Join(home, ".openclaw", "skills")
+	skillsDir := filepath.Join(openclaw.ResolveStateDir(), "skills")
 	os.MkdirAll(skillsDir, 0755)
 
 	cmd := exec.Command(cmdName, args...)

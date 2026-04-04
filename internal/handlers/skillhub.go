@@ -15,6 +15,7 @@ import (
 
 	"ClawDeckX/internal/executil"
 	"ClawDeckX/internal/logger"
+	"ClawDeckX/internal/openclaw"
 	"ClawDeckX/internal/web"
 )
 
@@ -35,15 +36,11 @@ type GatewayClient interface {
 // so we must use workspace directory to match clawhub's actual behavior.
 // This differs from openclaw's "openclaw-managed" source which scans ~/.openclaw/skills.
 func managedSkillsDir() string {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		home = "."
+	stateDir := openclaw.ResolveStateDir()
+	if stateDir == "" {
+		return "."
 	}
-	// Respect OPENCLAW_STATE_DIR if set
-	if dir := os.Getenv("OPENCLAW_STATE_DIR"); dir != "" {
-		return filepath.Join(dir, "workspace")
-	}
-	return filepath.Join(home, ".openclaw", "workspace")
+	return filepath.Join(stateDir, "workspace")
 }
 
 // NewSkillHubHandler creates a new SkillHub handler.

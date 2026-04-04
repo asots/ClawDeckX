@@ -820,13 +820,13 @@ func (h *WizardHandler) resolveAPIKeyReference(raw string) string {
 }
 
 func (h *WizardHandler) lookupEnvVarFromFiles(key string) string {
-	home, err := os.UserHomeDir()
-	if err != nil {
+	stateDir := openclaw.ResolveStateDir()
+	if stateDir == "" {
 		return ""
 	}
 	paths := []string{
-		filepath.Join(home, ".openclaw", ".env"),
-		filepath.Join(home, ".openclaw", "env"),
+		filepath.Join(stateDir, ".env"),
+		filepath.Join(stateDir, "env"),
 	}
 	for _, p := range paths {
 		if v := readEnvFileValue(p, key); v != "" {
@@ -927,12 +927,11 @@ func (h *WizardHandler) resolveProviderAPIKeyViaEnv(provider string) string {
 }
 
 func (h *WizardHandler) resolveProviderAPIKeyViaLocalConfig(provider string) string {
-	home, err := os.UserHomeDir()
-	if err != nil {
+	cfgPath := openclaw.ResolveConfigPath()
+	if cfgPath == "" {
 		return ""
 	}
-	configPath := filepath.Join(home, ".openclaw", "openclaw.json")
-	data, err := os.ReadFile(configPath)
+	data, err := os.ReadFile(cfgPath)
 	if err != nil {
 		return ""
 	}
@@ -1663,13 +1662,13 @@ func (h *WizardHandler) mergeConfig(config map[string]interface{}) error {
 	return nil
 }
 
-// writeEnvKey writes an API key to ~/.openclaw/.env.
+// writeEnvKey writes an API key to <stateDir>/.env.
 func (h *WizardHandler) writeEnvKey(key, value string) {
-	home, err := os.UserHomeDir()
-	if err != nil {
+	stateDir := openclaw.ResolveStateDir()
+	if stateDir == "" {
 		return
 	}
-	envPath := filepath.Join(home, ".openclaw", ".env")
+	envPath := filepath.Join(stateDir, ".env")
 
 	// read existing content
 	existing := ""

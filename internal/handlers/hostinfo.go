@@ -435,9 +435,7 @@ func (h *HostInfoHandler) getStaticInfo() HostInfoResponse {
 
 	// Paths are static enough for dashboard display.
 	resp.DbPath = filepath.Join(wd, "data", "ClawDeckX.db")
-	if home != "" {
-		resp.ConfigPath = filepath.Join(home, ".openclaw", "openclaw.json")
-	}
+	resp.ConfigPath = openclaw.ResolveConfigPath()
 
 	h.cacheMu.Lock()
 	h.static = resp

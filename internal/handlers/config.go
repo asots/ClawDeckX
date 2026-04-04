@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"os"
-	"path/filepath"
 	"time"
 
 	"ClawDeckX/internal/constants"
@@ -27,11 +26,7 @@ func NewConfigHandler() *ConfigHandler {
 
 // configPath returns the OpenClaw config file path.
 func configPath() string {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return ""
-	}
-	return filepath.Join(home, ".openclaw", "openclaw.json")
+	return openclaw.ResolveConfigPath()
 }
 
 // Get reads the OpenClaw config.

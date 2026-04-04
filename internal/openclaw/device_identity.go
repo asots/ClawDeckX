@@ -118,11 +118,11 @@ func generateIdentity() (*DeviceIdentity, error) {
 
 func LoadOrCreateDeviceIdentity(filePath string) (*DeviceIdentity, error) {
 	if filePath == "" {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			return nil, fmt.Errorf("failed to get home directory: %w", err)
+		stateDir := ResolveStateDir()
+		if stateDir == "" {
+			return nil, fmt.Errorf("failed to resolve OpenClaw state directory")
 		}
-		filePath = filepath.Join(home, ".openclaw", "identity", "device.json")
+		filePath = filepath.Join(stateDir, "identity", "device.json")
 	}
 
 	if _, err := os.Stat(filePath); err == nil {
