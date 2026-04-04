@@ -1,6 +1,7 @@
 ﻿package monitor
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -10,6 +11,7 @@ import (
 	"ClawDeckX/internal/i18n"
 	"ClawDeckX/internal/logger"
 	"ClawDeckX/internal/openclaw"
+	"ClawDeckX/internal/updatecheck"
 	"ClawDeckX/internal/web"
 )
 
@@ -301,6 +303,14 @@ func (c *GWCollector) broadcastBadges() {
 	if v, err := settingRepo.Get("snapshot_schedule_last_status"); err == nil && v == "failed" {
 		badges["scheduler"] = 1
 	}
+
+	// Settings: show badge when software updates are available or version incompatible
+	if overview, err := updatecheck.GetOverview(context.Background(), false); err == nil && overview != nil {
+		if overview.ClawDeckX.UpdateAvailable || overview.OpenClaw.UpdateAvailable || !overview.Compatibility.Compatible {
+			badges["settings"] = badges["settings"] + 1
+		}
+	}
+
 	c.wsHub.Broadcast("", "badge_update", badges)
 }
 

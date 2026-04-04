@@ -23,9 +23,10 @@ interface SettingsProps {
   pendingTab?: string | null;
   onTabConsumed?: () => void;
   onPrefsChange?: (prefs: Preferences) => void;
+  badges?: Record<string, number>;
 }
 
-const Settings: React.FC<SettingsProps> = ({ language, onLogout, pendingTab, onTabConsumed, onPrefsChange }) => {
+const Settings: React.FC<SettingsProps> = ({ language, onLogout, pendingTab, onTabConsumed, onPrefsChange, badges = {} }) => {
   const t = useMemo(() => getTranslation(language), [language]);
   const s = t.set;
   const { toast } = useToast();
@@ -363,6 +364,9 @@ const Settings: React.FC<SettingsProps> = ({ language, onLogout, pendingTab, onT
                 <div className={`w-[22px] h-[22px] rounded-md ${item.color} flex items-center justify-center shadow-sm`}>
                   <span className="material-symbols-outlined text-white text-[14px]">{item.icon}</span>
                 </div>
+                {item.id === 'update' && (badges.settings || 0) > 0 && (
+                  <span className="absolute -top-1 -end-1 w-[8px] h-[8px] rounded-full bg-[#FF3B30] ring-2 ring-[#f5f5f7] dark:ring-[#2c2c2e]" />
+                )}
               </div>
               {item.label}
             </button>
