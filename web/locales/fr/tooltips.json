@@ -265,5 +265,16 @@
   "media.ttlHours": "Optional retention window in hours for persisted inbound media cleanup across the full media tree. Leave unset to preserve legacy behavior, or set values like 24 (1 day) or 168 (7 days) when you want automatic cleanup",
   "talk.silenceTimeoutMs": "Milliseconds of user silence before Talk mode finalizes and sends the current transcript. Leave unset to keep the platform default pause window (700 ms on macOS and Android, 900 ms on iOS)",
   "gateway.push.apns.relay.baseUrl": "Base HTTPS URL for the external APNs relay service used by official/TestFlight iOS builds. Keep this aligned with the relay URL baked into the iOS build so registration and send traffic hit the same deployment",
-  "gateway.push.apns.relay.timeoutMs": "Timeout in milliseconds for relay send requests from the gateway to the APNs relay (default: 10000). Increase for slower relays or networks, or lower to fail wake attempts faster"
+  "gateway.push.apns.relay.timeoutMs": "Timeout in milliseconds for relay send requests from the gateway to the APNs relay (default: 10000). Increase for slower relays or networks, or lower to fail wake attempts faster",
+  "web.reconnect.factor": "Exponential backoff multiplier for reconnect intervals. e.g. 2 = double the wait each retry",
+  "web.reconnect.jitter": "Random jitter added to reconnect intervals (0-1). Prevents multiple clients from reconnecting simultaneously",
+  "gateway.webchat.chatHistoryMaxChars": "Maximum characters retained in WebChat conversation history. Older messages are trimmed when exceeded",
+  "gateway.channelStaleEventThresholdMinutes": "Minutes without events before a channel is considered stale and eligible for health-check restart. 0 = disabled",
+  "gateway.channelMaxRestartsPerHour": "Maximum automatic channel restarts allowed per hour. Prevents restart loops for persistently unhealthy channels. 0 = unlimited",
+  "gateway.reload.deferralTimeoutMs": "Maximum time (ms) to defer a pending reload while the gateway is busy (e.g. mid-request). After this timeout the reload proceeds regardless",
+  "gateway.http.securityHeaders.permissionsPolicy": "Value for the Permissions-Policy response header. Controls browser feature access, e.g. camera=(), microphone=(), geolocation=()",
+  "discovery.wideArea.domain": "DNS domain used for wide-area service discovery across networks, e.g. openclaw.internal",
+  "diagnostics.otel.headers": "Custom HTTP headers sent with OpenTelemetry export requests. Useful for authentication tokens or routing metadata",
+  "nodeHost.browserProxy.enabled": "Enable browser proxy on this node. Allows remote nodes to route browser operations through this host",
+  "nodeHost.browserProxy.allowProfiles": "Browser profile names that remote nodes are allowed to use through the proxy"
 }

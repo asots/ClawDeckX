@@ -265,5 +265,16 @@
   "media.ttlHours": "Optional retention window in hours for persisted inbound media cleanup across the full media tree. Leave unset to preserve legacy behavior, or set values like 24 (1 day) or 168 (7 days) when you want automatic cleanup",
   "talk.silenceTimeoutMs": "Milliseconds of user silence before Talk mode finalizes and sends the current transcript. Leave unset to keep the platform default pause window (700 ms on macOS and Android, 900 ms on iOS)",
   "gateway.push.apns.relay.baseUrl": "Base HTTPS URL for the external APNs relay service used by official/TestFlight iOS builds. Keep this aligned with the relay URL baked into the iOS build so registration and send traffic hit the same deployment",
-  "gateway.push.apns.relay.timeoutMs": "Timeout in milliseconds for relay send requests from the gateway to the APNs relay (default: 10000). Increase for slower relays or networks, or lower to fail wake attempts faster"
+  "gateway.push.apns.relay.timeoutMs": "Timeout in milliseconds for relay send requests from the gateway to the APNs relay (default: 10000). Increase for slower relays or networks, or lower to fail wake attempts faster",
+  "web.reconnect.factor": "재연결 간격의 지수 백오프 배수. 예: 2 = 재시도마다 대기 시간 2배",
+  "web.reconnect.jitter": "재연결 간격에 추가되는 랜덤 지터(0-1). 여러 클라이언트의 동시 재연결 방지",
+  "gateway.webchat.chatHistoryMaxChars": "웹챗 대화 기록에 보관하는 최대 문자 수. 초과 시 이전 메시지가 자동 정리됩니다",
+  "gateway.channelStaleEventThresholdMinutes": "이벤트 없이 경과한 분 수 후 채널이 정체 상태로 간주되어 상태 점검 재시작 대상이 됩니다. 0 = 비활성화",
+  "gateway.channelMaxRestartsPerHour": "시간당 허용되는 최대 자동 채널 재시작 횟수. 지속적으로 비정상적인 채널의 재시작 루프를 방지합니다. 0 = 무제한",
+  "gateway.reload.deferralTimeoutMs": "게이트웨이가 사용 중(예: 요청 처리 중)일 때 대기 중인 리로드를 지연하는 최대 시간(ms). 타임아웃 후 강제 리로드",
+  "gateway.http.securityHeaders.permissionsPolicy": "Permissions-Policy 응답 헤더의 값. 브라우저 기능 접근을 제어합니다. 예: camera=(), microphone=(), geolocation=()",
+  "discovery.wideArea.domain": "네트워크 간 광역 서비스 검색에 사용되는 DNS 도메인. 예: openclaw.internal",
+  "diagnostics.otel.headers": "OpenTelemetry 내보내기 요청과 함께 전송되는 사용자 정의 HTTP 헤더. 인증 토큰 또는 라우팅 메타데이터에 유용합니다",
+  "nodeHost.browserProxy.enabled": "이 노드에서 브라우저 프록시를 활성화합니다. 원격 노드가 이 호스트를 통해 브라우저 작업을 라우팅할 수 있습니다",
+  "nodeHost.browserProxy.allowProfiles": "원격 노드가 프록시를 통해 사용할 수 있는 브라우저 프로필 이름"
 }
