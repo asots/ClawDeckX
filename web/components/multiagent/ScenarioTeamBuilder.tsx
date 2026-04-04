@@ -325,7 +325,7 @@ const ScenarioTeamBuilder: React.FC<ScenarioTeamBuilderProps> = ({
   const [modelPickerOpen, setModelPickerOpen] = useState(false);
   const modelPickerRef = useRef<HTMLDivElement>(null);
 
-  // Load configured models on mount
+  // Load configured models on mount and auto-select when no default model is configured
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -333,7 +333,9 @@ const ScenarioTeamBuilder: React.FC<ScenarioTeamBuilderProps> = ({
         const gwCfg = await gwApi.configGet().catch(() => null);
         if (cancelled) return;
         const cfg = gwCfg as any;
-        const providers = cfg?.models?.providers || cfg?.parsed?.models?.providers || cfg?.config?.models?.providers || {};
+        const parsed = cfg?.parsed || cfg?.config || cfg || {};
+        const providers = parsed?.models?.providers || {};
+        const primaryModel = parsed?.agents?.defaults?.model?.primary || '';
         const opts: { value: string; label: string }[] = [];
         const seen = new Set<string>();
         for (const [pName, pCfg] of Object.entries(providers) as [string, any][]) {
@@ -349,10 +351,17 @@ const ScenarioTeamBuilder: React.FC<ScenarioTeamBuilderProps> = ({
           }
         }
         setModelOptions(opts);
+        // Auto-select: use the configured primary model, or fall back to the first available model.
+        // This prevents "agents.defaults.model.primary is empty" errors when the backend
+        // reads a local config file that lacks the default model (e.g. Docker / remote gateway).
+        if (opts.length > 0 && !selectedModel) {
+          const match = primaryModel ? opts.find(o => o.value === primaryModel) : null;
+          setSelectedModel(match ? match.value : opts[0].value);
+        }
       } catch { /* silent */ }
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Close dropdowns on outside click
   useEffect(() => {
