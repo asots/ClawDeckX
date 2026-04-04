@@ -330,6 +330,8 @@
   "webReconnectMaxMs": "重连最大延迟 (ms)",
   "webReconnectMaxAttempts": "最大重连次数",
   "gwNodes": "网关节点",
+  "webchat": "网页聊天",
+  "chatHistoryMaxChars": "历史记录最大字符数",
   "apnsRelay": "APNs 中继",
   "apnsRelayBaseUrl": "APNs 中继地址",
   "apnsRelayTimeoutMs": "APNs 中继超时 (毫秒)",

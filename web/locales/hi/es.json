@@ -325,6 +325,8 @@
   "webReconnectMaxMs": "पुनः कनेक्ट अधिकतम विलंब (ms)",
   "webReconnectMaxAttempts": "अधिकतम पुनः कनेक्ट प्रयास",
   "gwNodes": "गेटवे नोड्स",
+  "webchat": "वेब चैट",
+  "chatHistoryMaxChars": "इतिहास अधिकतम वर्ण",
   "apnsRelay": "APNs रिले",
   "apnsRelayBaseUrl": "APNs रिले बेस URL",
   "apnsRelayTimeoutMs": "APNs रिले टाइमआउट (ms)",

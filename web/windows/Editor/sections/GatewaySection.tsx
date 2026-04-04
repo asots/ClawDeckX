@@ -183,6 +183,10 @@ const GatewaySection: React.FC<SectionProps> = ({ schema, setField, getField, la
         <ArrayField label={es.nodeDenyCmds} tooltip={tip('gateway.nodes.denyCommands')} value={g(['nodes', 'denyCommands']) || []} onChange={v => s(['nodes', 'denyCommands'], v)} />
       </ConfigSection>
 
+      <ConfigSection title={es.webchat || 'WebChat'} icon="chat" iconColor="text-indigo-500" defaultOpen={false}>
+        <NumberField label={es.chatHistoryMaxChars || 'History Max Chars'} tooltip={tip('gateway.webchat.chatHistoryMaxChars')} value={g(['webchat', 'chatHistoryMaxChars'])} onChange={v => s(['webchat', 'chatHistoryMaxChars'], v)} min={1} max={500000} />
+      </ConfigSection>
+
       <ConfigSection title={es.apnsRelay || 'APNs Relay'} icon="phonelink_ring" iconColor="text-blue-500" defaultOpen={false}>
         <TextField label={es.apnsRelayBaseUrl || 'Base URL'} tooltip={tip('gateway.push.apns.relay.baseUrl')} value={g(['push', 'apns', 'relay', 'baseUrl']) || ''} onChange={v => s(['push', 'apns', 'relay', 'baseUrl'], v)} placeholder="https://relay.example.com" />
         <NumberField label={es.apnsRelayTimeoutMs || 'Timeout (ms)'} tooltip={tip('gateway.push.apns.relay.timeoutMs')} value={g(['push', 'apns', 'relay', 'timeoutMs'])} onChange={v => s(['push', 'apns', 'relay', 'timeoutMs'], v)} min={0} step={1000} />

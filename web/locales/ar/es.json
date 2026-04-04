@@ -325,6 +325,8 @@
   "webReconnectMaxMs": "أقصى تأخير إعادة الاتصال (مللي ثانية)",
   "webReconnectMaxAttempts": "أقصى محاولات إعادة الاتصال",
   "gwNodes": "عقد البوابة",
+  "webchat": "دردشة الويب",
+  "chatHistoryMaxChars": "الحد الأقصى لأحرف السجل",
   "apnsRelay": "ترحيل APNs",
   "apnsRelayBaseUrl": "عنوان ترحيل APNs",
   "apnsRelayTimeoutMs": "مهلة ترحيل APNs (مللي ثانية)",

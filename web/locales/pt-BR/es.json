@@ -325,6 +325,8 @@
   "webReconnectMaxMs": "Atraso Máx de Reconexão (ms)",
   "webReconnectMaxAttempts": "Máx Tentativas de Reconexão",
   "gwNodes": "Nós do Gateway",
+  "webchat": "Chat Web",
+  "chatHistoryMaxChars": "Máx. caracteres do histórico",
   "apnsRelay": "Relay APNs",
   "apnsRelayBaseUrl": "URL Base do Relay APNs",
   "apnsRelayTimeoutMs": "Timeout do Relay APNs (ms)",

@@ -325,6 +325,8 @@
   "webReconnectMaxMs": "Delay Maks Koneksi Ulang (ms)",
   "webReconnectMaxAttempts": "Maks Percobaan Koneksi Ulang",
   "gwNodes": "Node Gateway",
+  "webchat": "Obrolan Web",
+  "chatHistoryMaxChars": "Maks. karakter riwayat",
   "apnsRelay": "Relay APNs",
   "apnsRelayBaseUrl": "URL Dasar Relay APNs",
   "apnsRelayTimeoutMs": "Timeout Relay APNs (ms)",

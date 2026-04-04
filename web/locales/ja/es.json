@@ -325,6 +325,8 @@
   "webReconnectMaxMs": "再接続最大遅延（ms）",
   "webReconnectMaxAttempts": "最大再接続試行回数",
   "gwNodes": "ゲートウェイノード",
+  "webchat": "ウェブチャット",
+  "chatHistoryMaxChars": "履歴の最大文字数",
   "apnsRelay": "APNs リレー",
   "apnsRelayBaseUrl": "APNs リレーベースURL",
   "apnsRelayTimeoutMs": "APNs リレータイムアウト (ms)",

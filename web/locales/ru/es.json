@@ -325,6 +325,8 @@
   "webReconnectMaxMs": "Макс. задержка переподключения (мс)",
   "webReconnectMaxAttempts": "Макс. попыток переподключения",
   "gwNodes": "Узлы шлюза",
+  "webchat": "Веб-чат",
+  "chatHistoryMaxChars": "Макс. символов истории",
   "apnsRelay": "Ретранслятор APNs",
   "apnsRelayBaseUrl": "Базовый URL ретранслятора APNs",
   "apnsRelayTimeoutMs": "Таймаут ретранслятора APNs (мс)",
