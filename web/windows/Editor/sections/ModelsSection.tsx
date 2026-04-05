@@ -5,6 +5,8 @@ import NumberStepper from '../../../components/NumberStepper';
 import { post } from '../../../services/request';
 import { getTranslation } from '../../../locales';
 import { useToast } from '../../../components/Toast';
+import { RequestOverridePanel } from './RequestOverridePanel';
+import { schemaTooltip } from '../schemaTooltip';
 
 // ============================================================================
 // 服务商预设
@@ -392,8 +394,9 @@ const ModelPathSearch: React.FC<ModelPathSearchProps> = ({ value, onChange, opti
 // ============================================================================
 // ModelsSection
 // ============================================================================
-export const ModelsSection: React.FC<SectionProps> = ({ config, setField, getField, deleteField, language }) => {
+export const ModelsSection: React.FC<SectionProps> = ({ config, schema, setField, getField, deleteField, language }) => {
   const es = useMemo(() => (getTranslation(language) as any).es || {}, [language]);
+  const tip = (key: string) => schemaTooltip(key, language, schema);
   const { toast } = useToast();
 
   const API_OPTIONS = useMemo(() => [
@@ -895,6 +898,14 @@ export const ModelsSection: React.FC<SectionProps> = ({ config, setField, getFie
                 <SelectField label={es.lblApi} value={cfg.api || 'openai-completions'} onChange={v => setField(['models', 'providers', name, 'api'], v)} options={API_OPTIONS} tooltip={es.apiTypeTip} />
                 <SelectField label={es.authMethod} value={cfg.auth || 'api-key'} onChange={v => setField(['models', 'providers', name, 'auth'], v)} options={AUTH_OPTIONS} tooltip={es.authMethodTip} />
                 <KeyValueField label={es.customHeaders || 'Custom Headers'} value={cfg.headers || {}} onChange={v => setField(['models', 'providers', name, 'headers'], v)} tooltip={es.tipCustomHeaders} keyPlaceholder="Header-Name" valuePlaceholder="value" />
+                <RequestOverridePanel
+                  title={es.reqOverrides || 'Request Overrides'}
+                  tipPrefix="models.providers.*.request"
+                  tip={tip}
+                  g={(p) => getField(['models', 'providers', name, 'request', ...p])}
+                  s={(p, v) => setField(['models', 'providers', name, 'request', ...p], v)}
+                  es={es}
+                />
                 {/* 模型列表 */}
                 <div className="mt-2 pt-2 border-t border-slate-100 dark:border-white/[0.04]">
                   <div className="flex items-center justify-between mb-1.5">

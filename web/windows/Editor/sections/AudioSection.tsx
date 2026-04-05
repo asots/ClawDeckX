@@ -3,6 +3,7 @@ import { SectionProps } from '../sectionTypes';
 import { ConfigSection, TextField, PasswordField, NumberField, SelectField, SwitchField, ArrayField } from '../fields';
 import { getTranslation } from '../../../locales';
 import { schemaTooltip } from '../schemaTooltip';
+import { RequestOverridePanel } from './RequestOverridePanel';
 import { gwApi } from '../../../services/api';
 import { useToast } from '../../../components/Toast';
 
@@ -281,13 +282,22 @@ export const AudioSection: React.FC<SectionProps> = ({ schema, setField, getFiel
         </div>
       </ConfigSection>
 
-      {/* Voice Config (static) */}
+      {/* Voice Config — talk.provider is top-level; per-provider settings under talk.providers.{provider} */}
       <ConfigSection title={es.audioConfig} icon="mic" iconColor="text-fuchsia-500" defaultOpen={false}>
         <TextField label={es.talkProvider} tooltip={tip('talk.provider')} value={getField(['talk', 'provider']) || ''} onChange={v => setField(['talk', 'provider'], v)} placeholder="elevenlabs" />
-        <TextField label={es.voiceId} tooltip={tip('talk.voiceId')} value={getField(['talk', 'voiceId']) || ''} onChange={v => setField(['talk', 'voiceId'], v)} placeholder={es.phVoiceId} />
-        <TextField label={es.audioModelId} tooltip={tip('talk.modelId')} value={getField(['talk', 'modelId']) || ''} onChange={v => setField(['talk', 'modelId'], v)} placeholder={es.phModelId} />
-        <TextField label={es.talkOutputFormat} tooltip={tip('talk.outputFormat')} value={getField(['talk', 'outputFormat']) || ''} onChange={v => setField(['talk', 'outputFormat'], v)} placeholder="mp3" />
-        <PasswordField label={es.audioApiKey} tooltip={tip('talk.apiKey')} value={getField(['talk', 'apiKey']) || ''} onChange={v => setField(['talk', 'apiKey'], v)} />
+        {(() => {
+          const prov = getField(['talk', 'provider']) || 'default';
+          const pg = (k: string) => getField(['talk', 'providers', prov, k]);
+          const ps = (k: string, v: any) => setField(['talk', 'providers', prov, k], v);
+          return (
+            <>
+              <TextField label={es.voiceId} tooltip={tip('talk.providers.*.voiceId')} value={pg('voiceId') || ''} onChange={v => ps('voiceId', v)} placeholder={es.phVoiceId} />
+              <TextField label={es.audioModelId} tooltip={tip('talk.providers.*.modelId')} value={pg('modelId') || ''} onChange={v => ps('modelId', v)} placeholder={es.phModelId} />
+              <TextField label={es.talkOutputFormat} tooltip={tip('talk.providers.*.outputFormat')} value={pg('outputFormat') || ''} onChange={v => ps('outputFormat', v)} placeholder="mp3" />
+              <PasswordField label={es.audioApiKey} tooltip={tip('talk.providers.*.apiKey')} value={pg('apiKey') || ''} onChange={v => ps('apiKey', v)} />
+            </>
+          );
+        })()}
         <TextField label={es.ttsOpenaiBaseUrl || 'OpenAI Base URL'} tooltip={tip('talk.openai.baseUrl')} value={getField(['talk', 'openai', 'baseUrl']) || ''} onChange={v => setField(['talk', 'openai', 'baseUrl'], v)} placeholder="https://api.openai.com/v1" />
         <SwitchField label={es.audioInterrupt} tooltip={tip('talk.interruptOnSpeech')} value={getField(['talk', 'interruptOnSpeech']) === true} onChange={v => setField(['talk', 'interruptOnSpeech'], v)} />
         <NumberField label={es.talkSilenceTimeoutMs || 'Silence Timeout (ms)'} tooltip={tip('talk.silenceTimeoutMs')} value={getField(['talk', 'silenceTimeoutMs'])} onChange={v => setField(['talk', 'silenceTimeoutMs'], v)} min={0} step={100} />

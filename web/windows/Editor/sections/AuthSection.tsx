@@ -1,12 +1,16 @@
 import React, { useMemo } from 'react';
 import { SectionProps } from '../sectionTypes';
-import { ConfigSection, ConfigCard, TextField, PasswordField, SelectField, ArrayField, AddButton, EmptyState } from '../fields';
+import { ConfigSection, ConfigCard, TextField, PasswordField, NumberField, SelectField, ArrayField, AddButton, EmptyState } from '../fields';
 import { getTranslation } from '../../../locales';
+import { schemaTooltip } from '../schemaTooltip';
 
 // Options moved inside component
 
-export const AuthSection: React.FC<SectionProps> = ({ setField, getField, deleteField, language }) => {
+export const AuthSection: React.FC<SectionProps> = ({ config, schema, setField, getField, deleteField, language }) => {
   const es = useMemo(() => (getTranslation(language) as any).es || {}, [language]);
+  const tip = (key: string) => schemaTooltip(key, language, schema);
+  const cd = (p: string[]) => getField(['auth', 'cooldowns', ...p]);
+  const scd = (p: string[], v: any) => setField(['auth', 'cooldowns', ...p], v);
   const rawProfiles = getField(['auth', 'profiles']);
   const profiles: any[] = Array.isArray(rawProfiles) ? rawProfiles : [];
   const rawOrder = getField(['auth', 'order']);
@@ -54,6 +58,9 @@ export const AuthSection: React.FC<SectionProps> = ({ setField, getField, delete
       </ConfigSection>
 
       <ConfigSection title={es.authCooldowns} icon="timer" iconColor="text-red-500" defaultOpen={false}>
+        <NumberField label={es.authPermanentBackoffMin || 'Auth-Permanent Backoff (min)'} tooltip={tip('auth.cooldowns.authPermanentBackoffMinutes')} value={cd(['authPermanentBackoffMinutes'])} onChange={v => scd(['authPermanentBackoffMinutes'], v)} min={0} />
+        <NumberField label={es.authPermanentMaxMin || 'Auth-Permanent Backoff Cap (min)'} tooltip={tip('auth.cooldowns.authPermanentMaxMinutes')} value={cd(['authPermanentMaxMinutes'])} onChange={v => scd(['authPermanentMaxMinutes'], v)} min={0} />
+        <NumberField label={es.rateLimitedProfileRotations || 'Rate-Limited Profile Rotations'} tooltip={tip('auth.cooldowns.rateLimitedProfileRotations')} value={cd(['rateLimitedProfileRotations'])} onChange={v => scd(['rateLimitedProfileRotations'], v)} min={0} />
         <TextField label={es.authCooldownConfig} desc={es.authCooldownDesc} value={JSON.stringify(getField(['auth', 'cooldowns']) || {}, null, 2)} onChange={v => {
           try { setField(['auth', 'cooldowns'], JSON.parse(v)); } catch {}
         }} multiline />

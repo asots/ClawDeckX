@@ -58,9 +58,14 @@ export const BrowserSection: React.FC<SectionProps> = ({ schema, setField, getFi
         <ArrayField label={es.brExtraArgs || 'Extra Chrome Args'} tooltip={tip('browser.extraArgs')} value={g(['extraArgs']) || []} onChange={v => s(['extraArgs'], v)} placeholder="--window-size=1920,1080" />
       </ConfigSection>
 
+      <ConfigSection title={es.brSnapshotDefaults || 'Snapshot Defaults'} icon="photo_camera" iconColor="text-violet-500" defaultOpen={false}>
+        <TextField label={es.brSnapshotMode || 'Mode'} tooltip={tip('browser.snapshotDefaults.mode')} value={g(['snapshotDefaults', 'mode']) || ''} onChange={v => s(['snapshotDefaults', 'mode'], v)} placeholder="full" />
+      </ConfigSection>
+
       <ConfigSection title={es.brSsrfPolicy} icon="shield" iconColor="text-red-500" defaultOpen={false}>
-        <SwitchField label={es.brAllowPrivateNetwork} tooltip={tip('browser.ssrfPolicy.allowPrivateNetwork')} value={g(['ssrfPolicy', 'allowPrivateNetwork']) === true} onChange={v => s(['ssrfPolicy', 'allowPrivateNetwork'], v)} />
+        <SwitchField label={es.brDangerouslyAllowPrivateNetwork || 'Dangerously Allow Private Network'} tooltip={tip('browser.ssrfPolicy.dangerouslyAllowPrivateNetwork')} value={g(['ssrfPolicy', 'dangerouslyAllowPrivateNetwork']) === true} onChange={v => s(['ssrfPolicy', 'dangerouslyAllowPrivateNetwork'], v)} />
         <ArrayField label={es.brHostnameAllowlist} tooltip={tip('browser.ssrfPolicy.hostnameAllowlist')} value={g(['ssrfPolicy', 'hostnameAllowlist']) || []} onChange={v => s(['ssrfPolicy', 'hostnameAllowlist'], v)} placeholder="example.com" />
+        <ArrayField label={es.brAllowedHostnames || 'Allowed Hostnames'} tooltip={tip('browser.ssrfPolicy.allowedHostnames')} value={g(['ssrfPolicy', 'allowedHostnames']) || []} onChange={v => s(['ssrfPolicy', 'allowedHostnames'], v)} placeholder="*.example.com" />
       </ConfigSection>
 
       <ConfigSection title={es.webSearch} icon="search" iconColor="text-blue-500" defaultOpen={false}>

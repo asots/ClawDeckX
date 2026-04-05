@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { SectionProps } from '../sectionTypes';
-import { ConfigSection, NumberField, SelectField, SwitchField, ArrayField } from '../fields';
+import { ConfigSection, TextField, PasswordField, NumberField, SelectField, SwitchField, ArrayField, KeyValueField } from '../fields';
 import { getTranslation } from '../../../locales';
 import { schemaTooltip } from '../schemaTooltip';
 
@@ -33,6 +33,11 @@ export const CommandsSection: React.FC<SectionProps> = ({ schema, setField, getF
       <ConfigSection title={es.accessControl} icon="admin_panel_settings" iconColor="text-red-500" defaultOpen={false}>
         <SwitchField label={es.useAccessGroups} tooltip={tip('commands.useAccessGroups')} value={g(['useAccessGroups']) === true} onChange={v => s(['useAccessGroups'], v)} />
         <ArrayField label={es.ownerAllowFrom} desc={es.ownerAllowFromDesc} tooltip={tip('commands.ownerAllowFrom')} value={(g(['ownerAllowFrom']) || []).map(String)} onChange={v => s(['ownerAllowFrom'], v)} placeholder={es.phUserId} />
+        <SwitchField label={es.cmdMcp || 'Allow /mcp'} tooltip={tip('commands.mcp')} value={g(['mcp']) !== false} onChange={v => s(['mcp'], v)} />
+        <SwitchField label={es.cmdPlugins || 'Allow /plugins'} tooltip={tip('commands.plugins')} value={g(['plugins']) !== false} onChange={v => s(['plugins'], v)} />
+        <TextField label={es.cmdOwnerDisplay || 'Owner ID Display'} tooltip={tip('commands.ownerDisplay')} value={g(['ownerDisplay']) || ''} onChange={v => s(['ownerDisplay'], v)} />
+        <PasswordField label={es.cmdOwnerDisplaySecret || 'Owner ID Hash Secret'} tooltip={tip('commands.ownerDisplaySecret')} value={g(['ownerDisplaySecret']) || ''} onChange={v => s(['ownerDisplaySecret'], v)} />
+        <KeyValueField label={es.cmdAllowFrom || 'Elevated Access Rules'} tooltip={tip('commands.allowFrom')} value={g(['allowFrom']) || {}} onChange={v => s(['allowFrom'], v)} />
       </ConfigSection>
     </div>
   );

@@ -203,9 +203,12 @@ const Editor: React.FC<EditorProps> = ({ language, pendingSection, onSectionCons
     const q = searchQuery.toLowerCase();
     return list.filter(s => {
       if (((es as any)[s.labelKey] || '').toLowerCase().includes(q)) return true;
+      if (s.labelKey.toLowerCase().includes(q)) return true;
       if (s.id.includes(q)) return true;
       if (s.searchKeys) {
         return s.searchKeys.some(k => {
+          // Match translated label (e.g. Chinese) AND raw key name (English)
+          if (k.toLowerCase().includes(q)) return true;
           const v = (es as any)[k];
           return typeof v === 'string' && v.toLowerCase().includes(q);
         });

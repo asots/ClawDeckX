@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { SectionProps } from '../sectionTypes';
-import { ConfigSection, ConfigCard, TextField, SwitchField, ArrayField, KeyValueField, AddButton, EmptyState } from '../fields';
+import { ConfigSection, ConfigCard, TextField, SwitchField, NumberField, ArrayField, KeyValueField, AddButton, EmptyState } from '../fields';
 import { getTranslation } from '../../../locales';
 import { schemaTooltip } from '../schemaTooltip';
 
@@ -26,8 +26,13 @@ export const PluginsSection: React.FC<SectionProps> = ({ schema, setField, getFi
         <ArrayField label={es.denyList} tooltip={tip('plugins.deny')} value={g(['deny']) || []} onChange={v => s(['deny'], v)} placeholder={es.phPluginName} suggestions={pluginIds} />
       </ConfigSection>
 
+      <ConfigSection title={es.pluginLoad || 'Plugin Loading'} icon="download" iconColor="text-rose-500" defaultOpen={false}>
+        <ArrayField label={es.pluginLoadPaths || 'Extra Plugin Paths'} tooltip={tip('plugins.load.paths')} value={g(['load', 'paths']) || []} onChange={v => s(['load', 'paths'], v)} placeholder="/path/to/plugins" />
+      </ConfigSection>
+
       <ConfigSection title={es.pluginSlots} icon="widgets" iconColor="text-rose-500" defaultOpen={false}>
         <TextField label={es.memoryPlugin} tooltip={tip('plugins.slots.memory')} value={g(['slots', 'memory']) || ''} onChange={v => s(['slots', 'memory'], v)} placeholder={es.phPluginName} />
+        <TextField label={es.contextEnginePlugin || 'Context Engine Plugin'} tooltip={tip('plugins.slots.contextEngine')} value={g(['slots', 'contextEngine']) || ''} onChange={v => s(['slots', 'contextEngine'], v)} placeholder={es.phPluginName} />
       </ConfigSection>
 
       <ConfigSection

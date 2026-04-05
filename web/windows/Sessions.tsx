@@ -50,6 +50,12 @@ interface GwSession {
   lastTo?: string;
   parentKey?: string;
   spawnedBy?: string;
+  status?: 'running' | 'done' | 'failed' | 'killed' | 'timeout';
+  startedAt?: number;
+  endedAt?: number;
+  runtimeMs?: number;
+  abortedLastRun?: boolean;
+  estimatedCostUsd?: number;
 }
 
 interface ChatMsg {
@@ -74,6 +80,10 @@ interface LiveToolCall {
   result?: unknown;
   isError?: boolean;
   phase: 'start' | 'running' | 'done';
+  startedAt?: number;
+  endedAt?: number;
+  meta?: Record<string, unknown>;
+  expanded?: boolean;
 }
 
 /** Extract original-case peer ID from a session's lastTo field.
@@ -236,6 +246,44 @@ function fmtTime(ts?: number): string {
   return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
+function summarizeToolArgs(toolName: string, args: unknown, maxLen = 60): string {
+  if (!args || typeof args !== 'object') return '';
+  const a = args as Record<string, unknown>;
+  // Common tool patterns — show the most relevant arg
+  if (a.command && typeof a.command === 'string') return truncStr(a.command, maxLen);
+  if (a.path && typeof a.path === 'string') return truncStr(a.path, maxLen);
+  if (a.file_path && typeof a.file_path === 'string') return truncStr(String(a.file_path), maxLen);
+  if (a.query && typeof a.query === 'string') return truncStr(a.query, maxLen);
+  if (a.url && typeof a.url === 'string') return truncStr(String(a.url), maxLen);
+  if (a.message && typeof a.message === 'string') return truncStr(a.message, maxLen);
+  if (a.content && typeof a.content === 'string') return truncStr(a.content, maxLen);
+  // Fallback: first string value
+  for (const v of Object.values(a)) {
+    if (typeof v === 'string' && v.length > 0) return truncStr(v, maxLen);
+  }
+  return '';
+}
+
+function summarizeToolResult(result: unknown, maxLen = 80): string {
+  if (!result) return '';
+  if (typeof result === 'string') return truncStr(result, maxLen);
+  if (typeof result === 'object') {
+    try { return truncStr(JSON.stringify(result), maxLen); } catch { return ''; }
+  }
+  return '';
+}
+
+function truncStr(s: string, max: number): string {
+  const clean = s.replace(/\n/g, ' ').trim();
+  return clean.length > max ? clean.slice(0, max) + '…' : clean;
+}
+
+function fmtDuration(ms: number): string {
+  if (ms < 1000) return `${ms}ms`;
+  if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
+  return `${(ms / 60000).toFixed(1)}m`;
+}
+
 function getMessageRenderKey(msg: ChatMsg, idx: number): string {
   const text = extractText(msg.content).slice(0, 80);
   const toolId = typeof msg.content === 'object' && msg.content && !Array.isArray(msg.content)
@@ -268,7 +316,11 @@ function areSessionsEquivalent(a: GwSession[], b: GwSession[]): boolean {
       session.compacted === next.compacted &&
       session.fastMode === next.fastMode &&
       session.parentKey === next.parentKey &&
-      session.spawnedBy === next.spawnedBy;
+      session.spawnedBy === next.spawnedBy &&
+      session.status === next.status &&
+      session.startedAt === next.startedAt &&
+      session.runtimeMs === next.runtimeMs &&
+      session.estimatedCostUsd === next.estimatedCostUsd;
   });
 }
 
@@ -563,29 +615,56 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
   }, [msgSearchQuery]);
 
   const SLASH_COMMANDS = useMemo(() => [
+    // — Status —
     { cmd: '/help', desc: c.quickHelp, icon: 'help', cat: 'status' },
     { cmd: '/status', desc: c.quickStatus, icon: 'info', cat: 'status' },
-    { cmd: '/model', desc: c.quickModel, icon: 'smart_toy', cat: 'options' },
-    { cmd: '/think', desc: c.quickThink, icon: 'psychology', cat: 'options' },
-    { cmd: '/verbose', desc: c.catOptions, icon: 'visibility', cat: 'options' },
-    { cmd: '/reasoning', desc: c.catOptions, icon: 'neurology', cat: 'options' },
-    { cmd: '/compact', desc: c.quickCompact, icon: 'compress', cat: 'session' },
-    { cmd: '/new', desc: c.quickReset, icon: 'add_circle', cat: 'session' },
-    { cmd: '/reset', desc: c.quickReset, icon: 'restart_alt', cat: 'session' },
-    { cmd: '/abort', desc: c.abort, icon: 'stop_circle', cat: 'session' },
-    { cmd: '/stop', desc: c.stop, icon: 'pause_circle', cat: 'session' },
+    { cmd: '/commands', desc: c.slashCommands, icon: 'terminal', cat: 'status' },
+    { cmd: '/tasks', desc: c.cmdTasks, icon: 'task_alt', cat: 'status' },
+    { cmd: '/tools', desc: c.cmdTools, icon: 'build', cat: 'status' },
     { cmd: '/usage', desc: c.tokens, icon: 'data_usage', cat: 'status' },
     { cmd: '/context', desc: c.catStatus, icon: 'memory', cat: 'status' },
     { cmd: '/whoami', desc: c.catStatus, icon: 'badge', cat: 'status' },
-    { cmd: '/commands', desc: c.slashCommands, icon: 'terminal', cat: 'status' },
-    { cmd: '/config', desc: c.catManagement, icon: 'settings', cat: 'management' },
+    { cmd: '/export', desc: c.cmdExport, icon: 'download', cat: 'status' },
+    // — Options —
+    { cmd: '/model', desc: c.quickModel, icon: 'smart_toy', cat: 'options' },
+    { cmd: '/models', desc: c.cmdModels, icon: 'list', cat: 'options' },
+    { cmd: '/think', desc: c.quickThink, icon: 'psychology', cat: 'options' },
+    { cmd: '/verbose', desc: c.catOptions, icon: 'visibility', cat: 'options' },
+    { cmd: '/reasoning', desc: c.catOptions, icon: 'neurology', cat: 'options' },
+    { cmd: '/fast', desc: c.cmdFast, icon: 'bolt', cat: 'options' },
     { cmd: '/elevated', desc: c.catOptions, icon: 'admin_panel_settings', cat: 'options' },
-    { cmd: '/activation', desc: c.catManagement, icon: 'notifications_active', cat: 'management' },
-    { cmd: '/tts', desc: c.catMedia, icon: 'record_voice_over', cat: 'media' },
+    { cmd: '/exec', desc: c.cmdExec, icon: 'play_arrow', cat: 'options' },
+    { cmd: '/queue', desc: c.cmdQueue, icon: 'queue', cat: 'options' },
+    // — Session —
+    { cmd: '/new', desc: c.quickReset, icon: 'add_circle', cat: 'session' },
+    { cmd: '/reset', desc: c.quickReset, icon: 'restart_alt', cat: 'session' },
+    { cmd: '/compact', desc: c.quickCompact, icon: 'compress', cat: 'session' },
+    { cmd: '/abort', desc: c.abort, icon: 'stop_circle', cat: 'session' },
+    { cmd: '/stop', desc: c.stop, icon: 'pause_circle', cat: 'session' },
+    { cmd: '/session', desc: c.cmdSession, icon: 'tune', cat: 'session' },
+    // — Tools —
     { cmd: '/skill', desc: c.catTools, icon: 'extension', cat: 'tools' },
-    { cmd: '/subagents', desc: c.catManagement, icon: 'group', cat: 'management' },
-    { cmd: '/restart', desc: c.catTools, icon: 'refresh', cat: 'tools' },
+    { cmd: '/btw', desc: c.cmdBtw, icon: 'chat_bubble', cat: 'tools' },
     { cmd: '/bash', desc: c.catTools, icon: 'terminal', cat: 'tools' },
+    { cmd: '/restart', desc: c.catTools, icon: 'refresh', cat: 'tools' },
+    // — Management —
+    { cmd: '/config', desc: c.catManagement, icon: 'settings', cat: 'management' },
+    { cmd: '/mcp', desc: c.cmdMcp, icon: 'hub', cat: 'management' },
+    { cmd: '/plugins', desc: c.cmdPlugins, icon: 'widgets', cat: 'management' },
+    { cmd: '/acp', desc: c.cmdAcp, icon: 'swap_horiz', cat: 'management' },
+    { cmd: '/subagents', desc: c.catManagement, icon: 'group', cat: 'management' },
+    { cmd: '/agents', desc: c.cmdAgents, icon: 'smart_toy', cat: 'management' },
+    { cmd: '/kill', desc: c.cmdKill, icon: 'dangerous', cat: 'management' },
+    { cmd: '/steer', desc: c.cmdSteer, icon: 'assistant_direction', cat: 'management' },
+    { cmd: '/focus', desc: c.cmdFocus, icon: 'center_focus_strong', cat: 'management' },
+    { cmd: '/unfocus', desc: c.cmdUnfocus, icon: 'center_focus_weak', cat: 'management' },
+    { cmd: '/activation', desc: c.catManagement, icon: 'notifications_active', cat: 'management' },
+    { cmd: '/send', desc: c.cmdSend, icon: 'send', cat: 'management' },
+    { cmd: '/allowlist', desc: c.cmdAllowlist, icon: 'checklist', cat: 'management' },
+    { cmd: '/approve', desc: c.cmdApprove, icon: 'verified', cat: 'management' },
+    { cmd: '/debug', desc: c.cmdDebug, icon: 'bug_report', cat: 'management' },
+    // — Media —
+    { cmd: '/tts', desc: c.catMedia, icon: 'record_voice_over', cat: 'media' },
   ], [c]);
 
   const slashFiltered = useMemo(() => {
@@ -702,6 +781,22 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
             }
           }
         } else if (msg.type === 'sessions.changed') {
+          // Immediately patch session status from the event payload for instant UI feedback
+          const d = msg.data;
+          if (d?.sessionKey && (d.status || d.startedAt || d.endedAt !== undefined || d.runtimeMs !== undefined)) {
+            setSessions(prev => prev.map(s => {
+              if (s.key !== d.sessionKey) return s;
+              return {
+                ...s,
+                ...(d.status ? { status: d.status } : {}),
+                ...(d.startedAt ? { startedAt: d.startedAt } : {}),
+                ...(d.endedAt ? { endedAt: d.endedAt } : {}),
+                ...(typeof d.runtimeMs === 'number' ? { runtimeMs: d.runtimeMs } : {}),
+                ...(typeof d.abortedLastRun === 'boolean' ? { abortedLastRun: d.abortedLastRun } : {}),
+                ...(typeof d.estimatedCostUsd === 'number' ? { estimatedCostUsd: d.estimatedCostUsd } : {}),
+              } as GwSession;
+            }));
+          }
           loadSessionsRef.current?.({ silent: true });
         } else if (msg.type === 'context_compaction.started') {
           // Gateway event: context compaction has begun for this session (openclaw >=2026.3.24)
@@ -819,7 +914,9 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
     };
 
     if (payload.state === 'delta') {
-      // Reject delta if it's for a different run than the current pending one
+      // Reject delta if it's for a different run than the current pending one.
+      // When pendingRunRef is null (externally-triggered run from channels like
+      // WeChat/Telegram), allow the delta through so the UI shows streaming status.
       if (eventRunId && pendingRunRef.current && eventRunId !== pendingRunRef.current.runId) {
         return;
       }
@@ -830,6 +927,16 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
         lastDeltaAtRef.current = Date.now();
         throttledSetStream(text);
         setRunPhase('streaming');
+        // Track externally-triggered runs: if no pendingRunRef exists, create one
+        // so timeout recovery and latency tracking work for external runs too.
+        if (!pendingRunRef.current && eventRunId) {
+          pendingRunRef.current = {
+            runId: eventRunId,
+            beforeCount: 0,
+            startedAt: Date.now(),
+          };
+          setRunId(eventRunId);
+        }
       }
     } else if (payload.state === 'final') {
       // Add final message directly from the event payload
@@ -951,7 +1058,7 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
       if (phase === 'start') {
         setLiveToolCalls(prev => {
           const next = new Map(prev);
-          next.set(toolCallId, { toolCallId, toolName, args: data.args, phase: 'start' });
+          next.set(toolCallId, { toolCallId, toolName, args: data.args, phase: 'start', startedAt: Date.now() });
           return next;
         });
         setRunPhase('running');
@@ -969,14 +1076,49 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
           const next = new Map(prev);
           const existing = next.get(toolCallId);
           if (existing) {
-            next.set(toolCallId, { ...existing, result: data.result, isError: Boolean(data.isError), phase: 'done' });
+            next.set(toolCallId, { ...existing, result: data.result, isError: Boolean(data.isError), phase: 'done', endedAt: Date.now(), meta: data.meta as Record<string, unknown> | undefined });
           }
           return next;
         });
       }
     } else if (payload.stream === 'lifecycle') {
       const phase = typeof payload.data?.phase === 'string' ? payload.data.phase : '';
-      if (phase === 'start') setRunPhase('running');
+      const eventRunId = payload.runId as string | undefined;
+      if (phase === 'start') {
+        setRunPhase('running');
+        // Track externally-triggered runs: if no pendingRunRef exists (run was
+        // not initiated from this UI), create one so the status indicator, timeout
+        // recovery, and latency tracking all work for external channel runs too.
+        if (!pendingRunRef.current && eventRunId) {
+          pendingRunRef.current = {
+            runId: eventRunId,
+            beforeCount: 0,
+            startedAt: Date.now(),
+          };
+          setRunId(eventRunId);
+        }
+      } else if (phase === 'end' || phase === 'error') {
+        // Lifecycle end/error for an externally-triggered run: if the chat event
+        // handler hasn't already finalized this run (no state:'final' received),
+        // clean up the run tracking so the UI returns to idle.
+        // Only act if this run matches our currently tracked pending run.
+        if (pendingRunRef.current && eventRunId && pendingRunRef.current.runId === eventRunId) {
+          // Don't reset immediately if we're streaming — the chat final event
+          // should handle that. Only reset from running/waiting phases.
+          const currentStreamText = streamTextRef.current;
+          if (!currentStreamText) {
+            if (streamRafRef.current !== null) { clearTimeout(streamRafRef.current); streamRafRef.current = null; }
+            streamTextRef.current = '';
+            setStream(null);
+            setRunId(null);
+            setRunPhase(phase === 'error' ? 'error' : 'idle');
+            setLiveToolCalls(new Map());
+            pendingRunRef.current = null;
+            // Refresh history to pick up any messages we might have missed
+            setTimeout(() => loadHistoryRef.current?.({ silent: true }), 1500);
+          }
+        }
+      }
     }
   }, []);
 
@@ -1061,6 +1203,12 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
         lastTo: s.lastTo || s.deliveryContext?.to || '',
         parentKey: s.parentKey || s.parentSessionKey || '',
         spawnedBy: s.spawnedBy || s.ownerKey || '',
+        status: s.status || undefined,
+        startedAt: s.startedAt || undefined,
+        endedAt: s.endedAt || undefined,
+        runtimeMs: s.runtimeMs ?? undefined,
+        abortedLastRun: s.abortedLastRun ?? undefined,
+        estimatedCostUsd: s.estimatedCostUsd ?? undefined,
       }));
       // Clean up expired patch grace entries and deleted-key entries
       const nowMs = Date.now();
@@ -2520,9 +2668,9 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
                       : 'border-transparent hover:bg-slate-200/50 dark:hover:bg-white/5'
                       }`}>
                     <div className="flex items-start gap-2">
-                      <div className={`relative w-6 h-6 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${s.kind === 'direct' ? 'bg-blue-500/10 text-blue-500' : s.kind === 'group' ? 'bg-purple-500/10 text-purple-500' : 'bg-slate-100 dark:bg-white/5 text-slate-400 dark:text-white/30'} ${(s.activeRun || s.isStreaming) ? 'ring-1 ring-primary/40 animate-pulse' : ''}`}>
+                      <div className={`relative w-6 h-6 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${s.kind === 'direct' ? 'bg-blue-500/10 text-blue-500' : s.kind === 'group' ? 'bg-purple-500/10 text-purple-500' : 'bg-slate-100 dark:bg-white/5 text-slate-400 dark:text-white/30'} ${(s.activeRun || s.isStreaming || s.status === 'running') ? 'ring-1 ring-primary/40 animate-pulse' : ''}`}>
                         <span className="material-symbols-outlined text-[12px]">{s.kind === 'group' ? 'group' : s.kind === 'global' ? 'public' : 'person'}</span>
-                        {(s.activeRun || s.isStreaming) && <span className="absolute -top-0.5 -end-0.5 w-2 h-2 rounded-full bg-primary border border-white dark:border-[#0d1117]" />}
+                        {(s.activeRun || s.isStreaming || s.status === 'running') && <span className="absolute -top-0.5 -end-0.5 w-2 h-2 rounded-full bg-primary border border-white dark:border-[#0d1117]" />}
                       </div>
                       <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-0.5">
@@ -2546,6 +2694,18 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
                       </div>
                       <div className="flex items-center gap-1">
                         {unreadMap[s.key] ? <span className="w-1.5 h-1.5 rounded-full bg-primary" /> : null}
+                        {s.status === 'running' && (
+                          <span className="text-[9px] font-bold px-1 py-px rounded bg-emerald-500/15 text-emerald-500 animate-pulse">RUN</span>
+                        )}
+                        {s.status === 'failed' && (
+                          <span className="text-[9px] font-bold px-1 py-px rounded bg-red-500/15 text-red-500">ERR</span>
+                        )}
+                        {(s.status === 'killed' || s.status === 'timeout') && (
+                          <span className="text-[9px] font-bold px-1 py-px rounded bg-amber-500/15 text-amber-500">{s.status === 'killed' ? 'STOP' : 'T/O'}</span>
+                        )}
+                        {s.runtimeMs != null && s.runtimeMs > 0 && s.status !== 'running' && (
+                          <span className="text-[9px] text-slate-400 dark:text-white/20 font-mono">{s.runtimeMs < 1000 ? `${s.runtimeMs}ms` : `${(s.runtimeMs / 1000).toFixed(1)}s`}</span>
+                        )}
                         {s.totalTokens ? <span className="text-[10px] text-slate-400 dark:text-white/20 font-mono">{(s.totalTokens / 1000).toFixed(1)}k</span> : null}
                       </div>
                     </div>
@@ -2561,6 +2721,9 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
                       )}
                       {s.model && (
                         <span className="text-[10px] text-slate-300 dark:text-white/15 font-mono truncate">{s.model}</span>
+                      )}
+                      {s.estimatedCostUsd != null && s.estimatedCostUsd > 0 && (
+                        <span className="text-[9px] text-slate-400 dark:text-white/20 font-mono">${s.estimatedCostUsd < 0.01 ? s.estimatedCostUsd.toFixed(4) : s.estimatedCostUsd.toFixed(2)}</span>
                       )}
                     </div>
                     {/* Context window micro progress bar */}
@@ -2665,6 +2828,28 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
                     <span className="text-[10px] text-primary font-mono tabular-nums">{(liveElapsed / 1000).toFixed(1)}s</span>
                   </>
                 ) : null}
+                {/* Usage/cost summary from gateway session data */}
+                {(() => {
+                  const cur = sessions.find(s => s.key === sessionKey);
+                  if (!cur) return null;
+                  const parts: React.ReactNode[] = [];
+                  if (cur.runtimeMs && cur.runtimeMs > 0 && runPhase === 'idle') {
+                    parts.push(<span key="rt" className="text-[10px] text-slate-400 dark:text-white/20 font-mono tabular-nums">{fmtDuration(cur.runtimeMs)}</span>);
+                  }
+                  if (cur.totalTokens && cur.totalTokens > 0) {
+                    parts.push(<span key="tk" className="text-[10px] text-slate-400 dark:text-white/20 font-mono tabular-nums" title={`In: ${cur.inputTokens || 0} / Out: ${cur.outputTokens || 0}`}>{(cur.totalTokens / 1000).toFixed(1)}k tok</span>);
+                  }
+                  if (cur.estimatedCostUsd != null && cur.estimatedCostUsd > 0) {
+                    parts.push(<span key="cost" className="text-[10px] text-slate-400 dark:text-white/20 font-mono tabular-nums">${cur.estimatedCostUsd < 0.01 ? cur.estimatedCostUsd.toFixed(4) : cur.estimatedCostUsd.toFixed(2)}</span>);
+                  }
+                  if (parts.length === 0) return null;
+                  return (
+                    <>
+                      <span className="text-slate-300 dark:text-white/15">|</span>
+                      {parts.map((p, i) => <React.Fragment key={i}>{i > 0 && <span className="text-slate-300 dark:text-white/10">/</span>}{p}</React.Fragment>)}
+                    </>
+                  );
+                })()}
               </div>
             </div>
           </div>
@@ -3242,7 +3427,11 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
                   <span className="material-symbols-outlined text-[14px] md:text-[16px]">build</span>
                 </div>
                 <div className="max-w-[90%] md:max-w-[90%] space-y-1.5">
-                  {Array.from(liveToolCalls.values()).map(tc => (
+                  {Array.from(liveToolCalls.values()).map(tc => {
+                    const argsSummary = summarizeToolArgs(tc.toolName, tc.args);
+                    const resultSummary = tc.phase === 'done' ? summarizeToolResult(tc.result) : '';
+                    const durationMs = tc.startedAt && tc.endedAt ? tc.endedAt - tc.startedAt : tc.startedAt ? Date.now() - tc.startedAt : 0;
+                    return (
                     <div key={tc.toolCallId} className={`rounded-xl border overflow-hidden transition-all ${
                       tc.phase === 'done'
                         ? tc.isError
@@ -3250,7 +3439,16 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
                           : 'border-emerald-200/60 dark:border-emerald-500/15 bg-emerald-50/30 dark:bg-emerald-500/[0.03]'
                         : 'border-purple-200/40 dark:border-purple-500/10 bg-purple-50/20 dark:bg-purple-500/[0.02]'
                     }`}>
-                      <div className="flex items-center gap-2 px-3 py-2">
+                      <button
+                        type="button"
+                        className="w-full flex items-center gap-2 px-3 py-2 text-start hover:bg-black/[0.02] dark:hover:bg-white/[0.02] transition-colors"
+                        onClick={() => setLiveToolCalls(prev => {
+                          const next = new Map(prev);
+                          const existing = next.get(tc.toolCallId);
+                          if (existing) next.set(tc.toolCallId, { ...existing, expanded: !existing.expanded });
+                          return next;
+                        })}
+                      >
                         <div className={`w-5 h-5 rounded-md flex items-center justify-center shrink-0 ${
                           tc.phase === 'done'
                             ? tc.isError ? 'bg-red-500/15 border border-red-500/15' : 'bg-emerald-500/15 border border-emerald-500/15'
@@ -3264,17 +3462,53 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
                             {tc.phase === 'done' ? (tc.isError ? 'error' : 'check_circle') : 'progress_activity'}
                           </span>
                         </div>
-                        <span className="text-[10px] font-mono font-semibold text-slate-600 dark:text-white/50 truncate flex-1">{tc.toolName}</span>
-                        <span className={`text-[9px] font-bold uppercase tracking-wider ${
-                          tc.phase === 'done'
-                            ? tc.isError ? 'text-red-400/60' : 'text-emerald-400/60'
-                            : 'text-purple-400/60'
-                        }`}>
-                          {tc.phase === 'done' ? (tc.isError ? c.toolError || 'Error' : c.toolDone || 'Done') : c.toolRunning || 'Running'}
-                        </span>
-                      </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] font-mono font-semibold text-slate-600 dark:text-white/50 truncate">{tc.toolName}</span>
+                            {durationMs > 0 && (
+                              <span className="text-[9px] font-mono text-slate-400 dark:text-white/25 tabular-nums">{fmtDuration(durationMs)}</span>
+                            )}
+                          </div>
+                          {argsSummary && (
+                            <p className="text-[9px] text-slate-400 dark:text-white/25 truncate mt-0.5 font-mono">{argsSummary}</p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <span className={`text-[9px] font-bold uppercase tracking-wider ${
+                            tc.phase === 'done'
+                              ? tc.isError ? 'text-red-400/60' : 'text-emerald-400/60'
+                              : 'text-purple-400/60'
+                          }`}>
+                            {tc.phase === 'done' ? (tc.isError ? c.toolError || 'Error' : c.toolDone || 'Done') : c.toolRunning || 'Running'}
+                          </span>
+                          <span className={`material-symbols-outlined text-[12px] transition-transform ${tc.expanded ? 'rotate-180' : ''} text-slate-400 dark:text-white/25`}>expand_more</span>
+                        </div>
+                      </button>
+                      {tc.expanded && (
+                        <div className="px-3 pb-2.5 pt-0 space-y-1.5 border-t border-inherit">
+                          {tc.args && (
+                            <div className="mt-1.5">
+                              <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/30">{c.toolArgs || 'Args'}</span>
+                              <pre className="text-[9px] font-mono text-slate-500 dark:text-white/35 mt-0.5 whitespace-pre-wrap break-all max-h-24 overflow-y-auto no-scrollbar leading-relaxed">{typeof tc.args === 'string' ? tc.args : JSON.stringify(tc.args, null, 2)}</pre>
+                            </div>
+                          )}
+                          {tc.phase === 'done' && resultSummary && (
+                            <div>
+                              <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/30">{c.toolResult || 'Result'}</span>
+                              <pre className={`text-[9px] font-mono mt-0.5 whitespace-pre-wrap break-all max-h-24 overflow-y-auto no-scrollbar leading-relaxed ${tc.isError ? 'text-red-400/70' : 'text-slate-500 dark:text-white/35'}`}>{resultSummary}</pre>
+                            </div>
+                          )}
+                          {tc.phase === 'done' && tc.meta && Object.keys(tc.meta).length > 0 && (
+                            <div>
+                              <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 dark:text-white/30">Meta</span>
+                              <pre className="text-[9px] font-mono text-slate-400 dark:text-white/25 mt-0.5 whitespace-pre-wrap break-all max-h-16 overflow-y-auto no-scrollbar leading-relaxed">{JSON.stringify(tc.meta, null, 2)}</pre>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}

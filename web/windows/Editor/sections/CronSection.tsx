@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { SectionProps } from '../sectionTypes';
-import { ConfigSection, TextField, NumberField, SwitchField, SelectField } from '../fields';
+import { ConfigSection, TextField, PasswordField, NumberField, SwitchField, SelectField, ArrayField } from '../fields';
 import { getTranslation } from '../../../locales';
 import { schemaTooltip } from '../schemaTooltip';
 
@@ -23,6 +23,19 @@ export const CronSection: React.FC<SectionProps> = ({ schema, setField, getField
         <NumberField label={es.maxConcurrent} tooltip={tip('cron.maxConcurrentRuns')} value={g(['maxConcurrentRuns'])} onChange={v => s(['maxConcurrentRuns'], v)} min={1} />
         <SelectField label={es.cronWakeMode} tooltip={tip('cron.wakeMode')} value={g(['wakeMode']) || 'now'} onChange={v => s(['wakeMode'], v)} options={WAKE_OPTIONS} />
         <SwitchField label={es.cronLightContext || 'Light Context'} tooltip={tip('cron.lightContext')} value={g(['lightContext']) === true} onChange={v => s(['lightContext'], v)} />
+        <TextField label={es.cronSessionRetention || 'Session Retention'} tooltip={tip('cron.sessionRetention')} value={String(g(['sessionRetention']) ?? '')} onChange={v => s(['sessionRetention'], v)} placeholder="7d" />
+        <PasswordField label={es.cronWebhookToken || 'Webhook Token'} tooltip={tip('cron.webhookToken')} value={g(['webhookToken']) || ''} onChange={v => s(['webhookToken'], v)} />
+      </ConfigSection>
+
+      <ConfigSection title={es.cronRetry || 'Retry Policy'} icon="replay" iconColor="text-orange-500" defaultOpen={false}>
+        <NumberField label={es.cronRetryMaxAttempts || 'Max Attempts'} tooltip={tip('cron.retry.maxAttempts')} value={g(['retry', 'maxAttempts'])} onChange={v => s(['retry', 'maxAttempts'], v)} min={0} />
+        <NumberField label={es.cronRetryBackoffMs || 'Backoff (ms)'} tooltip={tip('cron.retry.backoffMs')} value={g(['retry', 'backoffMs'])} onChange={v => s(['retry', 'backoffMs'], v)} min={0} step={100} />
+        <ArrayField label={es.cronRetryOn || 'Retry On Error Types'} tooltip={tip('cron.retry.retryOn')} value={g(['retry', 'retryOn']) || []} onChange={v => s(['retry', 'retryOn'], v)} placeholder="timeout" />
+      </ConfigSection>
+
+      <ConfigSection title={es.cronRunLog || 'Run Log Pruning'} icon="description" iconColor="text-slate-500" defaultOpen={false}>
+        <NumberField label={es.cronRunLogMaxBytes || 'Max Bytes'} tooltip={tip('cron.runLog.maxBytes')} value={g(['runLog', 'maxBytes'])} onChange={v => s(['runLog', 'maxBytes'], v)} min={0} />
+        <NumberField label={es.cronRunLogKeepLines || 'Keep Lines'} tooltip={tip('cron.runLog.keepLines')} value={g(['runLog', 'keepLines'])} onChange={v => s(['runLog', 'keepLines'], v)} min={0} />
       </ConfigSection>
     </div>
   );

@@ -30,6 +30,9 @@ export const MemorySection: React.FC<SectionProps> = ({ schema, setField, getFie
           <TextField label={es.qmdDataPath} tooltip={tip('memory.qmd.paths.data')} value={g(['qmd', 'paths', 'data']) || ''} onChange={v => s(['qmd', 'paths', 'data'], v)} />
           <NumberField label={es.maxMemories} tooltip={tip('memory.qmd.limits.maxEntries')} value={g(['qmd', 'limits', 'maxEntries'])} onChange={v => s(['qmd', 'limits', 'maxEntries'], v)} min={1} />
           <TextField label={es.scope} tooltip={tip('memory.qmd.scope')} value={g(['qmd', 'scope']) || ''} onChange={v => s(['qmd', 'scope'], v)} placeholder={es.phMemoryScope} />
+          <TextField label={es.qmdSearchMode || 'Search Mode'} tooltip={tip('memory.qmd.searchMode')} value={g(['qmd', 'searchMode']) || ''} onChange={v => s(['qmd', 'searchMode'], v)} placeholder="hybrid" />
+          <TextField label={es.qmdSearchTool || 'Search Tool'} tooltip={tip('memory.qmd.searchTool')} value={g(['qmd', 'searchTool']) || ''} onChange={v => s(['qmd', 'searchTool'], v)} placeholder="auto" />
+          <SwitchField label={es.qmdIncludeDefaultMemory || 'Include Default Memory'} tooltip={tip('memory.qmd.includeDefaultMemory')} value={g(['qmd', 'includeDefaultMemory']) !== false} onChange={v => s(['qmd', 'includeDefaultMemory'], v)} />
         </ConfigSection>
       )}
     </div>

@@ -41,11 +41,13 @@ export const AgentsSection: React.FC<SectionProps> = ({ config, schema, setField
         <NumberField label={es.subagentArchiveMin || 'Archive After (min)'} tooltip={tip('agents.defaults.subagents.archiveAfterMinutes')} value={d(['subagents', 'archiveAfterMinutes'])} onChange={v => sd(['subagents', 'archiveAfterMinutes'], v)} min={0} />
         <TextField label={es.workspace} tooltip={tip('agents.defaults.workspace')} value={d(['workspace']) || ''} onChange={v => sd(['workspace'], v)} placeholder={es.phWorkspacePath} />
         <TextField label={es.imageGenerationModel || 'Image Generation Model'} tooltip={tip('agents.defaults.imageGenerationModel')} value={typeof d(['imageGenerationModel']) === 'string' ? d(['imageGenerationModel']) : d(['imageGenerationModel'])?.primary || ''} onChange={v => sd(['imageGenerationModel'], v)} placeholder={es.phProviderModelId} />
+        <TextField label={es.videoGenerationModel || 'Video Generation Model'} tooltip={tip('agents.defaults.videoGenerationModel.primary')} value={typeof d(['videoGenerationModel']) === 'string' ? d(['videoGenerationModel']) : d(['videoGenerationModel'])?.primary || ''} onChange={v => sd(['videoGenerationModel', 'primary'], v)} placeholder={es.phProviderModelId} />
         <TextField label={es.pdfModel || 'PDF Model'} tooltip={tip('agents.defaults.pdfModel')} value={typeof d(['pdfModel']) === 'string' ? d(['pdfModel']) : d(['pdfModel'])?.primary || ''} onChange={v => sd(['pdfModel'], v)} placeholder={es.phProviderModelId} />
         <NumberField label={es.pdfMaxBytesMb || 'PDF Max Size (MB)'} tooltip={tip('agents.defaults.pdfMaxBytesMb')} value={d(['pdfMaxBytesMb'])} onChange={v => sd(['pdfMaxBytesMb'], v)} min={1} />
         <NumberField label={es.pdfMaxPages || 'PDF Max Pages'} tooltip={tip('agents.defaults.pdfMaxPages')} value={d(['pdfMaxPages'])} onChange={v => sd(['pdfMaxPages'], v)} min={1} />
         <NumberField label={es.timeoutS} tooltip={tip('agents.defaults.timeoutSeconds')} value={d(['timeoutSeconds'])} onChange={v => sd(['timeoutSeconds'], v)} min={0} />
         <NumberField label={es.mediaMaxMb} tooltip={tip('agents.defaults.mediaMaxMb')} value={d(['mediaMaxMb'])} onChange={v => sd(['mediaMaxMb'], v)} min={0} />
+        <ArrayField label={es.skills || 'Skills'} tooltip={tip('agents.defaults.skills')} value={d(['skills']) || []} onChange={v => sd(['skills'], v)} placeholder={es.phSkillName || 'skill-name'} />
       </ConfigSection>
 
       <ConfigSection
@@ -62,6 +64,7 @@ export const AgentsSection: React.FC<SectionProps> = ({ config, schema, setField
         <SelectField label={es.compactionMode} tooltip={tip('agents.defaults.compaction.mode')} value={d(['compaction', 'mode']) || 'default'} onChange={v => sd(['compaction', 'mode'], v)} options={COMPACTION_OPTIONS} />
         <TextField label={es.compactionModel || 'Compaction Model'} tooltip={tip('agents.defaults.compaction.model')} value={d(['compaction', 'model']) || ''} onChange={v => sd(['compaction', 'model'], v)} placeholder={es.phProviderModelId} />
         <SwitchField label={es.truncateAfterCompaction || 'Truncate After Compaction'} tooltip={tip('agents.defaults.compaction.truncateAfterCompaction')} value={d(['compaction', 'truncateAfterCompaction']) === true} onChange={v => sd(['compaction', 'truncateAfterCompaction'], v)} />
+        <SwitchField label={es.compactionNotifyUser || 'Notify User on Compaction'} tooltip={tip('agents.defaults.compaction.notifyUser')} value={d(['compaction', 'notifyUser']) === true} onChange={v => sd(['compaction', 'notifyUser'], v)} />
         <SwitchField label={es.bootstrapTruncationWarning || 'Bootstrap Truncation Warning'} tooltip={tip('agents.defaults.bootstrapTruncationWarning')} value={d(['bootstrapTruncationWarning']) !== false} onChange={v => sd(['bootstrapTruncationWarning'], v)} />
       </ConfigSection>
 

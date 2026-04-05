@@ -73,8 +73,8 @@ const LOGGING_KEYS = [
 
 // Audio (talk + audio.transcription)
 const AUDIO_KEYS = [
-  'talk.provider', 'talk.voiceId', 'talk.modelId', 'talk.outputFormat', 'talk.apiKey', 'talk.interruptOnSpeech',
-  'talk.providers.*', 'talk.voiceAliases', 'talk.silenceTimeoutMs',
+  'talk.provider', 'talk.interruptOnSpeech', 'talk.silenceTimeoutMs',
+  'talk.providers.*', 'talk.openai.*',
   'audio.transcription.command', 'audio.transcription.timeoutSeconds',
 ];
 

@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { SectionProps } from '../sectionTypes';
-import { ConfigSection, TextField, PasswordField, NumberField, SelectField, SwitchField, ArrayField } from '../fields';
+import { ConfigSection, TextField, PasswordField, NumberField, SelectField, SwitchField, ArrayField, KeyValueField } from '../fields';
 import { getTranslation } from '../../../locales';
 import { schemaTooltip } from '../schemaTooltip';
 
@@ -53,6 +53,18 @@ export const MessagesSection: React.FC<SectionProps> = ({ schema, setField, getF
         <NumberField label={es.debounceMs} tooltip={tip('messages.queue.debounceMs')} value={g(['queue', 'debounceMs'])} onChange={v => s(['queue', 'debounceMs'], v)} min={0} step={100} />
         <NumberField label={es.queueCap} tooltip={tip('messages.queue.cap')} value={g(['queue', 'cap'])} onChange={v => s(['queue', 'cap'], v)} min={1} />
         <SwitchField label={es.dropWhenFull} tooltip={tip('messages.queue.drop')} value={g(['queue', 'drop']) === true} onChange={v => s(['queue', 'drop'], v)} />
+        <KeyValueField label={es.queueByChannel || 'Queue Mode by Channel'} tooltip={tip('messages.queue.byChannel')} value={g(['queue', 'byChannel']) || {}} onChange={v => s(['queue', 'byChannel'], v)} />
+        <KeyValueField label={es.debounceMsByChannel || 'Debounce by Channel (ms)'} tooltip={tip('messages.queue.debounceMsByChannel')} value={g(['queue', 'debounceMsByChannel']) || {}} onChange={v => s(['queue', 'debounceMsByChannel'], v)} />
+      </ConfigSection>
+
+      <ConfigSection title={es.statusReactions || 'Status Reactions'} icon="emoji_emotions" iconColor="text-yellow-500" defaultOpen={false}>
+        <SwitchField label={es.statusReactionsEnabled || 'Enable Status Reactions'} tooltip={tip('messages.statusReactions.enabled')} value={g(['statusReactions', 'enabled']) === true} onChange={v => s(['statusReactions', 'enabled'], v)} />
+        <TextField label={es.statusReactionsEmojis || 'Emojis'} tooltip={tip('messages.statusReactions.emojis')} value={g(['statusReactions', 'emojis']) || ''} onChange={v => s(['statusReactions', 'emojis'], v)} mono={false} />
+        <TextField label={es.statusReactionsTiming || 'Timing'} tooltip={tip('messages.statusReactions.timing')} value={g(['statusReactions', 'timing']) || ''} onChange={v => s(['statusReactions', 'timing'], v)} />
+      </ConfigSection>
+
+      <ConfigSection title={es.toolErrorWarnings || 'Tool Error Warnings'} icon="warning" iconColor="text-amber-500" defaultOpen={false}>
+        <SwitchField label={es.suppressToolErrors || 'Suppress Tool Error Warnings'} tooltip={tip('messages.suppressToolErrors')} value={g(['suppressToolErrors']) === true} onChange={v => s(['suppressToolErrors'], v)} />
       </ConfigSection>
 
       <ConfigSection title={es.typingMode} icon="edit_note" iconColor="text-purple-500" defaultOpen={false}>
@@ -81,6 +93,7 @@ export const MessagesSection: React.FC<SectionProps> = ({ schema, setField, getF
 
       <ConfigSection title={es.inboundDebounce} icon="input" iconColor="text-teal-500" defaultOpen={false}>
         <NumberField label={es.debounceMs} tooltip={tip('messages.inbound.debounceMs')} value={g(['inbound', 'debounceMs'])} onChange={v => s(['inbound', 'debounceMs'], v)} min={0} step={100} />
+        <KeyValueField label={es.inboundByChannel || 'Debounce by Channel'} tooltip={tip('messages.inbound.byChannel')} value={g(['inbound', 'byChannel']) || {}} onChange={v => s(['inbound', 'byChannel'], v)} />
       </ConfigSection>
 
       <ConfigSection title={es.broadcast} icon="campaign" iconColor="text-rose-500" defaultOpen={false}>

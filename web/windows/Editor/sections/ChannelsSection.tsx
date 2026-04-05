@@ -1,7 +1,8 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { SectionProps } from '../sectionTypes';
-import { ConfigSection, TextField, PasswordField, SelectField, SwitchField, ArrayField, NumberField, EmptyState, DiscordGuildField } from '../fields';
+import { ConfigSection, TextField, PasswordField, SelectField, SwitchField, ArrayField, NumberField, KeyValueField, EmptyState, DiscordGuildField } from '../fields';
 import { getTranslation } from '../../../locales';
+import { schemaTooltip } from '../schemaTooltip';
 import { gwApi, gatewayApi, pairingApi, pluginApi } from '../../../services/api';
 import { post } from '../../../services/request';
 import CustomSelect from '../../../components/CustomSelect';
@@ -277,7 +278,7 @@ const PairingSection: React.FC<{ channel: string; es: any; cw: any; toast: (type
 };
 
 // ============================================================================
-export const ChannelsSection: React.FC<SectionProps> = ({ config, setField, getField, deleteField, language, save }) => {
+export const ChannelsSection: React.FC<SectionProps> = ({ config, schema, setField, getField, deleteField, language, save }) => {
   const { toast } = useToast();
   const es = useMemo(() => (getTranslation(language) as any).es || {}, [language]);
   const cw = useMemo(() => (getTranslation(language) as any).cw || {}, [language]);
@@ -1775,10 +1776,6 @@ export const ChannelsSection: React.FC<SectionProps> = ({ config, setField, getF
 
   return (
     <div className="space-y-4">
-      <ConfigSection title={es.channelConfig} icon="settings" iconColor="text-slate-500" defaultOpen={false}>
-        <SelectField label={es.groupMode} value={getField(['channels', 'defaults', 'groupPolicy']) || 'allowlist'} onChange={v => setField(['channels', 'defaults', 'groupPolicy'], v)} options={groupPolicy(es)} tooltip={tip('groupPolicy')} />
-      </ConfigSection>
-
       {channelKeys.filter(k => k !== 'defaults').length === 0 ? (
         <EmptyState message={es.noChannels} icon="forum" />
       ) : (
@@ -2435,6 +2432,25 @@ export const ChannelsSection: React.FC<SectionProps> = ({ config, setField, getF
           </div>
         </div>
       )}
+
+      {/* ================================================================ */}
+      {/* 频道全局默认 / 按频道模型 / Matrix */}
+      {/* ================================================================ */}
+      <ConfigSection title={es.channelConfig} icon="settings" iconColor="text-slate-500" defaultOpen={false}>
+        <SelectField label={es.groupMode} value={getField(['channels', 'defaults', 'groupPolicy']) || 'allowlist'} onChange={v => setField(['channels', 'defaults', 'groupPolicy'], v)} options={groupPolicy(es)} tooltip={tip('groupPolicy')} />
+        <TextField label={es.chDefaultsContextVisibility || 'Context Visibility'} tooltip={schemaTooltip('channels.defaults.contextVisibility', language, schema)} value={getField(['channels', 'defaults', 'contextVisibility']) || ''} onChange={v => setField(['channels', 'defaults', 'contextVisibility'], v)} placeholder="full" />
+        <SwitchField label={es.chDefaultsHeartbeatShowOk || 'Heartbeat: Show OK'} tooltip={schemaTooltip('channels.defaults.heartbeat.showOk', language, schema)} value={getField(['channels', 'defaults', 'heartbeat', 'showOk']) !== false} onChange={v => setField(['channels', 'defaults', 'heartbeat', 'showOk'], v)} />
+        <SwitchField label={es.chDefaultsHeartbeatShowAlerts || 'Heartbeat: Show Alerts'} tooltip={schemaTooltip('channels.defaults.heartbeat.showAlerts', language, schema)} value={getField(['channels', 'defaults', 'heartbeat', 'showAlerts']) !== false} onChange={v => setField(['channels', 'defaults', 'heartbeat', 'showAlerts'], v)} />
+        <SwitchField label={es.chDefaultsHeartbeatUseIndicator || 'Heartbeat: Use Indicator'} tooltip={schemaTooltip('channels.defaults.heartbeat.useIndicator', language, schema)} value={getField(['channels', 'defaults', 'heartbeat', 'useIndicator']) === true} onChange={v => setField(['channels', 'defaults', 'heartbeat', 'useIndicator'], v)} />
+      </ConfigSection>
+
+      <ConfigSection title={es.chModelByChannel || 'Model by Channel'} icon="tune" iconColor="text-indigo-500" defaultOpen={false}>
+        <KeyValueField label={es.chModelByChannelKv || 'Channel → Model Override'} tooltip={schemaTooltip('channels.modelByChannel', language, schema)} value={getField(['channels', 'modelByChannel']) || {}} onChange={v => setField(['channels', 'modelByChannel'], v)} />
+      </ConfigSection>
+
+      <ConfigSection title={es.chMatrixConfig || 'Matrix Defaults'} icon="hub" iconColor="text-teal-500" defaultOpen={false}>
+        <SwitchField label={es.chMatrixAllowBots || 'Allow Bot Messages'} tooltip={schemaTooltip('channels.matrix.allowBots', language, schema)} value={getField(['channels', 'matrix', 'allowBots']) === true} onChange={v => setField(['channels', 'matrix', 'allowBots'], v)} />
+      </ConfigSection>
 
       {/* ================================================================ */}
       {/* ACP 持久绑定管理 */}

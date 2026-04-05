@@ -19,6 +19,11 @@ export const HooksSection: React.FC<SectionProps> = ({ schema, setField, getFiel
         <PasswordField label={es.webhookToken} tooltip={tip('hooks.token')} value={g(['token']) || ''} onChange={v => s(['token'], v)} />
         <NumberField label={es.maxBodyBytes} tooltip={tip('hooks.maxBodyBytes')} value={g(['maxBodyBytes'])} onChange={v => s(['maxBodyBytes'], v)} min={0} />
         <ArrayField label={es.presets} tooltip={tip('hooks.presets')} value={g(['presets']) || []} onChange={v => s(['presets'], v)} placeholder={es.phPresetName} />
+        <TextField label={es.hooksDefaultSessionKey || 'Default Session Key'} tooltip={tip('hooks.defaultSessionKey')} value={g(['defaultSessionKey']) || ''} onChange={v => s(['defaultSessionKey'], v)} placeholder="hook" />
+        <SwitchField label={es.hooksAllowRequestSessionKey || 'Allow Request Session Key'} tooltip={tip('hooks.allowRequestSessionKey')} value={g(['allowRequestSessionKey']) === true} onChange={v => s(['allowRequestSessionKey'], v)} />
+        <ArrayField label={es.hooksAllowedSessionKeyPrefixes || 'Allowed Session Key Prefixes'} tooltip={tip('hooks.allowedSessionKeyPrefixes')} value={g(['allowedSessionKeyPrefixes']) || []} onChange={v => s(['allowedSessionKeyPrefixes'], v)} placeholder="hook-" />
+        <ArrayField label={es.hooksAllowedAgentIds || 'Allowed Agent IDs'} tooltip={tip('hooks.allowedAgentIds')} value={g(['allowedAgentIds']) || []} onChange={v => s(['allowedAgentIds'], v)} placeholder="agent-id" />
+        <TextField label={es.hooksTransformsDir || 'Transforms Directory'} tooltip={tip('hooks.transformsDir')} value={g(['transformsDir']) || ''} onChange={v => s(['transformsDir'], v)} />
       </ConfigSection>
 
       <ConfigSection
