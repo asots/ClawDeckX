@@ -361,13 +361,30 @@ func InputSanitizeMiddleware(next http.Handler) http.Handler {
 				}
 			}
 		}
-		if requestBodyContainsDangerousInput(r) {
+		if !bodySanitizeExempt(r.URL.Path) && requestBodyContainsDangerousInput(r) {
 			logger.Log.Warn().Str("path", r.URL.Path).Msg("suspicious request body detected")
 			FailErr(w, r, ErrInvalidInput)
 			return
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+// bodySanitizeExempt returns true for API paths whose request body may
+// legitimately contain HTML-like patterns (e.g. upstream release notes
+// passed for translation, or config values with URLs/code snippets).
+// These endpoints must sanitize or escape output on their own.
+func bodySanitizeExempt(path string) bool {
+	exemptPrefixes := []string{
+		"/api/v1/self-update/translate-notes",
+		"/api/v1/gateway/config",
+	}
+	for _, p := range exemptPrefixes {
+		if strings.HasPrefix(path, p) {
+			return true
+		}
+	}
+	return false
 }
 
 func requestBodyContainsDangerousInput(r *http.Request) bool {
