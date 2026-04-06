@@ -3,10 +3,11 @@ import { SectionProps } from '../sectionTypes';
 import { ConfigSection, TextField, NumberField, SelectField, SwitchField } from '../fields';
 import { getTranslation } from '../../../locales';
 import { schemaTooltip } from '../schemaTooltip';
+import SchemaRemainder from '../SchemaRemainder';
 
 // Options moved inside component
 
-export const MemorySection: React.FC<SectionProps> = ({ schema, setField, getField, language }) => {
+export const MemorySection: React.FC<SectionProps> = ({ config, schema, setField, getField, language }) => {
   const es = useMemo(() => (getTranslation(language) as any).es || {}, [language]);
   const tip = (key: string) => schemaTooltip(key, language, schema);
   const g = (p: string[]) => getField(['memory', ...p]);
@@ -42,6 +43,18 @@ export const MemorySection: React.FC<SectionProps> = ({ schema, setField, getFie
           <SwitchField label={es.qmdIncludeDefaultMemory || 'Include Default Memory'} tooltip={tip('memory.qmd.includeDefaultMemory')} value={g(['qmd', 'includeDefaultMemory']) !== false} onChange={v => s(['qmd', 'includeDefaultMemory'], v)} />
         </ConfigSection>
       )}
+
+      <SchemaRemainder
+        sectionPath="memory"
+        handledKeys={[
+          'backend', 'citations', 'search', 'dreaming', 'qmd',
+        ]}
+        config={config}
+        setField={setField}
+        language={language}
+        schema={schema}
+        title={es.schemaAdditional || 'Additional Memory Fields'}
+      />
     </div>
   );
 };

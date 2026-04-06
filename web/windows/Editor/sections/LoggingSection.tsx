@@ -3,10 +3,11 @@ import { SectionProps } from '../sectionTypes';
 import { ConfigSection, TextField, SelectField, SwitchField, NumberField, ArrayField, KeyValueField } from '../fields';
 import { getTranslation } from '../../../locales';
 import { schemaTooltip } from '../schemaTooltip';
+import SchemaRemainder from '../SchemaRemainder';
 
 // Options moved inside component
 
-export const LoggingSection: React.FC<SectionProps> = ({ schema, setField, getField, language }) => {
+export const LoggingSection: React.FC<SectionProps> = ({ config, schema, setField, getField, language }) => {
   const es = useMemo(() => (getTranslation(language) as any).es || {}, [language]);
   const tip = (key: string) => schemaTooltip(key, language, schema);
 
@@ -62,6 +63,31 @@ export const LoggingSection: React.FC<SectionProps> = ({ schema, setField, getFi
         <SwitchField label={es.ctIncludePrompt} tooltip={tip('diagnostics.cacheTrace.includePrompt')} value={getField(['diagnostics', 'cacheTrace', 'includePrompt']) === true} onChange={v => setField(['diagnostics', 'cacheTrace', 'includePrompt'], v)} />
         <SwitchField label={es.ctIncludeSystem} tooltip={tip('diagnostics.cacheTrace.includeSystem')} value={getField(['diagnostics', 'cacheTrace', 'includeSystem']) === true} onChange={v => setField(['diagnostics', 'cacheTrace', 'includeSystem'], v)} />
       </ConfigSection>
+
+      <SchemaRemainder
+        sectionPath="logging"
+        handledKeys={[
+          'level', 'file', 'maxFileBytes', 'consoleLevel', 'consoleStyle',
+          'redactSensitive', 'redactPatterns',
+        ]}
+        config={config}
+        setField={setField}
+        language={language}
+        schema={schema}
+        title={es.schemaAdditional || 'Additional Logging Fields'}
+      />
+
+      <SchemaRemainder
+        sectionPath="diagnostics"
+        handledKeys={[
+          'enabled', 'flags', 'stuckSessionWarnMs', 'otel', 'cacheTrace',
+        ]}
+        config={config}
+        setField={setField}
+        language={language}
+        schema={schema}
+        title={es.schemaAdditional || 'Additional Diagnostics Fields'}
+      />
     </div>
   );
 };

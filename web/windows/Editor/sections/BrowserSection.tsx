@@ -5,8 +5,9 @@ import { getTranslation } from '../../../locales';
 import { schemaTooltip } from '../schemaTooltip';
 import { gwApi } from '../../../services/api';
 import CustomSelect from '../../../components/CustomSelect';
+import SchemaRemainder from '../SchemaRemainder';
 
-export const BrowserSection: React.FC<SectionProps> = ({ schema, setField, getField, language }) => {
+export const BrowserSection: React.FC<SectionProps> = ({ config, schema, setField, getField, language }) => {
   const es = useMemo(() => (getTranslation(language) as any).es || {}, [language]);
   const tip = (key: string) => schemaTooltip(key, language, schema);
   const g = (p: string[]) => getField(['browser', ...p]);
@@ -111,6 +112,20 @@ export const BrowserSection: React.FC<SectionProps> = ({ schema, setField, getFi
           )}
         </div>
       </ConfigSection>
+
+      <SchemaRemainder
+        sectionPath="browser"
+        handledKeys={[
+          'evaluate', 'headless', 'timeout', 'viewport',
+          'noSandbox', 'attachOnly', 'defaultProfile',
+          'ssrfPolicy', 'cdpUrl', 'executablePath', 'color',
+        ]}
+        config={config}
+        setField={setField}
+        language={language}
+        schema={schema}
+        title={es.schemaAdditional || 'Additional Browser Fields'}
+      />
     </div>
   );
 };

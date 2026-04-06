@@ -3,8 +3,9 @@ import { SectionProps } from '../sectionTypes';
 import { ConfigSection, TextField, PasswordField, NumberField, SwitchField, SelectField, ArrayField } from '../fields';
 import { getTranslation } from '../../../locales';
 import { schemaTooltip } from '../schemaTooltip';
+import SchemaRemainder from '../SchemaRemainder';
 
-export const CronSection: React.FC<SectionProps> = ({ schema, setField, getField, language }) => {
+export const CronSection: React.FC<SectionProps> = ({ config, schema, setField, getField, language }) => {
   const es = useMemo(() => (getTranslation(language) as any).es || {}, [language]);
   const tip = (key: string) => schemaTooltip(key, language, schema);
   const g = (p: string[]) => getField(['cron', ...p]);
@@ -37,6 +38,20 @@ export const CronSection: React.FC<SectionProps> = ({ schema, setField, getField
         <NumberField label={es.cronRunLogMaxBytes || 'Max Bytes'} tooltip={tip('cron.runLog.maxBytes')} value={g(['runLog', 'maxBytes'])} onChange={v => s(['runLog', 'maxBytes'], v)} min={0} />
         <NumberField label={es.cronRunLogKeepLines || 'Keep Lines'} tooltip={tip('cron.runLog.keepLines')} value={g(['runLog', 'keepLines'])} onChange={v => s(['runLog', 'keepLines'], v)} min={0} />
       </ConfigSection>
+
+      <SchemaRemainder
+        sectionPath="cron"
+        handledKeys={[
+          'enabled', 'store', 'maxConcurrentRuns', 'wakeMode',
+          'lightContext', 'sessionRetention', 'webhookToken',
+          'retry', 'runLog',
+        ]}
+        config={config}
+        setField={setField}
+        language={language}
+        schema={schema}
+        title={es.schemaAdditional || 'Additional Cron Fields'}
+      />
     </div>
   );
 };

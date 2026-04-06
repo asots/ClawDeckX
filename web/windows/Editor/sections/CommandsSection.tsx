@@ -3,10 +3,11 @@ import { SectionProps } from '../sectionTypes';
 import { ConfigSection, TextField, PasswordField, NumberField, SelectField, SwitchField, ArrayField, KeyValueField } from '../fields';
 import { getTranslation } from '../../../locales';
 import { schemaTooltip } from '../schemaTooltip';
+import SchemaRemainder from '../SchemaRemainder';
 
 // Options moved inside component
 
-export const CommandsSection: React.FC<SectionProps> = ({ schema, setField, getField, language }) => {
+export const CommandsSection: React.FC<SectionProps> = ({ config, schema, setField, getField, language }) => {
   const es = useMemo(() => (getTranslation(language) as any).es || {}, [language]);
   const tip = (key: string) => schemaTooltip(key, language, schema);
   const g = (p: string[]) => getField(['commands', ...p]);
@@ -39,6 +40,20 @@ export const CommandsSection: React.FC<SectionProps> = ({ schema, setField, getF
         <PasswordField label={es.cmdOwnerDisplaySecret || 'Owner ID Hash Secret'} tooltip={tip('commands.ownerDisplaySecret')} value={g(['ownerDisplaySecret']) || ''} onChange={v => s(['ownerDisplaySecret'], v)} />
         <KeyValueField label={es.cmdAllowFrom || 'Elevated Access Rules'} tooltip={tip('commands.allowFrom')} value={g(['allowFrom']) || {}} onChange={v => s(['allowFrom'], v)} />
       </ConfigSection>
+
+      <SchemaRemainder
+        sectionPath="commands"
+        handledKeys={[
+          'native', 'skills', 'text', 'bash', 'config', 'debug', 'restart',
+          'bashForegroundMs', 'useAccessGroups', 'ownerAllowFrom',
+          'mcp', 'plugins', 'ownerDisplay', 'ownerDisplaySecret', 'allowFrom',
+        ]}
+        config={config}
+        setField={setField}
+        language={language}
+        schema={schema}
+        title={es.schemaAdditional || 'Additional Command Fields'}
+      />
     </div>
   );
 };

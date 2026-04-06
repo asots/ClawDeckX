@@ -3,6 +3,7 @@ import { SectionProps } from '../sectionTypes';
 import { ConfigSection, ConfigCard, TextField, NumberField, SelectField, SwitchField, ArrayField, KeyValueField, AddButton, EmptyState } from '../fields';
 import { getTranslation } from '../../../locales';
 import { schemaTooltip } from '../schemaTooltip';
+import SchemaRemainder from '../SchemaRemainder';
 
 // Options moved inside component
 
@@ -170,6 +171,23 @@ export const AgentsSection: React.FC<SectionProps> = ({ config, schema, setField
           setField(['bindings'], [...bindings, { agentId: '', match: {} }]);
         }} />
       </ConfigSection>
+
+      <SchemaRemainder
+        sectionPath="agents.defaults"
+        handledKeys={[
+          'maxConcurrent', 'workspace', 'imageGenerationModel', 'videoGenerationModel',
+          'musicGenerationModel', 'pdfModel', 'pdfMaxBytesMb', 'pdfMaxPages',
+          'timeoutSeconds', 'mediaMaxMb', 'skills', 'subagents',
+          'thinkingDefault', 'verboseDefault', 'elevatedDefault', 'typingMode',
+          'compaction', 'bootstrapTruncationWarning', 'contextInjection', 'params',
+          'humanDelay', 'heartbeat', 'contextPruning', 'memorySearch', 'sandbox',
+        ]}
+        config={config}
+        setField={setField}
+        language={language}
+        schema={schema}
+        title={es.schemaAdditional || 'Additional Agent Defaults'}
+      />
     </div>
   );
 };

@@ -3,10 +3,11 @@ import { SectionProps } from '../sectionTypes';
 import { ConfigSection, SelectField, NumberField, SwitchField, TextField, ArrayField, KeyValueField } from '../fields';
 import { getTranslation } from '../../../locales';
 import { schemaTooltip } from '../schemaTooltip';
+import SchemaRemainder from '../SchemaRemainder';
 
 // Options moved inside component
 
-export const SessionSection: React.FC<SectionProps> = ({ schema, setField, getField, language }) => {
+export const SessionSection: React.FC<SectionProps> = ({ config, schema, setField, getField, language }) => {
   const es = useMemo(() => (getTranslation(language) as any).es || {}, [language]);
   const tip = (key: string) => schemaTooltip(key, language, schema);
   const g = (p: string[]) => getField(['session', ...p]);
@@ -75,6 +76,21 @@ export const SessionSection: React.FC<SectionProps> = ({ schema, setField, getFi
       <ConfigSection title={es.agentToAgentSession} icon="swap_horiz" iconColor="text-violet-500" defaultOpen={false}>
         <NumberField label={es.maxPingPongTurns} tooltip={tip('session.agentToAgent.maxPingPongTurns')} value={g(['agentToAgent', 'maxPingPongTurns'])} onChange={v => s(['agentToAgent', 'maxPingPongTurns'], v)} min={1} />
       </ConfigSection>
+
+      <SchemaRemainder
+        sectionPath="session"
+        handledKeys={[
+          'scope', 'dmScope', 'idleMinutes', 'store', 'mainKey',
+          'parentForkMaxTokens', 'resetTriggers', 'identityLinks',
+          'reset', 'resetByType', 'resetByChannel',
+          'threadBindings', 'maintenance', 'sendPolicy', 'agentToAgent',
+        ]}
+        config={config}
+        setField={setField}
+        language={language}
+        schema={schema}
+        title={es.schemaAdditional || 'Additional Session Fields'}
+      />
     </div>
   );
 };

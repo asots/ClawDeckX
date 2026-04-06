@@ -3,8 +3,9 @@ import { SectionProps } from '../sectionTypes';
 import { ConfigSection, TextField, PasswordField, NumberField, SelectField, SwitchField, ArrayField } from '../fields';
 import { getTranslation } from '../../../locales';
 import { schemaTooltip } from '../schemaTooltip';
+import SchemaRemainder from '../SchemaRemainder';
 
-const GatewaySection: React.FC<SectionProps> = ({ schema, setField, getField, language }) => {
+const GatewaySection: React.FC<SectionProps> = ({ config, schema, setField, getField, language }) => {
   const es = useMemo(() => (getTranslation(language) as any).es || {}, [language]);
   const tip = (key: string) => schemaTooltip(key, language, schema);
   const g = (p: string[]) => getField(['gateway', ...p]);
@@ -194,6 +195,22 @@ const GatewaySection: React.FC<SectionProps> = ({ schema, setField, getField, la
         <TextField label={es.apnsRelayBaseUrl || 'Base URL'} tooltip={tip('gateway.push.apns.relay.baseUrl')} value={g(['push', 'apns', 'relay', 'baseUrl']) || ''} onChange={v => s(['push', 'apns', 'relay', 'baseUrl'], v)} placeholder="https://relay.example.com" />
         <NumberField label={es.apnsRelayTimeoutMs || 'Timeout (ms)'} tooltip={tip('gateway.push.apns.relay.timeoutMs')} value={g(['push', 'apns', 'relay', 'timeoutMs'])} onChange={v => s(['push', 'apns', 'relay', 'timeoutMs'], v)} min={0} step={1000} />
       </ConfigSection>
+
+      <SchemaRemainder
+        sectionPath="gateway"
+        handledKeys={[
+          'port', 'mode', 'bind', 'customBindHost',
+          'channelHealthCheckMinutes', 'channelStaleEventThresholdMinutes',
+          'channelMaxRestartsPerHour', 'allowRealIpFallback',
+          'auth', 'tailscale', 'tls', 'remote', 'reload', 'controlUi',
+          'http', 'tools', 'nodes', 'webchat', 'trustedProxies', 'push',
+        ]}
+        config={config}
+        setField={setField}
+        language={language}
+        schema={schema}
+        title={es.schemaAdditional || 'Additional Gateway Fields'}
+      />
     </div>
   );
 };

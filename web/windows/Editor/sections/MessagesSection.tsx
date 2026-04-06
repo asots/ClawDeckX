@@ -3,10 +3,11 @@ import { SectionProps } from '../sectionTypes';
 import { ConfigSection, TextField, PasswordField, NumberField, SelectField, SwitchField, ArrayField, KeyValueField } from '../fields';
 import { getTranslation } from '../../../locales';
 import { schemaTooltip } from '../schemaTooltip';
+import SchemaRemainder from '../SchemaRemainder';
 
 // Options moved inside component
 
-export const MessagesSection: React.FC<SectionProps> = ({ schema, setField, getField, language }) => {
+export const MessagesSection: React.FC<SectionProps> = ({ config, schema, setField, getField, language }) => {
   const es = useMemo(() => (getTranslation(language) as any).es || {}, [language]);
   const tip = (key: string) => schemaTooltip(key, language, schema);
   const g = (p: string[]) => getField(['messages', ...p]);
@@ -99,6 +100,19 @@ export const MessagesSection: React.FC<SectionProps> = ({ schema, setField, getF
       <ConfigSection title={es.broadcast} icon="campaign" iconColor="text-rose-500" defaultOpen={false}>
         <SelectField label={es.strategy} tooltip={tip('broadcast.strategy')} value={getField(['broadcast', 'strategy']) || 'parallel'} onChange={v => setField(['broadcast', 'strategy'], v)} options={BROADCAST_STRATEGY_OPTIONS} />
       </ConfigSection>
+
+      <SchemaRemainder
+        sectionPath="messages"
+        handledKeys={[
+          'prefix', 'responsePrefix', 'ack', 'typing', 'history',
+          'queue', 'tts', 'statusReactions', 'inbound',
+        ]}
+        config={config}
+        setField={setField}
+        language={language}
+        schema={schema}
+        title={es.schemaAdditional || 'Additional Message Fields'}
+      />
     </div>
   );
 };

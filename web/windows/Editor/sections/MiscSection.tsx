@@ -3,10 +3,11 @@ import { SectionProps } from '../sectionTypes';
 import { ConfigSection, TextField, SelectField, SwitchField, KeyValueField, NumberField, ArrayField } from '../fields';
 import { getTranslation } from '../../../locales';
 import { schemaTooltip } from '../schemaTooltip';
+import SchemaRemainder from '../SchemaRemainder';
 
 // Options moved inside component
 
-export const MiscSection: React.FC<SectionProps> = ({ schema, setField, getField, deleteField, language }) => {
+export const MiscSection: React.FC<SectionProps> = ({ config, schema, setField, getField, deleteField, language }) => {
   const es = useMemo(() => (getTranslation(language) as any).es || {}, [language]);
   const tip = (key: string) => schemaTooltip(key, language, schema);
   const gg = (p: string[]) => getField(['gateway', ...p]);
@@ -99,6 +100,15 @@ export const MiscSection: React.FC<SectionProps> = ({ schema, setField, getField
         <KeyValueField label={es.variables} tooltip={tip('env.vars')} value={getField(['env', 'vars']) || {}} onChange={v => setField(['env', 'vars'], v)} />
       </ConfigSection>
 
+      <SchemaRemainder
+        sectionPath="update"
+        handledKeys={['channel', 'checkOnStart', 'auto']}
+        config={config}
+        setField={setField}
+        language={language}
+        schema={schema}
+        title={es.schemaAdditional || 'Additional Update Fields'}
+      />
     </div>
   );
 };

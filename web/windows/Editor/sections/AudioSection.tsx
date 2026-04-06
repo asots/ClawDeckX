@@ -6,6 +6,7 @@ import { schemaTooltip } from '../schemaTooltip';
 import { RequestOverridePanel } from './RequestOverridePanel';
 import { gwApi } from '../../../services/api';
 import { useToast } from '../../../components/Toast';
+import SchemaRemainder from '../SchemaRemainder';
 
 interface TtsStatus {
   enabled: boolean;
@@ -26,7 +27,7 @@ interface TtsProviderInfo {
   voices?: string[];
 }
 
-export const AudioSection: React.FC<SectionProps> = ({ schema, setField, getField, language }) => {
+export const AudioSection: React.FC<SectionProps> = ({ config, schema, setField, getField, language }) => {
   const es = useMemo(() => (getTranslation(language) as any).es || {}, [language]);
   const tip = (key: string) => schemaTooltip(key, language, schema);
   const { toast } = useToast();
@@ -354,6 +355,19 @@ export const AudioSection: React.FC<SectionProps> = ({ schema, setField, getFiel
           </div>
         )}
       </ConfigSection>
+
+      <SchemaRemainder
+        sectionPath="talk"
+        handledKeys={[
+          'provider', 'interruptOnSpeech', 'silenceTimeoutMs',
+          'providers', 'openai',
+        ]}
+        config={config}
+        setField={setField}
+        language={language}
+        schema={schema}
+        title={es.schemaAdditional || 'Additional Audio Fields'}
+      />
     </div>
   );
 };

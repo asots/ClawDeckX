@@ -3,6 +3,7 @@ import { SectionProps } from '../sectionTypes';
 import { ConfigSection, ConfigCard, TextField, PasswordField, NumberField, SelectField, ArrayField, AddButton, EmptyState } from '../fields';
 import { getTranslation } from '../../../locales';
 import { schemaTooltip } from '../schemaTooltip';
+import SchemaRemainder from '../SchemaRemainder';
 
 // Options moved inside component
 
@@ -65,6 +66,18 @@ export const AuthSection: React.FC<SectionProps> = ({ config, schema, setField, 
           try { setField(['auth', 'cooldowns'], JSON.parse(v)); } catch {}
         }} multiline />
       </ConfigSection>
+
+      <SchemaRemainder
+        sectionPath="auth"
+        handledKeys={[
+          'profiles', 'order', 'cooldowns',
+        ]}
+        config={config}
+        setField={setField}
+        language={language}
+        schema={schema}
+        title={es.schemaAdditional || 'Additional Auth Fields'}
+      />
     </div>
   );
 };

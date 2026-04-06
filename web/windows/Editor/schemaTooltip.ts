@@ -62,8 +62,9 @@ function schemaConstraintSuffix(node: Record<string, any>): string {
  * Priority:
  * 1. Hand-written locale tooltip (from tooltips.json)
  * 2. Schema description fallback (from OpenClaw config schema)
+ * 3. Schema title fallback (from OpenClaw config schema)
  *
- * In both cases, range/enum info from schema is appended.
+ * In all cases, range/enum info from schema is appended.
  */
 export function schemaTooltip(
   key: string,
@@ -83,5 +84,31 @@ export function schemaTooltip(
     return node.description + suffix;
   }
 
+  // Fallback to schema title
+  if (node?.title) {
+    return node.title + suffix;
+  }
+
   return '';
+}
+
+/**
+ * Schema-aware label resolver for auto-generated fields.
+ *
+ * Priority:
+ * 1. Schema title (human-readable label from OpenClaw schema)
+ * 2. Humanized key name (camelCase → "Camel Case")
+ */
+export function schemaLabel(
+  key: string,
+  schema?: Record<string, any> | null,
+): string {
+  const node = resolveSchemaNode(schema, key);
+  if (node?.title) return node.title;
+  // Humanize the last segment: "maxConcurrent" → "Max Concurrent"
+  const leaf = key.split('.').pop() || key;
+  return leaf
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
+    .replace(/^./, s => s.toUpperCase());
 }

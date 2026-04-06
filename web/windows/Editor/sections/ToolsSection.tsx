@@ -4,10 +4,11 @@ import { ConfigSection, TextField, NumberField, SelectField, SwitchField, ArrayF
 import { getTranslation } from '../../../locales';
 import { schemaTooltip } from '../schemaTooltip';
 import { RequestOverridePanel } from './RequestOverridePanel';
+import SchemaRemainder from '../SchemaRemainder';
 
 // Options moved inside component
 
-export const ToolsSection: React.FC<SectionProps> = ({ schema, setField, getField, language }) => {
+export const ToolsSection: React.FC<SectionProps> = ({ config, schema, setField, getField, language }) => {
   const es = useMemo(() => (getTranslation(language) as any).es || {}, [language]);
   const tip = (key: string) => schemaTooltip(key, language, schema);
   const g = (p: string[]) => getField(['tools', ...p]);
@@ -168,6 +169,20 @@ export const ToolsSection: React.FC<SectionProps> = ({ schema, setField, getFiel
         <SwitchField label={es.preserveFilenames} tooltip={tip('media.preserveFilenames')} value={getField(['media', 'preserveFilenames']) === true} onChange={v => setField(['media', 'preserveFilenames'], v)} />
         <NumberField label={es.mediaRetentionTTL || 'Retention TTL (hours)'} tooltip={tip('media.ttlHours')} value={getField(['media', 'ttlHours'])} onChange={v => setField(['media', 'ttlHours'], v)} min={0} step={1} />
       </ConfigSection>
+
+      <SchemaRemainder
+        sectionPath="tools"
+        handledKeys={[
+          'profile', 'allow', 'deny', 'alsoAllow', 'byProvider',
+          'exec', 'fs', 'loopDetection', 'sessions', 'links', 'media',
+          'pdf', 'webSearch', 'elevated', 'agentToAgent', 'subagents', 'sandbox',
+        ]}
+        config={config}
+        setField={setField}
+        language={language}
+        schema={schema}
+        title={es.schemaAdditional || 'Additional Tool Fields'}
+      />
     </div>
   );
 };
