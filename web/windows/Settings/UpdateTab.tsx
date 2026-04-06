@@ -181,6 +181,20 @@ const UpdateTab: React.FC<UpdateTabProps> = ({ s, language, inputCls, rowCls }) 
     setNotesTranslating(false);
   }, [language, toast]);
 
+  // OpenClaw release notes manual translation
+  const handleOcTranslateNotes = useCallback(async (text: string, ver?: string) => {
+    if (!text || language === 'en') return;
+    setOcNotesTranslating(true);
+    try {
+      const res = await selfUpdateApi.translateNotes(text, language, 'openclaw', ver || '0');
+      setOcTranslatedNotes(res.translated);
+      setOcShowTranslated(true);
+    } catch {
+      toast('error', sRef.current.translateFailed || 'Translation failed');
+    }
+    setOcNotesTranslating(false);
+  }, [language, toast]);
+
   // OpenClaw update handlers
   const handleOcUpdateCheck = useCallback(async () => {
     setOcUpdateChecking(true);
@@ -751,12 +765,22 @@ const UpdateTab: React.FC<UpdateTabProps> = ({ s, language, inputCls, rowCls }) 
                     {ocNotesTranslating && <span className="material-symbols-outlined text-[12px] animate-spin text-primary/50 ms-1">progress_activity</span>}
                   </div>
                   <div className="flex items-center gap-1">
-                    {language !== 'en' && ocTranslatedNotes && (
-                      <button onClick={() => setOcShowTranslated(v => !v)}
-                        className="flex items-center gap-0.5 px-2 py-0.5 rounded-md text-[10px] font-medium text-primary/70 hover:bg-primary/10 transition-colors">
-                        <span className="material-symbols-outlined text-[12px]">translate</span>
-                        {ocShowTranslated ? (s.showOriginal || 'Original') : (s.showTranslation || 'Translated')}
-                      </button>
+                    {language !== 'en' && (
+                      ocTranslatedNotes ? (
+                        <button onClick={() => setOcShowTranslated(v => !v)}
+                          className="flex items-center gap-0.5 px-2 py-0.5 rounded-md text-[10px] font-medium text-primary/70 hover:bg-primary/10 transition-colors">
+                          <span className="material-symbols-outlined text-[12px]">translate</span>
+                          {ocShowTranslated ? (s.showOriginal || 'Original') : (s.showTranslation || 'Translated')}
+                        </button>
+                      ) : (
+                        <button onClick={() => handleOcTranslateNotes(ocUpdateInfo.releaseNotes!, ocUpdateInfo.releaseTag || ocUpdateInfo.currentVersion)} disabled={ocNotesTranslating}
+                          className="flex items-center gap-0.5 px-2 py-0.5 rounded-md text-[10px] font-medium text-primary/70 hover:bg-primary/10 disabled:opacity-40 transition-colors">
+                          <span className={`material-symbols-outlined text-[12px] ${ocNotesTranslating ? 'animate-spin' : ''}`}>
+                            {ocNotesTranslating ? 'progress_activity' : 'translate'}
+                          </span>
+                          {ocNotesTranslating ? (s.translating || 'Translating...') : (s.translateNotes || 'Translate')}
+                        </button>
+                      )
                     )}
                     {ocIsLong && (
                       <button onClick={() => setOcNotesExpanded(v => !v)}
@@ -812,12 +836,22 @@ const UpdateTab: React.FC<UpdateTabProps> = ({ s, language, inputCls, rowCls }) 
                         {ocNotesTranslating && <span className="material-symbols-outlined text-[12px] animate-spin text-primary/50 ms-1">progress_activity</span>}
                       </div>
                       <div className="flex items-center gap-1">
-                        {language !== 'en' && ocTranslatedNotes && (
-                          <button onClick={() => setOcShowTranslated(v => !v)}
-                            className="flex items-center gap-0.5 px-2 py-0.5 rounded-md text-[10px] font-medium text-primary/70 hover:bg-primary/10 transition-colors">
-                            <span className="material-symbols-outlined text-[12px]">translate</span>
-                            {ocShowTranslated ? (s.showOriginal || 'Original') : (s.showTranslation || 'Translated')}
-                          </button>
+                        {language !== 'en' && (
+                          ocTranslatedNotes ? (
+                            <button onClick={() => setOcShowTranslated(v => !v)}
+                              className="flex items-center gap-0.5 px-2 py-0.5 rounded-md text-[10px] font-medium text-primary/70 hover:bg-primary/10 transition-colors">
+                              <span className="material-symbols-outlined text-[12px]">translate</span>
+                              {ocShowTranslated ? (s.showOriginal || 'Original') : (s.showTranslation || 'Translated')}
+                            </button>
+                          ) : (
+                            <button onClick={() => handleOcTranslateNotes(ocUpdateInfo.releaseNotes!, ocUpdateInfo.latestVersion || ocUpdateInfo.currentVersion)} disabled={ocNotesTranslating}
+                              className="flex items-center gap-0.5 px-2 py-0.5 rounded-md text-[10px] font-medium text-primary/70 hover:bg-primary/10 disabled:opacity-40 transition-colors">
+                              <span className={`material-symbols-outlined text-[12px] ${ocNotesTranslating ? 'animate-spin' : ''}`}>
+                                {ocNotesTranslating ? 'progress_activity' : 'translate'}
+                              </span>
+                              {ocNotesTranslating ? (s.translating || 'Translating...') : (s.translateNotes || 'Translate')}
+                            </button>
+                          )
                         )}
                         {ocIsLong && (
                           <button onClick={() => setOcNotesExpanded(v => !v)}
