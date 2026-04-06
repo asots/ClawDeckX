@@ -144,11 +144,11 @@ const SchemaRemainder: React.FC<SchemaRemainderProps> = ({
   const sectionPathArr = useMemo(() => sectionPath.split('.'), [sectionPath]);
   const sectionValue = useMemo(() => getNestedValue(config, sectionPathArr), [config, sectionPathArr]);
 
-  if (remainderFields.length === 0) return null;
-
   const handleChange = useCallback((pathArr: string[], value: any) => {
     setField(pathArr, value);
   }, [setField]);
+
+  if (remainderFields.length === 0) return null;
 
   return (
     <div className="rounded-xl border border-dashed border-slate-200/60 dark:border-white/[0.06] overflow-hidden">
