@@ -173,7 +173,8 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ language, openWindow })
     // Window commands
     for (const id of ALL_WINDOW_IDS) {
       const meta = WINDOW_META[id];
-      const title = (t as any)?.[id] || id;
+      const raw = (t as any)?.[id];
+      const title = typeof raw === 'string' ? raw : (raw?.title || id);
       cmds.push({
         id: `win:${id}`,
         label: `${cp.open || 'Open'} ${title}`,
