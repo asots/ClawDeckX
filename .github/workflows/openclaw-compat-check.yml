@@ -1,0 +1,50 @@
+name: OpenClaw Compatibility Check
+
+on:
+  schedule:
+    - cron: '0 8 * * 1'  # Weekly on Monday 08:00 UTC
+  workflow_dispatch:
+    inputs:
+      skip_pull:
+        description: 'Skip git pull of openclaw repo'
+        required: false
+        default: 'false'
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  compat-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout ClawDeckX
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Clone OpenClaw repo
+        run: |
+          git clone --depth=50 https://github.com/openclaw/openclaw.git ../openclaw
+
+      - name: Run upgrade tracker
+        id: tracker
+        run: |
+          node scripts/track-openclaw-upgrade.mjs --skip-pull --json > compat-report.json 2>/dev/null || true
+          echo "report_exists=$(test -f compat-report.json && echo true || echo false)" >> $GITHUB_OUTPUT
+
+      - name: Run compatibility gate
+        if: steps.tracker.outputs.report_exists == 'true'
+        run: |
+          node scripts/ci-compat-gate.mjs compat-report.json
+
+      - name: Upload report artifact
+        if: always() && steps.tracker.outputs.report_exists == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: compat-report
+          path: compat-report.json
+          retention-days: 30
