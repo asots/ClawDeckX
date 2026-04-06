@@ -49,18 +49,7 @@ const Settings: React.FC<SettingsProps> = ({ language, onLogout, pendingTab, onT
       onTabConsumed?.();
     }
   }, [pendingTab, onTabConsumed, VALID_TABS]);
-  useEffect(() => {
-    const handler = (evt: Event) => {
-      const ce = evt as CustomEvent<{ id?: string; tab?: string }>;
-      if (ce?.detail?.id !== 'settings') return;
-      const tab = ce?.detail?.tab;
-      if (tab && VALID_TABS.includes(tab as SettingsTab)) {
-        setActiveTab(tab as SettingsTab);
-      }
-    };
-    window.addEventListener('clawdeck:open-window', handler as EventListener);
-    return () => window.removeEventListener('clawdeck:open-window', handler as EventListener);
-  }, [VALID_TABS]);
+  // Tab switching from clawdeck:open-window is handled centrally via pendingTab prop from App.tsx
 
   const handleTabSelect = (tab: SettingsTab) => {
     setActiveTab(tab);

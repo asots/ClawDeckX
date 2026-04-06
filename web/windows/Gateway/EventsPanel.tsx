@@ -1,4 +1,5 @@
 import React, { useCallback, useMemo } from 'react';
+import { WindowID, dispatchOpenWindow } from '../../types';
 import CustomSelect from '../../components/CustomSelect';
 import { parseEventTitle } from '../../utils/parseEventText';
 
@@ -45,7 +46,7 @@ const EventsPanel: React.FC<EventsPanelProps> = ({
   }, [events]);
 
   const jumpToWindow = useCallback((id: string, extra?: Record<string, any>) => {
-    window.dispatchEvent(new CustomEvent('clawdeck:open-window', { detail: { id, ...extra } }));
+    dispatchOpenWindow({ id: id as WindowID, ...extra });
   }, []);
 
   const suggestJumpWindow = useCallback((ev: any): { id: string; extra?: Record<string, any> } => {

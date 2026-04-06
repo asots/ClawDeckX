@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { Language } from '../types';
+import { Language, dispatchOpenWindow } from '../types';
 import { getTranslation } from '../locales';
 import { gwApi } from '../services/api';
 import { useGatewayStatus } from '../hooks/useGatewayStatus';
@@ -3815,7 +3815,7 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
           const agentId = agentMatch?.[1];
           if (!agentId) return undefined;
           return () => {
-            window.dispatchEvent(new CustomEvent('clawdeck:open-window', { detail: { id: 'agents', agentId, panel: 'tools' } }));
+            dispatchOpenWindow({ id: 'agents', agentId, panel: 'tools' });
           };
         })()}
         onModelChange={async (model) => {

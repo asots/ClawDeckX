@@ -1,6 +1,6 @@
 
 import React, { useMemo, useState, useEffect, useCallback, useRef, useId } from 'react';
-import { Language } from '../types';
+import { Language, WindowID, OpenWindowDetail, dispatchOpenWindow } from '../types';
 import { getTranslation } from '../locales';
 import { dashboardApi, gwApi, gatewayApi, hostInfoApi, configApi, doctorApi, gatewayProfileApi, selfUpdateApi } from '../services/api';
 import { settleTyped } from '../utils/settle';
@@ -123,8 +123,8 @@ function GaugeCard({ pct, label, color, gradient, borderColor, children }: {
   );
 }
 
-function openWindow(id: string, extra: Record<string, any> = {}) {
-  window.dispatchEvent(new CustomEvent('clawdeck:open-window', { detail: { id, ...extra } }));
+function openWindow(id: string, extra: Partial<Omit<OpenWindowDetail, 'id'>> = {}) {
+  dispatchOpenWindow({ id: id as WindowID, ...extra });
 }
 
 function isLocal(host: string): boolean {
@@ -651,7 +651,7 @@ const Dashboard: React.FC<DashboardProps> = ({ language }) => {
                 .replace('{{required}}', overviewInfo?.compatibility?.required || '')}
             </p>
           </div>
-          <button onClick={() => { window.dispatchEvent(new CustomEvent('clawdeck:open-window', { detail: { id: 'settings', tab: 'update' } })); }}
+          <button onClick={() => { dispatchOpenWindow({ id: 'settings', tab: 'update' }); }}
             className="text-[10px] text-red-600 dark:text-red-400 font-bold hover:underline shrink-0 flex items-center gap-0.5">
             {d.compatGoUpdate || 'Update'}<span className="material-symbols-outlined text-[12px]">chevron_right</span>
           </button>
@@ -1033,7 +1033,7 @@ const Dashboard: React.FC<DashboardProps> = ({ language }) => {
                 : globalExecAsk;
           const fsWsOnlyLabel = fsWsOnly ? ((d as any).yes || 'Yes') : ((d as any).no || 'No');
           const openEditorSection = (section: string) => {
-            window.dispatchEvent(new CustomEvent('clawdeck:open-window', { detail: { id: 'editor', section } }));
+            dispatchOpenWindow({ id: 'editor', section });
           };
           const items = [
             { icon: 'build', label: d.secToolProfile || 'Tool Profile', value: profileLabel, color: profileTextColor(globalProfile), section: 'tools' },
@@ -1462,7 +1462,7 @@ const Dashboard: React.FC<DashboardProps> = ({ language }) => {
                 const label = s.label || s.key || s.id || `${d.sessionDefault} ${i + 1}`;
                 const sessionId = s.key || s.id;
                 return (
-                  <button key={i} onClick={() => sessionId && window.dispatchEvent(new CustomEvent('clawdeck:open-window', { detail: { id: 'sessions', sessionId } }))}
+                  <button key={i} onClick={() => sessionId && dispatchOpenWindow({ id: 'sessions', sessionKey: sessionId })}
                     className="w-full flex items-center gap-3 py-1.5 px-2 rounded-lg hover:bg-slate-50 dark:hover:bg-white/[0.03] transition-colors text-start cursor-pointer group">
                     <div className="w-6 h-6 rounded-lg bg-indigo-500/10 flex items-center justify-center text-[10px] font-bold text-indigo-500 group-hover:bg-indigo-500/20 transition-colors">{i + 1}</div>
                     <span className="text-[11px] font-medium text-slate-700 dark:text-white/60 truncate flex-1 group-hover:text-primary transition-colors">{label}</span>

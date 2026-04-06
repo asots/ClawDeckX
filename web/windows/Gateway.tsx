@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { Language } from '../types';
+import { Language, OpenWindowDetail } from '../types';
 import { getTranslation } from '../locales';
 import { eventsApi, gatewayApi, gatewayProfileApi, gwApi } from '../services/api';
 import { useVisibilityPolling } from '../hooks/useVisibilityPolling';
@@ -15,15 +15,6 @@ import ChannelsPanel from './Gateway/ChannelsPanel';
 import DebugPanel from './Gateway/DebugPanel';
 import ServicePanel from './Gateway/ServicePanel';
 import { copyToClipboard } from '../utils/clipboard';
-
-interface OpenWindowDetail {
-  id?: string;
-  tab?: 'logs' | 'events' | 'debug' | 'channels' | 'service';
-  eventRisk?: 'all' | 'low' | 'medium' | 'high' | 'critical';
-  eventType?: 'all' | 'activity' | 'alert';
-  eventSource?: string;
-  eventKeyword?: string;
-}
 
 interface GatewayProfile {
   id: number;
@@ -187,9 +178,9 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
       const detail = ce?.detail;
       if (!detail || detail.id !== 'gateway') return;
 
-      if (detail.tab) setActiveTab(detail.tab);
-      if (detail.eventRisk) setEventRisk(detail.eventRisk);
-      if (detail.eventType) setEventType(detail.eventType);
+      if (detail.tab) setActiveTab(detail.tab as typeof activeTab);
+      if (detail.eventRisk) setEventRisk(detail.eventRisk as typeof eventRisk);
+      if (detail.eventType) setEventType(detail.eventType as typeof eventType);
       if (detail.eventSource) setEventSource(detail.eventSource);
       if (typeof detail.eventKeyword === 'string') setEventKeyword(detail.eventKeyword);
       const hasPreset = detail.tab === 'events' || detail.eventRisk || detail.eventType || detail.eventSource || typeof detail.eventKeyword === 'string';

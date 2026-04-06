@@ -1,5 +1,5 @@
 ﻿import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { WindowID, WindowState, Language } from '../types';
+import { WindowID, WindowState, Language, dispatchOpenWindow } from '../types';
 import type { WallpaperConfig } from '../utils/preferences';
 import {
   applyResolvedWallpaper,
@@ -474,6 +474,21 @@ const Desktop: React.FC<DesktopProps> = ({
 
       {/* 桌面图标区域 — macOS 风格可拖拽 */}
       <main className="flex-1 w-full relative overflow-hidden">
+        {/* Desktop search bar — triggers Command Palette */}
+        {!dockAutoHide && (
+          <div className="absolute top-10 inset-x-0 z-10 flex justify-center pointer-events-none px-4">
+            <button
+              onClick={() => window.dispatchEvent(new Event('clawdeck:open-palette'))}
+              className="pointer-events-auto w-full max-w-[min(480px,50vw)] flex items-center gap-2.5 px-4 py-2 rounded-xl border border-white/15 dark:border-white/10 bg-black/20 dark:bg-black/30 hover:bg-black/30 dark:hover:bg-black/40 backdrop-blur-xl transition-all duration-200 cursor-text group shadow-lg"
+            >
+              <span className="material-symbols-outlined text-[16px] text-white/50 group-hover:text-white/70 transition-colors">search</span>
+              <span className="text-[12px] text-white/40 group-hover:text-white/60 transition-colors flex-1 text-start truncate">{(t as any).cp?.placeholder || 'Type a command or search…'}</span>
+              <kbd className="text-[10px] font-mono px-1.5 py-0.5 rounded-md border border-white/10 bg-white/[0.06] text-white/30 leading-none shrink-0">
+                {navigator.platform?.includes('Mac') ? '⌘' : 'Ctrl'}K
+              </kbd>
+            </button>
+          </div>
+        )}
         {wallpaper?.imageEnabled && !dockAutoHide && (
           <div className="group/wp absolute top-12 end-3 z-[9000] flex items-center rounded-2xl border border-white/10 bg-black/20 dark:bg-black/30 backdrop-blur-xl shadow-lg opacity-40 hover:opacity-100 transition-all duration-300 px-2 py-2">
             <div className="flex items-center gap-2 max-w-0 group-hover/wp:max-w-[300px] overflow-hidden transition-all duration-300 ease-in-out">
@@ -517,7 +532,7 @@ const Desktop: React.FC<DesktopProps> = ({
             </button>
             </div>
             <button
-              onClick={() => window.dispatchEvent(new CustomEvent('clawdeck:open-window', { detail: { id: 'settings', tab: 'preferences' } }))}
+              onClick={() => dispatchOpenWindow({ id: 'settings', tab: 'preferences' })}
               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-white/90 hover:bg-white/10"
               title={(t as any).pref?.title || 'Settings'}
             >

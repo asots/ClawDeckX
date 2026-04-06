@@ -5,12 +5,13 @@ import { ConfirmProvider } from './components/ConfirmDialog';
 import LockScreen from './components/LockScreen';
 import Desktop from './components/Desktop';
 import WindowFrame from './components/WindowFrame';
-import { WindowID, WindowState, WindowBounds, Language, isRtl } from './types';
+import { WindowID, WindowState, WindowBounds, Language, isRtl, OpenWindowDetail } from './types';
 import { getTranslation, loadLocale } from './locales';
 import { get } from './services/request';
 import { authApi, settingsApi } from './services/api';
 import { useBadgeCounts } from './hooks/useBadgeCounts';
 import ErrorBoundary from './components/ErrorBoundary';
+import CommandPalette from './components/CommandPalette';
 import type { Preferences, StartupWindowMode } from './utils/preferences';
 import { loadPreferences } from './utils/preferences';
 
@@ -212,8 +213,8 @@ const App: React.FC = () => {
       });
   }, []);
 
-  // Cross-window navigation: jump to a specific session in Sessions window
-  const [pendingSessionKey, setPendingSessionKey] = useState<string | null>(null);
+  // Unified cross-window deep-link state
+  const [pendingDetail, setPendingDetail] = useState<OpenWindowDetail | null>(null);
 
   // 动态加载语言包
   useEffect(() => {
@@ -322,7 +323,7 @@ const App: React.FC = () => {
     } finally {
       setWindows(buildWindows(language, loadPreferences().startupWindow));
       setMaxZ(100);
-      setPendingSessionKey(null);
+      setPendingDetail(null);
       prefetchedWindowsRef.current.clear();
       hasWarmedChunksRef.current = false;
       setIsLocked(true);
@@ -360,24 +361,13 @@ const App: React.FC = () => {
     setPrefs(next);
   }, []);
 
-  const [pendingEditorSection, setPendingEditorSection] = useState<string | null>(null);
-  const [pendingExpandItem, setPendingExpandItem] = useState<string | null>(null);
-  const [pendingSettingsTab, setPendingSettingsTab] = useState<string | null>(null);
+  // Unified deep-link event listener
   useEffect(() => {
     const handler = (evt: Event) => {
-      const ce = evt as CustomEvent<{ id?: WindowID; section?: string; expandItem?: string; tab?: string }>;
-      const id = ce?.detail?.id;
-      if (!id) return;
-      if (id === 'editor' && ce?.detail?.section) {
-        setPendingEditorSection(ce.detail.section);
-      }
-      if (id === 'knowledge' && ce?.detail?.expandItem) {
-        setPendingExpandItem(ce.detail.expandItem);
-      }
-      if (id === 'settings' && ce?.detail?.tab) {
-        setPendingSettingsTab(ce.detail.tab);
-      }
-      openWindow(id);
+      const detail = (evt as CustomEvent<OpenWindowDetail>).detail;
+      if (!detail?.id) return;
+      setPendingDetail(detail);
+      openWindow(detail.id);
     };
     window.addEventListener('clawdeck:open-window', handler as EventListener);
     return () => window.removeEventListener('clawdeck:open-window', handler as EventListener);
@@ -385,7 +375,7 @@ const App: React.FC = () => {
 
   // Navigate to Sessions window and select a specific session
   const navigateToSession = useCallback((sessionKey: string) => {
-    setPendingSessionKey(sessionKey);
+    setPendingDetail({ id: 'sessions', sessionKey });
     openWindow('sessions');
   }, [openWindow]);
 
@@ -401,6 +391,9 @@ const App: React.FC = () => {
       window.removeEventListener('navigate-to-session', handleNavigateToSession as EventListener);
     };
   }, [navigateToSession]);
+
+  const consumeDetail = useCallback(() => setPendingDetail(null), []);
+  const detailFor = useCallback((id: WindowID) => pendingDetail?.id === id ? pendingDetail : null, [pendingDetail]);
 
   const closeWindow = useCallback((id: WindowID) => {
     setWindows(prev => prev.map(w => w.id === id ? { ...w, isOpen: false, isMaximized: false } : w));
@@ -491,18 +484,18 @@ const App: React.FC = () => {
                   <Suspense fallback={<div className="flex items-center justify-center h-full text-slate-400 dark:text-white/40"><span className="material-symbols-outlined animate-spin me-2">progress_activity</span></div>}>
                     {w.id === 'dashboard' && <Dashboard language={language} />}
                     {w.id === 'gateway' && <Gateway language={language} />}
-                    {w.id === 'sessions' && <Sessions language={language} pendingSessionKey={pendingSessionKey} onSessionKeyConsumed={() => setPendingSessionKey(null)} />}
+                    {w.id === 'sessions' && <Sessions language={language} pendingSessionKey={detailFor('sessions')?.sessionKey ?? null} onSessionKeyConsumed={consumeDetail} />}
                     {w.id === 'activity' && <Activity language={language} onNavigateToSession={navigateToSession} />}
                     {w.id === 'alerts' && <Alerts language={language} />}
                     {w.id === 'usage' && <Usage language={language} onNavigateToSession={navigateToSession} />}
-                    {w.id === 'editor' && <Editor language={language} pendingSection={pendingEditorSection} onSectionConsumed={() => setPendingEditorSection(null)} />}
+                    {w.id === 'editor' && <Editor language={language} pendingSection={detailFor('editor')?.section ?? null} onSectionConsumed={consumeDetail} />}
                     {w.id === 'skills' && <Skills language={language} />}
                     {w.id === 'agents' && <Agents language={language} />}
                     {w.id === 'maintenance' && <Doctor language={language} />}
                     {w.id === 'scheduler' && <Scheduler language={language} />}
-                    {w.id === 'settings' && <Settings language={language} onLogout={logout} pendingTab={pendingSettingsTab} onTabConsumed={() => setPendingSettingsTab(null)} onPrefsChange={handlePrefsChange} badges={badges} />}
+                    {w.id === 'settings' && <Settings language={language} onLogout={logout} pendingTab={detailFor('settings')?.tab ?? null} onTabConsumed={consumeDetail} onPrefsChange={handlePrefsChange} badges={badges} />}
                     {w.id === 'nodes' && <Nodes language={language} />}
-                    {w.id === 'knowledge' && <Knowledge language={language} pendingExpandItem={pendingExpandItem} onExpandItemConsumed={() => setPendingExpandItem(null)} />}
+                    {w.id === 'knowledge' && <Knowledge language={language} pendingExpandItem={detailFor('knowledge')?.expandItem ?? null} onExpandItemConsumed={consumeDetail} />}
                     {w.id === 'setup_wizard' && (
                       <SetupWizard
                         language={language}
@@ -517,6 +510,7 @@ const App: React.FC = () => {
               </WindowFrame>
             );
           })}
+          <CommandPalette language={language} openWindow={openWindow} />
         </div>
       </ConfirmProvider>
     </ToastProvider>

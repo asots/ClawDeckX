@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { Language } from '../../types';
+import { Language, dispatchOpenWindow } from '../../types';
 import { getTranslation } from '../../locales';
 import { templateSystem, KnowledgeItem, KnowledgeItemType, KnowledgeStatusCheck } from '../../services/template-system';
 import { recipeApi, gwApi } from '../../services/api';
@@ -747,7 +747,7 @@ const KnowledgeDetailModal: React.FC<KnowledgeDetailModalProps> = ({ item, allIt
             ) : item.content.editorSection ? (
               <button
                 onClick={() => {
-                  window.dispatchEvent(new CustomEvent('clawdeck:open-window', { detail: { id: 'editor', section: item.content.editorSection } }));
+                  dispatchOpenWindow({ id: 'editor', section: item.content.editorSection });
                   onClose();
                 }}
                 className="h-8 px-4 rounded-lg text-[12px] font-bold bg-primary text-white hover:bg-primary/90 transition-colors flex items-center gap-1.5"

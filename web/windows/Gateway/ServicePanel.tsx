@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { dispatchOpenWindow } from '../../types';
 import { gatewayApi, gwApi } from '../../services/api';
 import { subscribeManagerWS } from '../../services/manager-ws';
 
@@ -171,7 +172,7 @@ const ServicePanel: React.FC<ServicePanelProps> = ({ status, healthCheckEnabled,
   }, [gw, toast, fetchWsStatus]);
 
   const openSettings = useCallback(() => {
-    window.dispatchEvent(new CustomEvent('clawdeck:open-window', { detail: { id: 'settings', tab: 'update' } }));
+    dispatchOpenWindow({ id: 'settings', tab: 'update' });
   }, []);
 
   return (

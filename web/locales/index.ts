@@ -31,6 +31,7 @@ import gwEn from './en/gw.json';
 import esEn from './en/es.json';
 import ndEn from './en/nd.json';
 import drEn from './en/dr.json';
+import cpEn from './en/cp.json';
 import tooltipsEn from './en/tooltips.json';
 
 // cm_* files → merge into one "common" object
@@ -45,15 +46,16 @@ function buildLocale(
   cmUsage: any, cmSk: any, cmSch: any, cmAct: any, cmAlrt: any,
   cmSec: any, cmSet: any, cmExtra: any, cmMulti: any, cmMarket: any,
   sw: any, mw: any, cw: any, ow: any, gw: any, es: any, nd: any, dr: any,
+  cp: any,
 ) {
   const common = mergeCommon(cm, cmDash, cmChat, cmAgt, cmEdit, cmUsage, cmSk, cmSch, cmAct, cmAlrt, cmSec, cmSet, cmExtra, cmMulti, cmMarket);
-  return { ...common, sw, mw, cw, ow, gw, es, nd, dr };
+  return { ...common, sw, mw, cw, ow, gw, es, nd, dr, cp };
 }
 
 const en = buildLocale(
   cmEn, cmDashEn, cmChatEn, cmAgtEn, cmEditEn, cmUsageEn, cmSkEn, cmSchEn,
   cmActEn, cmAlrtEn, cmSecEn, cmSetEn, cmExtraEn, cmMultiEn, cmMarketEn,
-  swEn, mwEn, cwEn, owEn, gwEn, esEn, ndEn, drEn,
+  swEn, mwEn, cwEn, owEn, gwEn, esEn, ndEn, drEn, cpEn,
 );
 
 // Runtime cache: loaded locales + tooltips
@@ -73,7 +75,7 @@ const jsonModules = import.meta.glob<{ default: any }>(
 const fileKeys = [
   'cm', 'cm_dash', 'cm_chat', 'cm_agt', 'cm_edit', 'cm_usage', 'cm_sk', 'cm_sch',
   'cm_act', 'cm_alrt', 'cm_sec', 'cm_set', 'cm_extra', 'cm_multi', 'cm_market',
-  'sw', 'mw', 'cw', 'ow', 'gw', 'es', 'nd', 'dr',
+  'sw', 'mw', 'cw', 'ow', 'gw', 'es', 'nd', 'dr', 'cp',
 ] as const;
 
 const makePartialLocaleLoader = (lang: Exclude<Language, 'en'>): LocaleLoader => async () => {
@@ -92,14 +94,14 @@ const makePartialLocaleLoader = (lang: Exclude<Language, 'en'>): LocaleLoader =>
   const [
     cm, cmDash, cmChat, cmAgt, cmEdit, cmUsage, cmSk, cmSch,
     cmAct, cmAlrt, cmSec, cmSet, cmExtra, cmMulti, cmMarket,
-    sw, mw, cw, ow, gw, es, nd, dr,
+    sw, mw, cw, ow, gw, es, nd, dr, cp,
   ] = parts;
 
   return {
     locale: buildLocale(
       cm, cmDash, cmChat, cmAgt, cmEdit, cmUsage, cmSk, cmSch,
       cmAct, cmAlrt, cmSec, cmSet, cmExtra, cmMulti, cmMarket,
-      sw, mw, cw, ow, gw, es, nd, dr,
+      sw, mw, cw, ow, gw, es, nd, dr, cp,
     ),
     tooltips,
   };

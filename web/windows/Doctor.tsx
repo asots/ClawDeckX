@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Language } from '../types';
+import { Language, WindowID, dispatchOpenWindow } from '../types';
 import { getTranslation } from '../locales';
 import { doctorApi, gwApi } from '../services/api';
 import { fmtAgoTemplate } from '../utils/time';
@@ -889,7 +889,7 @@ const Doctor: React.FC<DoctorProps> = ({ language }) => {
 
 
   const jumpToWindow = useCallback((id: string, opts?: { section?: string }) => {
-    window.dispatchEvent(new CustomEvent('clawdeck:open-window', { detail: { id, ...opts } }));
+    dispatchOpenWindow({ id: id as WindowID, ...opts });
   }, []);
 
   const isSecurityItem = useCallback((item: CheckItem) => (item.category || 'other') === 'security' || String(item.id || item.code || '').startsWith('security.'), []);
@@ -2303,7 +2303,7 @@ const Doctor: React.FC<DoctorProps> = ({ language }) => {
                               {relatedFaqs.map(faq => (
                                 <button
                                   key={faq.id}
-                                  onClick={() => window.dispatchEvent(new CustomEvent('clawdeck:open-window', { detail: { id: 'knowledge', expandItem: faq.id } }))}
+                                  onClick={() => dispatchOpenWindow({ id: 'knowledge', expandItem: faq.id })}
                                   className="text-[10px] text-indigo-500 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 hover:underline underline-offset-2 flex items-center gap-0.5"
                                 >
                                   <span className="material-symbols-outlined text-[10px]">help_outline</span>
