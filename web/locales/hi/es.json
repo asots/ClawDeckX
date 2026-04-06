@@ -1508,5 +1508,15 @@
   "reqTlsKey": "TLS Key",
   "reqTlsPassphrase": "TLS Passphrase",
   "reqTlsServerName": "TLS Server Name",
-  "reqTlsSkipVerify": "Skip TLS Verify"
+  "reqTlsSkipVerify": "Skip TLS Verify",
+  "musicGenerationModel": "संगीत निर्माण मॉडल",
+  "contextInjection": "संदर्भ इंजेक्शन",
+  "optContinuationSkip": "निरंतरता छोड़ें",
+  "agentParams": "डिफ़ॉल्ट पैरामीटर",
+  "asyncDirectSend": "एसिंक्रोनस पूर्ण: सीधे भेजें",
+  "dreaming": "ड्रीमिंग",
+  "dreamingEnabled": "ड्रीमिंग सक्षम करें",
+  "dreamingFrequency": "आवृत्ति",
+  "dreamingRecencyHalfLife": "हाल की अर्ध-आयु (दिन)",
+  "dreamingMaxAge": "अधिकतम आयु (दिन)"
 }

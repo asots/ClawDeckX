@@ -1508,5 +1508,15 @@
   "reqTlsKey": "TLS Key",
   "reqTlsPassphrase": "TLS Passphrase",
   "reqTlsServerName": "TLS Server Name",
-  "reqTlsSkipVerify": "Skip TLS Verify"
+  "reqTlsSkipVerify": "Skip TLS Verify",
+  "musicGenerationModel": "Modèle de génération musicale",
+  "contextInjection": "Injection de contexte",
+  "optContinuationSkip": "Saut de continuation",
+  "agentParams": "Paramètres par défaut",
+  "asyncDirectSend": "Achèvement asynchrone : Envoi direct",
+  "dreaming": "Dreaming",
+  "dreamingEnabled": "Activer le Dreaming",
+  "dreamingFrequency": "Fréquence",
+  "dreamingRecencyHalfLife": "Demi-vie de récence (jours)",
+  "dreamingMaxAge": "Âge maximum (jours)"
 }

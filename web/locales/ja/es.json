@@ -1508,5 +1508,15 @@
   "reqTlsKey": "TLS鍵",
   "reqTlsPassphrase": "TLSパスフレーズ",
   "reqTlsServerName": "TLSサーバー名",
-  "reqTlsSkipVerify": "TLS検証をスキップ"
+  "reqTlsSkipVerify": "TLS検証をスキップ",
+  "musicGenerationModel": "音楽生成モデル",
+  "contextInjection": "コンテキスト注入",
+  "optContinuationSkip": "継続スキップ",
+  "agentParams": "デフォルトパラメータ",
+  "asyncDirectSend": "非同期完了：直接送信",
+  "dreaming": "ドリーミング",
+  "dreamingEnabled": "ドリーミングを有効化",
+  "dreamingFrequency": "頻度",
+  "dreamingRecencyHalfLife": "直近半減期（日）",
+  "dreamingMaxAge": "最大保持日数"
 }

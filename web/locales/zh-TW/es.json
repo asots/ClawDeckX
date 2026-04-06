@@ -1508,5 +1508,15 @@
   "reqTlsKey": "TLS 金鑰",
   "reqTlsPassphrase": "TLS 密碼",
   "reqTlsServerName": "TLS 伺服器名稱",
-  "reqTlsSkipVerify": "跳過 TLS 驗證"
+  "reqTlsSkipVerify": "跳過 TLS 驗證",
+  "musicGenerationModel": "音樂生成模型",
+  "contextInjection": "上下文注入",
+  "optContinuationSkip": "延續跳過",
+  "agentParams": "預設參數",
+  "asyncDirectSend": "非同步完成：直接傳送",
+  "dreaming": "夢境記憶",
+  "dreamingEnabled": "啟用夢境記憶",
+  "dreamingFrequency": "頻率",
+  "dreamingRecencyHalfLife": "近期衰減半衰期（天）",
+  "dreamingMaxAge": "最大保留天數"
 }

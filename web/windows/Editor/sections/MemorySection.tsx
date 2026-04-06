@@ -24,6 +24,13 @@ export const MemorySection: React.FC<SectionProps> = ({ schema, setField, getFie
         <TextField label={es.memSearchFallback || 'Search Fallback'} tooltip={tip('memory.search.fallback')} value={g(['search', 'fallback']) || ''} onChange={v => s(['search', 'fallback'], v)} placeholder="builtin" />
       </ConfigSection>
 
+      <ConfigSection title={es.dreaming || 'Dreaming'} icon="bedtime" iconColor="text-indigo-500" defaultOpen={false}>
+        <SwitchField label={es.dreamingEnabled || 'Enabled'} tooltip={tip('memory.dreaming.enabled')} value={g(['dreaming', 'enabled']) === true} onChange={v => s(['dreaming', 'enabled'], v)} />
+        <TextField label={es.dreamingFrequency || 'Frequency'} tooltip={tip('memory.dreaming.frequency')} value={g(['dreaming', 'frequency']) || ''} onChange={v => s(['dreaming', 'frequency'], v)} placeholder="daily" />
+        <NumberField label={es.dreamingRecencyHalfLife || 'Recency Half-Life (days)'} tooltip={tip('memory.dreaming.recencyHalfLifeDays')} value={g(['dreaming', 'recencyHalfLifeDays'])} onChange={v => s(['dreaming', 'recencyHalfLifeDays'], v)} min={0} />
+        <NumberField label={es.dreamingMaxAge || 'Max Age (days)'} tooltip={tip('memory.dreaming.maxAgeDays')} value={g(['dreaming', 'maxAgeDays'])} onChange={v => s(['dreaming', 'maxAgeDays'], v)} min={0} />
+      </ConfigSection>
+
       {g(['backend']) === 'qmd' && (
         <ConfigSection title={es.optQmd} icon="database" iconColor="text-sky-500" defaultOpen={false}>
           <TextField label={es.qmdCommand} tooltip={tip('memory.qmd.command')} value={g(['qmd', 'command']) || ''} onChange={v => s(['qmd', 'command'], v)} placeholder={es.phQmdCommand} />

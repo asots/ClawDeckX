@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { SectionProps } from '../sectionTypes';
-import { ConfigSection, ConfigCard, TextField, NumberField, SelectField, SwitchField, ArrayField, AddButton, EmptyState } from '../fields';
+import { ConfigSection, ConfigCard, TextField, NumberField, SelectField, SwitchField, ArrayField, KeyValueField, AddButton, EmptyState } from '../fields';
 import { getTranslation } from '../../../locales';
 import { schemaTooltip } from '../schemaTooltip';
 
@@ -26,6 +26,7 @@ export const AgentsSection: React.FC<SectionProps> = ({ config, schema, setField
   const SANDBOX_ACCESS_OPTIONS = useMemo(() => [{ value: 'none', label: es.optNone || 'None' }, { value: 'ro', label: es.optReadOnly || 'Read Only' }, { value: 'rw', label: es.optReadWrite || 'Read/Write' }], [es]);
   const SANDBOX_SCOPE_OPTIONS = useMemo(() => [{ value: 'session', label: es.optSession || 'Session' }, { value: 'agent', label: es.optAgent || 'Agent' }, { value: 'shared', label: es.optShared || 'Shared' }], [es]);
   const CTX_PRUNING_MODE_OPTIONS = useMemo(() => [{ value: 'off', label: es.optOff }, { value: 'cache-ttl', label: es.optCacheTtl || 'Cache TTL' }], [es]);
+  const CTX_INJECTION_OPTIONS = useMemo(() => [{ value: '', label: es.default }, { value: 'continuation-skip', label: es.optContinuationSkip || 'Continuation Skip' }], [es]);
 
   const rawAgentList = getField(['agents', 'list']);
   const agentList: any[] = Array.isArray(rawAgentList) ? rawAgentList : [];
@@ -42,6 +43,7 @@ export const AgentsSection: React.FC<SectionProps> = ({ config, schema, setField
         <TextField label={es.workspace} tooltip={tip('agents.defaults.workspace')} value={d(['workspace']) || ''} onChange={v => sd(['workspace'], v)} placeholder={es.phWorkspacePath} />
         <TextField label={es.imageGenerationModel || 'Image Generation Model'} tooltip={tip('agents.defaults.imageGenerationModel')} value={typeof d(['imageGenerationModel']) === 'string' ? d(['imageGenerationModel']) : d(['imageGenerationModel'])?.primary || ''} onChange={v => sd(['imageGenerationModel'], v)} placeholder={es.phProviderModelId} />
         <TextField label={es.videoGenerationModel || 'Video Generation Model'} tooltip={tip('agents.defaults.videoGenerationModel.primary')} value={typeof d(['videoGenerationModel']) === 'string' ? d(['videoGenerationModel']) : d(['videoGenerationModel'])?.primary || ''} onChange={v => sd(['videoGenerationModel', 'primary'], v)} placeholder={es.phProviderModelId} />
+        <TextField label={es.musicGenerationModel || 'Music Generation Model'} tooltip={tip('agents.defaults.musicGenerationModel')} value={typeof d(['musicGenerationModel']) === 'string' ? d(['musicGenerationModel']) : d(['musicGenerationModel'])?.primary || ''} onChange={v => sd(['musicGenerationModel'], v)} placeholder={es.phProviderModelId} />
         <TextField label={es.pdfModel || 'PDF Model'} tooltip={tip('agents.defaults.pdfModel')} value={typeof d(['pdfModel']) === 'string' ? d(['pdfModel']) : d(['pdfModel'])?.primary || ''} onChange={v => sd(['pdfModel'], v)} placeholder={es.phProviderModelId} />
         <NumberField label={es.pdfMaxBytesMb || 'PDF Max Size (MB)'} tooltip={tip('agents.defaults.pdfMaxBytesMb')} value={d(['pdfMaxBytesMb'])} onChange={v => sd(['pdfMaxBytesMb'], v)} min={1} />
         <NumberField label={es.pdfMaxPages || 'PDF Max Pages'} tooltip={tip('agents.defaults.pdfMaxPages')} value={d(['pdfMaxPages'])} onChange={v => sd(['pdfMaxPages'], v)} min={1} />
@@ -66,6 +68,8 @@ export const AgentsSection: React.FC<SectionProps> = ({ config, schema, setField
         <SwitchField label={es.truncateAfterCompaction || 'Truncate After Compaction'} tooltip={tip('agents.defaults.compaction.truncateAfterCompaction')} value={d(['compaction', 'truncateAfterCompaction']) === true} onChange={v => sd(['compaction', 'truncateAfterCompaction'], v)} />
         <SwitchField label={es.compactionNotifyUser || 'Notify User on Compaction'} tooltip={tip('agents.defaults.compaction.notifyUser')} value={d(['compaction', 'notifyUser']) === true} onChange={v => sd(['compaction', 'notifyUser'], v)} />
         <SwitchField label={es.bootstrapTruncationWarning || 'Bootstrap Truncation Warning'} tooltip={tip('agents.defaults.bootstrapTruncationWarning')} value={d(['bootstrapTruncationWarning']) !== false} onChange={v => sd(['bootstrapTruncationWarning'], v)} />
+        <SelectField label={es.contextInjection || 'Context Injection'} tooltip={tip('agents.defaults.contextInjection')} value={d(['contextInjection']) || ''} onChange={v => sd(['contextInjection'], v)} options={CTX_INJECTION_OPTIONS} />
+        <KeyValueField label={es.agentParams || 'Default Params'} tooltip={tip('agents.defaults.params')} value={d(['params']) || {}} onChange={v => sd(['params'], v)} />
       </ConfigSection>
 
       <ConfigSection title={es.humanDelay} icon="timer" iconColor="text-teal-500" defaultOpen={false}>

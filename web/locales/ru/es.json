@@ -1508,5 +1508,15 @@
   "reqTlsKey": "TLS Key",
   "reqTlsPassphrase": "TLS Passphrase",
   "reqTlsServerName": "TLS Server Name",
-  "reqTlsSkipVerify": "Skip TLS Verify"
+  "reqTlsSkipVerify": "Skip TLS Verify",
+  "musicGenerationModel": "Модель генерации музыки",
+  "contextInjection": "Внедрение контекста",
+  "optContinuationSkip": "Пропуск продолжения",
+  "agentParams": "Параметры по умолчанию",
+  "asyncDirectSend": "Асинхронное завершение: Прямая отправка",
+  "dreaming": "Dreaming",
+  "dreamingEnabled": "Включить Dreaming",
+  "dreamingFrequency": "Частота",
+  "dreamingRecencyHalfLife": "Период полураспада новизны (дни)",
+  "dreamingMaxAge": "Макс. возраст (дни)"
 }

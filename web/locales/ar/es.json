@@ -1508,5 +1508,15 @@
   "reqTlsKey": "TLS Key",
   "reqTlsPassphrase": "TLS Passphrase",
   "reqTlsServerName": "TLS Server Name",
-  "reqTlsSkipVerify": "Skip TLS Verify"
+  "reqTlsSkipVerify": "Skip TLS Verify",
+  "musicGenerationModel": "نموذج توليد الموسيقى",
+  "contextInjection": "حقن السياق",
+  "optContinuationSkip": "تخطي الاستمرار",
+  "agentParams": "المعلمات الافتراضية",
+  "asyncDirectSend": "إكمال غير متزامن: إرسال مباشر",
+  "dreaming": "الأحلام",
+  "dreamingEnabled": "تفعيل الأحلام",
+  "dreamingFrequency": "التردد",
+  "dreamingRecencyHalfLife": "نصف عمر الحداثة (أيام)",
+  "dreamingMaxAge": "الحد الأقصى للعمر (أيام)"
 }

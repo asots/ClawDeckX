@@ -1508,5 +1508,15 @@
   "reqTlsKey": "TLS Key",
   "reqTlsPassphrase": "TLS Passphrase",
   "reqTlsServerName": "TLS Server Name",
-  "reqTlsSkipVerify": "Skip TLS Verify"
+  "reqTlsSkipVerify": "Skip TLS Verify",
+  "musicGenerationModel": "Model Pembuatan Musik",
+  "contextInjection": "Injeksi Konteks",
+  "optContinuationSkip": "Lewati Kelanjutan",
+  "agentParams": "Parameter Default",
+  "asyncDirectSend": "Penyelesaian Async: Kirim Langsung",
+  "dreaming": "Dreaming",
+  "dreamingEnabled": "Aktifkan Dreaming",
+  "dreamingFrequency": "Frekuensi",
+  "dreamingRecencyHalfLife": "Paruh Waktu Kebaruan (hari)",
+  "dreamingMaxAge": "Umur Maks (hari)"
 }

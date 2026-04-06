@@ -123,6 +123,7 @@ export const ToolsSection: React.FC<SectionProps> = ({ schema, setField, getFiel
         <TextField label={es.videoAttachments || 'Video Attachments'} tooltip={tip('tools.media.video.attachments')} value={g(['media', 'video', 'attachments']) || ''} onChange={v => s(['media', 'video', 'attachments'], v)} />
         <TextField label={es.videoModels || 'Video Models'} tooltip={tip('tools.media.video.models')} value={g(['media', 'video', 'models']) || ''} onChange={v => s(['media', 'video', 'models'], v)} />
         <TextField label={es.videoScope || 'Video Scope'} tooltip={tip('tools.media.video.scope')} value={g(['media', 'video', 'scope']) || ''} onChange={v => s(['media', 'video', 'scope'], v)} />
+        <SwitchField label={es.asyncDirectSend || 'Async Completion: Direct Send'} tooltip={tip('tools.media.asyncCompletion.directSend')} value={g(['media', 'asyncCompletion', 'directSend']) === true} onChange={v => s(['media', 'asyncCompletion', 'directSend'], v)} />
       </ConfigSection>
 
       <ConfigSection title={es.pdfConfig || 'PDF'} icon="picture_as_pdf" iconColor="text-red-400" defaultOpen={false}>

@@ -1508,5 +1508,15 @@
   "reqTlsKey": "TLS 키",
   "reqTlsPassphrase": "TLS 암호",
   "reqTlsServerName": "TLS 서버 이름",
-  "reqTlsSkipVerify": "TLS 검증 건너뛰기"
+  "reqTlsSkipVerify": "TLS 검증 건너뛰기",
+  "musicGenerationModel": "음악 생성 모델",
+  "contextInjection": "컨텍스트 주입",
+  "optContinuationSkip": "연속 건너뛰기",
+  "agentParams": "기본 매개변수",
+  "asyncDirectSend": "비동기 완료: 직접 전송",
+  "dreaming": "드리밍",
+  "dreamingEnabled": "드리밍 활성화",
+  "dreamingFrequency": "빈도",
+  "dreamingRecencyHalfLife": "최신성 반감기 (일)",
+  "dreamingMaxAge": "최대 보존 일수"
 }
