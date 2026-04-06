@@ -1,0 +1,11 @@
+{
+  "2026.4.4": [
+    { "from": "talk.voiceId", "to": "talk.providers.openai.voiceId", "note": "Legacy alias removed" },
+    { "from": "talk.apiKey", "to": "talk.providers.openai.apiKey", "note": "Legacy alias removed" },
+    { "from": "hooks.internal.handlers", "to": "hooks.internal.entries", "note": "Canonical path" },
+    { "from": "browser.ssrfPolicy.allowPrivateNetwork", "to": "browser.ssrfPolicy.allowPrivate", "note": "Renamed" }
+  ],
+  "2026.4.5": [
+    { "from": "agents.defaults.sandbox.perSession", "to": "agents.defaults.sandbox.scope", "note": "Legacy alias removed in 2026.4.5" }
+  ]
+}
