@@ -150,6 +150,10 @@
     "taskViewAgents": "Voir les agents",
     "compatIncompatTitle": "Version OpenClaw incompatible",
     "compatIncompatDesc": "Actuelle: {{current}} · Requise: {{required}}",
-    "compatGoUpdate": "Mettre à jour"
+    "compatGoUpdate": "Mettre à jour",
+    "dreaming": "Dreaming",
+    "dreamingOn": "Actif",
+    "dreamingOff": "Désactivé",
+    "dreamingPromoted": "promus"
   }
 }

@@ -150,6 +150,10 @@
     "taskViewAgents": "エージェントを表示",
     "compatIncompatTitle": "OpenClaw バージョン非互換",
     "compatIncompatDesc": "現在: {{current}} · 必要: {{required}}",
-    "compatGoUpdate": "更新"
+    "compatGoUpdate": "更新",
+    "dreaming": "ドリーミング",
+    "dreamingOn": "稼働中",
+    "dreamingOff": "オフ",
+    "dreamingPromoted": "昇格済み"
   }
 }

@@ -13,6 +13,7 @@ import NumberStepper from '../components/NumberStepper';
 import EventsPanel from './Gateway/EventsPanel';
 import ChannelsPanel from './Gateway/ChannelsPanel';
 import DebugPanel from './Gateway/DebugPanel';
+import DreamsPanel from './Gateway/DreamsPanel';
 import ServicePanel from './Gateway/ServicePanel';
 import { copyToClipboard } from '../utils/clipboard';
 
@@ -54,7 +55,7 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
   const [expandedExtras, setExpandedExtras] = useState<Set<number>>(new Set());
 
   // Debug 面板
-  const [activeTab, setActiveTab] = useState<'logs' | 'events' | 'debug' | 'channels' | 'service'>('logs');
+  const [activeTab, setActiveTab] = useState<'logs' | 'events' | 'debug' | 'channels' | 'service' | 'dreams'>('logs');
   const [rpcMethod, setRpcMethod] = useState('');
   const [rpcParams, setRpcParams] = useState('{}');
   const [rpcResult, setRpcResult] = useState<string | null>(null);
@@ -1114,9 +1115,9 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
         {/* Tab Bar + Search + Filters — 单行紧凑 */}
         <div className="shrink-0 min-h-9 flex items-center gap-1.5 px-3 theme-field border-b border-slate-200 dark:border-white/5 overflow-x-auto scrollbar-none">
           {/* Tabs */}
-          {(['logs', 'events', 'channels', 'service', 'debug'] as const).map(tab => {
-            const icons: Record<string, string> = { logs: 'terminal', events: 'event_note', channels: 'cell_tower', service: 'settings_system_daydream', debug: 'bug_report' };
-            const labels: Record<string, string> = { logs: gw.logs, events: eventsLabel, channels: gw.channels || 'Channels', service: gw.service || 'Service', debug: gw.debug };
+          {(['logs', 'events', 'channels', 'dreams', 'service', 'debug'] as const).map(tab => {
+            const icons: Record<string, string> = { logs: 'terminal', events: 'event_note', channels: 'cell_tower', dreams: 'nights_stay', service: 'settings_system_daydream', debug: 'bug_report' };
+            const labels: Record<string, string> = { logs: gw.logs, events: eventsLabel, channels: gw.channels || 'Channels', dreams: gw.dreams?.tab || 'Dreams', service: gw.service || 'Service', debug: gw.debug };
             return (
               <button key={tab} onClick={() => { setActiveTab(tab); if (tab === 'debug') fetchDebugData(); if (tab === 'events') fetchEvents(); if (tab === 'channels') fetchChannels(true); }}
                 className={`px-2 py-1 rounded text-[11px] font-bold uppercase tracking-wider transition-all whitespace-nowrap shrink-0 ${activeTab === tab ? 'bg-primary/15 text-primary' : 'theme-text-muted hover:text-[var(--color-text)] dark:hover:text-white/60'} flex items-center gap-1`}>
@@ -1280,6 +1281,8 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
             channelLogoutLoading={channelLogoutLoading}
             fetchChannels={fetchChannels} handleChannelLogout={handleChannelLogout}
           />
+        ) : activeTab === 'dreams' ? (
+          <DreamsPanel gw={gw} toast={toast} />
         ) : activeTab === 'service' ? (
           <ServicePanel
             status={status}

@@ -150,6 +150,10 @@
     "taskViewAgents": "查看代理",
     "compatIncompatTitle": "OpenClaw 版本不相容",
     "compatIncompatDesc": "目前: {{current}} · 需要: {{required}}",
-    "compatGoUpdate": "去更新"
+    "compatGoUpdate": "去更新",
+    "dreaming": "夢境",
+    "dreamingOn": "運行中",
+    "dreamingOff": "已關閉",
+    "dreamingPromoted": "已提升"
   }
 }

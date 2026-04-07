@@ -150,6 +150,10 @@
     "taskViewAgents": "에이전트 보기",
     "compatIncompatTitle": "OpenClaw 버전 호환 불가",
     "compatIncompatDesc": "현재: {{current}} · 필요: {{required}}",
-    "compatGoUpdate": "업데이트"
+    "compatGoUpdate": "업데이트",
+    "dreaming": "드리밍",
+    "dreamingOn": "활성",
+    "dreamingOff": "꺼짐",
+    "dreamingPromoted": "승격됨"
   }
 }

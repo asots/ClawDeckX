@@ -150,6 +150,10 @@
     "taskViewAgents": "عرض الوكلاء",
     "compatIncompatTitle": "إصدار OpenClaw غير متوافق",
     "compatIncompatDesc": "الحالي: {{current}} · المطلوب: {{required}}",
-    "compatGoUpdate": "تحديث"
+    "compatGoUpdate": "تحديث",
+    "dreaming": "الأحلام",
+    "dreamingOn": "نشط",
+    "dreamingOff": "معطّل",
+    "dreamingPromoted": "مُرقّاة"
   }
 }

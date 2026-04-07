@@ -150,6 +150,10 @@
     "taskViewAgents": "Показать агентов",
     "compatIncompatTitle": "Версия OpenClaw несовместима",
     "compatIncompatDesc": "Текущая: {{current}} · Требуется: {{required}}",
-    "compatGoUpdate": "Обновить"
+    "compatGoUpdate": "Обновить",
+    "dreaming": "Dreaming",
+    "dreamingOn": "Активно",
+    "dreamingOff": "Выкл",
+    "dreamingPromoted": "продвинуто"
   }
 }

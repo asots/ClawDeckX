@@ -237,6 +237,7 @@ const Dashboard: React.FC<DashboardProps> = ({ language }) => {
   const [chartTooltip, setChartTooltip] = useState<{ x: number; y: number; label: string } | null>(null);
   const [refreshCountdown, setRefreshCountdown] = useState(FAST_INTERVAL / 1000);
   const [hasFirstDashboardData, setHasFirstDashboardData] = useState(!!cachedFast?.data || !!cachedFast?.gwStatus);
+  const [dreamingStatus, setDreamingStatus] = useState<{ enabled: boolean; shortTermCount: number; promotedTotal: number; promotedToday: number } | null>(null);
 
   const { data, gwStatus, sessions, models, skills, agents, cronStatus, channels, usageCost, health, instances, hostInfo, userConfig, activeGateway, taskSummary, taskAudit } = ds;
 
@@ -293,11 +294,11 @@ const Dashboard: React.FC<DashboardProps> = ({ language }) => {
     if (slowFetchingRef.current) return;
     slowFetchingRef.current = true;
     try {
-      const [sessRes, modelsRes, skillsRes, agentsRes, cronRes, costRes, gwCfgRes, doctorRes, infoRes] = await Promise.all([
+      const [sessRes, modelsRes, skillsRes, agentsRes, cronRes, costRes, gwCfgRes, doctorRes, infoRes, memRes] = await Promise.all([
         settle(gwApi.sessions()), settle(gwApi.models()), settle(gwApi.skills()),
         settle(gwApi.agents()), settle(gwApi.cronStatus()), settle(gwApi.usageCost({ days: 7 })),
         settle(gwApi.configGet()), settle(doctorApi.summaryCached(30000)),
-        settle(gwApi.info()),
+        settle(gwApi.info()), settle(gwApi.memoryStatus()),
       ]);
       if (abortRef.current) return;
       let cfgObj = gwCfgRes.data?.config || gwCfgRes.data;
@@ -307,6 +308,12 @@ const Dashboard: React.FC<DashboardProps> = ({ language }) => {
       }
       if (abortRef.current) return;
       if (doctorRes.ok && doctorRes.data) setDoctorData(doctorRes.data);
+      if (memRes.ok && memRes.data) {
+        const dr = (memRes.data as any)?.dreaming;
+        if (dr && typeof dr === 'object') {
+          setDreamingStatus({ enabled: !!dr.enabled, shortTermCount: dr.shortTermCount ?? 0, promotedTotal: dr.promotedTotal ?? 0, promotedToday: dr.promotedToday ?? 0 });
+        }
+      }
       const results = [sessRes, modelsRes, skillsRes, agentsRes, cronRes, costRes];
       if (results.some(r => !r.ok)) setHasPartialFailure(true);
       const sessData = sessRes.data as any;
@@ -1212,7 +1219,7 @@ const Dashboard: React.FC<DashboardProps> = ({ language }) => {
               </div>
             )}
             {/* Health Status Cards */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
               <div className="rounded-xl bg-slate-50 dark:bg-white/[0.03] border border-slate-100 dark:border-white/5 p-3">
                 <div className="flex items-center gap-2 mb-2"><HealthDot ok={gwRunning} /><span className="text-[10px] font-bold text-slate-600 dark:text-white/50 uppercase">{d.gwStatus}</span></div>
                 <p className={`text-xs font-bold ${gwRunning ? 'text-mac-green' : 'text-slate-400'}`}>{gwRunning ? d.healthy : d.offline}</p>
@@ -1242,6 +1249,16 @@ const Dashboard: React.FC<DashboardProps> = ({ language }) => {
                 <div className="flex items-center gap-2 mb-2"><HealthDot ok={agents.length > 0} /><span className="text-[10px] font-bold text-slate-600 dark:text-white/50 uppercase">{d.agents}</span></div>
                 <p className="text-xs font-bold text-slate-700 dark:text-white/70">{agents.length || 0}</p>
               </div>
+              <button onClick={() => openWindow('gateway', { tab: 'dreams' })} className="rounded-xl bg-slate-50 dark:bg-white/[0.03] border border-slate-100 dark:border-white/5 p-3 text-start hover:border-indigo-300 dark:hover:border-indigo-500/30 transition-all group cursor-pointer">
+                <div className="flex items-center gap-2 mb-2"><HealthDot ok={!!dreamingStatus?.enabled} /><span className="text-[10px] font-bold text-slate-600 dark:text-white/50 uppercase">{d.dreaming || 'Dreaming'}</span></div>
+                <p className={`text-xs font-bold ${dreamingStatus?.enabled ? 'text-indigo-500' : 'text-slate-400'}`}>{dreamingStatus ? (dreamingStatus.enabled ? (d.dreamingOn || 'Active') : (d.dreamingOff || 'Off')) : '--'}</p>
+                {dreamingStatus?.enabled && (
+                  <div className="flex items-center gap-2 mt-1.5 text-[9px]">
+                    <span className="px-1.5 py-0.5 rounded-full bg-violet-500/10 text-violet-500 font-bold">{dreamingStatus.promotedTotal} {d.dreamingPromoted || 'promoted'}</span>
+                    {dreamingStatus.promotedToday > 0 && <span className="text-mac-green font-bold">+{dreamingStatus.promotedToday}</span>}
+                  </div>
+                )}
+              </button>
             </div>
             {/* Provider Health */}
             {userProviderModels.length > 0 && (
