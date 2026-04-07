@@ -589,6 +589,10 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
   // re-adding a session that was just deleted (gateway may still broadcast it briefly).
   // Entries auto-expire after 60s.
   const deletedKeysRef = useRef<Map<string, number>>(new Map());
+  // Local-only session keys: sessions created in handleNewSession that the gateway
+  // doesn't know about yet.  Cleared when the gateway returns the key in sessions.list
+  // or when the first message is sent successfully.
+  const localOnlyKeysRef = useRef<Set<string>>(new Set());
 
   // Slash command popup
   const [slashOpen, setSlashOpen] = useState(false);
@@ -1222,9 +1226,18 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
       const filtered = deletedKeysRef.current.size > 0
         ? mapped.filter((s: GwSession) => !deletedKeysRef.current.has(s.key))
         : mapped;
+      // Clear local-only keys that the gateway now knows about, and prune stale
+      // local-only keys that are no longer the active session (user created a new
+      // session, then navigated away without sending a message).
+      const gwKeySet = new Set(filtered.map((s: GwSession) => s.key));
+      const activeKey = sessionKeyRef.current;
+      for (const k of localOnlyKeysRef.current) {
+        if (gwKeySet.has(k) || k !== activeKey) localOnlyKeysRef.current.delete(k);
+      }
       setSessions(prev => {
         if (areSessionsEquivalent(prev, filtered)) {
-          return prev;
+          // Even if gateway data is unchanged, we may still need to preserve local-only keys
+          if (localOnlyKeysRef.current.size === 0) return prev;
         }
         // Incremental merge: reuse previous objects by key when unchanged to preserve React identity
         const prevMap = new Map(prev.map(s => [s.key, s]));
@@ -1240,6 +1253,16 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
           changed = true;
           return effective;
         });
+        // Preserve all local-only sessions (created but not yet sent to gateway)
+        for (const localKey of localOnlyKeysRef.current) {
+          if (!merged.some(s => s.key === localKey) && !deletedKeysRef.current.has(localKey)) {
+            const localOnly = prev.find(s => s.key === localKey);
+            if (localOnly) {
+              merged.unshift(localOnly);
+              changed = true;
+            }
+          }
+        }
         if (!changed) return prev;
         // Persist to sessionStorage for instant display on next window open
         try { sessionStorage.setItem('clawdeck-sessions-cache', JSON.stringify(merged)); } catch { /* ignore */ }
@@ -1253,9 +1276,15 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
     }
   }, []);
 
+  // Track message count via ref to avoid loadHistory dependency on messages array
+  const messagesLenRef = useRef(0);
+  messagesLenRef.current = messages.length;
+
   // Stable callbacks for UsagePanel — must NOT be inline arrows in JSX or
   // UsagePanel.loadData recreates on every render and fires repeated RPC calls.
   const loadUsageData = useCallback(async (key: string) => {
+    // Skip for local-only sessions not yet known to the gateway
+    if (localOnlyKeysRef.current.has(key)) return null;
     const res = await gwApi.sessionsUsage({ key, limit: 1 }) as any;
     const entry = res?.sessions?.[0];
     return entry?.usage ?? null;
@@ -1264,12 +1293,10 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
     // Skip timeseries for ephemeral run sessions — they have no transcript
     // and the gateway returns INVALID_REQUEST for them.
     if (/:run-\d+$/.test(key)) return null;
+    // Skip for local-only sessions not yet known to the gateway
+    if (localOnlyKeysRef.current.has(key)) return null;
     return await gwApi.sessionsUsageTimeseries(key) as any;
   }, []);
-
-  // Track message count via ref to avoid loadHistory dependency on messages array
-  const messagesLenRef = useRef(0);
-  messagesLenRef.current = messages.length;
 
   // Helper: map raw gateway messages to ChatMsg
   const mapMessages = useCallback((msgs: any[]): ChatMsg[] => msgs.map((m: any) => ({
@@ -1974,6 +2001,8 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
       }
       const res = await gwApi.proxy('chat.send', sendParams) as any;
       const nextRunId = res?.runId || idempotencyKey;
+      // Session is now known to the gateway — remove from local-only set
+      localOnlyKeysRef.current.delete(sessionKey);
       setRunId(nextRunId);
       setRunPhase('waiting');
       setError(null);
@@ -2222,9 +2251,12 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
     const ts = Date.now();
     // When an agent is selected in the filter, create session scoped to that agent
     const key = agentFilter ? `agent:${agentFilter}:web:${ts}` : `web-${ts}`;
+    localOnlyKeysRef.current.add(key);
     ensureSessionPresent(key);
-    setIsSwitchingSession(true);
+    setIsSwitchingSession(false);
     setSessionKey(key);
+    setMessages([]);
+    setError(null);
     clearStream();
     setRunId(null);
     setRunPhase('idle');
@@ -2233,8 +2265,11 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
     // Reset pagination state for new session
     setHasMoreHistory(false);
     nextCursorRef.current = undefined;
-    void loadSessions();
-  }, [agentFilter, clearStream, ensureSessionPresent, loadSessions]);
+    // Don't call loadSessions() here — the new session only exists locally until
+    // the user sends a message.  An immediate loadSessions() would overwrite the
+    // local placeholder with the gateway list (which doesn't know this key yet),
+    // causing the session to flash and disappear.
+  }, [agentFilter, clearStream, ensureSessionPresent]);
 
   // Rename session
   const openRenameDialog = useCallback((key: string, currentLabel: string) => {
@@ -2339,6 +2374,7 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
       await gwApi.proxy('sessions.delete', { key });
       // Mark as recently deleted so loadSessions won't re-add it
       deletedKeysRef.current.set(key, Date.now() + 60_000);
+      localOnlyKeysRef.current.delete(key);
       // Unsubscribe from the deleted session's message stream
       gwApi.sessionsMessagesUnsubscribe(key).catch(() => {});
       // Remove from local list
