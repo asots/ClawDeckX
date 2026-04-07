@@ -331,8 +331,8 @@ const Editor: React.FC<EditorProps> = ({ language, pendingSection, onSectionCons
         </div>
 
         {/* 鏂囦欢璺緞 */}
-        <span className="hidden sm:inline text-[11px] font-mono text-slate-400 dark:text-slate-500 truncate max-w-[200px]">
-          {editor.mode === 'local' ? (editor.configPath || 'openclaw.json') : 'remote://gateway'}
+        <span className="hidden sm:inline text-[11px] font-mono text-slate-400 dark:text-slate-500 truncate max-w-[360px]" title={editor.configPath || ''}>
+          {editor.configPath || (editor.mode === 'local' ? 'openclaw.json' : 'remote://gateway')}
         </span>
 
         <div className="flex-1" />

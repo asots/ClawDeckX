@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { Language } from '../../types';
+import { Language, dispatchOpenWindow } from '../../types';
 import { getTranslation } from '../../locales';
 import { selfUpdateApi, hostInfoApi, serviceApi, gatewayApi, runtimeApi } from '../../services/api';
 import type { SelfUpdateInfo, UpdateCheckResult, UpdateHistoryEntry, RuntimeStatus } from '../../services/api';
@@ -120,6 +120,17 @@ const UpdateTab: React.FC<UpdateTabProps> = ({ s, language, inputCls, rowCls }) 
 
   const handleSelfUpdateApply = useCallback(async () => {
     if (!selfUpdateInfo?.downloadUrl) return;
+    // Prompt user to backup before updating
+    const wantBackup = await confirm({
+      title: sRef.current.updateBackupTitle || 'Backup Recommended',
+      message: sRef.current.updateBackupMsg || 'It is recommended to backup your configuration before updating. Would you like to go to the backup page first?',
+      confirmText: sRef.current.updateBackupGo || 'Go to Backup',
+      cancelText: sRef.current.selfUpdateDownload || 'Continue Update',
+    });
+    if (wantBackup) {
+      dispatchOpenWindow({ id: 'settings', tab: 'snapshot' });
+      return;
+    }
     setSelfUpdating(true);
     setSelfUpdateProgress({ stage: 'connecting', percent: 0 });
     try {
@@ -224,6 +235,17 @@ const UpdateTab: React.FC<UpdateTabProps> = ({ s, language, inputCls, rowCls }) 
   }, [language]);
 
   const handleOcUpdateRun = useCallback(async () => {
+    // Prompt user to backup before updating
+    const wantBackup = await confirm({
+      title: sRef.current.updateBackupTitle || 'Backup Recommended',
+      message: sRef.current.updateBackupMsg || 'It is recommended to backup your configuration before updating. Would you like to go to the backup page first?',
+      confirmText: sRef.current.updateBackupGo || 'Go to Backup',
+      cancelText: sRef.current.openclawUpdateRun || 'Continue Update',
+    });
+    if (wantBackup) {
+      dispatchOpenWindow({ id: 'settings', tab: 'snapshot' });
+      return;
+    }
     const ok = await confirm({
       title: sRef.current.openclawUpdateRun || 'Update OpenClaw',
       message: `${sRef.current.openclawUpdateConfirm || 'Update OpenClaw from'} v${ocUpdateInfo?.currentVersion || '?'} → v${ocUpdateInfo?.latestVersion || '?'}`,
@@ -384,8 +406,12 @@ const UpdateTab: React.FC<UpdateTabProps> = ({ s, language, inputCls, rowCls }) 
       if (now - lastAutoCheckRef.current > UPDATE_CHECK_CACHE_MS) {
         lastAutoCheckRef.current = now;
         setLastCheckTime(now);
-        handleSelfUpdateCheck();
-        handleOcUpdateCheck();
+        // Run both checks, then force-refresh the backend overview cache and badge counts
+        Promise.allSettled([handleSelfUpdateCheck(), handleOcUpdateCheck()]).then(() => {
+          selfUpdateApi.overview(true).then(() => {
+            window.dispatchEvent(new CustomEvent('clawdeck:refresh-badges'));
+          }).catch(() => {});
+        });
       }
     });
     return () => cancelAnimationFrame(raf);
@@ -420,7 +446,7 @@ const UpdateTab: React.FC<UpdateTabProps> = ({ s, language, inputCls, rowCls }) 
             </p>
           )}
           <div className="flex gap-2">
-            <button onClick={() => { const now = Date.now(); lastAutoCheckRef.current = now; setLastCheckTime(now); handleSelfUpdateCheck(); handleOcUpdateCheck(); }}
+            <button onClick={() => { const now = Date.now(); lastAutoCheckRef.current = now; setLastCheckTime(now); Promise.allSettled([handleSelfUpdateCheck(), handleOcUpdateCheck()]).then(() => { selfUpdateApi.overview(true).then(() => window.dispatchEvent(new CustomEvent('clawdeck:refresh-badges'))).catch(() => {}); }); }}
               disabled={selfUpdateChecking || ocUpdateChecking}
               className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-cyan-500 text-white text-[12px] font-bold disabled:opacity-40 hover:opacity-90 shadow-sm transition-all">
               <span className={`material-symbols-outlined text-[16px] ${selfUpdateChecking || ocUpdateChecking ? 'animate-spin' : ''}`}>
@@ -428,14 +454,6 @@ const UpdateTab: React.FC<UpdateTabProps> = ({ s, language, inputCls, rowCls }) 
               </span>
               {s.checkUpdate || 'Check for Updates'}
             </button>
-            {selfUpdateInfo?.available && ocUpdateInfo?.available && (
-              <button onClick={async () => { await handleSelfUpdateApply(); await handleOcUpdateRun(); }}
-                disabled={selfUpdating || effectiveOcUpdating}
-                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-gradient-to-r from-primary to-emerald-500 text-white text-[12px] font-bold disabled:opacity-40 hover:opacity-90 shadow-sm transition-all">
-                <span className="material-symbols-outlined text-[16px]">system_update_alt</span>
-                {s.updateAll || 'Update All'}
-              </button>
-            )}
           </div>
         </div>
       </div>

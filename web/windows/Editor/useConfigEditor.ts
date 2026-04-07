@@ -209,6 +209,7 @@ export function useConfigEditor(): UseConfigEditorReturn {
         data = await gwApi.configGet();
         if (data?.hash) baseHashRef.current = data.hash;
         gwApi.configSchema().then((s: any) => setSchema(s)).catch(() => {});
+        configApi.get().then((local: any) => { if (local?.path) setConfigPath(local.path); }).catch(() => {});
       } catch {
         // WS 不可用（网关未连接），降级读本地文件
         if (mode === 'local') {

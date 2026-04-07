@@ -21,6 +21,13 @@ export function useBadgeCounts(enabled = true): Record<WindowID, number> {
     fetchBadges();
   }, [enabled, fetchBadges]);
 
+  useEffect(() => {
+    if (!enabled) return;
+    const handler = () => fetchRef.current();
+    window.addEventListener('clawdeck:refresh-badges', handler);
+    return () => window.removeEventListener('clawdeck:refresh-badges', handler);
+  }, [enabled]);
+
   // WS real-time updates: badge_update from server + alert/approval events
   useEffect(() => {
     if (!enabled) return;
