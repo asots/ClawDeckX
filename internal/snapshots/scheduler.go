@@ -93,8 +93,8 @@ func (s *Scheduler) GetConfig() (*ScheduleConfig, error) {
 	timeStr := s.getString(settingScheduleTime, "03:00")
 	retention := s.getInt(settingScheduleRetention, 7)
 	tz := s.getString(settingScheduleTimezone, DefaultScheduleTimezone)
-	_, err := s.setting.Get(settingSchedulePassword)
-	passwordSet := err == nil
+	storedPwd, err := s.setting.Get(settingSchedulePassword)
+	passwordSet := err == nil && storedPwd != ""
 	if retention < 1 {
 		retention = 1
 	}

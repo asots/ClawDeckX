@@ -124,6 +124,9 @@ func (h *SelfUpdateHandler) Apply(w http.ResponseWriter, r *http.Request) {
 		Action: constants.ActionSelfUpdate, Result: "success", Detail: "update applied", IP: r.RemoteAddr,
 	})
 
+	// Clear the 12-hour update overview cache so badge counts refresh after restart
+	updatecheck.InvalidateCache()
+
 	// Send final success
 	sendSSE(updater.ApplyProgress{Stage: "done", Percent: 100, Done: true})
 

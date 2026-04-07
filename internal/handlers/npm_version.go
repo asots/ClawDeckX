@@ -12,6 +12,7 @@ import (
 
 	"ClawDeckX/internal/executil"
 	"ClawDeckX/internal/logger"
+	"ClawDeckX/internal/updatecheck"
 )
 
 // npmVersionCache caches the latest version from npm registry.
@@ -137,6 +138,9 @@ func UpgradeNpmCLI(packageName string) (string, error) {
 	npmCache.mu.Lock()
 	delete(npmCache.versions, packageName)
 	npmCache.mu.Unlock()
+
+	// Clear the 12-hour update overview cache so badge counts refresh immediately
+	updatecheck.InvalidateCache()
 
 	logger.Log.Info().Str("package", packageName).Str("output", result).Msg("npm CLI upgraded")
 	return result, nil

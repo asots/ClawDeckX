@@ -20,10 +20,10 @@ const (
 )
 
 type ProductStatus struct {
-	CurrentVersion string `json:"currentVersion,omitempty"`
-	LatestVersion  string `json:"latestVersion,omitempty"`
-	UpdateAvailable bool  `json:"updateAvailable"`
-	Error          string `json:"error,omitempty"`
+	CurrentVersion  string `json:"currentVersion,omitempty"`
+	LatestVersion   string `json:"latestVersion,omitempty"`
+	UpdateAvailable bool   `json:"updateAvailable"`
+	Error           string `json:"error,omitempty"`
 }
 
 type CompatibilityStatus struct {
@@ -38,6 +38,14 @@ type Overview struct {
 	ClawDeckX     ProductStatus       `json:"clawdeckx"`
 	OpenClaw      ProductStatus       `json:"openclaw"`
 	Compatibility CompatibilityStatus `json:"compatibility"`
+}
+
+// InvalidateCache removes the cached overview so the next GetOverview call
+// performs a fresh check. Call this after a successful upgrade of either
+// ClawDeckX or OpenClaw so that badge counts reflect the new state immediately.
+func InvalidateCache() {
+	settingRepo := database.NewSettingRepo()
+	_ = settingRepo.Delete(OverviewCacheKey)
 }
 
 func GetOverview(ctx context.Context, force bool) (*Overview, error) {
@@ -86,8 +94,8 @@ func saveCachedOverview(settingRepo *database.SettingRepo, overview *Overview) e
 func buildOverview(ctx context.Context) *Overview {
 	now := time.Now().UTC()
 	overview := &Overview{
-		CheckedAt:   now.Format(time.RFC3339),
-		NextCheckAt: now.Add(OverviewCacheTTL).Format(time.RFC3339),
+		CheckedAt:     now.Format(time.RFC3339),
+		NextCheckAt:   now.Add(OverviewCacheTTL).Format(time.RFC3339),
 		Compatibility: CompatibilityStatus{Compatible: true, Required: version.OpenClawCompat},
 	}
 
