@@ -344,6 +344,7 @@ class TemplateManagerV2 {
           templates = await githubLoader.loadCategoryTemplates(source, 'multi-agent', manifest || undefined);
         }
 
+        templates = templates.filter(t => t && t.metadata);
         templates.forEach(t => {
           t.metadata.source = source.id;
         });
@@ -357,7 +358,7 @@ class TemplateManagerV2 {
     }
 
     // Apply i18n — per-item translation files
-    const localized = await templateI18n.localizeItems(result.data, 'multi-agent', language);
+    const localized = await templateI18n.localizeItems(result.data.filter(t => t && t.metadata), 'multi-agent', language);
 
     this.multiAgentCache.set(cacheKey, localized);
     return localized;

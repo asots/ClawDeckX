@@ -112,9 +112,9 @@ const MultiAgentCollaborationV2: React.FC<MultiAgentCollaborationProps> = ({ lan
       // Build SOUL.md content with sessions_spawn instructions
       const soulContent = `
 ${blockStart}
-## ${template.metadata.name}
+## ${template.metadata?.name ?? template.id}
 
-${template.metadata.description}
+${template.metadata?.description ?? ''}
 
 ### Available Subagents
 
@@ -151,7 +151,7 @@ ${blockEnd}
       // Generate HEARTBEAT.md content with block markers
       const heartbeatContent = `
 ${blockStart}
-## ${template.metadata.name} Workflow
+## ${template.metadata?.name ?? template.id} Workflow
 
 ${template.content.workflow.steps.map((step, idx) => 
   `- [ ] Step ${idx + 1} (${step.agent}): ${step.action}`
@@ -174,7 +174,7 @@ ${blockEnd}
       setApplyRequest({
         agentId: defaultAgentId,
         files,
-        title: `${ma.quickSetupConfirmTitle || 'Enhance Agent'}: ${template.metadata.name}`,
+        title: `${ma.quickSetupConfirmTitle || 'Enhance Agent'}: ${template.metadata?.name ?? template.id}`,
         description: ma.quickSetupConfirmDesc || 'This will add workflow capabilities to the current agent',
       });
     },
@@ -195,8 +195,8 @@ ${blockEnd}
         const deployRequest = {
           template: {
             id: template.id,
-            name: template.metadata.name,
-            description: template.metadata.description,
+            name: template.metadata?.name ?? template.id,
+            description: template.metadata?.description ?? '',
             agents: template.content.agents.map(agent => ({
               id: agent.id,
               name: agent.name,
@@ -320,13 +320,13 @@ ${blockEnd}
               <div className="flex items-start gap-3">
                 <div
                   className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
-                  style={resolveTemplateColor(template.metadata.color)}
+                  style={resolveTemplateColor(template.metadata?.color)}
                 >
-                  <span className="material-symbols-outlined text-white text-[20px]">{template.metadata.icon || 'groups'}</span>
+                  <span className="material-symbols-outlined text-white text-[20px]">{template.metadata?.icon || 'groups'}</span>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h4 className="text-[12px] font-bold text-slate-800 dark:text-white truncate">{template.metadata.name}</h4>
-                  <p className="text-[10px] text-slate-500 dark:text-white/40 mt-0.5 line-clamp-2">{template.metadata.description}</p>
+                  <h4 className="text-[12px] font-bold text-slate-800 dark:text-white truncate">{template.metadata?.name ?? template.id}</h4>
+                  <p className="text-[10px] text-slate-500 dark:text-white/40 mt-0.5 line-clamp-2">{template.metadata?.description ?? ''}</p>
                   <div className="flex items-center gap-2 mt-1.5">
                     <span className="text-[9px] text-slate-400 dark:text-white/30">
                       {template.content.agents.length} {ma.agents || 'agents'}
@@ -350,13 +350,13 @@ ${blockEnd}
                 <div className="flex items-start gap-3">
                   <div
                     className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
-                    style={resolveTemplateColor(selectedTemplate.metadata.color)}
+                    style={resolveTemplateColor(selectedTemplate.metadata?.color)}
                   >
-                    <span className="material-symbols-outlined text-white text-[24px]">{selectedTemplate.metadata.icon || 'groups'}</span>
+                    <span className="material-symbols-outlined text-white text-[24px]">{selectedTemplate.metadata?.icon || 'groups'}</span>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-sm font-bold text-slate-800 dark:text-white">{selectedTemplate.metadata.name}</h3>
-                    <p className="text-[11px] text-slate-500 dark:text-white/40 mt-0.5">{selectedTemplate.metadata.description}</p>
+                    <h3 className="text-sm font-bold text-slate-800 dark:text-white">{selectedTemplate.metadata?.name ?? selectedTemplate.id}</h3>
+                    <p className="text-[11px] text-slate-500 dark:text-white/40 mt-0.5">{selectedTemplate.metadata?.description ?? ''}</p>
                   </div>
                 </div>
               </div>

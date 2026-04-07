@@ -18,6 +18,8 @@ interface MultiAgentDeployWizardProps {
 
 type WizardStep = 'preview' | 'configure' | 'deploying' | 'result';
 
+const EMPTY_METADATA = { name: '', description: '', category: '', difficulty: 'medium' as const, icon: 'groups', color: '', tags: [] as string[], author: '' };
+
 const MultiAgentDeployWizard: React.FC<MultiAgentDeployWizardProps> = ({
   template,
   language,
@@ -28,6 +30,7 @@ const MultiAgentDeployWizard: React.FC<MultiAgentDeployWizardProps> = ({
   const ma = (t.multiAgent || {}) as any;
   const md = (t.multiAgentDeploy || {}) as any;
   const { toast } = useToast();
+  const meta = template.metadata ?? EMPTY_METADATA;
 
   const [step, setStep] = useState<WizardStep>('preview');
   const [prefix, setPrefix] = useState(template.id);
@@ -50,8 +53,8 @@ const MultiAgentDeployWizard: React.FC<MultiAgentDeployWizardProps> = ({
     return {
       template: {
         id: template.id,
-        name: template.metadata.name,
-        description: template.metadata.description,
+        name: meta.name,
+        description: meta.description,
         agents: template.content.agents.map(agent => ({
           id: agent.id,
           name: agent.name,
@@ -144,14 +147,14 @@ const MultiAgentDeployWizard: React.FC<MultiAgentDeployWizardProps> = ({
         {/* Header */}
         <div className="px-6 py-4 border-b border-slate-100 dark:border-white/5 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={resolveTemplateColor(template.metadata.color)}>
-              <span className="material-symbols-outlined text-white text-[20px]">{template.metadata.icon || 'groups'}</span>
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={resolveTemplateColor(meta.color)}>
+              <span className="material-symbols-outlined text-white text-[20px]">{meta.icon || 'groups'}</span>
             </div>
             <div>
               <h2 className="text-sm font-bold text-slate-800 dark:text-white">
                 {md.title || 'Deploy Multi-Agent System'}
               </h2>
-              <p className="text-[11px] text-slate-500 dark:text-white/40">{template.metadata.name}</p>
+              <p className="text-[11px] text-slate-500 dark:text-white/40">{meta.name}</p>
             </div>
           </div>
           <button
