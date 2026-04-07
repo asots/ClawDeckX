@@ -1542,6 +1542,13 @@ perform_uninstall() {
         fi
     fi
     
+    if pgrep -f "$BINARY_NAME" > /dev/null 2>&1; then
+        echo -e "${BLUE}Stopping running process... / 正在停止运行中的进程...${NC}"
+        pkill -f "$BINARY_NAME" 2>/dev/null || true
+        sleep 1
+    fi
+    stop_port_process "$PORT"
+    
     # Remove PATH registration (symlink + shell profile entries)
     unregister_path
     
