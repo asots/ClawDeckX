@@ -2,20 +2,13 @@
 
 ### ✨ New Features / 新功能
 
-- surface notification delivery status
-- add session compaction and skill detail
-- improve ws diagnostics and watchdog status
-- add Dreams tab and Dashboard dreaming status card
+- add snapshot management updates
 
-### 🎨 UI & Styling / 界面优化
+### 🌐 Internationalization / 国际化
 
-- expand llm provider icon mapping
-
-### 📦 Build & Deploy / 构建部署
-
-- bump openclaw compatibility to 2026.4.5
+- localize dreaming confirmations
 
 ---
-**Full Changelog**: [v0.1.5...v0.1.6](https://github.com/ClawDeckX/ClawDeckX/compare/v0.1.5...v0.1.6)
+**Full Changelog**: [v0.1.6...v0.1.7](https://github.com/ClawDeckX/ClawDeckX/compare/v0.1.6...v0.1.7)
 
 
