@@ -68,8 +68,10 @@ export const AgentsSection: React.FC<SectionProps> = ({ config, schema, setField
         <TextField label={es.compactionModel || 'Compaction Model'} tooltip={tip('agents.defaults.compaction.model')} value={d(['compaction', 'model']) || ''} onChange={v => sd(['compaction', 'model'], v)} placeholder={es.phProviderModelId} />
         <SwitchField label={es.truncateAfterCompaction || 'Truncate After Compaction'} tooltip={tip('agents.defaults.compaction.truncateAfterCompaction')} value={d(['compaction', 'truncateAfterCompaction']) === true} onChange={v => sd(['compaction', 'truncateAfterCompaction'], v)} />
         <SwitchField label={es.compactionNotifyUser || 'Notify User on Compaction'} tooltip={tip('agents.defaults.compaction.notifyUser')} value={d(['compaction', 'notifyUser']) === true} onChange={v => sd(['compaction', 'notifyUser'], v)} />
+        <TextField label={es.compactionProvider || 'Compaction Provider'} tooltip={tip('agents.defaults.compaction.provider')} value={d(['compaction', 'provider']) || ''} onChange={v => sd(['compaction', 'provider'], v)} placeholder={es.phCompactionProvider || 'default'} />
         <SwitchField label={es.bootstrapTruncationWarning || 'Bootstrap Truncation Warning'} tooltip={tip('agents.defaults.bootstrapTruncationWarning')} value={d(['bootstrapTruncationWarning']) !== false} onChange={v => sd(['bootstrapTruncationWarning'], v)} />
         <SelectField label={es.contextInjection || 'Context Injection'} tooltip={tip('agents.defaults.contextInjection')} value={d(['contextInjection']) || ''} onChange={v => sd(['contextInjection'], v)} options={CTX_INJECTION_OPTIONS} />
+        <TextField label={es.systemPromptOverride || 'System Prompt Override'} tooltip={tip('agents.defaults.systemPromptOverride')} value={d(['systemPromptOverride']) || ''} onChange={v => sd(['systemPromptOverride'], v)} mono={false} multiline />
         <KeyValueField label={es.agentParams || 'Default Params'} tooltip={tip('agents.defaults.params')} value={d(['params']) || {}} onChange={v => sd(['params'], v)} />
       </ConfigSection>
 
@@ -179,7 +181,7 @@ export const AgentsSection: React.FC<SectionProps> = ({ config, schema, setField
           'musicGenerationModel', 'pdfModel', 'pdfMaxBytesMb', 'pdfMaxPages',
           'timeoutSeconds', 'mediaMaxMb', 'skills', 'subagents',
           'thinkingDefault', 'verboseDefault', 'elevatedDefault', 'typingMode',
-          'compaction', 'bootstrapTruncationWarning', 'contextInjection', 'params',
+          'compaction', 'bootstrapTruncationWarning', 'contextInjection', 'params', 'systemPromptOverride',
           'humanDelay', 'heartbeat', 'contextPruning', 'memorySearch', 'sandbox',
         ]}
         config={config}

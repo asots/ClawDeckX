@@ -1,8 +1,11 @@
 ﻿package notify
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -216,8 +219,12 @@ func (m *Manager) Reload(settingRepo *database.SettingRepo, gwChannels map[strin
 				ContentType: "application/json; charset=utf-8",
 				Method:      "POST",
 				BuildPayload: func(subject, message string) (payload any) {
-					return fmt.Sprintf(`{"msgtype":"text","text":{"content":"%s\n%s"}}`,
-						escapeJSON(subject), escapeJSON(message))
+					return map[string]any{
+						"msgtype": "text",
+						"text": map[string]string{
+							"content": subject + "\n" + message,
+						},
+					}
 				},
 			})
 			n.UseServices(wecomSvc)
@@ -262,6 +269,7 @@ func (m *Manager) Reload(settingRepo *database.SettingRepo, gwChannels map[strin
 			}
 
 			tmpl := whTemplate
+			isJSONTemplate := strings.HasPrefix(contentType, "application/json")
 			httpSvc.AddReceivers(&nfyhttp.Webhook{
 				URL:         whURL,
 				Header:      hdrs,
@@ -271,6 +279,12 @@ func (m *Manager) Reload(settingRepo *database.SettingRepo, gwChannels map[strin
 					text := subject + "\n" + message
 					if tmpl != "" {
 						text = strings.ReplaceAll(tmpl, "{message}", subject+"\n"+message)
+					}
+					if isJSONTemplate {
+						var parsed any
+						if err := json.Unmarshal([]byte(text), &parsed); err == nil {
+							return parsed
+						}
 					}
 					return text
 				},
@@ -327,6 +341,10 @@ func (m *Manager) SendAlert(risk, message, detail string) {
 
 // SendToChannel dispatches a message to a specific channel by name.
 func (m *Manager) SendToChannel(channel, text string) error {
+	if channel == "wecom" {
+		return m.sendWeCom(text)
+	}
+
 	m.mu.RLock()
 	pc := m.channelNotifiers[channel]
 	m.mu.RUnlock()
@@ -338,6 +356,77 @@ func (m *Manager) SendToChannel(channel, text string) error {
 		logger.Log.Warn().Err(err).Str("channel", channel).Msg("notify: send to channel failed")
 		return err
 	}
+	return nil
+}
+
+func (m *Manager) sendWeCom(text string) error {
+	m.mu.RLock()
+	settingRepo := m.settingRepo
+	m.mu.RUnlock()
+
+	if settingRepo == nil {
+		return fmt.Errorf("channel %q not configured", "wecom")
+	}
+
+	wecomURL, _ := settingRepo.Get("notify_wecom_webhook_url")
+	if strings.TrimSpace(wecomURL) == "" {
+		return fmt.Errorf("channel %q not configured", "wecom")
+	}
+
+	payload := map[string]any{
+		"msgtype": "text",
+		"text": map[string]string{
+			"content": "ClawDeckX\n" + text,
+		},
+	}
+
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("marshal wecom payload: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, wecomURL, bytes.NewReader(body))
+	if err != nil {
+		return fmt.Errorf("create wecom request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("send wecom request: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("read wecom response: %w", err)
+	}
+
+	var wecomResp struct {
+		ErrCode any    `json:"errcode"`
+		ErrMsg  string `json:"errmsg"`
+	}
+	if len(respBody) > 0 && json.Unmarshal(respBody, &wecomResp) == nil {
+		if fmt.Sprint(wecomResp.ErrCode) != "0" {
+			if strings.TrimSpace(wecomResp.ErrMsg) != "" {
+				return fmt.Errorf("wecom errcode %v: %s", wecomResp.ErrCode, strings.TrimSpace(wecomResp.ErrMsg))
+			}
+			return fmt.Errorf("wecom errcode %v", wecomResp.ErrCode)
+		}
+		return nil
+	}
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		if msg := strings.TrimSpace(string(respBody)); msg != "" {
+			return fmt.Errorf("wecom http %d: %s", resp.StatusCode, msg)
+		}
+		return fmt.Errorf("wecom http %d", resp.StatusCode)
+	}
+
+	if msg := strings.TrimSpace(string(respBody)); msg != "" {
+		return fmt.Errorf("unexpected wecom response: %s", msg)
+	}
+
 	return nil
 }
 

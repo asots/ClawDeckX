@@ -2,7 +2,7 @@
   "name": "ClawDeckX-DashBoard",
   "private": true,
   "version": "0.1.6",
-  "openclawCompat": ">=2026.4.5",
+  "openclawCompat": ">=2026.4.7",
   "openclawDockerVersion": "latest",
   "type": "module",
   "scripts": {

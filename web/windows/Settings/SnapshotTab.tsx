@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { snapshotApi, ocBackupApi, type SnapshotStatsResponse, type OcBackupArchive } from '../../services/api';
+import { snapshotApi, ocBackupApi, type SnapshotStatsResponse, type OcBackupArchive, type SnapshotScanResult } from '../../services/api';
 import { useToast } from '../../components/Toast';
 import { useConfirm } from '../../components/ConfirmDialog';
 import CustomSelect from '../../components/CustomSelect';
@@ -19,12 +19,27 @@ interface SnapshotUnlockResult {
   config_fields?: SnapshotConfigField[]; configFields?: SnapshotConfigField[];
 }
 
+type SnapshotScanItem = SnapshotScanResult['groups'][number]['resources'][number];
+
 function getTopLevelConfigPath(path: string): string {
   const m = path.match(/^[^.[\]]+/);
   return m?.[0] || path;
 }
 
 export interface SnapshotTabProps { s: any; inputCls: string; labelCls: string; rowCls: string; }
+
+function formatBytes(size: number): string {
+  if (!Number.isFinite(size) || size <= 0) return '0 B';
+  if (size < 1024) return `${size} B`;
+  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+  if (size < 1024 * 1024 * 1024) return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+  return `${(size / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+}
+
+function getAgentNameFromLogicalPath(logicalPath: string): string | null {
+  const match = logicalPath.match(/^files\/agents\/([^/]+)\//);
+  return match?.[1] || null;
+}
 
 const SnapshotTab: React.FC<SnapshotTabProps> = ({ s, inputCls, labelCls, rowCls }) => {
   const { toast } = useToast();
@@ -36,6 +51,15 @@ const SnapshotTab: React.FC<SnapshotTabProps> = ({ s, inputCls, labelCls, rowCls
   const [snapshotNote, setSnapshotNote] = useState('');
   const [snapshotModeTab, setSnapshotModeTab] = useState<'manual' | 'scheduled' | 'config-history'>('manual');
   const [backupMethod, setBackupMethod] = useState<'clawdeckx' | 'openclaw'>('clawdeckx');
+  const [manualSnapshotScope, setManualSnapshotScope] = useState<'both' | 'openclaw' | 'clawdeckx'>('both');
+  const [scanResult, setScanResult] = useState<SnapshotScanResult | null>(null);
+  const [scanLoading, setScanLoading] = useState(false);
+  const [scanShowMissing, setScanShowMissing] = useState(false);
+  const [selectedScanResourceIds, setSelectedScanResourceIds] = useState<string[]>([]);
+  const [scheduledScanResult, setScheduledScanResult] = useState<SnapshotScanResult | null>(null);
+  const [scheduledScanLoading, setScheduledScanLoading] = useState(false);
+  const [scheduledScanShowMissing, setScheduledScanShowMissing] = useState(false);
+  const [snapshotScheduleResourceIds, setSnapshotScheduleResourceIds] = useState<string[]>([]);
   const [ocBackupCreating, setOcBackupCreating] = useState(false);
   const [ocBackupScope, setOcBackupScope] = useState<'full' | 'workspace' | 'config'>('full');
   const [ocVerify, setOcVerify] = useState(false);
@@ -50,6 +74,7 @@ const SnapshotTab: React.FC<SnapshotTabProps> = ({ s, inputCls, labelCls, rowCls
   const [snapshotScheduleStatus, setSnapshotScheduleStatus] = useState<any>(null);
   const [snapshotScheduleSaving, setSnapshotScheduleSaving] = useState(false);
   const [runNowBusy, setRunNowBusy] = useState(false);
+  const [snapshotScheduleScope, setSnapshotScheduleScope] = useState<string>('both');
   const [expandedSnapshotFiles, setExpandedSnapshotFiles] = useState<Record<string, boolean>>({});
   const [snapshotListLimit, setSnapshotListLimit] = useState(20);
   const [snapshotImporting, setSnapshotImporting] = useState(false);
@@ -89,6 +114,8 @@ const SnapshotTab: React.FC<SnapshotTabProps> = ({ s, inputCls, labelCls, rowCls
   const [showOcExportModal, setShowOcExportModal] = useState<string | null>(null);
   const [ocExportPassword, setOcExportPassword] = useState('');
   const [ocExporting, setOcExporting] = useState(false);
+  const scanCacheRef = useRef<{ scope: string; at: number; result: SnapshotScanResult | null }>({ scope: '', at: 0, result: null });
+  const scheduledScanCacheRef = useRef<{ scope: string; at: number; result: SnapshotScanResult | null }>({ scope: '', at: 0, result: null });
 
   const [restoreTarget, setRestoreTarget] = useState<SnapshotSummary | null>(null);
   const [restorePassword, setRestorePassword] = useState('');
@@ -109,6 +136,8 @@ const SnapshotTab: React.FC<SnapshotTabProps> = ({ s, inputCls, labelCls, rowCls
       setSnapshotScheduleTime(cfg?.time || '03:00');
       setSnapshotScheduleRetention(Math.max(1, Number(cfg?.retentionCount || 7)));
       setSnapshotSchedulePasswordSet(!!cfg?.passwordSet);
+      setSnapshotScheduleScope(cfg?.scope || 'both');
+      setSnapshotScheduleResourceIds(Array.isArray(cfg?.resourceIds) ? cfg.resourceIds : []);
     }).catch(() => {});
     snapshotApi.getScheduleStatus().then((st: any) => setSnapshotScheduleStatus(st || null)).catch(() => {});
   }, []);
@@ -124,7 +153,59 @@ const SnapshotTab: React.FC<SnapshotTabProps> = ({ s, inputCls, labelCls, rowCls
     }).catch(() => {});
   }, []);
 
+  const fetchSnapshotScan = useCallback(async (scope = manualSnapshotScope) => {
+    const now = Date.now();
+    if (scanCacheRef.current.result && scanCacheRef.current.scope === scope && (now - scanCacheRef.current.at) < 15000) {
+      setScanResult(scanCacheRef.current.result);
+      return;
+    }
+    setScanLoading(true);
+    try {
+      const result = await snapshotApi.scan(scope);
+      setScanResult(result || null);
+      scanCacheRef.current = { scope, at: Date.now(), result: result || null };
+      const existingIds = (result?.groups || []).flatMap(group => group.resources.filter(item => item.exists).map(item => item.id));
+      setSelectedScanResourceIds(prev => {
+        if (scope !== scanCacheRef.current.scope) return existingIds;
+        const next = prev.filter(id => existingIds.includes(id));
+        return next.length > 0 ? next : existingIds;
+      });
+    } catch (err: any) {
+      toast('error', err?.message || s.snapshotScanFailed || 'Failed to scan backup files');
+    } finally {
+      setScanLoading(false);
+    }
+  }, [manualSnapshotScope, s.snapshotScanFailed, toast]);
+
+  const fetchScheduledSnapshotScan = useCallback(async (scope = snapshotScheduleScope) => {
+    const now = Date.now();
+    if (scheduledScanCacheRef.current.result && scheduledScanCacheRef.current.scope === scope && (now - scheduledScanCacheRef.current.at) < 15000) {
+      setScheduledScanResult(scheduledScanCacheRef.current.result);
+      return;
+    }
+    setScheduledScanLoading(true);
+    try {
+      const result = await snapshotApi.scan(scope);
+      setScheduledScanResult(result || null);
+      scheduledScanCacheRef.current = { scope, at: Date.now(), result: result || null };
+      const existingIds = (result?.groups || []).flatMap(group => group.resources.filter(item => item.exists).map(item => item.id));
+      setSnapshotScheduleResourceIds(prev => {
+        const next = prev.filter(id => existingIds.includes(id));
+        return next.length > 0 ? next : existingIds;
+      });
+    } catch (err: any) {
+      toast('error', err?.message || s.snapshotScanFailed || 'Failed to scan backup files');
+    } finally {
+      setScheduledScanLoading(false);
+    }
+  }, [snapshotScheduleScope, s.snapshotScanFailed, toast]);
+
+  useEffect(() => { setSelectedScanResourceIds([]); scanCacheRef.current = { scope: '', at: 0, result: null }; }, [manualSnapshotScope]);
+  useEffect(() => { scheduledScanCacheRef.current = { scope: '', at: 0, result: null }; }, [snapshotScheduleScope]);
+
   useEffect(() => { fetchSnapshots(); fetchSnapshotSchedule(); fetchStats(); fetchOcArchives(); }, [fetchSnapshots, fetchSnapshotSchedule, fetchStats, fetchOcArchives]);
+  useEffect(() => { if (backupMethod === 'clawdeckx') fetchSnapshotScan(manualSnapshotScope); }, [backupMethod, manualSnapshotScope, fetchSnapshotScan]);
+  useEffect(() => { if (snapshotModeTab === 'scheduled') fetchScheduledSnapshotScan(snapshotScheduleScope); }, [snapshotModeTab, snapshotScheduleScope, fetchScheduledSnapshotScan]);
 
   const refreshAll = useCallback((force = true) => { fetchSnapshots(force); fetchStats(); fetchOcArchives(); }, [fetchSnapshots, fetchStats, fetchOcArchives]);
 
@@ -191,11 +272,55 @@ const SnapshotTab: React.FC<SnapshotTabProps> = ({ s, inputCls, labelCls, rowCls
 
   const handleCreateSnapshot = async () => {
     if (!snapshotPassword || snapshotPassword.length < 6) { toast('error', s.snapshotPasswordTooShort || s.pwdTooShort); return; }
+    const resourceIds = selectedScanResourceIds.filter(Boolean);
+    if (backupMethod === 'clawdeckx' && resourceIds.length === 0) { toast('error', s.snapshotScanSelectAtLeastOne || 'Select at least one file to back up'); return; }
     setSnapshotLoading(true);
-    try { await snapshotApi.create({ password: snapshotPassword, trigger: 'manual', note: snapshotNote.trim() || undefined }); toast('success', s.snapshotCreated || s.backupCreated); setSnapshotPassword(''); setSnapshotNote(''); refreshAll(); }
+    try { await snapshotApi.create({ password: snapshotPassword, trigger: 'manual', note: snapshotNote.trim() || undefined, scope: manualSnapshotScope, resourceIds: backupMethod === 'clawdeckx' ? resourceIds : undefined }); toast('success', s.snapshotCreated || s.backupCreated); setSnapshotPassword(''); setSnapshotNote(''); refreshAll(); fetchSnapshotScan(manualSnapshotScope); }
     catch { toast('error', s.snapshotCreateFailed || s.backupFailed); }
     finally { setSnapshotLoading(false); }
   };
+
+  const visibleScanResources = useMemo(() => {
+    if (!scanResult) return [] as SnapshotScanItem[];
+    return scanResult.groups.flatMap(group => group.resources).filter(item => scanShowMissing || item.exists);
+  }, [scanResult, scanShowMissing]);
+
+  const visibleSelectableIds = useMemo(() => visibleScanResources.filter(item => item.exists).map(item => item.id), [visibleScanResources]);
+
+  const selectedVisibleCount = useMemo(() => visibleSelectableIds.filter(id => selectedScanResourceIds.includes(id)).length, [visibleSelectableIds, selectedScanResourceIds]);
+
+  const toggleScanResource = useCallback((resourceId: string) => {
+    setSelectedScanResourceIds(prev => prev.includes(resourceId) ? prev.filter(id => id !== resourceId) : [...prev, resourceId]);
+  }, []);
+
+  const selectVisibleScanResources = useCallback(() => {
+    setSelectedScanResourceIds(prev => Array.from(new Set([...prev, ...visibleSelectableIds])));
+  }, [visibleSelectableIds]);
+
+  const clearVisibleScanResources = useCallback(() => {
+    setSelectedScanResourceIds(prev => prev.filter(id => !visibleSelectableIds.includes(id)));
+  }, [visibleSelectableIds]);
+
+  const scheduledVisibleScanResources = useMemo(() => {
+    if (!scheduledScanResult) return [] as SnapshotScanItem[];
+    return scheduledScanResult.groups.flatMap(group => group.resources).filter(item => scheduledScanShowMissing || item.exists);
+  }, [scheduledScanResult, scheduledScanShowMissing]);
+
+  const scheduledVisibleSelectableIds = useMemo(() => scheduledVisibleScanResources.filter(item => item.exists).map(item => item.id), [scheduledVisibleScanResources]);
+
+  const scheduledSelectedVisibleCount = useMemo(() => scheduledVisibleSelectableIds.filter(id => snapshotScheduleResourceIds.includes(id)).length, [scheduledVisibleSelectableIds, snapshotScheduleResourceIds]);
+
+  const toggleScheduledScanResource = useCallback((resourceId: string) => {
+    setSnapshotScheduleResourceIds(prev => prev.includes(resourceId) ? prev.filter(id => id !== resourceId) : [...prev, resourceId]);
+  }, []);
+
+  const selectVisibleScheduledScanResources = useCallback(() => {
+    setSnapshotScheduleResourceIds(prev => Array.from(new Set([...prev, ...scheduledVisibleSelectableIds])));
+  }, [scheduledVisibleSelectableIds]);
+
+  const clearVisibleScheduledScanResources = useCallback(() => {
+    setSnapshotScheduleResourceIds(prev => prev.filter(id => !scheduledVisibleSelectableIds.includes(id)));
+  }, [scheduledVisibleSelectableIds]);
   const handleCreateOcBackup = async () => {
     if (!ocInstalled) { toast('error', s.ocBackupNotInstalled || 'OpenClaw CLI not installed'); return; }
     setOcBackupCreating(true);
@@ -224,8 +349,9 @@ const SnapshotTab: React.FC<SnapshotTabProps> = ({ s, inputCls, labelCls, rowCls
     if (snapshotScheduleRetention < 1 || snapshotScheduleRetention > 365) { toast('error', s.snapshotScheduleInvalidRetention); return; }
     if (snapshotScheduleEnabled && !snapshotSchedulePasswordSet && snapshotSchedulePassword.length < 6) { toast('error', s.snapshotSchedulePasswordRequired); return; }
     if (snapshotSchedulePassword && snapshotSchedulePassword.length < 6) { toast('error', s.snapshotPasswordTooShort || s.pwdTooShort); return; }
+    if (snapshotScheduleEnabled && snapshotScheduleResourceIds.length === 0) { toast('error', s.snapshotScanSelectAtLeastOne || 'Select at least one file to back up'); return; }
     setSnapshotScheduleSaving(true);
-    try { await snapshotApi.updateSchedule({ enabled: snapshotScheduleEnabled, time: snapshotScheduleTime, retentionCount: snapshotScheduleRetention, timezone: 'Local', password: snapshotSchedulePassword || undefined }); setSnapshotSchedulePassword(''); toast('success', s.snapshotScheduleSaved || s.saved); fetchSnapshotSchedule(); }
+    try { await snapshotApi.updateSchedule({ enabled: snapshotScheduleEnabled, time: snapshotScheduleTime, retentionCount: snapshotScheduleRetention, timezone: 'Local', password: snapshotSchedulePassword || undefined, scope: snapshotScheduleScope, resourceIds: snapshotScheduleResourceIds }); setSnapshotSchedulePassword(''); toast('success', s.snapshotScheduleSaved || s.saved); fetchSnapshotSchedule(); }
     catch (err: any) { toast('error', err?.message || s.snapshotScheduleSaveFailed || s.saveFailed); }
     finally { setSnapshotScheduleSaving(false); }
   };
@@ -475,6 +601,91 @@ const SnapshotTab: React.FC<SnapshotTabProps> = ({ s, inputCls, labelCls, rowCls
           </div>
           {backupMethod === 'clawdeckx' && (<>
             <div className="space-y-2">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div className="flex items-center gap-1 p-0.5 rounded-lg bg-slate-100 dark:bg-white/[0.05]">
+                  {(['both', 'openclaw', 'clawdeckx'] as const).map(scope => (
+                    <button key={scope} type="button" onClick={() => setManualSnapshotScope(scope)} className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors ${manualSnapshotScope === scope ? 'bg-white dark:bg-white/10 text-slate-800 dark:text-white shadow-sm' : 'text-slate-500 dark:text-white/60 hover:text-slate-700 dark:hover:text-white/80'}`}>
+                      {scope === 'both' ? (s.snapshotScopeBoth || 'Both') : scope === 'openclaw' ? 'OpenClaw' : 'ClawDeckX'}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <label className="flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-white/50 cursor-pointer">
+                    <input type="checkbox" checked={scanShowMissing} onChange={e => setScanShowMissing(e.target.checked)} className="rounded border-slate-300 dark:border-white/20 text-primary" />
+                    <span>{s.snapshotScanShowMissing || 'Show missing files'}</span>
+                  </label>
+                  <button type="button" onClick={() => fetchSnapshotScan(manualSnapshotScope)} disabled={scanLoading} className="flex items-center gap-1.5 px-3 py-[6px] rounded-lg text-[11px] font-bold border border-slate-200 dark:border-white/10 text-slate-600 dark:text-white/70 bg-white dark:bg-white/[0.04] hover:bg-slate-50 dark:hover:bg-white/[0.06] transition-colors disabled:opacity-40">
+                    <span className={`material-symbols-outlined text-[14px] ${scanLoading ? 'animate-spin' : ''}`}>{scanLoading ? 'progress_activity' : 'refresh'}</span>
+                    {scanLoading ? (s.snapshotScanning || 'Scanning...') : (s.snapshotScanRefresh || s.refresh || 'Refresh')}
+                  </button>
+                </div>
+              </div>
+              {scanResult && (
+                <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50/70 dark:bg-white/[0.03] p-3 space-y-3">
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <div>
+                      <p className="text-[12px] font-semibold text-slate-700 dark:text-white/80">{s.snapshotScanTitle || 'Backup File Scan'}</p>
+                      <p className="text-[11px] text-slate-500 dark:text-white/40">{(s.snapshotScanSummary || '{existing}/{total} resources available · {size}').replace('{existing}', String(scanResult.summary.existingResources)).replace('{total}', String(scanResult.summary.totalResources)).replace('{size}', formatBytes(scanResult.summary.totalBytes))}</p>
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap text-[11px]">
+                      <span className="px-2 py-1 rounded-lg bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400">{(s.snapshotScanSelected || 'Selected {n}').replace('{n}', String(selectedScanResourceIds.length))}</span>
+                      <span className="px-2 py-1 rounded-lg bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400">{(s.snapshotScanExisting || 'Existing {n}').replace('{n}', String(scanResult.summary.existingResources))}</span>
+                      <span className="px-2 py-1 rounded-lg bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400">{(s.snapshotScanMissing || 'Missing {n}').replace('{n}', String(scanResult.summary.missingResources))}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between gap-2 flex-wrap text-[11px]">
+                    <p className="text-slate-500 dark:text-white/40">{(s.snapshotScanSelectionHint || '{selected}/{visible} visible files selected').replace('{selected}', String(selectedVisibleCount)).replace('{visible}', String(visibleSelectableIds.length))}</p>
+                    <div className="flex items-center gap-2">
+                      <button type="button" onClick={selectVisibleScanResources} disabled={visibleSelectableIds.length === 0} className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-white/10 text-slate-600 dark:text-white/70 hover:bg-slate-100 dark:hover:bg-white/[0.05] disabled:opacity-40">{s.snapshotScanSelectVisible || 'Select visible'}</button>
+                      <button type="button" onClick={clearVisibleScanResources} disabled={selectedVisibleCount === 0} className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-white/10 text-slate-600 dark:text-white/70 hover:bg-slate-100 dark:hover:bg-white/[0.05] disabled:opacity-40">{s.snapshotScanClearVisible || 'Clear visible'}</button>
+                    </div>
+                  </div>
+                  <div className="space-y-3 max-h-72 overflow-y-auto neon-scrollbar pe-1">
+                    {scanResult.groups.map(group => {
+                      const visible = group.resources.filter(item => scanShowMissing || item.exists);
+                      if (visible.length === 0) return null;
+                      const agentGroups = group.id === 'agents'
+                        ? visible.reduce<Record<string, SnapshotScanItem[]>>((acc, item) => {
+                            const agentName = getAgentNameFromLogicalPath(item.logicalPath) || (s.snapshotScanUnknownAgent || 'Unknown Agent');
+                            (acc[agentName] ||= []).push(item);
+                            return acc;
+                          }, {})
+                        : null;
+                      return (
+                        <div key={group.id} className="space-y-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-white/40">{group.title}</p>
+                            <span className="text-[10px] text-slate-400 dark:text-white/30">{visible.length}</span>
+                          </div>
+                          <div className="space-y-2">
+                            {(agentGroups ? Object.entries(agentGroups) : [['__group__', visible] as const]).map(([sectionTitle, items]) => (
+                              <div key={sectionTitle} className="space-y-1.5">
+                                {agentGroups && <p className="text-[10px] font-semibold text-slate-500 dark:text-white/35 border-s border-slate-200 dark:border-white/10 ps-2">{sectionTitle}</p>}
+                                {items.map(item => (
+                                  <label key={item.id} className={`flex items-start gap-2 px-2.5 py-2 rounded-lg border cursor-pointer ${item.exists ? 'border-slate-200 dark:border-white/8 bg-white/80 dark:bg-white/[0.02]' : 'border-amber-200 dark:border-amber-500/20 bg-amber-50/70 dark:bg-amber-500/5'}`}>
+                                    <input type="checkbox" checked={selectedScanResourceIds.includes(item.id)} onChange={() => toggleScanResource(item.id)} disabled={!item.exists} className="mt-0.5 rounded border-slate-300 dark:border-white/20 text-primary" />
+                                    <span className={`material-symbols-outlined text-[14px] mt-0.5 ${item.exists ? 'text-emerald-500' : 'text-amber-500'}`}>{item.exists ? 'check_circle' : 'warning'}</span>
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        <p className="text-[11px] font-medium text-slate-700 dark:text-white/80 break-all">{item.displayName}</p>
+                                        {item.required && <span className="px-1.5 py-0.5 rounded-md bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400 text-[10px]">{s.snapshotScanRequired || 'Required'}</span>}
+                                      </div>
+                                      <p className="text-[10px] font-mono text-slate-400 dark:text-white/30 break-all">{item.logicalPath}</p>
+                                    </div>
+                                    <span className="text-[10px] text-slate-500 dark:text-white/40 shrink-0">{item.exists ? formatBytes(item.sizeBytes) : (s.snapshotScanMissingShort || 'Missing')}</span>
+                                  </label>
+                                ))}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="space-y-2">
               <input type="text" value={snapshotNote} onChange={e => setSnapshotNote(e.target.value)} placeholder={s.snapshotNotePlaceholder || s.snapshotNote || 'Snapshot note (optional)'} className={inputCls} />
               <input type="password" value={snapshotPassword} onChange={e => setSnapshotPassword(e.target.value)} placeholder={s.snapshotPasswordPlaceholder || s.enterPassword || 'Password'} className={inputCls} />
               {snapshotPassword.length > 0 && (() => { const len = snapshotPassword.length; const hasUpper = /[A-Z]/.test(snapshotPassword); const hasDigit = /\d/.test(snapshotPassword); const hasSpecial = /[^A-Za-z0-9]/.test(snapshotPassword); const score = (len >= 6 ? 1 : 0) + (len >= 10 ? 1 : 0) + (hasUpper ? 1 : 0) + (hasDigit ? 1 : 0) + (hasSpecial ? 1 : 0); const label = score <= 1 ? (s.pwdStrengthWeak || 'Weak') : score <= 3 ? (s.pwdStrengthMedium || 'Medium') : (s.pwdStrengthStrong || 'Strong'); const color = score <= 1 ? 'bg-red-400' : score <= 3 ? 'bg-amber-400' : 'bg-emerald-400'; return (<div className="flex items-center gap-2 mt-1"><div className="flex-1 h-1 rounded-full bg-slate-200 dark:bg-white/10 overflow-hidden"><div className={`h-full rounded-full transition-all ${color}`} style={{ width: `${Math.min(100, score * 20)}%` }} /></div><span className="text-[10px] text-slate-400 dark:text-white/40 shrink-0">{label}</span></div>); })()}
@@ -544,6 +755,95 @@ const SnapshotTab: React.FC<SnapshotTabProps> = ({ s, inputCls, labelCls, rowCls
             <div><label className={labelCls}>{s.snapshotScheduleTime}</label><CustomSelect value={snapshotScheduleTime} onChange={setSnapshotScheduleTime} options={snapshotScheduleTimeOptions} placeholder={s.snapshotScheduleTimePlaceholder} className={`${inputCls} mt-1.5`} /></div>
             <div><label className={labelCls}>{s.snapshotScheduleRetention}</label><NumberStepper min={1} max={365} step={1} value={snapshotScheduleRetention} onChange={(v) => { if (v === '') { setSnapshotScheduleRetention(1); return; } const n = Number(v); if (Number.isNaN(n)) return; setSnapshotScheduleRetention(Math.max(1, Math.min(365, Math.round(n)))); }} className={`${inputCls} mt-1.5 h-9`} inputClassName="font-mono text-[12px]" /></div>
             <div><label className={labelCls}>{s.snapshotSchedulePassword}</label><input type="password" value={snapshotSchedulePassword} onChange={e => setSnapshotSchedulePassword(e.target.value)} placeholder={snapshotSchedulePasswordSet ? s.snapshotSchedulePasswordUpdate : s.snapshotPasswordPlaceholder} className={`${inputCls} mt-1.5`} /></div>
+          </div>
+          <div className={`flex items-center gap-3 transition-opacity ${snapshotScheduleEnabled ? '' : 'opacity-50 pointer-events-none'}`}>
+            <label className="text-[11px] font-medium text-slate-500 dark:text-white/50 shrink-0">{s.snapshotScheduleScope || 'Backup Scope'}</label>
+            <div className="flex items-center gap-1 p-0.5 rounded-lg bg-slate-100 dark:bg-white/[0.05]">
+              {(['both', 'openclaw', 'clawdeckx'] as const).map(scope => (
+                <button key={scope} type="button" onClick={() => setSnapshotScheduleScope(scope)} className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors ${snapshotScheduleScope === scope ? 'bg-white dark:bg-white/10 text-slate-800 dark:text-white shadow-sm' : 'text-slate-500 dark:text-white/60 hover:text-slate-700 dark:hover:text-white/80'}`}>
+                  {scope === 'both' ? (s.snapshotScopeBoth || 'Both') : scope === 'openclaw' ? 'OpenClaw' : 'ClawDeckX'}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className={`space-y-2 transition-opacity ${snapshotScheduleEnabled ? '' : 'opacity-50 pointer-events-none'}`}>
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div className="flex items-center gap-2 flex-wrap">
+                <label className="flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-white/50 cursor-pointer">
+                  <input type="checkbox" checked={scheduledScanShowMissing} onChange={e => setScheduledScanShowMissing(e.target.checked)} className="rounded border-slate-300 dark:border-white/20 text-primary" />
+                  <span>{s.snapshotScanShowMissing || 'Show missing files'}</span>
+                </label>
+                <button type="button" onClick={() => fetchScheduledSnapshotScan(snapshotScheduleScope)} disabled={scheduledScanLoading} className="flex items-center gap-1.5 px-3 py-[6px] rounded-lg text-[11px] font-bold border border-slate-200 dark:border-white/10 text-slate-600 dark:text-white/70 bg-white dark:bg-white/[0.04] hover:bg-slate-50 dark:hover:bg-white/[0.06] transition-colors disabled:opacity-40">
+                  <span className={`material-symbols-outlined text-[14px] ${scheduledScanLoading ? 'animate-spin' : ''}`}>{scheduledScanLoading ? 'progress_activity' : 'refresh'}</span>
+                  {scheduledScanLoading ? (s.snapshotScanning || 'Scanning...') : (s.snapshotScanRefresh || s.refresh || 'Refresh')}
+                </button>
+              </div>
+              <p className="text-[11px] text-slate-500 dark:text-white/40">{(s.snapshotScanSelectionHint || '{selected}/{visible} visible files selected').replace('{selected}', String(scheduledSelectedVisibleCount)).replace('{visible}', String(scheduledVisibleSelectableIds.length))}</p>
+            </div>
+            {scheduledScanResult && (
+              <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50/70 dark:bg-white/[0.03] p-3 space-y-3">
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <div>
+                    <p className="text-[12px] font-semibold text-slate-700 dark:text-white/80">{s.snapshotSchedulePlanTitle || s.snapshotScanTitle || 'Backup File Scan'}</p>
+                    <p className="text-[11px] text-slate-500 dark:text-white/40">{(s.snapshotScanSummary || '{existing}/{total} resources available · {size}').replace('{existing}', String(scheduledScanResult.summary.existingResources)).replace('{total}', String(scheduledScanResult.summary.totalResources)).replace('{size}', formatBytes(scheduledScanResult.summary.totalBytes))}</p>
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap text-[11px]">
+                    <span className="px-2 py-1 rounded-lg bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400">{(s.snapshotScanSelected || 'Selected {n}').replace('{n}', String(snapshotScheduleResourceIds.length))}</span>
+                    <span className="px-2 py-1 rounded-lg bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400">{(s.snapshotScanExisting || 'Existing {n}').replace('{n}', String(scheduledScanResult.summary.existingResources))}</span>
+                    <span className="px-2 py-1 rounded-lg bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400">{(s.snapshotScanMissing || 'Missing {n}').replace('{n}', String(scheduledScanResult.summary.missingResources))}</span>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between gap-2 flex-wrap text-[11px]">
+                  <p className="text-slate-500 dark:text-white/40">{s.snapshotSchedulePlanHint || 'The selected files below will be used by scheduled backups.'}</p>
+                  <div className="flex items-center gap-2">
+                    <button type="button" onClick={selectVisibleScheduledScanResources} disabled={scheduledVisibleSelectableIds.length === 0} className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-white/10 text-slate-600 dark:text-white/70 hover:bg-slate-100 dark:hover:bg-white/[0.05] disabled:opacity-40">{s.snapshotScanSelectVisible || 'Select visible'}</button>
+                    <button type="button" onClick={clearVisibleScheduledScanResources} disabled={scheduledSelectedVisibleCount === 0} className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-white/10 text-slate-600 dark:text-white/70 hover:bg-slate-100 dark:hover:bg-white/[0.05] disabled:opacity-40">{s.snapshotScanClearVisible || 'Clear visible'}</button>
+                  </div>
+                </div>
+                <div className="space-y-3 max-h-72 overflow-y-auto neon-scrollbar pe-1">
+                  {scheduledScanResult.groups.map(group => {
+                    const visible = group.resources.filter(item => scheduledScanShowMissing || item.exists);
+                    if (visible.length === 0) return null;
+                    const agentGroups = group.id === 'agents'
+                      ? visible.reduce<Record<string, SnapshotScanItem[]>>((acc, item) => {
+                          const agentName = getAgentNameFromLogicalPath(item.logicalPath) || (s.snapshotScanUnknownAgent || 'Unknown Agent');
+                          (acc[agentName] ||= []).push(item);
+                          return acc;
+                        }, {})
+                      : null;
+                    return (
+                      <div key={group.id} className="space-y-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-white/40">{group.title}</p>
+                          <span className="text-[10px] text-slate-400 dark:text-white/30">{visible.length}</span>
+                        </div>
+                        <div className="space-y-2">
+                          {(agentGroups ? Object.entries(agentGroups) : [['__group__', visible] as const]).map(([sectionTitle, items]) => (
+                            <div key={sectionTitle} className="space-y-1.5">
+                              {agentGroups && <p className="text-[10px] font-semibold text-slate-500 dark:text-white/35 border-s border-slate-200 dark:border-white/10 ps-2">{sectionTitle}</p>}
+                              {items.map(item => (
+                                <label key={item.id} className={`flex items-start gap-2 px-2.5 py-2 rounded-lg border cursor-pointer ${item.exists ? 'border-slate-200 dark:border-white/8 bg-white/80 dark:bg-white/[0.02]' : 'border-amber-200 dark:border-amber-500/20 bg-amber-50/70 dark:bg-amber-500/5'}`}>
+                                  <input type="checkbox" checked={snapshotScheduleResourceIds.includes(item.id)} onChange={() => toggleScheduledScanResource(item.id)} disabled={!item.exists} className="mt-0.5 rounded border-slate-300 dark:border-white/20 text-primary" />
+                                  <span className={`material-symbols-outlined text-[14px] mt-0.5 ${item.exists ? 'text-emerald-500' : 'text-amber-500'}`}>{item.exists ? 'check_circle' : 'warning'}</span>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <p className="text-[11px] font-medium text-slate-700 dark:text-white/80 break-all">{item.displayName}</p>
+                                      {item.required && <span className="px-1.5 py-0.5 rounded-md bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400 text-[10px]">{s.snapshotScanRequired || 'Required'}</span>}
+                                    </div>
+                                    <p className="text-[10px] font-mono text-slate-400 dark:text-white/30 break-all">{item.logicalPath}</p>
+                                  </div>
+                                  <span className="text-[10px] text-slate-500 dark:text-white/40 shrink-0">{item.exists ? formatBytes(item.sizeBytes) : (s.snapshotScanMissingShort || 'Missing')}</span>
+                                </label>
+                              ))}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
           <div className="flex items-center justify-between">
             <span className="flex items-center gap-1.5 text-[11px]">{snapshotSchedulePasswordSet ? <><span className="inline-block w-2 h-2 rounded-full bg-emerald-400 ring-2 ring-emerald-400/20" /><span className="text-emerald-600 dark:text-emerald-400">{s.snapshotSchedulePasswordSet}</span></> : <><span className="inline-block w-2 h-2 rounded-full bg-red-400 ring-2 ring-red-400/20" /><span className="text-red-500 dark:text-red-400">{s.snapshotSchedulePasswordUnset}</span></>}</span>

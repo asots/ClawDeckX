@@ -1042,6 +1042,7 @@ export const ChannelsSection: React.FC<SectionProps> = ({ config, schema, setFie
             <ArrayField label={es.allowFrom} value={g(['allowFrom']) || []} onChange={v => s(['allowFrom'], v)} placeholder={es.phUserId} tooltip={tip('allowFrom')} />
             <TextField label={es.defaultTo || 'Default To'} value={g(['defaultTo']) || ''} onChange={v => s(['defaultTo'], v)} tooltip={tip('defaultTo')} />
             <SwitchField label={es.requireMention} value={g(['requireMention']) !== false} onChange={v => s(['requireMention'], v)} tooltip={es.tipSlackMention} />
+            <SwitchField label={es.threadRequireExplicitMention || 'Thread Require @mention'} value={g(['thread', 'requireExplicitMention']) === true} onChange={v => s(['thread', 'requireExplicitMention'], v)} tooltip={es.tipSlackThreadMention} />
             <SelectField label={es.streaming || 'Streaming'} value={g(['streaming']) || 'partial'} onChange={v => s(['streaming'], v)} options={streaming(es)} tooltip={tip('streaming')} />
             <SwitchField label={es.nativeStreaming || 'Native Streaming'} value={g(['nativeStreaming']) !== false} onChange={v => s(['nativeStreaming'], v)} tooltip={es.tipSlackNativeStreaming} />
             <SelectField label={es.replyToMode || 'Reply To Mode'} value={g(['replyToMode']) || 'off'} onChange={v => s(['replyToMode'], v)} options={replyToMode(es)} tooltip={tip('replyToMode')} />

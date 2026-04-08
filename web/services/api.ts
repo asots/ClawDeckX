@@ -378,6 +378,8 @@ export interface SnapshotScheduleConfig {
   retentionCount: number;
   timezone: string;
   passwordSet: boolean;
+  scope: string;
+  resourceIds?: string[];
 }
 
 export interface SnapshotScheduleStatus {
@@ -418,6 +420,34 @@ export interface VerifyIntegrityResult {
   error?: string;
 }
 
+export interface SnapshotScanResource {
+  id: string;
+  type: string;
+  displayName: string;
+  logicalPath: string;
+  scope: string;
+  required: boolean;
+  exists: boolean;
+  sizeBytes: number;
+}
+
+export interface SnapshotScanGroup {
+  id: string;
+  title: string;
+  resources: SnapshotScanResource[];
+}
+
+export interface SnapshotScanResult {
+  scope: string;
+  summary: {
+    totalResources: number;
+    existingResources: number;
+    missingResources: number;
+    totalBytes: number;
+  };
+  groups: SnapshotScanGroup[];
+}
+
 export interface FileDiffResult {
   logical_path: string;
   backup_content: string;
@@ -429,7 +459,8 @@ export interface FileDiffResult {
 export const snapshotApi = {
   list: () => get<any[]>('/api/v1/snapshots'),
   listCached: (ttlMs = 10000, force = false) => getCached<any[]>('/api/v1/snapshots', ttlMs, force),
-  create: (data: { note?: string; trigger?: string; resourceIds?: string[]; password: string }) => post('/api/v1/snapshots', data),
+  scan: (scope?: string) => get<SnapshotScanResult>(`/api/v1/snapshots/scan${scope ? `?scope=${encodeURIComponent(scope)}` : ''}`),
+  create: (data: { note?: string; trigger?: string; resourceIds?: string[]; password: string; scope?: string }) => post('/api/v1/snapshots', data),
   unlockPreview: (id: string, password: string) => post(`/api/v1/snapshots/${id}/unlock-preview`, { password }),
   restorePlan: (id: string, data: { previewToken: string; restoreSelections: { files?: string[]; config_paths?: string[]; configPaths?: string[] } }) =>
     post(`/api/v1/snapshots/${id}/restore-plan`, data),
@@ -504,7 +535,7 @@ export const snapshotApi = {
     return json.data;
   },
   getSchedule: () => get<SnapshotScheduleConfig>('/api/v1/snapshots/schedule'),
-  updateSchedule: (data: { enabled: boolean; time: string; retentionCount: number; timezone?: string; password?: string }) =>
+  updateSchedule: (data: { enabled: boolean; time: string; retentionCount: number; timezone?: string; password?: string; scope?: string; resourceIds?: string[] }) =>
     put('/api/v1/snapshots/schedule', data),
   getScheduleStatus: () => get<SnapshotScheduleStatus>('/api/v1/snapshots/schedule/status'),
   scheduleRunNow: () => post<{ snapshotId: string }>('/api/v1/snapshots/schedule/run-now', {}),

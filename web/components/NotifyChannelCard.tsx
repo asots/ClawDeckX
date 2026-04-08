@@ -52,18 +52,24 @@ const NotifyChannelCard: React.FC<NotifyChannelCardProps> = ({
 }) => {
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<'ok' | 'fail' | null>(null);
+  const [testError, setTestError] = useState<string | null>(null);
 
   const handleTest = async () => {
     setTesting(true);
     setTestResult(null);
+    setTestError(null);
     try {
       await notifyApi.testSend('', channel.id);
       setTestResult('ok');
-    } catch {
+    } catch (err) {
       setTestResult('fail');
+      setTestError(err instanceof Error ? err.message : 'Test failed');
     }
     setTesting(false);
-    setTimeout(() => setTestResult(null), 3000);
+    setTimeout(() => {
+      setTestResult(null);
+      setTestError(null);
+    }, 5000);
   };
 
   const [visiblePasswords, setVisiblePasswords] = useState<Record<string, boolean>>({});
@@ -194,6 +200,9 @@ const NotifyChannelCard: React.FC<NotifyChannelCardProps> = ({
           <>
             {testDisabled && testDisabledReason && (
               <p className="mb-3 text-[10px] text-amber-600 dark:text-amber-400">{testDisabledReason}</p>
+            )}
+            {testResult === 'fail' && testError && (
+              <p className="mb-3 break-words text-[10px] text-danger dark:text-danger">{testError}</p>
             )}
             <div className="space-y-3">
               {renderFields()}

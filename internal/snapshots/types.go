@@ -14,6 +14,10 @@ const (
 	ScheduleStatusFailed    = "failed"
 	ScheduleStatusSkipped   = "skipped"
 	DefaultScheduleTimezone = "Local"
+
+	BackupScopeOpenClaw  = "openclaw"
+	BackupScopeClawDeckX = "clawdeckx"
+	BackupScopeBoth      = "both"
 )
 
 type ResourceDefinition struct {
@@ -23,6 +27,7 @@ type ResourceDefinition struct {
 	LogicalPath string
 	RestoreMode string
 	Required    bool
+	Scope       string // "openclaw" or "clawdeckx"
 	ResolvePath func() string
 }
 
@@ -108,4 +113,34 @@ type ProgressFn func(evt RestoreProgressEvent)
 
 type ScheduleRunNowResponse struct {
 	SnapshotID string `json:"snapshotId"`
+}
+
+type SnapshotScanSummary struct {
+	TotalResources    int   `json:"totalResources"`
+	ExistingResources int   `json:"existingResources"`
+	MissingResources  int   `json:"missingResources"`
+	TotalBytes        int64 `json:"totalBytes"`
+}
+
+type SnapshotScanResource struct {
+	ID          string `json:"id"`
+	Type        string `json:"type"`
+	DisplayName string `json:"displayName"`
+	LogicalPath string `json:"logicalPath"`
+	Scope       string `json:"scope"`
+	Required    bool   `json:"required"`
+	Exists      bool   `json:"exists"`
+	SizeBytes   int64  `json:"sizeBytes"`
+}
+
+type SnapshotScanGroup struct {
+	ID        string                 `json:"id"`
+	Title     string                 `json:"title"`
+	Resources []SnapshotScanResource `json:"resources"`
+}
+
+type SnapshotScanResult struct {
+	Scope   string              `json:"scope"`
+	Summary SnapshotScanSummary `json:"summary"`
+	Groups  []SnapshotScanGroup `json:"groups"`
 }

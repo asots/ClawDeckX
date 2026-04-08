@@ -537,6 +537,7 @@ func RunServe(args []string) int {
 	router.GET("/api/v1/config/get-key", configHandler.GetKey)
 
 	router.GET("/api/v1/snapshots", snapshotHandler.List)
+	router.GET("/api/v1/snapshots/scan", snapshotHandler.Scan)
 	router.GET("/api/v1/snapshots/stats", snapshotHandler.Stats)
 	router.POST("/api/v1/snapshots", web.RequireAdmin(snapshotHandler.Create))
 	router.POST("/api/v1/snapshots/import", web.RequireAdmin(snapshotHandler.Import))

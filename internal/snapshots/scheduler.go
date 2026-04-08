@@ -2,6 +2,7 @@ package snapshots
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -24,22 +25,28 @@ const (
 	settingScheduleLastError     = "snapshot_schedule_last_error"
 	settingScheduleLastSnapshot  = "snapshot_schedule_last_snapshot_id"
 	settingScheduleLastRunDate   = "snapshot_schedule_last_run_date"
+	settingScheduleScope         = "snapshot_schedule_scope"
+	settingScheduleResourceIDs   = "snapshot_schedule_resource_ids"
 )
 
 type ScheduleConfig struct {
-	Enabled        bool   `json:"enabled"`
-	Time           string `json:"time"`
-	RetentionCount int    `json:"retentionCount"`
-	Timezone       string `json:"timezone"`
-	PasswordSet    bool   `json:"passwordSet"`
+	Enabled        bool     `json:"enabled"`
+	Time           string   `json:"time"`
+	RetentionCount int      `json:"retentionCount"`
+	Timezone       string   `json:"timezone"`
+	PasswordSet    bool     `json:"passwordSet"`
+	Scope          string   `json:"scope"`
+	ResourceIDs    []string `json:"resourceIds,omitempty"`
 }
 
 type ScheduleUpdateRequest struct {
-	Enabled        bool   `json:"enabled"`
-	Time           string `json:"time"`
-	RetentionCount int    `json:"retentionCount"`
-	Timezone       string `json:"timezone"`
-	Password       string `json:"password"`
+	Enabled        bool     `json:"enabled"`
+	Time           string   `json:"time"`
+	RetentionCount int      `json:"retentionCount"`
+	Timezone       string   `json:"timezone"`
+	Password       string   `json:"password"`
+	Scope          string   `json:"scope"`
+	ResourceIDs    []string `json:"resourceIds"`
 }
 
 type ScheduleStatus struct {
@@ -98,12 +105,16 @@ func (s *Scheduler) GetConfig() (*ScheduleConfig, error) {
 	if retention < 1 {
 		retention = 1
 	}
+	scope := s.getString(settingScheduleScope, BackupScopeBoth)
+	resourceIDs := s.getStringSlice(settingScheduleResourceIDs)
 	return &ScheduleConfig{
 		Enabled:        enabled,
 		Time:           timeStr,
 		RetentionCount: retention,
 		Timezone:       tz,
 		PasswordSet:    passwordSet,
+		Scope:          scope,
+		ResourceIDs:    resourceIDs,
 	}, nil
 }
 
@@ -138,12 +149,25 @@ func (s *Scheduler) UpdateConfig(req ScheduleUpdateRequest, userID uint, usernam
 			return fmt.Errorf("schedule password required")
 		}
 	}
+	scope := strings.TrimSpace(req.Scope)
+	if scope == "" {
+		scope = BackupScopeBoth
+	}
+	if scope != BackupScopeOpenClaw && scope != BackupScopeClawDeckX && scope != BackupScopeBoth {
+		scope = BackupScopeBoth
+	}
 	items := map[string]string{
 		settingScheduleEnabled:   strconv.FormatBool(req.Enabled),
 		settingScheduleTime:      timeStr,
 		settingScheduleRetention: strconv.Itoa(req.RetentionCount),
 		settingScheduleTimezone:  tz,
+		settingScheduleScope:     scope,
 	}
+	resourceIDsJSON, err := json.Marshal(normalizeScheduleResourceIDs(req.ResourceIDs))
+	if err != nil {
+		return fmt.Errorf("marshal schedule resource ids: %w", err)
+	}
+	items[settingScheduleResourceIDs] = string(resourceIDsJSON)
 	if req.Password != "" {
 		if s.deviceID != "" {
 			enc, err := EncryptSchedulePassword(req.Password, s.deviceID)
@@ -237,12 +261,14 @@ func (s *Scheduler) runIfNeeded() {
 	}
 	password := rawPassword
 	if s.deviceID != "" {
-		if dec, decErr := DecryptSchedulePassword(rawPassword, s.deviceID); decErr == nil {
+		if dec, err := DecryptSchedulePassword(rawPassword, s.deviceID); err == nil {
 			password = dec
 		}
 	}
 
-	rec, err := s.svc.Create("auto scheduled backup", ScheduledSnapshotTag, password, nil)
+	scope := s.getString(settingScheduleScope, BackupScopeBoth)
+	resourceIDs := s.getStringSlice(settingScheduleResourceIDs)
+	rec, err := s.svc.Create("auto scheduled backup", ScheduledSnapshotTag, password, resourceIDs, scope)
 	if err != nil {
 		s.markFailed(nowRFC3339, err.Error())
 		return
@@ -335,6 +361,41 @@ func (s *Scheduler) getBool(key string, fallback bool) bool {
 	return b
 }
 
+func (s *Scheduler) getStringSlice(key string) []string {
+	v, err := s.setting.Get(key)
+	if err != nil || strings.TrimSpace(v) == "" {
+		return nil
+	}
+	var out []string
+	if err := json.Unmarshal([]byte(v), &out); err != nil {
+		return nil
+	}
+	return normalizeScheduleResourceIDs(out)
+}
+
+func normalizeScheduleResourceIDs(ids []string) []string {
+	if len(ids) == 0 {
+		return nil
+	}
+	seen := make(map[string]struct{}, len(ids))
+	out := make([]string, 0, len(ids))
+	for _, id := range ids {
+		id = strings.TrimSpace(id)
+		if id == "" {
+			continue
+		}
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		out = append(out, id)
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
+}
+
 func isValidScheduleTime(v string) bool {
 	if len(v) != 5 {
 		return false
@@ -356,7 +417,6 @@ func parseHM(hm string) (int, int) {
 	return h, m
 }
 
-// RunNow triggers an immediate scheduled backup regardless of the configured time.
 func (s *Scheduler) RunNow(userID uint, username, ip string) (*ScheduleRunNowResponse, error) {
 	s.mu.Lock()
 	if s.running {
@@ -382,7 +442,7 @@ func (s *Scheduler) RunNow(userID uint, username, ip string) (*ScheduleRunNowRes
 	}
 	password := rawPassword
 	if s.deviceID != "" {
-		if dec, decErr := DecryptSchedulePassword(rawPassword, s.deviceID); decErr == nil {
+		if dec, err := DecryptSchedulePassword(rawPassword, s.deviceID); err == nil {
 			password = dec
 		}
 	}
@@ -392,7 +452,9 @@ func (s *Scheduler) RunNow(userID uint, username, ip string) (*ScheduleRunNowRes
 		settingScheduleLastRunAt: nowRFC3339,
 	})
 
-	rec, createErr := s.svc.Create("manual trigger of scheduled backup", ScheduledSnapshotTag, password, nil)
+	scope := s.getString(settingScheduleScope, BackupScopeBoth)
+	resourceIDs := s.getStringSlice(settingScheduleResourceIDs)
+	rec, createErr := s.svc.Create("manual trigger of scheduled backup", ScheduledSnapshotTag, password, resourceIDs, scope)
 	if createErr != nil {
 		s.markFailed(nowRFC3339, createErr.Error())
 		return nil, createErr

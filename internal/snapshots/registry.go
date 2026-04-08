@@ -10,9 +10,32 @@ import (
 	"unicode"
 
 	"ClawDeckX/internal/openclaw"
+	"ClawDeckX/internal/webconfig"
 )
 
 func defaultRegistry() []ResourceDefinition {
+	var resources []ResourceDefinition
+	resources = append(resources, openclawRegistry()...)
+	resources = append(resources, clawdeckxRegistry()...)
+	sort.Slice(resources, func(i, j int) bool { return resources[i].ID < resources[j].ID })
+	return resources
+}
+
+func registryByScope(scope string) []ResourceDefinition {
+	var resources []ResourceDefinition
+	switch scope {
+	case BackupScopeOpenClaw:
+		resources = openclawRegistry()
+	case BackupScopeClawDeckX:
+		resources = clawdeckxRegistry()
+	default: // "both" or empty
+		resources = append(openclawRegistry(), clawdeckxRegistry()...)
+	}
+	sort.Slice(resources, func(i, j int) bool { return resources[i].ID < resources[j].ID })
+	return resources
+}
+
+func openclawRegistry() []ResourceDefinition {
 	stateDir := resolveStateDir()
 	resources := []ResourceDefinition{
 		{
@@ -22,6 +45,7 @@ func defaultRegistry() []ResourceDefinition {
 			LogicalPath: "files/config/openclaw.json",
 			RestoreMode: RestoreModeJSON,
 			Required:    true,
+			Scope:       BackupScopeOpenClaw,
 			ResolvePath: func() string { return filepath.Join(stateDir, "openclaw.json") },
 		},
 	}
@@ -32,7 +56,43 @@ func defaultRegistry() []ResourceDefinition {
 	resources = append(resources, discoverEnvFileResources(stateDir)...)
 	resources = append(resources, discoverIncludeSubFiles(stateDir)...)
 
-	sort.Slice(resources, func(i, j int) bool { return resources[i].ID < resources[j].ID })
+	return resources
+}
+
+func clawdeckxRegistry() []ResourceDefinition {
+	dataDir := webconfig.DataDir()
+	var resources []ResourceDefinition
+
+	// ClawDeckX.json config
+	configPath := filepath.Join(dataDir, "ClawDeckX.json")
+	if isRegularFile(configPath) {
+		resources = append(resources, ResourceDefinition{
+			ID:          "clawdeckx.config",
+			Type:        "config_json",
+			DisplayName: "ClawDeckX Config",
+			LogicalPath: "files/clawdeckx/ClawDeckX.json",
+			RestoreMode: RestoreModeFile,
+			Required:    false,
+			Scope:       BackupScopeClawDeckX,
+			ResolvePath: func() string { return configPath },
+		})
+	}
+
+	// ClawDeckX.db SQLite database
+	dbPath := filepath.Join(dataDir, "ClawDeckX.db")
+	if isRegularFile(dbPath) {
+		resources = append(resources, ResourceDefinition{
+			ID:          "clawdeckx.database",
+			Type:        "database",
+			DisplayName: "ClawDeckX Database",
+			LogicalPath: "files/clawdeckx/ClawDeckX.db",
+			RestoreMode: RestoreModeFile,
+			Required:    false,
+			Scope:       BackupScopeClawDeckX,
+			ResolvePath: func() string { return dbPath },
+		})
+	}
+
 	return resources
 }
 
@@ -68,10 +128,13 @@ func discoverAgentMarkdownResources(stateDir string) []ResourceDefinition {
 		}
 		for _, spec := range []fileSpec{
 			{fileName: "SOUL.md", idSuffix: "soul_md", displayName: "SOUL.md"},
+			{fileName: "AGENTS.md", idSuffix: "agents_md", displayName: "AGENTS.md"},
 			{fileName: "USER.md", idSuffix: "user_md", displayName: "USER.md"},
+			{fileName: "IDENTITY.md", idSuffix: "identity_md", displayName: "IDENTITY.md"},
 			{fileName: "MEMORY.md", idSuffix: "memory_md", displayName: "MEMORY.md"},
 			{fileName: "HEARTBEAT.md", idSuffix: "heartbeat_md", displayName: "HEARTBEAT.md"},
 			{fileName: "TOOLS.md", idSuffix: "tools_md", displayName: "TOOLS.md"},
+			{fileName: "BOOTSTRAP.md", idSuffix: "bootstrap_md", displayName: "BOOTSTRAP.md"},
 		} {
 			fullPath := filepath.Join(agentsDir, agentName, spec.fileName)
 			if !isRegularFile(fullPath) {
@@ -85,6 +148,7 @@ func discoverAgentMarkdownResources(stateDir string) []ResourceDefinition {
 				LogicalPath: logicalPath,
 				RestoreMode: RestoreModeFile,
 				Required:    false,
+				Scope:       BackupScopeOpenClaw,
 				ResolvePath: func() string { return fullPath },
 			})
 		}
@@ -124,6 +188,7 @@ func discoverPersonaResources(stateDir string) []ResourceDefinition {
 			LogicalPath: filepath.ToSlash(filepath.Join("files", "personas", name)),
 			RestoreMode: RestoreModeFile,
 			Required:    false,
+			Scope:       BackupScopeOpenClaw,
 			ResolvePath: func() string { return fullPath },
 		})
 	}
@@ -166,6 +231,7 @@ func discoverIncludeSubFiles(stateDir string) []ResourceDefinition {
 			LogicalPath: filepath.ToSlash(filepath.Join("files", "config", logicalDir, logicalName)),
 			RestoreMode: RestoreModeFile,
 			Required:    false,
+			Scope:       BackupScopeOpenClaw,
 			ResolvePath: func() string { return p },
 		})
 	}
@@ -240,6 +306,7 @@ func discoverCredentialResources(stateDir string) []ResourceDefinition {
 			LogicalPath: filepath.ToSlash(filepath.Join("files", "credentials", name)),
 			RestoreMode: RestoreModeFile,
 			Required:    false,
+			Scope:       BackupScopeOpenClaw,
 			ResolvePath: func() string { return fullPath },
 		})
 	}
@@ -257,6 +324,7 @@ func discoverEnvFileResources(stateDir string) []ResourceDefinition {
 			LogicalPath: "files/config/.env",
 			RestoreMode: RestoreModeFile,
 			Required:    false,
+			Scope:       BackupScopeOpenClaw,
 			ResolvePath: func() string { return envPath },
 		})
 	}

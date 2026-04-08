@@ -18,6 +18,7 @@ import (
 	"ClawDeckX/internal/database"
 	"ClawDeckX/internal/logger"
 	"ClawDeckX/internal/openclaw"
+	"ClawDeckX/internal/webconfig"
 )
 
 type unlockedBundle struct {
@@ -166,7 +167,11 @@ func (s *Service) List() ([]SnapshotSummary, error) {
 	return out, nil
 }
 
-func (s *Service) Create(note, trigger, password string, resourceIDs []string) (*database.SnapshotRecord, error) {
+func (s *Service) Create(note, trigger, password string, resourceIDs []string, opts ...string) (*database.SnapshotRecord, error) {
+	scope := ""
+	if len(opts) > 0 {
+		scope = opts[0]
+	}
 	if trigger == "" {
 		trigger = DefaultSnapshotTag
 	}
@@ -177,7 +182,7 @@ func (s *Service) Create(note, trigger, password string, resourceIDs []string) (
 	if len(existing) >= MaxSnapshotCount {
 		return nil, fmt.Errorf("snapshot limit reached (%d), please delete old snapshots first", MaxSnapshotCount)
 	}
-	resources, err := s.collectResources(resourceIDs)
+	resources, err := s.collectResourcesByScope(resourceIDs, scope)
 	if err != nil {
 		return nil, err
 	}
@@ -607,6 +612,126 @@ func parseAgentLogicalPath(logicalPath string) (string, string, bool) {
 	return agentID, fileName, true
 }
 
+func (s *Service) Scan(scope string) (*SnapshotScanResult, error) {
+	if scope == "" {
+		scope = BackupScopeBoth
+	}
+	registry := registryByScope(scope)
+	groups := map[string][]SnapshotScanResource{}
+	order := make([]string, 0)
+	summary := SnapshotScanSummary{TotalResources: len(registry)}
+	for _, def := range registry {
+		exists, sizeBytes := s.scanResource(def)
+		item := SnapshotScanResource{
+			ID:          def.ID,
+			Type:        def.Type,
+			DisplayName: def.DisplayName,
+			LogicalPath: def.LogicalPath,
+			Scope:       def.Scope,
+			Required:    def.Required,
+			Exists:      exists,
+			SizeBytes:   sizeBytes,
+		}
+		groupID := scanGroupID(def.LogicalPath, def.Scope)
+		if _, ok := groups[groupID]; !ok {
+			order = append(order, groupID)
+		}
+		groups[groupID] = append(groups[groupID], item)
+		if exists {
+			summary.ExistingResources++
+			summary.TotalBytes += sizeBytes
+		} else {
+			summary.MissingResources++
+		}
+	}
+	out := &SnapshotScanResult{Scope: scope, Summary: summary, Groups: make([]SnapshotScanGroup, 0, len(order))}
+	for _, groupID := range order {
+		items := groups[groupID]
+		sort.Slice(items, func(i, j int) bool {
+			if items[i].LogicalPath == items[j].LogicalPath {
+				return items[i].ID < items[j].ID
+			}
+			return items[i].LogicalPath < items[j].LogicalPath
+		})
+		out.Groups = append(out.Groups, SnapshotScanGroup{
+			ID:        groupID,
+			Title:     scanGroupTitle(groupID),
+			Resources: items,
+		})
+	}
+	return out, nil
+}
+
+func (s *Service) scanResource(def ResourceDefinition) (bool, int64) {
+	path := strings.TrimSpace(def.ResolvePath())
+	if path != "" {
+		if fi, err := os.Stat(path); err == nil && !fi.IsDir() {
+			return true, fi.Size()
+		}
+	}
+	if data, handled, err := s.readResourceViaGateway(def.LogicalPath); handled {
+		if err == nil {
+			return true, int64(len(data))
+		}
+		if errors.Is(err, os.ErrNotExist) {
+			return false, 0
+		}
+		return false, 0
+	}
+	if path == "" {
+		path = resolveLogicalPathDirect(def.LogicalPath)
+	}
+	if path == "" {
+		path = logicalPathToSourcePath(def.LogicalPath)
+	}
+	if path == "" {
+		return false, 0
+	}
+	if fi, err := os.Stat(path); err == nil && !fi.IsDir() {
+		return true, fi.Size()
+	}
+	return false, 0
+}
+
+func scanGroupID(logicalPath, scope string) string {
+	if strings.HasPrefix(logicalPath, "files/agents/") {
+		return "agents"
+	}
+	if strings.HasPrefix(logicalPath, "files/personas/") {
+		return "personas"
+	}
+	if strings.HasPrefix(logicalPath, "files/credentials/") {
+		return "credentials"
+	}
+	if strings.HasPrefix(logicalPath, "files/clawdeckx/") {
+		return "clawdeckx"
+	}
+	if strings.HasPrefix(logicalPath, "files/config/") {
+		return "config"
+	}
+	if scope == BackupScopeClawDeckX {
+		return "clawdeckx"
+	}
+	return "other"
+}
+
+func scanGroupTitle(groupID string) string {
+	switch groupID {
+	case "agents":
+		return "Agents"
+	case "personas":
+		return "Personas"
+	case "credentials":
+		return "Credentials"
+	case "clawdeckx":
+		return "ClawDeckX"
+	case "config":
+		return "Config"
+	default:
+		return "Other"
+	}
+}
+
 func (s *Service) PruneScheduledBackups(retentionCount int) ([]string, error) {
 	if retentionCount < 1 {
 		retentionCount = 1
@@ -633,12 +758,16 @@ func (s *Service) Delete(snapshotID string) error {
 }
 
 func (s *Service) collectResources(resourceIDs []string) ([]ResourceContent, error) {
+	return s.collectResourcesByScope(resourceIDs, "")
+}
+
+func (s *Service) collectResourcesByScope(resourceIDs []string, scope string) ([]ResourceContent, error) {
 	allow := map[string]struct{}{}
 	for _, id := range resourceIDs {
 		allow[id] = struct{}{}
 	}
 	items := make([]ResourceContent, 0)
-	registry := defaultRegistry()
+	registry := registryByScope(scope)
 	for _, def := range registry {
 		if len(allow) > 0 {
 			if _, ok := allow[def.ID]; !ok {
@@ -769,6 +898,14 @@ func resolveLogicalPathDirect(logicalPath string) string {
 	if strings.HasPrefix(logicalPath, "files/config/") {
 		rel := strings.TrimPrefix(logicalPath, "files/config/")
 		return filepath.Join(stateDir, filepath.FromSlash(rel))
+	}
+	// files/clawdeckx/{name} → {dataDir}/{name}
+	if strings.HasPrefix(logicalPath, "files/clawdeckx/") {
+		rel := strings.TrimPrefix(logicalPath, "files/clawdeckx/")
+		dataDir := webconfig.DataDir()
+		if dataDir != "" {
+			return filepath.Join(dataDir, filepath.FromSlash(rel))
+		}
 	}
 	// Fallback: try registry
 	return logicalPathToSourcePath(logicalPath)

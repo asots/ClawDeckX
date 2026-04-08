@@ -61,18 +61,29 @@ func (h *SnapshotHandler) Create(w http.ResponseWriter, r *http.Request) {
 		Trigger     string   `json:"trigger"`
 		ResourceIDs []string `json:"resourceIds"`
 		Password    string   `json:"password"`
+		Scope       string   `json:"scope"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		web.FailErr(w, r, web.ErrInvalidBody)
 		return
 	}
-	rec, err := h.svc.Create(req.Note, req.Trigger, req.Password, req.ResourceIDs)
+	rec, err := h.svc.Create(req.Note, req.Trigger, req.Password, req.ResourceIDs, req.Scope)
 	if err != nil {
 		web.FailErr(w, r, web.ErrSnapshotCreateFailed, err.Error())
 		return
 	}
 	h.auditRepo.Create(&database.AuditLog{UserID: web.GetUserID(r), Username: web.GetUsername(r), Action: constants.ActionSnapshotCreate, Result: "success", Detail: rec.SnapshotID, IP: r.RemoteAddr})
 	web.OK(w, r, map[string]any{"snapshotId": rec.SnapshotID, "createdAt": rec.CreatedAt, "resourceCount": rec.ResourceCount, "sizeBytes": rec.SizeBytes})
+}
+
+func (h *SnapshotHandler) Scan(w http.ResponseWriter, r *http.Request) {
+	scope := strings.TrimSpace(r.URL.Query().Get("scope"))
+	result, err := h.svc.Scan(scope)
+	if err != nil {
+		web.FailErr(w, r, web.ErrSnapshotCreateFailed, err.Error())
+		return
+	}
+	web.OK(w, r, result)
 }
 
 func (h *SnapshotHandler) Schedule(w http.ResponseWriter, r *http.Request) {
