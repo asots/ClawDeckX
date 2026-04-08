@@ -149,6 +149,8 @@ type GWClient struct {
 	healthMaxFails              int           // consecutive failure threshold (default 3)
 	healthFailCount             int           // current consecutive failure count
 	healthLastOK                time.Time     // last success time
+	healthLastCheck             time.Time     // last time a probe ran (success or fail)
+	healthRestarting            bool          // true while a restart is in progress
 	healthGraceUntil            time.Time     // skip health checks until this time (post-restart grace period)
 	healthStopCh                chan struct{}
 	healthRunning               bool
@@ -157,6 +159,12 @@ type GWClient struct {
 	onLifecycle                 func(event string, detail string)      // lifecycle event callback
 	onTokenRefreshed            func(newToken string)                  // called when autoRefreshToken updates the token
 	pendingRestartSuccessNotify *time.Timer
+
+	// Notification status tracking (for frontend banner)
+	notifyChannels  []string  // active notification channel names
+	notifyLastAt    time.Time // last time a notification was dispatched
+	notifyLastEvent string    // last notification event type
+	notifySending   bool      // true while a notification send is in progress
 }
 
 func NewGWClient(cfg GWClientConfig) *GWClient {
@@ -186,7 +194,31 @@ func (c *GWClient) SetRestartCallback(fn func() error) {
 func (c *GWClient) SetNotifyCallback(fn func(eventType string, message string)) {
 	c.healthMu.Lock()
 	defer c.healthMu.Unlock()
-	c.onNotify = fn
+	if fn == nil {
+		c.onNotify = nil
+		return
+	}
+	// Wrap the callback to track notification sending status for the frontend banner.
+	c.onNotify = func(eventType string, message string) {
+		c.healthMu.Lock()
+		c.notifySending = true
+		c.notifyLastEvent = eventType
+		c.healthMu.Unlock()
+
+		fn(eventType, message)
+
+		c.healthMu.Lock()
+		c.notifySending = false
+		c.notifyLastAt = time.Now()
+		c.healthMu.Unlock()
+	}
+}
+
+// SetNotifyChannels updates the list of active notification channel names for status reporting.
+func (c *GWClient) SetNotifyChannels(channels []string) {
+	c.healthMu.Lock()
+	defer c.healthMu.Unlock()
+	c.notifyChannels = channels
 }
 
 func (c *GWClient) SetTokenRefreshedCallback(fn func(newToken string)) {
@@ -229,11 +261,24 @@ func (c *GWClient) HealthStatus() map[string]interface{} {
 	if !c.healthLastOK.IsZero() {
 		lastOK = c.healthLastOK.Format(time.RFC3339)
 	}
+	lastCheck := ""
+	if !c.healthLastCheck.IsZero() {
+		lastCheck = c.healthLastCheck.Format(time.RFC3339)
+	}
 	enabled := c.healthEnabled
 	failCount := c.healthFailCount
 	maxFails := c.healthMaxFails
 	intervalSec := int(c.healthInterval / time.Second)
 	graceUntil := c.healthGraceUntil
+	restarting := c.healthRestarting
+	healthLastCheckTime := c.healthLastCheck
+	healthInterval := c.healthInterval
+	// Notification status snapshot
+	nfyChannels := make([]string, len(c.notifyChannels))
+	copy(nfyChannels, c.notifyChannels)
+	nfySending := c.notifySending
+	nfyLastEvent := c.notifyLastEvent
+	nfyLastAt := c.notifyLastAt
 	c.healthMu.Unlock()
 
 	c.mu.Lock()
@@ -241,8 +286,46 @@ func (c *GWClient) HealthStatus() map[string]interface{} {
 	c.mu.Unlock()
 
 	graceStr := ""
-	if !graceUntil.IsZero() && time.Now().Before(graceUntil) {
+	graceRemainingSec := 0
+	now := time.Now()
+	if !graceUntil.IsZero() && now.Before(graceUntil) {
 		graceStr = graceUntil.Format(time.RFC3339)
+		graceRemainingSec = int(graceUntil.Sub(now).Seconds())
+	}
+
+	// Compute next check countdown (seconds until next probe fires)
+	nextCheckInSec := 0
+	if enabled && !healthLastCheckTime.IsZero() {
+		elapsed := now.Sub(healthLastCheckTime)
+		remaining := healthInterval - elapsed
+		if remaining > 0 {
+			nextCheckInSec = int(remaining.Seconds())
+		}
+	}
+
+	// Compute a human-readable phase for the frontend.
+	// Phases: "healthy" | "probing" | "degraded" | "restarting" | "grace" | "disabled"
+	phase := "disabled"
+	if enabled {
+		if restarting {
+			phase = "restarting"
+		} else if graceStr != "" {
+			phase = "grace"
+		} else if failCount > 0 {
+			phase = "degraded"
+		} else if lastOK == "" {
+			phase = "probing"
+		} else {
+			phase = "healthy"
+		}
+	}
+
+	// Notification status for frontend banner
+	nfyLastAtStr := ""
+	nfyLastAgoSec := 0
+	if !nfyLastAt.IsZero() {
+		nfyLastAtStr = nfyLastAt.Format(time.RFC3339)
+		nfyLastAgoSec = int(now.Sub(nfyLastAt).Seconds())
 	}
 
 	return map[string]interface{}{
@@ -250,9 +333,20 @@ func (c *GWClient) HealthStatus() map[string]interface{} {
 		"fail_count":               failCount,
 		"max_fails":                maxFails,
 		"last_ok":                  lastOK,
+		"last_check":               lastCheck,
 		"interval_sec":             intervalSec,
 		"reconnect_backoff_cap_ms": backoffCapMs,
 		"grace_until":              graceStr,
+		"grace_remaining_sec":      graceRemainingSec,
+		"restarting":               restarting,
+		"next_check_in_sec":        nextCheckInSec,
+		"phase":                    phase,
+		// Notification status
+		"notify_channels":     nfyChannels,
+		"notify_sending":      nfySending,
+		"notify_last_event":   nfyLastEvent,
+		"notify_last_at":      nfyLastAtStr,
+		"notify_last_ago_sec": nfyLastAgoSec,
 	}
 }
 
@@ -360,6 +454,7 @@ func (c *GWClient) healthCheckLoop() {
 			}
 
 			c.healthMu.Lock()
+			c.healthLastCheck = time.Now()
 			if healthy {
 				if c.healthFailCount > 0 {
 					logger.Gateway.Info().
@@ -381,6 +476,7 @@ func (c *GWClient) healthCheckLoop() {
 						Msg(i18n.T(i18n.MsgLogHeartbeatThresholdRestart))
 					c.healthFailCount = 0
 					c.healthGraceUntil = time.Now().Add(restartGracePeriod)
+					c.healthRestarting = true
 					restartFn := c.onRestart
 					notifyFn := c.onNotify
 					c.healthMu.Unlock()
@@ -401,6 +497,13 @@ func (c *GWClient) healthCheckLoop() {
 							c.scheduleRestartSuccessNotify(i18n.T(i18n.MsgNotifyHeartbeatRestartSuccess))
 						}
 					}
+					c.healthMu.Lock()
+					c.healthRestarting = false
+					// Reset grace period AFTER restart completes so the full
+					// duration starts from now, not from before the (blocking)
+					// restart call which may have consumed most of the window.
+					c.healthGraceUntil = time.Now().Add(restartGracePeriod)
+					c.healthMu.Unlock()
 					continue
 				}
 			}
@@ -498,6 +601,7 @@ func (c *GWClient) ConnectionStatus() map[string]interface{} {
 	backoff := c.backoffMs
 	lastErr := c.lastError
 	pairingAutoApprove := c.pairingAutoApprove
+	authRefreshPending := c.authRefreshPending
 	// Compute live gateway uptime: base from hello-ok + local elapsed time
 	gwUptimeMs := int64(0)
 	if c.gwUptimeMs > 0 && !c.gwConnectedAt.IsZero() {
@@ -531,6 +635,19 @@ func (c *GWClient) ConnectionStatus() map[string]interface{} {
 	}
 	c.healthMu.Unlock()
 
+	// Compute a human-readable phase for the frontend process indicator.
+	// Phases: "connected" | "pairing" | "auth_refresh" | "reconnecting" | "disconnected"
+	phase := "disconnected"
+	if connected {
+		phase = "connected"
+	} else if pairingAutoApprove {
+		phase = "pairing"
+	} else if authRefreshPending {
+		phase = "auth_refresh"
+	} else if reconnects > 0 || backoff > 1000 {
+		phase = "reconnecting"
+	}
+
 	return map[string]interface{}{
 		"connected":            connected,
 		"host":                 host,
@@ -539,6 +656,8 @@ func (c *GWClient) ConnectionStatus() map[string]interface{} {
 		"backoff_ms":           backoff,
 		"last_error":           lastErr,
 		"pairing_auto_approve": pairingAutoApprove,
+		"auth_refresh_pending": authRefreshPending,
+		"phase":                phase,
 		"health_enabled":       healthEnabled,
 		"fail_count":           failCount,
 		"max_fails":            maxFails,

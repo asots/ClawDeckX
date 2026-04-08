@@ -112,6 +112,10 @@ func (h *NotifyHandler) UpdateConfig(w http.ResponseWriter, r *http.Request) {
 	// Reload notification channels
 	gwChannels := h.fetchGWChannels()
 	h.manager.Reload(h.settingRepo, gwChannels)
+	// Sync active channel names to gwClient for frontend status reporting
+	if h.gwClient != nil {
+		h.gwClient.SetNotifyChannels(h.manager.ChannelNames())
+	}
 
 	h.auditRepo.Create(&database.AuditLog{
 		UserID:   web.GetUserID(r),

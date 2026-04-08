@@ -162,6 +162,8 @@
     "daysAgo": "दिन पहले",
     "fwdTestDesc": "सेटअप सत्यापित करने के लिए कॉन्फ़िगर किए गए लक्ष्यों पर परीक्षण संदेश भेजें",
     "effectivePolicy": "प्रभावी नीति",
-    "effectiveFromAgent": "एजेंट ओवरराइड"
+    "effectiveFromAgent": "एजेंट ओवरराइड",
+    "alreadyResolved": "पहले से हल",
+    "refreshFailed": "ताज़ा करने में विफल"
   }
 }

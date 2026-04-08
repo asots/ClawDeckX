@@ -162,6 +162,8 @@
     "daysAgo": "日前",
     "fwdTestDesc": "設定済みのターゲットにテストメッセージを送信して設定を検証",
     "effectivePolicy": "有効ポリシー",
-    "effectiveFromAgent": "エージェントオーバーライド"
+    "effectiveFromAgent": "エージェントオーバーライド",
+    "alreadyResolved": "解決済み",
+    "refreshFailed": "更新に失敗"
   }
 }

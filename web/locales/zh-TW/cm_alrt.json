@@ -162,6 +162,8 @@
     "daysAgo": "天前",
     "fwdTestDesc": "傳送一條測試訊息到已配置的轉發目標，驗證配置是否正確",
     "effectivePolicy": "生效策略",
-    "effectiveFromAgent": "代理覆蓋"
+    "effectiveFromAgent": "代理覆蓋",
+    "alreadyResolved": "已處理",
+    "refreshFailed": "重新整理失敗"
   }
 }

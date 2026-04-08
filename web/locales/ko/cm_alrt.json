@@ -162,6 +162,8 @@
     "daysAgo": "일 전",
     "fwdTestDesc": "설정된 대상에 테스트 메시지를 전송하여 설정을 확인합니다",
     "effectivePolicy": "유효 정책",
-    "effectiveFromAgent": "에이전트 재정의"
+    "effectiveFromAgent": "에이전트 재정의",
+    "alreadyResolved": "이미 처리됨",
+    "refreshFailed": "새로고침 실패"
   }
 }

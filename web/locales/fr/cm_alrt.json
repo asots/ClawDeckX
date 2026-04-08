@@ -162,6 +162,8 @@
     "daysAgo": "j",
     "fwdTestDesc": "Envoyer un message de test aux cibles configurées pour vérifier la configuration",
     "effectivePolicy": "Politique effective",
-    "effectiveFromAgent": "remplacement agent"
+    "effectiveFromAgent": "remplacement agent",
+    "alreadyResolved": "Déjà résolu",
+    "refreshFailed": "Échec du rafraîchissement"
   }
 }

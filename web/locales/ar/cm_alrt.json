@@ -162,6 +162,8 @@
     "daysAgo": "يوم",
     "fwdTestDesc": "إرسال رسالة اختبار إلى الأهداف المكونة للتحقق من الإعداد",
     "effectivePolicy": "السياسة الفعالة",
-    "effectiveFromAgent": "تجاوز الوكيل"
+    "effectiveFromAgent": "تجاوز الوكيل",
+    "alreadyResolved": "تم الحل بالفعل",
+    "refreshFailed": "فشل التحديث"
   }
 }

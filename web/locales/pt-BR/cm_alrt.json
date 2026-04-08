@@ -162,6 +162,8 @@
     "daysAgo": "dias atrás",
     "fwdTestDesc": "Enviar uma mensagem de teste para os destinos configurados para verificar a configuração",
     "effectivePolicy": "Política Efetiva",
-    "effectiveFromAgent": "substituição do agente"
+    "effectiveFromAgent": "substituição do agente",
+    "alreadyResolved": "Já resolvido",
+    "refreshFailed": "Falha ao atualizar"
   }
 }

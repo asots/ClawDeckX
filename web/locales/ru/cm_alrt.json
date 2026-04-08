@@ -162,6 +162,8 @@
     "daysAgo": "дн. назад",
     "fwdTestDesc": "Отправить тестовое сообщение в настроенные цели для проверки настройки",
     "effectivePolicy": "Действующая политика",
-    "effectiveFromAgent": "переопределение агента"
+    "effectiveFromAgent": "переопределение агента",
+    "alreadyResolved": "Уже решено",
+    "refreshFailed": "Ошибка обновления"
   }
 }

@@ -162,6 +162,8 @@
     "daysAgo": "Tage her",
     "fwdTestDesc": "Testnachricht an konfigurierte Ziele senden, um die Einrichtung zu überprüfen",
     "effectivePolicy": "Effektive Richtlinie",
-    "effectiveFromAgent": "Agent-Override"
+    "effectiveFromAgent": "Agent-Override",
+    "alreadyResolved": "Bereits gelöst",
+    "refreshFailed": "Aktualisierung fehlgeschlagen"
   }
 }

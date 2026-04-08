@@ -458,6 +458,22 @@ const Alerts: React.FC<AlertsProps> = ({ language }) => {
     setTestNotifySending(false);
   }, [toast, a]);
 
+  // Refresh a single pending approval detail (uses exec.approval.get)
+  const handleRefreshApproval = useCallback(async (id: string) => {
+    try {
+      const res = await gwApi.execApprovalGet(id) as any;
+      if (res?.id) {
+        setPendingQueue(q => q.map(item => item.id === id ? { ...item, ...res } : item));
+      } else {
+        // Item was already resolved — remove from pending
+        setPendingQueue(q => q.filter(item => item.id !== id));
+        toast('info', a.alreadyResolved || 'Already resolved');
+      }
+    } catch {
+      toast('error', a.refreshFailed || 'Failed to refresh');
+    }
+  }, [toast, a]);
+
   // #15: Security full warning with confirm
   const handleSecurityChange = useCallback(async (v: string, base: string[]) => {
     if (v === 'full') {
@@ -772,7 +788,13 @@ const Alerts: React.FC<AlertsProps> = ({ language }) => {
                           </div>
                         </div>
                         <div className="shrink-0 sm:text-end">
-                          <p className={`text-[11px] font-bold mb-2 ${isExpired ? 'text-mac-red' : 'text-mac-yellow'}`}>{isExpired ? a.expired : `${a.expiresIn} ${fmtRemaining(remainMs)}`}</p>
+                          <div className="flex items-center gap-2 mb-2 sm:justify-end">
+                            <p className={`text-[11px] font-bold ${isExpired ? 'text-mac-red' : 'text-mac-yellow'}`}>{isExpired ? a.expired : `${a.expiresIn} ${fmtRemaining(remainMs)}`}</p>
+                            <button onClick={() => handleRefreshApproval(item.id)} title={a.refresh || 'Refresh'}
+                              className="w-6 h-6 flex items-center justify-center rounded text-slate-400 hover:text-primary hover:bg-primary/5 transition-colors">
+                              <span className="material-symbols-outlined text-[13px]">refresh</span>
+                            </button>
+                          </div>
                           <div className="flex gap-1.5 flex-wrap sm:justify-end">
                             <button onClick={() => handleDecision(item.id, 'allow-once')} disabled={busy || isExpired}
                               className="h-8 px-3 rounded-lg bg-mac-green/10 text-mac-green text-[11px] font-bold disabled:opacity-30 flex items-center gap-1 hover:bg-mac-green/20 transition-colors">
