@@ -76,6 +76,17 @@ function providerIcon(provider: string): string {
   if (p.includes('deepseek')) return 'code';
   if (p.includes('ollama')) return 'computer';
   if (p.includes('openrouter')) return 'hub';
+  if (p.includes('mistral')) return 'wind_power';
+  if (p.includes('groq')) return 'bolt';
+  if (p.includes('cohere')) return 'link';
+  if (p.includes('together')) return 'group';
+  if (p.includes('fireworks')) return 'local_fire_department';
+  if (p.includes('qwen') || p.includes('alibaba')) return 'cloud';
+  if (p.includes('stepfun')) return 'stacked_line_chart';
+  if (p.includes('arcee')) return 'precision_manufacturing';
+  if (p.includes('comfy')) return 'palette';
+  if (p.includes('vydra')) return 'graphic_eq';
+  if (p.includes('bedrock') || p.includes('amazon')) return 'dns';
   return 'smart_toy';
 }
 
