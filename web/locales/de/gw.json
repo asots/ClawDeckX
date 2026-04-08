@@ -222,7 +222,13 @@
     "diaryEmptyContent": "(leer)",
     "storage": "Speicher",
     "storePath": "Speicherort",
-    "storageMode": "Modus"
+    "storageMode": "Modus",
+    "enableConfirmTitle": "Dreaming aktivieren",
+    "enableConfirmMessage": "Möchtest du das Memory-Dreaming-System jetzt aktivieren? Dadurch starten automatische Speicher-Konsolidierungsaufgaben.",
+    "enableConfirmAction": "Aktivieren",
+    "disableConfirmTitle": "Dreaming deaktivieren",
+    "disableConfirmMessage": "Möchtest du das Memory-Dreaming-System jetzt deaktivieren? Dadurch werden automatische Speicher-Konsolidierungsaufgaben gestoppt.",
+    "disableConfirmAction": "Deaktivieren"
   },
   "wsOff": "WS Getrennt",
   "wsConnectedTip": "WebSocket-Datenkanal verbunden",

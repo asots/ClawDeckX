@@ -222,7 +222,13 @@
     "diaryEmptyContent": "（空）",
     "storage": "儲存",
     "storePath": "儲存路徑",
-    "storageMode": "模式"
+    "storageMode": "模式",
+    "enableConfirmTitle": "啟用夢境系統",
+    "enableConfirmMessage": "現在啟用記憶夢境系統嗎？這將開始自動記憶整合任務。",
+    "enableConfirmAction": "啟用",
+    "disableConfirmTitle": "停用夢境系統",
+    "disableConfirmMessage": "現在停用記憶夢境系統嗎？這將停止自動記憶整合任務。",
+    "disableConfirmAction": "停用"
   },
   "wsOff": "WS 斷開",
   "wsConnectedTip": "WebSocket 數據通道已連接",

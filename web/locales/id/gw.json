@@ -222,7 +222,13 @@
     "diaryEmptyContent": "(kosong)",
     "storage": "Penyimpanan",
     "storePath": "Lokasi",
-    "storageMode": "Mode"
+    "storageMode": "Mode",
+    "enableConfirmTitle": "Aktifkan Dreaming",
+    "enableConfirmMessage": "Aktifkan sistem Memory Dreaming sekarang? Ini akan memulai tugas konsolidasi memori otomatis.",
+    "enableConfirmAction": "Aktifkan",
+    "disableConfirmTitle": "Nonaktifkan Dreaming",
+    "disableConfirmMessage": "Nonaktifkan sistem Memory Dreaming sekarang? Ini akan menghentikan tugas konsolidasi memori otomatis.",
+    "disableConfirmAction": "Nonaktifkan"
   },
   "wsOff": "WS Terputus",
   "wsConnectedTip": "Kanal data WebSocket terhubung",

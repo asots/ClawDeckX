@@ -222,7 +222,13 @@
     "diaryEmptyContent": "(खाली)",
     "storage": "स्टोरेज",
     "storePath": "स्टोर",
-    "storageMode": "मोड"
+    "storageMode": "मोड",
+    "enableConfirmTitle": "ड्रीमिंग सक्षम करें",
+    "enableConfirmMessage": "क्या अभी मेमोरी ड्रीमिंग सिस्टम सक्षम करना है? इससे स्वचालित मेमोरी समेकन कार्य शुरू हो जाएंगे।",
+    "enableConfirmAction": "सक्षम करें",
+    "disableConfirmTitle": "ड्रीमिंग अक्षम करें",
+    "disableConfirmMessage": "क्या अभी मेमोरी ड्रीमिंग सिस्टम अक्षम करना है? इससे स्वचालित मेमोरी समेकन कार्य रुक जाएंगे।",
+    "disableConfirmAction": "अक्षम करें"
   },
   "wsOff": "WS बंद",
   "wsConnectedTip": "WebSocket डेटा चैनल कनेक्टेड",

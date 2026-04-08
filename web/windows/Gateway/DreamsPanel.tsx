@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useConfirm } from '../../components/ConfirmDialog';
 import { gwApi } from '../../services/api';
 
 interface DreamingPhaseStatus {
@@ -73,6 +74,7 @@ function fmtTimeUntil(ms: number | undefined): string {
 
 const DreamsPanel: React.FC<DreamsPanelProps> = ({ gw, toast }) => {
   const dr = gw.dreams || {};
+  const { confirm } = useConfirm();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<DreamingStatus | null>(null);
@@ -113,6 +115,21 @@ const DreamsPanel: React.FC<DreamsPanelProps> = ({ gw, toast }) => {
   const toggleDreaming = useCallback(async () => {
     if (!status || toggling) return;
     const next = !status.enabled;
+
+    const ok = await confirm({
+      title: next
+        ? (dr.enableConfirmTitle || dr.enableTitle || 'Enable Dreaming')
+        : (dr.disableConfirmTitle || dr.disableTitle || 'Disable Dreaming'),
+      message: next
+        ? (dr.enableConfirmMessage || dr.enableConfirm || 'Enable the memory dreaming system now? This will start automatic memory consolidation tasks.')
+        : (dr.disableConfirmMessage || dr.disableConfirm || 'Disable the memory dreaming system now? This will stop automatic memory consolidation tasks.'),
+      confirmText: next
+        ? (dr.enableConfirmAction || dr.enableAction || 'Enable')
+        : (dr.disableConfirmAction || dr.disableAction || 'Disable'),
+      danger: !next,
+    });
+    if (!ok) return;
+
     setToggling(true);
     try {
       await gwApi.configSafePatch({
@@ -125,7 +142,7 @@ const DreamsPanel: React.FC<DreamsPanelProps> = ({ gw, toast }) => {
     } finally {
       if (mountedRef.current) setToggling(false);
     }
-  }, [status, toggling, toast, dr, fetchStatus]);
+  }, [status, toggling, toast, dr, fetchStatus, confirm]);
 
   const loadDiary = useCallback(async () => {
     setDiaryLoading(true);

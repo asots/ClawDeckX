@@ -222,7 +222,13 @@
     "diaryEmptyContent": "(пусто)",
     "storage": "Хранилище",
     "storePath": "Путь",
-    "storageMode": "Режим"
+    "storageMode": "Режим",
+    "enableConfirmTitle": "Включить Dreaming",
+    "enableConfirmMessage": "Включить систему Memory Dreaming сейчас? Это запустит автоматические задачи консолидации памяти.",
+    "enableConfirmAction": "Включить",
+    "disableConfirmTitle": "Отключить Dreaming",
+    "disableConfirmMessage": "Отключить систему Memory Dreaming сейчас? Это остановит автоматические задачи консолидации памяти.",
+    "disableConfirmAction": "Отключить"
   },
   "wsOff": "WS Откл.",
   "wsConnectedTip": "Канал данных WebSocket подключен",

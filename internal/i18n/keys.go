@@ -848,6 +848,15 @@ const (
 
 // Notification messages
 const (
-	MsgNotifyHeartbeatRestartFailed  = "notify.heartbeat_restart_failed"
-	MsgNotifyHeartbeatRestartSuccess = "notify.heartbeat_restart_success"
+	MsgNotifyGatewayStarted           = "notify.gateway_started"
+	MsgNotifyGatewayStartedRepeated   = "notify.gateway_started_repeated"
+	MsgNotifyGatewayRecovered         = "notify.gateway_recovered"
+	MsgNotifyGatewayShutdown          = "notify.gateway_shutdown"
+	MsgNotifyGatewayShutdownRepeated  = "notify.gateway_shutdown_repeated"
+	MsgNotifyGatewayCrashed           = "notify.gateway_crashed"
+	MsgNotifyGatewayCrashedRepeated   = "notify.gateway_crashed_repeated"
+	MsgNotifyGatewayUnreachable       = "notify.gateway_unreachable"
+	MsgNotifyGatewayUnreachableRepeat = "notify.gateway_unreachable_repeated"
+	MsgNotifyHeartbeatRestartFailed   = "notify.heartbeat_restart_failed"
+	MsgNotifyHeartbeatRestartSuccess  = "notify.heartbeat_restart_success"
 )

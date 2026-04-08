@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"ClawDeckX/internal/database"
+	"ClawDeckX/internal/i18n"
 	"ClawDeckX/internal/logger"
 	"ClawDeckX/internal/web"
 )
@@ -416,29 +417,29 @@ func (lr *LifecycleRecorder) formatNotification(agg *aggEntry, addr string) stri
 	switch agg.eventType {
 	case "started":
 		if agg.count > 1 {
-			return fmt.Sprintf("🟢 Gateway started %dx: %s", agg.count, addr)
+			return i18n.T(i18n.MsgNotifyGatewayStartedRepeated, map[string]interface{}{"Count": agg.count, "Addr": addr})
 		}
-		return "🟢 Gateway started: " + addr
+		return i18n.T(i18n.MsgNotifyGatewayStarted, map[string]interface{}{"Addr": addr})
 	case "recovered":
-		return "🟢 Gateway recovered: " + addr
+		return i18n.T(i18n.MsgNotifyGatewayRecovered, map[string]interface{}{"Addr": addr})
 	case "shutdown":
 		if agg.count > 1 {
-			return fmt.Sprintf("⚪ Gateway shutdown %dx: %s", agg.count, addr)
+			return i18n.T(i18n.MsgNotifyGatewayShutdownRepeated, map[string]interface{}{"Count": agg.count, "Addr": addr})
 		}
-		return "⚪ Gateway shutdown: " + addr
+		return i18n.T(i18n.MsgNotifyGatewayShutdown, map[string]interface{}{"Addr": addr})
 	case "crashed":
-		msg := "🔴 Gateway crashed: " + addr
+		msg := i18n.T(i18n.MsgNotifyGatewayCrashed, map[string]interface{}{"Addr": addr})
 		if agg.count > 1 {
-			msg = fmt.Sprintf("� Gateway crashed %dx: %s", agg.count, addr)
+			msg = i18n.T(i18n.MsgNotifyGatewayCrashedRepeated, map[string]interface{}{"Count": agg.count, "Addr": addr})
 		}
 		if agg.detail != "" {
 			msg += " (" + agg.detail + ")"
 		}
 		return msg
 	case "unreachable":
-		msg := "🟡 Gateway unreachable: " + addr
+		msg := i18n.T(i18n.MsgNotifyGatewayUnreachable, map[string]interface{}{"Addr": addr})
 		if agg.count > 1 {
-			msg = fmt.Sprintf("🟡 Gateway unreachable %dx: %s", agg.count, addr)
+			msg = i18n.T(i18n.MsgNotifyGatewayUnreachableRepeat, map[string]interface{}{"Count": agg.count, "Addr": addr})
 		}
 		if agg.detail != "" {
 			msg += " (" + agg.detail + ")"

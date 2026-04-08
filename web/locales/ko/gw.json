@@ -222,7 +222,13 @@
     "diaryEmptyContent": "(비어 있음)",
     "storage": "스토리지",
     "storePath": "저장소",
-    "storageMode": "모드"
+    "storageMode": "모드",
+    "enableConfirmTitle": "드리밍 활성화",
+    "enableConfirmMessage": "메모리 드리밍 시스템을 지금 활성화할까요? 자동 메모리 통합 작업이 시작됩니다.",
+    "enableConfirmAction": "활성화",
+    "disableConfirmTitle": "드리밍 비활성화",
+    "disableConfirmMessage": "메모리 드리밍 시스템을 지금 비활성화할까요? 자동 메모리 통합 작업이 중지됩니다.",
+    "disableConfirmAction": "비활성화"
   },
   "wsOff": "WS 끊김",
   "wsConnectedTip": "WebSocket 데이터 채널 연결됨",

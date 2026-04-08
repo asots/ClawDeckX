@@ -491,6 +491,15 @@
   "auth.username_too_short": "用户名至少3个字符",
   "auth.username_exists": "用户名已存在",
 
+  "notify.gateway_started": "🟢 Gateway 已启动: {{.Addr}}",
+  "notify.gateway_started_repeated": "🟢 Gateway 已启动 {{.Count}} 次: {{.Addr}}",
+  "notify.gateway_recovered": "🟢 Gateway 已恢复: {{.Addr}}",
+  "notify.gateway_shutdown": "⚪ Gateway 已关闭: {{.Addr}}",
+  "notify.gateway_shutdown_repeated": "⚪ Gateway 已关闭 {{.Count}} 次: {{.Addr}}",
+  "notify.gateway_crashed": "🔴 Gateway 已崩溃: {{.Addr}}",
+  "notify.gateway_crashed_repeated": "🔴 Gateway 已崩溃 {{.Count}} 次: {{.Addr}}",
+  "notify.gateway_unreachable": "🟡 Gateway 不可达: {{.Addr}}",
+  "notify.gateway_unreachable_repeated": "🟡 Gateway 不可达 {{.Count}} 次: {{.Addr}}",
   "notify.test_message": "🔔 ClawDeckX 通知测试",
 
   "helpers.env_header": "# OpenClaw 环境变量（由 ClawDeckX 生成）",

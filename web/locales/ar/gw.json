@@ -222,7 +222,13 @@
     "diaryEmptyContent": "(فارغ)",
     "storage": "التخزين",
     "storePath": "المسار",
-    "storageMode": "الوضع"
+    "storageMode": "الوضع",
+    "enableConfirmTitle": "تفعيل نظام الأحلام",
+    "enableConfirmMessage": "هل تريد تفعيل نظام أحلام الذاكرة الآن؟ سيبدأ ذلك مهام دمج الذاكرة التلقائية.",
+    "enableConfirmAction": "تفعيل",
+    "disableConfirmTitle": "تعطيل نظام الأحلام",
+    "disableConfirmMessage": "هل تريد تعطيل نظام أحلام الذاكرة الآن؟ سيؤدي ذلك إلى إيقاف مهام دمج الذاكرة التلقائية.",
+    "disableConfirmAction": "تعطيل"
   },
   "wsOff": "WS مقطوع",
   "wsConnectedTip": "قناة بيانات WebSocket متصلة",

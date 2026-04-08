@@ -222,7 +222,13 @@
     "diaryEmptyContent": "（空）",
     "storage": "ストレージ",
     "storePath": "ストア",
-    "storageMode": "モード"
+    "storageMode": "モード",
+    "enableConfirmTitle": "Dreaming を有効化",
+    "enableConfirmMessage": "メモリ Dreaming システムを今すぐ有効にしますか？自動メモリ統合タスクが開始されます。",
+    "enableConfirmAction": "有効化",
+    "disableConfirmTitle": "Dreaming を無効化",
+    "disableConfirmMessage": "メモリ Dreaming システムを今すぐ無効にしますか？自動メモリ統合タスクが停止されます。",
+    "disableConfirmAction": "無効化"
   },
   "wsOff": "WS 切断",
   "wsConnectedTip": "WebSocket データチャネル接続済み",
