@@ -287,12 +287,25 @@ func (s *Service) Stop() error {
 		}
 		return runCommand("docker", "stop", name)
 	case RuntimeProcess:
-		// Step 1: try the CLI graceful stop command
-		cmdName := ResolveOpenClawCmd()
-		if cmdName != "" {
-			if err := runCommand(cmdName, "gateway", "stop"); err == nil {
+		// Step 1: try the CLI graceful stop command.
+		// On Windows, use RunCLI (which calls node.exe directly with HideWindow)
+		// instead of runCommand through the .cmd shim that may flash a console.
+		if runtime.GOOS == "windows" {
+			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+			_, err := RunCLI(ctx, "gateway", "stop")
+			cancel()
+			if err == nil {
 				if waitGatewayDown(5, 700*time.Millisecond) {
 					return nil
+				}
+			}
+		} else {
+			cmdName := ResolveOpenClawCmd()
+			if cmdName != "" {
+				if err := runCommand(cmdName, "gateway", "stop"); err == nil {
+					if waitGatewayDown(5, 700*time.Millisecond) {
+						return nil
+					}
 				}
 			}
 		}
@@ -357,7 +370,11 @@ func (s *Service) Restart() error {
 		}
 		return runCommand("docker", "restart", name)
 	case RuntimeProcess:
-		if commandExists("openclaw") {
+		// On Windows, skip "openclaw gateway restart" because the .cmd wrapper
+		// spawns cmd.exe which flashes a visible console window even with
+		// CREATE_NO_WINDOW on the parent.  Go straight to Stop+Start where
+		// startWindowsGateway() launches node.exe directly with no console.
+		if runtime.GOOS != "windows" && commandExists("openclaw") {
 			if err := runCommand("openclaw", "gateway", "restart"); err == nil {
 				return nil
 			}

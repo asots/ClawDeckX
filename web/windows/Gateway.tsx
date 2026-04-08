@@ -46,6 +46,7 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
   const prevRunningRef = useRef<boolean | null>(null);
   const logCursorRef = useRef<number | undefined>(undefined);
   const logInitializedRef = useRef(false);
+  const wsIndicatorRef = useRef<HTMLDivElement>(null);
 
   // 日志增强
   const [logSearch, setLogSearch] = useState('');
@@ -151,10 +152,20 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
   const [healthStatus, setHealthStatus] = useState<{
     fail_count: number;
     last_ok: string;
+    last_check: string;
     max_fails: number;
     interval_sec: number;
     reconnect_backoff_cap_ms: number;
     grace_until: string;
+    grace_remaining_sec: number;
+    restarting: boolean;
+    next_check_in_sec: number;
+    phase: 'healthy' | 'probing' | 'degraded' | 'restarting' | 'grace' | 'disabled';
+    notify_channels: string[];
+    notify_sending: boolean;
+    notify_last_event: string;
+    notify_last_at: string;
+    notify_last_ago_sec: number;
   } | null>(null);
   const [displayUptimeMs, setDisplayUptimeMs] = useState(0);
   const [watchdogIntervalSec, setWatchdogIntervalSec] = useState('30');
@@ -163,8 +174,18 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
   const [watchdogAdvancedOpen, setWatchdogAdvancedOpen] = useState(false);
   const [watchdogSaving, setWatchdogSaving] = useState(false);
 
-  // WebSocket 连接状态（用于 tab 标题指示灯）
+  // WebSocket 连接状态（用于 tab 标题指示灯 + 头部指示器）
   const [gwWsConnected, setGwWsConnected] = useState<boolean | null>(null);
+  const [gwWsDetail, setGwWsDetail] = useState<{ host?: string; port?: number; reconnect_count?: number; backoff_ms?: number; last_error?: string; pairing_auto_approve?: boolean; auth_refresh_pending?: boolean; phase?: 'connected' | 'pairing' | 'auth_refresh' | 'reconnecting' | 'disconnected' } | null>(null);
+  const [wsIndicatorOpen, setWsIndicatorOpen] = useState(false);
+  const [wsReconnecting, setWsReconnecting] = useState(false);
+  const [wsDiagResult, setWsDiagResult] = useState<{
+    items: Array<{ name: string; label: string; labelEn: string; status: 'pass' | 'fail' | 'warn'; detail: string; suggestion?: string }>;
+    summary: string;
+    message: string;
+  } | null>(null);
+  const [wsDiagLoading, setWsDiagLoading] = useState(false);
+  const [wsDiagExpanded, setWsDiagExpanded] = useState(false);
 
   // 按钮操作状态
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -263,10 +284,20 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
       setHealthStatus({
         fail_count: data?.fail_count || 0,
         last_ok: data?.last_ok || '',
+        last_check: data?.last_check || '',
         max_fails: data?.max_fails || 3,
         interval_sec: data?.interval_sec || 30,
         reconnect_backoff_cap_ms: data?.reconnect_backoff_cap_ms || 30000,
         grace_until: data?.grace_until || '',
+        grace_remaining_sec: data?.grace_remaining_sec || 0,
+        restarting: !!data?.restarting,
+        next_check_in_sec: data?.next_check_in_sec || 0,
+        phase: data?.phase || 'disabled',
+        notify_channels: data?.notify_channels || [],
+        notify_sending: !!data?.notify_sending,
+        notify_last_event: data?.notify_last_event || '',
+        notify_last_at: data?.notify_last_at || '',
+        notify_last_ago_sec: data?.notify_last_ago_sec || 0,
       });
       setWatchdogIntervalSec(String(data?.interval_sec ?? 30));
       setWatchdogMaxFails(String(data?.max_fails ?? 3));
@@ -333,6 +364,16 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
           }
           return connected;
         });
+        setGwWsDetail({
+          host: data?.host,
+          port: data?.port,
+          reconnect_count: data?.reconnect_count ?? 0,
+          backoff_ms: data?.backoff_ms ?? 0,
+          last_error: data?.last_error,
+          pairing_auto_approve: data?.pairing_auto_approve,
+          auth_refresh_pending: data?.auth_refresh_pending,
+          phase: data?.phase,
+        });
         // Gateway uptime from backend (auto-incremented server-side)
         const upMs = data?.gateway_uptime_ms || 0;
         setDisplayUptimeMs(upMs);
@@ -341,6 +382,53 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
     pollWs();
     const wsTimer = setInterval(pollWs, 6000);
     return () => clearInterval(wsTimer);
+  }, [toast, gw]);
+
+  // Auto-diagnose when WS is disconnected — debounced + cooldown to avoid repeated calls
+  const wsDiagCooldownRef = useRef(0); // timestamp of last completed diagnose
+  useEffect(() => {
+    if (gwWsConnected === true) {
+      setWsDiagResult(null);
+      return;
+    }
+    if (gwWsConnected !== false || wsDiagResult || wsDiagLoading) return;
+    // Cooldown: skip if diagnosed within last 30s
+    if (Date.now() - wsDiagCooldownRef.current < 30_000) return;
+    // Debounce: wait 2s to confirm WS is truly disconnected (not a transient glitch)
+    const timer = setTimeout(() => {
+      setWsDiagLoading(true);
+      gatewayApi.diagnose().then((data: any) => {
+        setWsDiagResult(data);
+      }).catch(() => {}).finally(() => {
+        setWsDiagLoading(false);
+        wsDiagCooldownRef.current = Date.now();
+      });
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [gwWsConnected, wsDiagResult, wsDiagLoading]);
+
+  // Close WS indicator popover on click-outside
+  useEffect(() => {
+    if (!wsIndicatorOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (wsIndicatorRef.current && !wsIndicatorRef.current.contains(e.target as Node)) {
+        setWsIndicatorOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [wsIndicatorOpen]);
+
+  const handleWsReconnect = useCallback(async () => {
+    setWsReconnecting(true);
+    try {
+      await gwApi.reconnect();
+      toast('success', gw.svcWsReconnecting || 'Reconnecting...');
+    } catch (err: any) {
+      toast('error', err?.message || gw.svcWsReconnectFailed || 'Reconnect failed');
+    } finally {
+      setWsReconnecting(false);
+    }
   }, [toast, gw]);
 
   // Status + health polling with visibility pause
@@ -517,10 +605,20 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
       setHealthStatus({
         fail_count: data?.fail_count || 0,
         last_ok: data?.last_ok || '',
+        last_check: data?.last_check || '',
         max_fails: data?.max_fails || 3,
         interval_sec: data?.interval_sec || 30,
         reconnect_backoff_cap_ms: data?.reconnect_backoff_cap_ms || 30000,
         grace_until: data?.grace_until || '',
+        grace_remaining_sec: data?.grace_remaining_sec || 0,
+        restarting: !!data?.restarting,
+        next_check_in_sec: data?.next_check_in_sec || 0,
+        phase: data?.phase || 'disabled',
+        notify_channels: data?.notify_channels || [],
+        notify_sending: !!data?.notify_sending,
+        notify_last_event: data?.notify_last_event || '',
+        notify_last_at: data?.notify_last_at || '',
+        notify_last_ago_sec: data?.notify_last_ago_sec || 0,
       });
       setWatchdogIntervalSec(String(data?.interval_sec ?? intervalSec));
       setWatchdogMaxFails(String(data?.max_fails ?? maxFails));
@@ -976,17 +1074,328 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
             <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
           </div>
         )}
-        {/* 远程网关 WS 数据通道未连接提示 */}
-        {!initialDetecting && status?.running && status?.remote && !status?.ws_connected && (
-          <div className="rounded-xl border border-mac-yellow/30 bg-mac-yellow/5 px-3 py-2">
-            <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-[16px] text-mac-yellow">warning</span>
-              <span className="text-[11px] font-bold text-mac-yellow">{gw.wsDisconnected || 'Data channel disconnected'}</span>
+        {/* WS 数据通道未连接提示 — 适用所有网关（含网关停止时） */}
+        {!initialDetecting && gwWsConnected === false && (
+          <div className="rounded-xl border border-mac-red/30 bg-mac-red/5 px-3 py-2.5 animate-fade-in">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-mac-red/15 flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-[18px] text-mac-red">link_off</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[11px] font-bold text-mac-red">{gw.wsDisconnected || 'Data channel disconnected'}</p>
+                <p className="text-[10px] theme-text-secondary mt-0.5 leading-relaxed">{gw.wsDisconnectedDesc || 'Real-time logs, events, and chat will not work until the WebSocket connection is restored.'}</p>
+              </div>
+              <button
+                onClick={handleWsReconnect}
+                disabled={wsReconnecting}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-mac-red/15 text-mac-red font-bold text-[10px] transition-all hover:bg-mac-red/25 disabled:opacity-40 shrink-0"
+              >
+                <span className={`material-symbols-outlined text-[14px] ${wsReconnecting ? 'animate-spin' : ''}`}>
+                  {wsReconnecting ? 'progress_activity' : 'refresh'}
+                </span>
+                {gw.svcWsReconnect || 'Reconnect'}
+              </button>
             </div>
-            <p className="text-[10px] theme-text-secondary mt-1 ms-6 leading-relaxed">{gw.wsDisconnectedHint || 'WebSocket data channel is not established. Check token, firewall, and proxy settings.'}</p>
-            {status?.ws_error && (
-              <p className="text-[10px] text-mac-red/80 mt-1 ms-6 font-mono break-all">{status.ws_error}</p>
-            )}
+            {/* 紧凑详情区：连接步骤 + 错误摘要 + 诊断摘要（可展开） */}
+            <div className="mt-2 ms-[42px] space-y-1">
+              {/* 连接步骤可视化 */}
+              {(() => {
+                const phase = gwWsDetail?.phase || 'disconnected';
+                const rc = gwWsDetail?.reconnect_count ?? 0;
+                const bms = gwWsDetail?.backoff_ms ?? 0;
+                const bFmt = bms >= 1000 ? `${(bms / 1000).toFixed(1)}s` : `${bms}ms`;
+                const steps: { key: string; icon: string; label: string; active: boolean; color: string }[] = [
+                  {
+                    key: 'connect',
+                    icon: phase === 'reconnecting' ? 'progress_activity' : phase === 'disconnected' ? 'cloud_off' : 'cloud_done',
+                    label: phase === 'reconnecting'
+                      ? `${gw.wsRetrying || 'Auto-reconnecting'}${rc > 0 ? ` #${rc}` : ''}${bms > 0 ? ` — ${bFmt} ${gw.wsRetryDelay || 'delay'}` : ''}`
+                      : phase === 'disconnected'
+                        ? (gw.wsWaitingRetry || 'Waiting for auto-reconnect...')
+                        : (gw.wsStepConnected || 'TCP connected'),
+                    active: phase === 'reconnecting' || phase === 'disconnected',
+                    color: phase === 'reconnecting' ? 'text-amber-500 dark:text-amber-400' : phase === 'disconnected' ? 'theme-text-muted' : 'text-mac-green',
+                  },
+                  {
+                    key: 'pairing',
+                    icon: phase === 'pairing' ? 'progress_activity' : (phase === 'connected' ? 'check_circle' : 'radio_button_unchecked'),
+                    label: phase === 'pairing'
+                      ? (gw.wsPhasePairing || 'Auto-approving device pairing...')
+                      : (gw.wsStepPairing || 'Device pairing'),
+                    active: phase === 'pairing',
+                    color: phase === 'pairing' ? 'text-amber-500 dark:text-amber-400' : (phase === 'connected' ? 'text-mac-green' : 'theme-text-muted'),
+                  },
+                  {
+                    key: 'auth',
+                    icon: phase === 'auth_refresh' ? 'progress_activity' : (phase === 'connected' ? 'check_circle' : 'radio_button_unchecked'),
+                    label: phase === 'auth_refresh'
+                      ? (gw.wsPhaseAuthRefresh || 'Refreshing auth token...')
+                      : (gw.wsStepAuth || 'Authentication'),
+                    active: phase === 'auth_refresh',
+                    color: phase === 'auth_refresh' ? 'text-amber-500 dark:text-amber-400' : (phase === 'connected' ? 'text-mac-green' : 'theme-text-muted'),
+                  },
+                ];
+                return (
+                  <div className="flex items-center gap-1 flex-wrap">
+                    {steps.map((step, i) => (
+                      <span key={step.key} className="contents">
+                        <span className={`flex items-center gap-0.5 text-[9px] ${step.color} ${step.active ? 'font-bold' : ''}`}>
+                          <span className={`material-symbols-outlined text-[11px] ${step.active && step.icon === 'progress_activity' ? 'animate-spin' : ''}`}>{step.icon}</span>
+                          {step.label}
+                        </span>
+                        {i < steps.length - 1 && (
+                          <span className="material-symbols-outlined text-[8px] theme-text-muted mx-0.5">chevron_right</span>
+                        )}
+                      </span>
+                    ))}
+                  </div>
+                );
+              })()}
+              {/* 诊断摘要行（可点击展开详情） */}
+              {(() => {
+                // Determine what to show: structured result, loading, or fallback hint
+                const diagItems = wsDiagResult?.items;
+                const problems = diagItems?.filter(it => it.status === 'fail' || it.status === 'warn') || [];
+                const passed = diagItems?.filter(it => it.status === 'pass') || [];
+                const errStr = (gwWsDetail?.last_error || '').toLowerCase();
+                // Fallback hint for when diagnose hasn't returned yet
+                let fallbackHint = '';
+                if (!diagItems) {
+                  if (errStr.includes('actively refused') || errStr.includes('connection refused') || errStr.includes('connectex')) {
+                    fallbackHint = gw.wsDiagRefused || 'Gateway port is not listening. Check if the gateway process is running and the port is correct.';
+                  } else if (errStr.includes('forcibly closed') || errStr.includes('connection reset') || errStr.includes('wsarecv')) {
+                    fallbackHint = gw.wsDiagForceClosed || 'Connection rejected by remote host. Check token, TLS/SSL, or firewall.';
+                  } else if (errStr.includes('timeout') || errStr.includes('timed out') || errStr.includes('deadline exceeded')) {
+                    fallbackHint = gw.wsDiagTimeout || 'Connection timed out. Gateway may be overloaded or blocked by firewall.';
+                  } else if (errStr.includes('no such host') || errStr.includes('dns') || errStr.includes('getaddrinfo')) {
+                    fallbackHint = gw.wsDiagDns || 'DNS resolution failed. Check hostname and DNS settings.';
+                  } else if (errStr.includes('certificate') || errStr.includes('tls') || errStr.includes('x509')) {
+                    fallbackHint = gw.wsDiagTls || 'TLS/SSL certificate error.';
+                  } else if (errStr.includes('401') || errStr.includes('403') || errStr.includes('unauthorized') || errStr.includes('forbidden')) {
+                    fallbackHint = gw.wsDiagAuth || 'Authentication failed. Verify gateway token.';
+                  } else if (errStr.includes('network is unreachable') || errStr.includes('no route')) {
+                    fallbackHint = gw.wsDiagNetwork || 'Network unreachable.';
+                  }
+                }
+
+                // Summary icon + text
+                const summaryIcon = wsDiagLoading ? 'progress_activity'
+                  : diagItems ? (problems.length > 0 ? 'cancel' : 'check_circle')
+                  : (fallbackHint ? 'lightbulb' : null);
+                const summaryColor = wsDiagLoading ? 'text-primary'
+                  : diagItems ? (problems.length > 0 ? 'text-mac-red' : 'text-mac-green')
+                  : 'text-amber-500';
+                const summaryText = wsDiagLoading ? (gw.wsDiagRunning || 'Running diagnostics...')
+                  : diagItems ? (problems.length > 0
+                    ? `${gw.wsDiagTitle || 'Diagnostics'}: ${problems.length} ${gw.wsDiagIssues || 'issue(s)'}`
+                    : `${gw.wsDiagTitle || 'Diagnostics'}: ${gw.wsDiagAllPass || 'All checks passed'}`)
+                  : fallbackHint || null;
+
+                if (!summaryIcon && !summaryText && !gwWsDetail?.last_error) return null;
+
+                return (
+                  <div className="space-y-1">
+                    {/* Error message (always visible, one line truncated) */}
+                    {gwWsDetail?.last_error && (
+                      <p className="text-[11px] text-mac-red/70 font-mono truncate" title={gwWsDetail.last_error}>
+                        <span className="material-symbols-outlined text-[11px] align-middle me-0.5">error</span>
+                        {gwWsDetail.last_error}
+                      </p>
+                    )}
+                    {/* Clickable diagnosis summary line */}
+                    {summaryText && (
+                      <button
+                        onClick={() => setWsDiagExpanded(prev => !prev)}
+                        className="flex items-center gap-1.5 w-full text-start group"
+                      >
+                        <span className={`material-symbols-outlined text-[13px] shrink-0 ${summaryColor} ${wsDiagLoading ? 'animate-spin' : ''}`}>{summaryIcon}</span>
+                        <span className={`text-[11px] font-medium ${summaryColor} flex-1 min-w-0 truncate`}>{summaryText}</span>
+                        {diagItems && (
+                          <span className="inline-flex items-center gap-0.5 text-[10px] text-primary shrink-0">
+                            <span className={`material-symbols-outlined text-[13px] transition-transform ${wsDiagExpanded ? 'rotate-180' : ''}`}>expand_more</span>
+                            {wsDiagExpanded ? (gw.wsDiagCollapse || 'Collapse') : (gw.wsDiagExpand || 'Details')}
+                          </span>
+                        )}
+                        {diagItems && (
+                          <span
+                            onClick={(e) => { e.stopPropagation(); setWsDiagResult(null); setWsDiagLoading(false); wsDiagCooldownRef.current = 0; }}
+                            className="text-[10px] text-primary/60 hover:text-primary hover:underline shrink-0 ms-1"
+                          >{gw.wsDiagRerun || 'Re-run'}</span>
+                        )}
+                      </button>
+                    )}
+                    {/* Expandable diagnosis detail */}
+                    {wsDiagExpanded && diagItems && (
+                      <div className="rounded-lg border border-slate-200/60 dark:border-white/[0.06] overflow-hidden animate-fade-in">
+                        <div className="max-h-[200px] overflow-y-auto neon-scrollbar divide-y divide-slate-200/40 dark:divide-white/[0.04]">
+                          {problems.map((item) => (
+                            <div key={item.name} className="px-2.5 py-1.5 flex items-start gap-2 bg-mac-red/[0.02]">
+                              <span className={`material-symbols-outlined text-[13px] mt-px shrink-0 ${item.status === 'warn' ? 'text-amber-500' : 'text-mac-red'}`}>
+                                {item.status === 'warn' ? 'warning' : 'cancel'}
+                              </span>
+                              <div className="flex-1 min-w-0">
+                                <span className="text-[11px] font-medium theme-text">{item.labelEn || item.label}</span>
+                                {item.detail && <p className="text-[10px] theme-text-muted font-mono break-all mt-0.5">{item.detail}</p>}
+                                {item.suggestion && (
+                                  <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-0.5 flex items-start gap-0.5">
+                                    <span className="material-symbols-outlined text-[11px] mt-px shrink-0">lightbulb</span>
+                                    {item.suggestion}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                          {passed.length > 0 && (
+                            <div className="px-2.5 py-1.5 flex items-center gap-1.5 flex-wrap">
+                              {passed.map((item) => (
+                                <span key={item.name} className="inline-flex items-center gap-0.5 text-[10px] theme-text-muted" title={item.detail}>
+                                  <span className="material-symbols-outlined text-[11px] text-mac-green">check_circle</span>
+                                  {item.labelEn || item.label}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+        )}
+        {/* 看门狗异常处理过程提示 — degraded / restarting / grace 时显示 */}
+        {!initialDetecting && healthCheckEnabled && healthStatus && (healthStatus.phase === 'degraded' || healthStatus.phase === 'restarting' || healthStatus.phase === 'grace') && (() => {
+          const phase = healthStatus.phase;
+          const fc = healthStatus.fail_count;
+          const mf = healthStatus.max_fails;
+          const intSec = healthStatus.interval_sec;
+          const nxtSec = healthStatus.next_check_in_sec;
+          const graceSec = healthStatus.grace_remaining_sec;
+
+          // Banner config per phase
+          const cfgMap: Record<string, { border: string; bg: string; icon: string; iconColor: string; spin: boolean; title: string; desc: string }> = {
+            degraded: {
+              border: 'border-mac-red/30', bg: 'bg-mac-red/5', icon: 'heart_broken', iconColor: 'text-mac-red', spin: false,
+              title: `${gw.hbUnhealthy || 'Unhealthy'} (${fc}/${mf} ${gw.wdFails || 'fails'})`,
+              desc: fc < mf
+                ? `${gw.wdRestartIn || 'Restart after'} ${mf - fc} ${gw.wdMoreFails || 'more failures'} · ${gw.wdNextCheck || 'Next check in'} ${nxtSec > 0 ? `${nxtSec}s` : `${intSec}s`}`
+                : gw.wdRestartImminent || 'Restart imminent...',
+            },
+            restarting: {
+              border: 'border-mac-red/30', bg: 'bg-mac-red/5', icon: 'progress_activity', iconColor: 'text-mac-red', spin: true,
+              title: gw.wdRestarting || 'Restarting gateway...',
+              desc: gw.wdRestartingDesc || 'Watchdog triggered a restart due to consecutive health check failures',
+            },
+            grace: {
+              border: 'border-amber-500/30', bg: 'bg-amber-500/5', icon: 'hourglass_top', iconColor: 'text-amber-500', spin: false,
+              title: `${gw.wdGracePeriod || 'Grace Period Active'}${graceSec > 0 ? ` — ${graceSec}s` : ''}`,
+              desc: gw.wdGraceDesc || 'Health checks paused, waiting for gateway to stabilize after restart',
+            },
+          };
+          const cfg = cfgMap[phase] || cfgMap.degraded;
+
+          return (
+            <div className={`rounded-xl border ${cfg.border} ${cfg.bg} px-3 py-2.5 animate-fade-in`}>
+              <div className="flex items-center gap-2.5">
+                <div className={`w-8 h-8 rounded-lg ${phase === 'grace' ? 'bg-amber-500/15' : 'bg-mac-red/15'} flex items-center justify-center shrink-0`}>
+                  <span className={`material-symbols-outlined text-[18px] ${cfg.iconColor} ${cfg.spin ? 'animate-spin' : ''}`}>{cfg.icon}</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className={`text-[11px] font-bold ${cfg.iconColor}`}>{cfg.title}</p>
+                  <p className="text-[10px] theme-text-secondary mt-0.5 leading-relaxed">{cfg.desc}</p>
+                </div>
+              </div>
+              {/* 多阶段过程链 */}
+              <div className="mt-2 ms-[42px]">
+                <div className="flex items-center gap-1 flex-wrap">
+                  {[
+                    {
+                      key: 'monitor',
+                      icon: 'check_circle',
+                      label: gw.wdStepMonitorOk || 'Monitored',
+                      active: false,
+                      color: 'text-mac-green',
+                    },
+                    {
+                      key: 'degrade',
+                      icon: phase === 'degraded' ? 'warning' : 'check_circle',
+                      label: phase === 'degraded'
+                        ? `${gw.wdStepDegraded || 'Degraded'} ${fc}/${mf}`
+                        : (gw.wdStepHealthCheck || 'Health check'),
+                      active: phase === 'degraded',
+                      color: phase === 'degraded' ? 'text-mac-red' : 'text-mac-green',
+                    },
+                    {
+                      key: 'restart',
+                      icon: phase === 'restarting' ? 'progress_activity' : phase === 'grace' ? 'check_circle' : 'radio_button_unchecked',
+                      label: phase === 'restarting'
+                        ? (gw.wdStepRestarting || 'Restarting...')
+                        : (gw.wdStepRestart || 'Restart'),
+                      active: phase === 'restarting',
+                      color: phase === 'restarting' ? 'text-mac-red' : phase === 'grace' ? 'text-mac-green' : 'theme-text-muted',
+                    },
+                    {
+                      key: 'grace',
+                      icon: phase === 'grace' ? 'hourglass_top' : 'radio_button_unchecked',
+                      label: phase === 'grace'
+                        ? `${gw.wdStepGrace || 'Grace'} ${graceSec > 0 ? `${graceSec}s` : ''}`
+                        : (gw.wdStepGrace || 'Grace'),
+                      active: phase === 'grace',
+                      color: phase === 'grace' ? 'text-amber-500' : 'theme-text-muted',
+                    },
+                  ].map((step, i, arr) => (
+                    <span key={step.key} className="contents">
+                      <span className={`flex items-center gap-0.5 text-[9px] ${step.color} ${step.active ? 'font-bold' : ''}`}>
+                        <span className={`material-symbols-outlined text-[11px] ${step.active && step.icon === 'progress_activity' ? 'animate-spin' : ''}`}>{step.icon}</span>
+                        {step.label}
+                      </span>
+                      {i < arr.length - 1 && (
+                        <span className="material-symbols-outlined text-[8px] theme-text-muted mx-0.5">chevron_right</span>
+                      )}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+        {/* 异常通知发送过程 banner — 有通知渠道且（正在发送 或 最近60s内发过 或 异常阶段中） */}
+        {!initialDetecting && healthStatus && healthStatus.notify_channels.length > 0 && (
+          healthStatus.notify_sending || (healthStatus.notify_last_ago_sec > 0 && healthStatus.notify_last_ago_sec < 60) || (healthStatus.phase === 'degraded' || healthStatus.phase === 'restarting' || healthStatus.phase === 'grace')
+        ) && (
+          <div className="rounded-xl border border-primary/20 bg-primary/5 px-3 py-2 animate-fade-in">
+            <div className="flex items-center gap-2.5">
+              <div className="w-7 h-7 rounded-lg bg-primary/15 flex items-center justify-center shrink-0">
+                <span className={`material-symbols-outlined text-[16px] text-primary ${healthStatus.notify_sending ? 'animate-spin' : ''}`}>
+                  {healthStatus.notify_sending ? 'progress_activity' : 'notifications_active'}
+                </span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-[11px] font-bold text-primary">
+                    {healthStatus.notify_sending
+                      ? (gw.nfySending || 'Sending notification...')
+                      : healthStatus.notify_last_ago_sec > 0 && healthStatus.notify_last_ago_sec < 60
+                        ? (gw.nfySent || 'Notification sent')
+                        : (gw.nfyReady || 'Notification ready')}
+                  </span>
+                  {healthStatus.notify_channels.map((ch) => (
+                    <span key={ch} className="text-[9px] px-1.5 py-0.5 rounded-md bg-primary/10 text-primary font-medium">{ch}</span>
+                  ))}
+                </div>
+                <p className="text-[10px] theme-text-secondary mt-0.5">
+                  {healthStatus.notify_sending
+                    ? (gw.nfySendingDesc || 'Dispatching anomaly alert to configured channels')
+                    : healthStatus.notify_last_ago_sec > 0 && healthStatus.notify_last_ago_sec < 60
+                      ? `${gw.nfySentDesc || 'Last notified'} ${healthStatus.notify_last_ago_sec}s ${gw.nfyAgo || 'ago'}`
+                      : (gw.nfyReadyDesc || 'Will notify when anomaly triggers configured events')}
+                </p>
+              </div>
+              {healthStatus.notify_last_ago_sec > 0 && healthStatus.notify_last_ago_sec < 60 && !healthStatus.notify_sending && (
+                <span className="material-symbols-outlined text-[16px] text-mac-green">check_circle</span>
+              )}
+            </div>
           </div>
         )}
         {/* Row 1: 状态信息 + 心跳 */}
@@ -1001,10 +1410,159 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
               <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full border border-slate-200/60 dark:border-white/[0.06] theme-panel">
                 {(() => {
                   if (!healthCheckEnabled) return <><span className="material-symbols-outlined text-[12px] theme-text-muted">shield_question</span><span className="text-[11px] theme-text-muted">{gw.serviceWatchdogInactive || 'Watchdog inactive'}</span></>;
-                  if (!healthStatus?.last_ok) return <><span className="material-symbols-outlined text-[12px] text-mac-yellow animate-spin">progress_activity</span><span className="text-[11px] theme-text-muted">{gw.hbProbing}</span></>;
-                  if (healthStatus.fail_count > 0) return <><span className="material-symbols-outlined text-[12px] text-mac-red">heart_broken</span><span className="text-[11px] font-bold text-mac-red">{gw.hbUnhealthy} ({healthStatus.fail_count})</span></>;
-                  return <><span className="material-symbols-outlined text-[12px] text-mac-green animate-pulse">favorite</span><span className="text-[11px] font-bold text-mac-green">{gw.hbHealthy}</span></>;
+                  const phase = healthStatus?.phase || 'probing';
+                  if (phase === 'restarting') return <><span className="material-symbols-outlined text-[12px] text-mac-red animate-spin">progress_activity</span><span className="text-[11px] font-bold text-mac-red">{gw.wdRestarting || 'Restarting...'}</span></>;
+                  if (phase === 'grace') return <><span className="material-symbols-outlined text-[12px] text-amber-500">hourglass_top</span><span className="text-[11px] font-bold text-amber-500">{gw.wdGraceShort || 'Grace'} {(healthStatus?.grace_remaining_sec ?? 0) > 0 ? `${healthStatus!.grace_remaining_sec}s` : ''}</span></>;
+                  if (phase === 'degraded') return <><span className="material-symbols-outlined text-[12px] text-mac-red">heart_broken</span><span className="text-[11px] font-bold text-mac-red">{gw.hbUnhealthy} ({healthStatus!.fail_count}/{healthStatus!.max_fails})</span></>;
+                  if (phase === 'probing') return <><span className="material-symbols-outlined text-[12px] text-mac-yellow animate-spin">progress_activity</span><span className="text-[11px] theme-text-muted">{gw.hbProbing}</span></>;
+                  return <><span className="material-symbols-outlined text-[12px] text-mac-green animate-pulse">favorite</span><span className="text-[11px] font-bold text-mac-green">{gw.hbHealthy}{(healthStatus?.next_check_in_sec ?? 0) > 0 ? <span className="font-normal theme-text-muted ms-1 text-[9px] font-mono">{healthStatus!.next_check_in_sec}s</span> : ''}</span></>;
                 })()}
+              </div>
+            )}
+            {/* WS 数据通道状态指示器 — 始终可见 */}
+            {status?.running && gwWsConnected !== null && (
+              <div className="relative" ref={wsIndicatorRef}>
+                <button
+                  onClick={() => setWsIndicatorOpen(v => !v)}
+                  className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full border transition-all cursor-pointer ${
+                    gwWsConnected
+                      ? 'border-mac-green/30 bg-mac-green/5 hover:bg-mac-green/10'
+                      : 'border-mac-red/30 bg-mac-red/5 hover:bg-mac-red/10 animate-pulse'
+                  }`}
+                  title={gwWsConnected ? (gw.wsConnectedTip || 'WebSocket data channel connected') : (gw.wsDisconnectedTip || 'WebSocket data channel disconnected — click for details')}
+                >
+                  <span className={`material-symbols-outlined text-[12px] ${gwWsConnected ? 'text-mac-green' : 'text-mac-red'}`}>
+                    {gwWsConnected ? 'link' : 'link_off'}
+                  </span>
+                  <span className={`text-[11px] font-bold ${gwWsConnected ? 'text-mac-green' : 'text-mac-red'}`}>
+                    {gwWsConnected ? 'WS' : (gw.wsOff || 'WS Off')}
+                  </span>
+                  {!gwWsConnected && (gwWsDetail?.reconnect_count ?? 0) > 0 && (
+                    <span className="text-[9px] font-mono text-mac-red/70">×{gwWsDetail!.reconnect_count}</span>
+                  )}
+                  <span className={`material-symbols-outlined text-[10px] transition-transform ${wsIndicatorOpen ? 'rotate-180' : ''} ${gwWsConnected ? 'text-mac-green/60' : 'text-mac-red/60'}`}>expand_more</span>
+                </button>
+                {/* Expanded detail panel */}
+                {wsIndicatorOpen && gwWsDetail && (
+                  <div className="absolute top-full mt-1.5 start-0 z-50 w-72 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#1c1e24] shadow-xl p-3 space-y-2.5 animate-fade-in" onClick={e => e.stopPropagation()}>
+                    {/* Connection status header */}
+                    <div className={`flex items-center gap-2.5 px-2.5 py-2 rounded-lg ${gwWsConnected ? 'bg-mac-green/5 border border-mac-green/20' : 'bg-mac-red/5 border border-mac-red/20'}`}>
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${gwWsConnected ? 'bg-mac-green/15' : 'bg-mac-red/15'}`}>
+                        <span className={`material-symbols-outlined text-[18px] ${gwWsConnected ? 'text-mac-green' : 'text-mac-red'}`}>
+                          {gwWsConnected ? 'link' : 'link_off'}
+                        </span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-[11px] font-bold ${gwWsConnected ? 'text-mac-green' : 'text-mac-red'}`}>
+                          {gwWsConnected ? (gw.svcWsConnected || 'Connected') : (gw.svcWsDisconnected || 'Disconnected')}
+                        </p>
+                        <p className="text-[9px] text-slate-400 dark:text-white/35 font-mono mt-0.5">
+                          {gwWsDetail.host}:{gwWsDetail.port}
+                        </p>
+                      </div>
+                      <button
+                        onClick={handleWsReconnect}
+                        disabled={wsReconnecting}
+                        className="flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-white/50 font-bold text-[10px] transition-all hover:bg-slate-200 dark:hover:bg-white/10 hover:text-slate-700 dark:hover:text-white disabled:opacity-40 shrink-0"
+                      >
+                        <span className={`material-symbols-outlined text-[13px] ${wsReconnecting ? 'animate-spin' : ''}`}>
+                          {wsReconnecting ? 'progress_activity' : 'refresh'}
+                        </span>
+                        {gw.svcWsReconnect || 'Reconnect'}
+                      </button>
+                    </div>
+                    {/* Stats */}
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <div className="px-2 py-1.5 rounded-lg bg-slate-50 dark:bg-white/[0.03] border border-slate-200/50 dark:border-white/[0.05]">
+                        <p className="text-[8px] text-slate-400 dark:text-white/30 uppercase tracking-wider">{gw.svcWsReconnects || 'Reconnects'}</p>
+                        <p className="text-[11px] font-bold font-mono text-slate-600 dark:text-white/70">{gwWsDetail.reconnect_count ?? 0}</p>
+                      </div>
+                      <div className="px-2 py-1.5 rounded-lg bg-slate-50 dark:bg-white/[0.03] border border-slate-200/50 dark:border-white/[0.05]">
+                        <p className="text-[8px] text-slate-400 dark:text-white/30 uppercase tracking-wider">{gw.svcWsBackoff || 'Backoff'}</p>
+                        <p className="text-[11px] font-bold font-mono text-slate-600 dark:text-white/70">
+                          {(gwWsDetail.backoff_ms ?? 0) >= 1000 ? `${((gwWsDetail.backoff_ms ?? 0) / 1000).toFixed(1)}s` : `${gwWsDetail.backoff_ms ?? 0}ms`}
+                        </p>
+                      </div>
+                    </div>
+                    {/* Auto-approve pairing */}
+                    {gwWsDetail.pairing_auto_approve && (
+                      <div className="px-2.5 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/25 flex items-center gap-1.5">
+                        <span className="material-symbols-outlined text-[13px] text-amber-400 animate-spin">progress_activity</span>
+                        <p className="text-[10px] font-bold text-amber-400">{gw.svcWsAutoApproving || 'Auto-approving device pairing...'}</p>
+                      </div>
+                    )}
+                    {/* Last error + diagnostic hint */}
+                    {gwWsDetail.last_error && !gwWsDetail.pairing_auto_approve && (
+                      <div className="px-2.5 py-1.5 rounded-lg bg-mac-red/5 border border-mac-red/15 space-y-1">
+                        <p className="text-[8px] text-slate-400 dark:text-white/30 uppercase tracking-wider mb-0.5">{gw.svcWsLastError || 'Last Error'}</p>
+                        <p className="text-[9px] font-mono text-mac-red/80 break-all leading-relaxed">{gwWsDetail.last_error}</p>
+                        {(() => {
+                          const err = (gwWsDetail.last_error || '').toLowerCase();
+                          let hint = '';
+                          if (err.includes('actively refused') || err.includes('connection refused') || err.includes('connectex')) {
+                            hint = gw.wsDiagRefused || 'Gateway port is not listening. Check if the gateway process is running and the port is correct.';
+                          } else if (err.includes('forcibly closed') || err.includes('connection reset') || err.includes('wsarecv')) {
+                            hint = gw.wsDiagForceClosed || 'Connection was rejected by the remote host. Check token, TLS/SSL settings, or firewall/proxy configuration.';
+                          } else if (err.includes('timeout') || err.includes('timed out') || err.includes('deadline exceeded')) {
+                            hint = gw.wsDiagTimeout || 'Connection timed out. The gateway may be overloaded, or a firewall/NAT is blocking the connection.';
+                          } else if (err.includes('no such host') || err.includes('dns') || err.includes('getaddrinfo')) {
+                            hint = gw.wsDiagDns || 'DNS resolution failed. Check hostname spelling and network DNS settings.';
+                          } else if (err.includes('certificate') || err.includes('tls') || err.includes('x509')) {
+                            hint = gw.wsDiagTls || 'TLS/SSL certificate error. Verify the gateway SSL configuration or switch to non-TLS connection.';
+                          } else if (err.includes('401') || err.includes('403') || err.includes('unauthorized') || err.includes('forbidden')) {
+                            hint = gw.wsDiagAuth || 'Authentication failed. Verify the gateway token in profile settings.';
+                          } else if (err.includes('network is unreachable') || err.includes('no route')) {
+                            hint = gw.wsDiagNetwork || 'Network unreachable. Check your network connection and gateway host address.';
+                          }
+                          if (!hint) return null;
+                          return (
+                            <p className="text-[9px] text-amber-600 dark:text-amber-400 leading-relaxed flex items-start gap-1">
+                              <span className="material-symbols-outlined text-[10px] text-amber-500 mt-px shrink-0">lightbulb</span>
+                              {hint}
+                            </p>
+                          );
+                        })()}
+                      </div>
+                    )}
+                    {/* 多阶段连接过程 */}
+                    {!gwWsConnected && (
+                      <div className="px-2.5 py-1.5 rounded-lg bg-amber-500/5 border border-amber-500/15 space-y-1">
+                        {(() => {
+                          const phase = gwWsDetail.phase || 'disconnected';
+                          const rc = gwWsDetail.reconnect_count ?? 0;
+                          const bms = gwWsDetail.backoff_ms ?? 0;
+                          const bFmt = bms >= 1000 ? `${(bms / 1000).toFixed(1)}s` : `${bms}ms`;
+                          const steps: { key: string; icon: string; label: string; active: boolean; color: string }[] = [
+                            {
+                              key: 'connect', active: phase === 'reconnecting' || phase === 'disconnected',
+                              icon: phase === 'reconnecting' ? 'progress_activity' : phase === 'disconnected' ? 'cloud_off' : 'cloud_done',
+                              label: phase === 'reconnecting' ? `${gw.wsRetrying || 'Auto-reconnecting'}${rc > 0 ? ` #${rc}` : ''}${bms > 0 ? ` — ${bFmt} ${gw.wsRetryDelay || 'delay'}` : ''}` : phase === 'disconnected' ? (gw.wsWaitingRetry || 'Waiting for auto-reconnect...') : (gw.wsStepConnected || 'TCP connected'),
+                              color: phase === 'reconnecting' ? 'text-amber-500 dark:text-amber-400' : phase === 'disconnected' ? 'theme-text-muted' : 'text-mac-green',
+                            },
+                            {
+                              key: 'pairing', active: phase === 'pairing',
+                              icon: phase === 'pairing' ? 'progress_activity' : 'radio_button_unchecked',
+                              label: phase === 'pairing' ? (gw.wsPhasePairing || 'Auto-approving device pairing...') : (gw.wsStepPairing || 'Device pairing'),
+                              color: phase === 'pairing' ? 'text-amber-500 dark:text-amber-400' : 'theme-text-muted',
+                            },
+                            {
+                              key: 'auth', active: phase === 'auth_refresh',
+                              icon: phase === 'auth_refresh' ? 'progress_activity' : 'radio_button_unchecked',
+                              label: phase === 'auth_refresh' ? (gw.wsPhaseAuthRefresh || 'Refreshing auth token...') : (gw.wsStepAuth || 'Authentication'),
+                              color: phase === 'auth_refresh' ? 'text-amber-500 dark:text-amber-400' : 'theme-text-muted',
+                            },
+                          ];
+                          return steps.map(step => (
+                            <div key={step.key} className={`flex items-center gap-1 text-[9px] ${step.color} ${step.active ? 'font-bold' : ''}`}>
+                              <span className={`material-symbols-outlined text-[10px] ${step.active && step.icon === 'progress_activity' ? 'animate-spin' : ''}`}>{step.icon}</span>
+                              {step.label}
+                            </div>
+                          ));
+                        })()}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </div>

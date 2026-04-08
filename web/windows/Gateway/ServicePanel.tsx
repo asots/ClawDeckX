@@ -34,10 +34,20 @@ interface ServicePanelProps {
   healthStatus: {
     fail_count: number;
     last_ok: string;
+    last_check: string;
     max_fails: number;
     interval_sec: number;
     reconnect_backoff_cap_ms: number;
     grace_until: string;
+    grace_remaining_sec: number;
+    restarting: boolean;
+    next_check_in_sec: number;
+    phase: 'healthy' | 'probing' | 'degraded' | 'restarting' | 'grace' | 'disabled';
+    notify_channels: string[];
+    notify_sending: boolean;
+    notify_last_event: string;
+    notify_last_at: string;
+    notify_last_ago_sec: number;
   } | null;
   gw: Record<string, any>;
   onCopy: (text: string) => void;
@@ -376,64 +386,139 @@ const ServicePanel: React.FC<ServicePanelProps> = ({ status, healthCheckEnabled,
           <span className="material-symbols-outlined text-[14px]">pets</span>
           {gw.serviceWatchdog || 'Watchdog'}
         </h4>
-        <div className={`px-3 py-2.5 rounded-lg border flex items-center gap-2 ${
-          healthCheckEnabled
-            ? 'bg-mac-green/5 border-mac-green/20'
-            : 'bg-slate-50 dark:bg-white/[0.02] border-slate-200 dark:border-white/[0.06]'
-        }`}>
-          <span className={`material-symbols-outlined text-[18px] ${healthCheckEnabled ? 'text-mac-green' : 'text-slate-300 dark:text-white/20'}`}>
-            {healthCheckEnabled ? 'shield' : 'shield_question'}
-          </span>
-          <div className="flex-1 min-w-0">
-            <p className={`text-[11px] font-bold ${healthCheckEnabled ? 'text-mac-green' : 'text-slate-400 dark:text-white/40'}`}>
-              {healthCheckEnabled
-                ? (gw.serviceWatchdogActive || 'Active')
-                : (gw.serviceWatchdogInactive || 'Inactive')}
-            </p>
-            {healthCheckEnabled && healthStatus && (
-              <p className="text-[10px] text-slate-400 dark:text-white/30 mt-0.5">
-                {healthStatus.fail_count > 0
-                  ? `${gw.hbUnhealthy || 'Unhealthy'} (${healthStatus.fail_count} fails)`
-                  : `${gw.hbHealthy || 'Healthy'} — ${healthStatus.last_ok ? new Date(healthStatus.last_ok).toLocaleTimeString() : '-'}`}
-              </p>
-            )}
-          </div>
-        </div>
 
-        {healthCheckEnabled && healthStatus && (
-          <div className="grid grid-cols-3 gap-2">
-            <div className="px-3 py-2 rounded-lg bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.06]">
-              <p className="text-[9px] text-slate-400 dark:text-white/30 uppercase tracking-wider">{gw.wdFailCount || 'Fails'}</p>
-              <p className={`text-[12px] font-bold font-mono ${
-                healthStatus.fail_count > 0 ? (healthStatus.fail_count >= healthStatus.max_fails ? 'text-mac-red' : 'text-mac-yellow') : 'text-mac-green'
-              }`}>
-                {healthStatus.fail_count}/{healthStatus.max_fails}
-              </p>
-            </div>
-            <div className="px-3 py-2 rounded-lg bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.06]">
-              <p className="text-[9px] text-slate-400 dark:text-white/30 uppercase tracking-wider">{gw.wdInterval || 'Interval'}</p>
-              <p className="text-[12px] font-bold font-mono text-slate-600 dark:text-white/70">{healthStatus.interval_sec}s</p>
-            </div>
-            <div className="px-3 py-2 rounded-lg bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.06]">
-              <p className="text-[9px] text-slate-400 dark:text-white/30 uppercase tracking-wider">{gw.wdLastOk || 'Last OK'}</p>
-              <p className="text-[11px] font-mono text-slate-500 dark:text-white/60">
-                {healthStatus.last_ok ? new Date(healthStatus.last_ok).toLocaleTimeString() : '-'}
-              </p>
-            </div>
+        {!healthCheckEnabled ? (
+          <div className="px-3 py-2.5 rounded-lg border border-slate-200 dark:border-white/[0.06] bg-slate-50 dark:bg-white/[0.02] flex items-center gap-2">
+            <span className="material-symbols-outlined text-[18px] text-slate-300 dark:text-white/20">shield_question</span>
+            <p className="text-[11px] text-slate-400 dark:text-white/40">{gw.serviceWatchdogInactive || 'Inactive'}</p>
           </div>
-        )}
+        ) : healthStatus && (() => {
+          const phase = healthStatus.phase;
+          const fc = healthStatus.fail_count;
+          const mf = healthStatus.max_fails;
+          const intSec = healthStatus.interval_sec;
+          const nxtSec = healthStatus.next_check_in_sec;
+          const graceSec = healthStatus.grace_remaining_sec;
+          const lastOkStr = healthStatus.last_ok ? new Date(healthStatus.last_ok).toLocaleTimeString() : '-';
+          const lastCheckStr = healthStatus.last_check ? new Date(healthStatus.last_check).toLocaleTimeString() : '-';
 
-        {healthCheckEnabled && healthStatus?.grace_until && (
-          <div className="px-3 py-2 rounded-lg bg-amber-500/5 border border-amber-500/20 flex items-center gap-2">
-            <span className="material-symbols-outlined text-[14px] text-amber-500">hourglass_top</span>
-            <div>
-              <p className="text-[10px] font-bold text-amber-400">{gw.wdGracePeriod || 'Grace Period Active'}</p>
-              <p className="text-[9px] text-slate-400 dark:text-white/30 font-mono mt-0.5">
-                {gw.wdGraceUntil || 'Until'}: {new Date(healthStatus.grace_until).toLocaleTimeString()}
-              </p>
+          // Phase-specific banner color/icon
+          const bannerCfg: Record<string, { bg: string; border: string; icon: string; iconColor: string; spin: boolean; title: string; desc: string }> = {
+            healthy: { bg: 'bg-mac-green/5', border: 'border-mac-green/20', icon: 'shield', iconColor: 'text-mac-green', spin: false,
+              title: `${gw.serviceWatchdogActive || 'Active'} — ${gw.wdMonitoring || 'Monitoring gateway health'}`,
+              desc: nxtSec > 0 ? `${gw.wdNextCheck || 'Next check in'} ${nxtSec}s` : `${gw.wdLastOk || 'Last OK'}: ${lastOkStr}`,
+            },
+            probing: { bg: 'bg-mac-yellow/5', border: 'border-mac-yellow/20', icon: 'progress_activity', iconColor: 'text-mac-yellow', spin: true,
+              title: gw.wdProbing || 'Initial probe...',
+              desc: `${gw.wdInterval || 'Interval'}: ${intSec}s`,
+            },
+            degraded: { bg: 'bg-mac-red/5', border: 'border-mac-red/20', icon: 'heart_broken', iconColor: 'text-mac-red', spin: false,
+              title: `${gw.hbUnhealthy || 'Unhealthy'} (${fc}/${mf} ${gw.wdFails || 'fails'})`,
+              desc: fc < mf
+                ? `${gw.wdRestartIn || 'Restart after'} ${mf - fc} ${gw.wdMoreFails || 'more failures'} · ${gw.wdNextCheck || 'Next check in'} ${nxtSec > 0 ? `${nxtSec}s` : `${intSec}s`}`
+                : gw.wdRestartImminent || 'Restart imminent...',
+            },
+            restarting: { bg: 'bg-mac-red/5', border: 'border-mac-red/20', icon: 'progress_activity', iconColor: 'text-mac-red', spin: true,
+              title: gw.wdRestarting || 'Restarting gateway...',
+              desc: gw.wdRestartingDesc || 'Watchdog triggered a restart due to consecutive health check failures',
+            },
+            grace: { bg: 'bg-amber-500/5', border: 'border-amber-500/20', icon: 'hourglass_top', iconColor: 'text-amber-500', spin: false,
+              title: `${gw.wdGracePeriod || 'Grace Period Active'}${graceSec > 0 ? ` — ${graceSec}s` : ''}`,
+              desc: gw.wdGraceDesc || 'Health checks paused, waiting for gateway to stabilize after restart',
+            },
+          };
+          const cfg = bannerCfg[phase] || bannerCfg.probing;
+
+          return (
+            <div className="space-y-2">
+              {/* Phase banner */}
+              <div className={`px-3 py-2.5 rounded-lg border ${cfg.bg} ${cfg.border} flex items-center gap-2.5`}>
+                <span className={`material-symbols-outlined text-[18px] ${cfg.iconColor} ${cfg.spin ? 'animate-spin' : ''}`}>{cfg.icon}</span>
+                <div className="flex-1 min-w-0">
+                  <p className={`text-[11px] font-bold ${cfg.iconColor}`}>{cfg.title}</p>
+                  <p className="text-[10px] text-slate-400 dark:text-white/30 mt-0.5">{cfg.desc}</p>
+                </div>
+              </div>
+
+              {/* Multi-phase process chain */}
+              <div className="px-3 py-2 rounded-lg bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.06] space-y-1.5">
+                <p className="text-[9px] text-slate-400 dark:text-white/30 uppercase tracking-wider">{gw.wdProcessChain || 'Watchdog Lifecycle'}</p>
+                <div className="flex items-center gap-1 flex-wrap">
+                  {[
+                    {
+                      key: 'monitor',
+                      icon: phase === 'healthy' ? 'monitor_heart' : phase === 'probing' ? 'progress_activity' : 'check_circle',
+                      label: phase === 'healthy'
+                        ? `${gw.wdStepMonitoring || 'Monitoring'} (${nxtSec > 0 ? `${nxtSec}s` : `${intSec}s`})`
+                        : phase === 'probing'
+                          ? (gw.wdStepProbing || 'Probing...')
+                          : (gw.wdStepMonitorOk || 'Monitored'),
+                      active: phase === 'healthy' || phase === 'probing',
+                      color: phase === 'healthy' ? 'text-mac-green' : phase === 'probing' ? 'text-mac-yellow' : 'text-mac-green',
+                    },
+                    {
+                      key: 'degrade',
+                      icon: phase === 'degraded' ? 'warning' : (phase === 'restarting' || phase === 'grace') ? 'check_circle' : 'radio_button_unchecked',
+                      label: phase === 'degraded'
+                        ? `${gw.wdStepDegraded || 'Degraded'} ${fc}/${mf}`
+                        : (gw.wdStepHealthCheck || 'Health check'),
+                      active: phase === 'degraded',
+                      color: phase === 'degraded' ? 'text-mac-red' : (phase === 'restarting' || phase === 'grace') ? 'text-mac-green' : 'theme-text-muted',
+                    },
+                    {
+                      key: 'restart',
+                      icon: phase === 'restarting' ? 'progress_activity' : phase === 'grace' ? 'check_circle' : 'radio_button_unchecked',
+                      label: phase === 'restarting'
+                        ? (gw.wdStepRestarting || 'Restarting...')
+                        : (gw.wdStepRestart || 'Restart'),
+                      active: phase === 'restarting',
+                      color: phase === 'restarting' ? 'text-mac-red' : phase === 'grace' ? 'text-mac-green' : 'theme-text-muted',
+                    },
+                    {
+                      key: 'grace',
+                      icon: phase === 'grace' ? 'hourglass_top' : 'radio_button_unchecked',
+                      label: phase === 'grace'
+                        ? `${gw.wdStepGrace || 'Grace'} ${graceSec > 0 ? `${graceSec}s` : ''}`
+                        : (gw.wdStepGrace || 'Grace'),
+                      active: phase === 'grace',
+                      color: phase === 'grace' ? 'text-amber-500' : 'theme-text-muted',
+                    },
+                  ].map((step, i, arr) => (
+                    <span key={step.key} className="contents">
+                      <span className={`flex items-center gap-0.5 text-[9px] ${step.color} ${step.active ? 'font-bold' : ''}`}>
+                        <span className={`material-symbols-outlined text-[11px] ${step.active && step.icon === 'progress_activity' ? 'animate-spin' : ''}`}>{step.icon}</span>
+                        {step.label}
+                      </span>
+                      {i < arr.length - 1 && (
+                        <span className="material-symbols-outlined text-[8px] theme-text-muted mx-0.5">chevron_right</span>
+                      )}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Stats grid */}
+              <div className="grid grid-cols-3 gap-2">
+                <div className="px-3 py-2 rounded-lg bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.06]">
+                  <p className="text-[9px] text-slate-400 dark:text-white/30 uppercase tracking-wider">{gw.wdFailCount || 'Fails'}</p>
+                  <p className={`text-[12px] font-bold font-mono ${
+                    fc > 0 ? (fc >= mf ? 'text-mac-red' : 'text-mac-yellow') : 'text-mac-green'
+                  }`}>
+                    {fc}/{mf}
+                  </p>
+                </div>
+                <div className="px-3 py-2 rounded-lg bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.06]">
+                  <p className="text-[9px] text-slate-400 dark:text-white/30 uppercase tracking-wider">{gw.wdInterval || 'Interval'}</p>
+                  <p className="text-[12px] font-bold font-mono text-slate-600 dark:text-white/70">{intSec}s</p>
+                </div>
+                <div className="px-3 py-2 rounded-lg bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.06]">
+                  <p className="text-[9px] text-slate-400 dark:text-white/30 uppercase tracking-wider">{gw.wdLastOk || 'Last OK'}</p>
+                  <p className="text-[11px] font-mono text-slate-500 dark:text-white/60">{lastOkStr}</p>
+                </div>
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {healthCheckEnabled && remote && (
           <div className="px-3 py-2 rounded-lg bg-primary/5 border border-primary/20 flex items-center gap-2">

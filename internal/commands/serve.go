@@ -333,6 +333,7 @@ func RunServe(args []string) int {
 	gwClient.SetNotifyCallback(func(eventType string, msg string) {
 		notifyMgr.SendEvent(notify.EventType(eventType), msg)
 	})
+	gwClient.SetNotifyChannels(notifyMgr.ChannelNames())
 
 	lifecycleRecorder := monitor.NewLifecycleRecorder(wsHub)
 	lifecycleRecorder.SetGatewayInfo(svc.GatewayHost, svc.GatewayPort, "", svc.IsRemote())
