@@ -195,6 +195,24 @@
     "secProfile_full": "Completo",
     "secProfile_minimal": "Mínimo",
     "secProfile_coding": "Codificación",
-    "secProfile_messaging": "Mensajería"
+    "secProfile_messaging": "Mensajería",
+    "cmdDreaming": "Sueños de memoria",
+    "cmdExportSession": "Exportar sesión como HTML",
+    "cmdVoice": "Ajustes de voz",
+    "compactionHistory": "Historial de compactación",
+    "compactionRestore": "Restaurar",
+    "compactionBranch": "Bifurcar desde checkpoint",
+    "compactionEmpty": "Sin historial de compactación",
+    "compactionRestoreOk": "Restaurado correctamente",
+    "compactionRestoreFailed": "Error al restaurar",
+    "compactionBranchOk": "Rama creada",
+    "compactionBranchFailed": "Error al crear rama",
+    "compactionCheckpoint": "Checkpoint",
+    "compactionBefore": "Antes",
+    "compactionAfter": "Después",
+    "skillsSearch": "Buscar skills",
+    "skillsDetail": "Detalles del skill",
+    "compactionSummary": "Resumen",
+    "compactionNoSummary": "Sin resumen disponible"
   }
 }

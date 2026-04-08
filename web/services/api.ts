@@ -1285,6 +1285,23 @@ export const gwApi = {
         }>;
       }>;
     }>('tools.catalog', params),
+  // Skills search & detail
+  skillsSearch: (params: { query?: string; category?: string; limit?: number; offset?: number }) =>
+    rpc<{ skills: Array<{ key: string; name: string; description: string; category?: string; installed?: boolean }>; total: number }>('skills.search', params),
+  skillsDetail: (params: { key: string }) =>
+    rpc<{ key: string; name: string; description: string; readme?: string; version?: string; author?: string; homepage?: string; installed?: boolean; config?: Record<string, unknown> }>('skills.detail', params),
+  // Exec approval (single)
+  execApprovalGet: (id: string) =>
+    rpc('exec.approval.get', { id }),
+  // Session compaction history
+  sessionsCompactionList: (key: string) =>
+    rpc<{ checkpoints: Array<{ id: string; createdAt: string; tokensBefore: number; tokensAfter: number; messagesBefore: number; messagesAfter: number }> }>('sessions.compaction.list', { key }),
+  sessionsCompactionGet: (key: string, checkpointId: string) =>
+    rpc<{ id: string; createdAt: string; tokensBefore: number; tokensAfter: number; messagesBefore: number; messagesAfter: number; summary?: string }>('sessions.compaction.get', { key, checkpointId }),
+  sessionsCompactionBranch: (key: string, checkpointId: string) =>
+    rpc<{ sessionKey: string }>('sessions.compaction.branch', { key, checkpointId }),
+  sessionsCompactionRestore: (key: string, checkpointId: string) =>
+    rpc<{ ok: boolean }>('sessions.compaction.restore', { key, checkpointId }),
   // Generic proxy (escape hatch)
   proxy: (method: string, params?: any) => rpc(method, params),
 };

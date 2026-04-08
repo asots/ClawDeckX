@@ -195,6 +195,24 @@
     "secProfile_full": "Penuh",
     "secProfile_minimal": "Minimal",
     "secProfile_coding": "Coding",
-    "secProfile_messaging": "Pesan"
+    "secProfile_messaging": "Pesan",
+    "cmdDreaming": "Memory dreaming",
+    "cmdExportSession": "Ekspor sesi ke HTML",
+    "cmdVoice": "Pengaturan suara",
+    "compactionHistory": "Riwayat Pemadatan",
+    "compactionRestore": "Pulihkan",
+    "compactionBranch": "Cabang dari checkpoint",
+    "compactionEmpty": "Tidak ada riwayat pemadatan",
+    "compactionRestoreOk": "Berhasil dipulihkan",
+    "compactionRestoreFailed": "Pemulihan gagal",
+    "compactionBranchOk": "Cabang dibuat",
+    "compactionBranchFailed": "Gagal membuat cabang",
+    "compactionCheckpoint": "Checkpoint",
+    "compactionBefore": "Sebelum",
+    "compactionAfter": "Sesudah",
+    "skillsSearch": "Cari skill",
+    "skillsDetail": "Detail skill",
+    "compactionSummary": "Ringkasan",
+    "compactionNoSummary": "Tidak ada ringkasan"
   }
 }

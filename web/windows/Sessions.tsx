@@ -565,6 +565,14 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
   const [compacting, setCompacting] = useState(false);
   const [compactResult, setCompactResult] = useState<{ ok: boolean; text: string } | null>(null);
 
+  // Compaction history
+  const [compactionHistoryOpen, setCompactionHistoryOpen] = useState(false);
+  const [compactionCheckpoints, setCompactionCheckpoints] = useState<Array<{ id: string; createdAt: string; tokensBefore: number; tokensAfter: number; messagesBefore: number; messagesAfter: number }>>([]);
+  const [compactionLoading, setCompactionLoading] = useState(false);
+  const [compactionExpandedId, setCompactionExpandedId] = useState<string | null>(null);
+  const [compactionDetail, setCompactionDetail] = useState<{ summary?: string } | null>(null);
+  const [compactionDetailLoading, setCompactionDetailLoading] = useState(false);
+
   // Session repair
   const [repairOpen, setRepairOpen] = useState(false);
   const [repairScanning, setRepairScanning] = useState(false);
@@ -629,6 +637,7 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
     { cmd: '/context', desc: c.catStatus, icon: 'memory', cat: 'status' },
     { cmd: '/whoami', desc: c.catStatus, icon: 'badge', cat: 'status' },
     { cmd: '/export', desc: c.cmdExport, icon: 'download', cat: 'status' },
+    { cmd: '/export-session', desc: c.cmdExportSession, icon: 'file_download', cat: 'status' },
     // — Options —
     { cmd: '/model', desc: c.quickModel, icon: 'smart_toy', cat: 'options' },
     { cmd: '/models', desc: c.cmdModels, icon: 'list', cat: 'options' },
@@ -667,8 +676,11 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
     { cmd: '/allowlist', desc: c.cmdAllowlist, icon: 'checklist', cat: 'management' },
     { cmd: '/approve', desc: c.cmdApprove, icon: 'verified', cat: 'management' },
     { cmd: '/debug', desc: c.cmdDebug, icon: 'bug_report', cat: 'management' },
+    // — Memory —
+    { cmd: '/dreaming', desc: c.cmdDreaming, icon: 'bedtime', cat: 'management' },
     // — Media —
     { cmd: '/tts', desc: c.catMedia, icon: 'record_voice_over', cat: 'media' },
+    { cmd: '/voice', desc: c.cmdVoice, icon: 'graphic_eq', cat: 'media' },
   ], [c]);
 
   const slashFiltered = useMemo(() => {
@@ -2138,6 +2150,62 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionKey, compacting, toast]);
 
+  // Load compaction history
+  const handleLoadCompactionHistory = useCallback(async () => {
+    if (!gwReady || !sessionKey.trim()) return;
+    setCompactionLoading(true);
+    setCompactionHistoryOpen(true);
+    try {
+      const res = await gwApi.sessionsCompactionList(sessionKey.trim()) as any;
+      setCompactionCheckpoints(res?.checkpoints || []);
+    } catch {
+      setCompactionCheckpoints([]);
+    }
+    setCompactionLoading(false);
+  }, [sessionKey, gwReady]);
+
+  const handleCompactionExpand = useCallback(async (checkpointId: string) => {
+    if (compactionExpandedId === checkpointId) {
+      setCompactionExpandedId(null);
+      setCompactionDetail(null);
+      return;
+    }
+    setCompactionExpandedId(checkpointId);
+    setCompactionDetailLoading(true);
+    setCompactionDetail(null);
+    try {
+      const res = await gwApi.sessionsCompactionGet(sessionKey.trim(), checkpointId) as any;
+      setCompactionDetail({ summary: res?.summary });
+    } catch { /* non-critical */ }
+    setCompactionDetailLoading(false);
+  }, [compactionExpandedId, sessionKey]);
+
+  const handleCompactionRestore = useCallback(async (checkpointId: string) => {
+    if (!gwReady || !sessionKey.trim()) return;
+    try {
+      await gwApi.sessionsCompactionRestore(sessionKey.trim(), checkpointId);
+      toast('success', c.compactionRestoreOk || 'Restored');
+      loadHistoryRef.current?.({ silent: false });
+      loadSessionsRef.current?.({ silent: true });
+      setCompactionHistoryOpen(false);
+    } catch (err: any) {
+      toast('error', err?.message || c.compactionRestoreFailed || 'Restore failed');
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionKey, gwReady, toast]);
+
+  const handleCompactionBranch = useCallback(async (checkpointId: string) => {
+    if (!gwReady || !sessionKey.trim()) return;
+    try {
+      const res = await gwApi.sessionsCompactionBranch(sessionKey.trim(), checkpointId) as any;
+      toast('success', `${c.compactionBranchOk || 'Branch created'}: ${res?.sessionKey || ''}`);
+      loadSessionsRef.current?.({ silent: false });
+    } catch (err: any) {
+      toast('error', err?.message || c.compactionBranchFailed || 'Branch failed');
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionKey, gwReady, toast]);
+
   // Session repair: scan all sessions for issues
   const handleRepairScan = useCallback(async () => {
     setRepairScanning(true);
@@ -2942,6 +3010,11 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
                       <span className={`material-symbols-outlined text-[16px] ${compacting ? 'animate-spin' : ''}`}>{compacting ? 'progress_activity' : 'compress'}</span>
                       {c.compact || 'Compact'}
                     </button>
+                    <button onClick={() => { handleLoadCompactionHistory(); setToolbarMenuOpen(false); }} disabled={!gwReady || !sessionKey.trim()}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-[11px] hover:bg-amber-50 dark:hover:bg-amber-500/10 text-amber-500/70 hover:text-amber-600 dark:hover:text-amber-400 disabled:opacity-30 transition-colors">
+                      <span className="material-symbols-outlined text-[16px]">history</span>
+                      {c.compactionHistory || 'Compaction History'}
+                    </button>
                     <button onClick={() => { setRepairOpen(true); handleRepairScan(); setToolbarMenuOpen(false); }}
                       className={`w-full flex items-center gap-2.5 px-3 py-2 text-[11px] transition-colors ${repairIssues.length > 0 ? 'text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/10' : 'hover:bg-emerald-50 dark:hover:bg-emerald-500/10 text-emerald-500/70 hover:text-emerald-600 dark:hover:text-emerald-400'} disabled:opacity-30`}>
                       <span className={`material-symbols-outlined text-[16px] ${repairScanning ? 'animate-spin' : ''}`}>{repairScanning ? 'progress_activity' : 'healing'}</span>
@@ -2973,6 +3046,78 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
                 className="p-0.5 text-slate-400 hover:text-slate-600 dark:hover:text-white/60 rounded transition-colors">
                 <span className="material-symbols-outlined text-[14px]">close</span>
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* Compaction History Panel */}
+        {compactionHistoryOpen && (
+          <div className="shrink-0 border-b border-slate-200/60 dark:border-white/[0.06] bg-slate-50/50 dark:bg-white/[0.015] px-4 py-3 animate-fade-in">
+            <div className="max-w-2xl mx-auto">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-[11px] font-bold theme-text-secondary uppercase tracking-wider flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-[14px] text-amber-500">history</span>
+                  {c.compactionHistory || 'Compaction History'}
+                </h3>
+                <button onClick={() => setCompactionHistoryOpen(false)} className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-white/60 rounded transition-colors">
+                  <span className="material-symbols-outlined text-[16px]">close</span>
+                </button>
+              </div>
+              {compactionLoading ? (
+                <div className="flex items-center justify-center py-4">
+                  <span className="material-symbols-outlined text-[18px] animate-spin text-amber-500">progress_activity</span>
+                </div>
+              ) : compactionCheckpoints.length === 0 ? (
+                <p className="text-[11px] text-slate-400 dark:text-white/30 text-center py-3">{c.compactionEmpty || 'No compaction history'}</p>
+              ) : (
+                <div className="space-y-1.5 max-h-60 overflow-y-auto neon-scrollbar">
+                  {compactionCheckpoints.map(cp => {
+                    const isExpanded = compactionExpandedId === cp.id;
+                    return (
+                    <div key={cp.id} className={`rounded-lg bg-white/50 dark:bg-white/[0.02] border transition-colors ${isExpanded ? 'border-amber-400/50 dark:border-amber-500/30' : 'border-slate-200/40 dark:border-white/[0.04] hover:border-amber-300/50 dark:hover:border-amber-500/20'}`}>
+                      <div className="flex items-center gap-3 px-3 py-2 cursor-pointer" onClick={() => handleCompactionExpand(cp.id)}>
+                        <span className={`material-symbols-outlined text-[14px] text-amber-500 shrink-0 transition-transform ${isExpanded ? 'rotate-90' : ''}`}>chevron_right</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[10px] font-bold text-slate-600 dark:text-white/60 truncate">
+                            {c.compactionCheckpoint || 'Checkpoint'} — {new Date(cp.createdAt).toLocaleString()}
+                          </p>
+                          <p className="text-[9px] text-slate-400 dark:text-white/30">
+                            {c.compactionBefore || 'Before'}: {cp.tokensBefore.toLocaleString()} tokens / {cp.messagesBefore} msgs → {c.compactionAfter || 'After'}: {cp.tokensAfter.toLocaleString()} tokens / {cp.messagesAfter} msgs
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0" onClick={e => e.stopPropagation()}>
+                          <button onClick={() => handleCompactionBranch(cp.id)} title={c.compactionBranch || 'Branch'}
+                            className="p-1 rounded text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors">
+                            <span className="material-symbols-outlined text-[14px]">call_split</span>
+                          </button>
+                          <button onClick={() => handleCompactionRestore(cp.id)} title={c.compactionRestore || 'Restore'}
+                            className="p-1 rounded text-slate-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-colors">
+                            <span className="material-symbols-outlined text-[14px]">restore</span>
+                          </button>
+                        </div>
+                      </div>
+                      {isExpanded && (
+                        <div className="px-3 pb-2 pt-0 border-t border-slate-100 dark:border-white/[0.04] animate-fade-in">
+                          {compactionDetailLoading ? (
+                            <div className="flex items-center gap-1.5 py-1.5 text-[10px] theme-text-muted">
+                              <span className="material-symbols-outlined text-[12px] animate-spin">progress_activity</span>
+                              {c.loading || 'Loading...'}
+                            </div>
+                          ) : compactionDetail?.summary ? (
+                            <div className="py-1.5">
+                              <p className="text-[9px] font-bold theme-text-muted uppercase tracking-wider mb-1">{c.compactionSummary || 'Summary'}</p>
+                              <p className="text-[10px] theme-text-secondary leading-relaxed whitespace-pre-wrap">{compactionDetail.summary}</p>
+                            </div>
+                          ) : (
+                            <p className="text-[9px] text-slate-400 dark:text-white/25 py-1.5 italic">{c.compactionNoSummary || 'No summary available'}</p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
         )}

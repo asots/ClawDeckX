@@ -195,6 +195,24 @@
     "secProfile_full": "Полный",
     "secProfile_minimal": "Минимальный",
     "secProfile_coding": "Код",
-    "secProfile_messaging": "Сообщения"
+    "secProfile_messaging": "Сообщения",
+    "cmdDreaming": "Сны памяти",
+    "cmdExportSession": "Экспорт сессии в HTML",
+    "cmdVoice": "Настройки голоса",
+    "compactionHistory": "История сжатия",
+    "compactionRestore": "Восстановить",
+    "compactionBranch": "Создать ветку из чекпоинта",
+    "compactionEmpty": "Нет истории сжатия",
+    "compactionRestoreOk": "Успешно восстановлено",
+    "compactionRestoreFailed": "Ошибка восстановления",
+    "compactionBranchOk": "Ветка создана",
+    "compactionBranchFailed": "Ошибка создания ветки",
+    "compactionCheckpoint": "Чекпоинт",
+    "compactionBefore": "До",
+    "compactionAfter": "После",
+    "skillsSearch": "Поиск навыков",
+    "skillsDetail": "Детали навыка",
+    "compactionSummary": "Сводка",
+    "compactionNoSummary": "Сводка недоступна"
   }
 }

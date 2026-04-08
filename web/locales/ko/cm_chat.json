@@ -195,6 +195,24 @@
     "secProfile_full": "전체",
     "secProfile_minimal": "최소",
     "secProfile_coding": "코딩",
-    "secProfile_messaging": "메시징"
+    "secProfile_messaging": "메시징",
+    "cmdDreaming": "메모리 드리밍",
+    "cmdExportSession": "세션을 HTML로 내보내기",
+    "cmdVoice": "음성 설정",
+    "compactionHistory": "압축 기록",
+    "compactionRestore": "복원",
+    "compactionBranch": "체크포인트에서 분기",
+    "compactionEmpty": "압축 기록 없음",
+    "compactionRestoreOk": "복원 성공",
+    "compactionRestoreFailed": "복원 실패",
+    "compactionBranchOk": "브랜치 생성 완료",
+    "compactionBranchFailed": "브랜치 생성 실패",
+    "compactionCheckpoint": "체크포인트",
+    "compactionBefore": "이전",
+    "compactionAfter": "이후",
+    "skillsSearch": "스킬 검색",
+    "skillsDetail": "스킬 상세",
+    "compactionSummary": "요약",
+    "compactionNoSummary": "요약 없음"
   }
 }

@@ -195,6 +195,24 @@
     "secProfile_full": "Full",
     "secProfile_minimal": "Minimal",
     "secProfile_coding": "Coding",
-    "secProfile_messaging": "Messaging"
+    "secProfile_messaging": "Messaging",
+    "cmdDreaming": "Memory dreaming",
+    "cmdExportSession": "Export session to HTML",
+    "cmdVoice": "Voice settings",
+    "compactionHistory": "Compaction History",
+    "compactionRestore": "Restore",
+    "compactionBranch": "Branch from checkpoint",
+    "compactionEmpty": "No compaction history",
+    "compactionRestoreOk": "Restored successfully",
+    "compactionRestoreFailed": "Restore failed",
+    "compactionBranchOk": "Branch created",
+    "compactionBranchFailed": "Branch failed",
+    "compactionCheckpoint": "Checkpoint",
+    "compactionBefore": "Before",
+    "compactionAfter": "After",
+    "skillsSearch": "Search skills",
+    "skillsDetail": "Skill details",
+    "compactionSummary": "Summary",
+    "compactionNoSummary": "No summary available"
   }
 }

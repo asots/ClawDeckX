@@ -646,6 +646,8 @@ const Skills: React.FC<SkillsProps> = ({ language }) => {
   const [compactView, setCompactView] = useState(false);
   // Detail panel
   const [detailSkill, setDetailSkill] = useState<SkillStatus | null>(null);
+  const [detailEnriched, setDetailEnriched] = useState<{ readme?: string; version?: string; author?: string; homepage?: string } | null>(null);
+  const [detailEnrichedLoading, setDetailEnrichedLoading] = useState(false);
   // Market detail
   const [marketDetail, setMarketDetail] = useState<any>(null);
   const [marketDetailLoading, setMarketDetailLoading] = useState(false);
@@ -1229,6 +1231,21 @@ const Skills: React.FC<SkillsProps> = ({ language }) => {
     const a = document.createElement('a'); a.href = url; a.download = `skills-config-${new Date().toISOString().slice(0, 10)}.json`; a.click();
     URL.revokeObjectURL(url);
   }, [skills, skillsConfig]);
+
+  // Fetch enriched detail when detail panel opens
+  useEffect(() => {
+    if (!detailSkill || !gwReady) { setDetailEnriched(null); return; }
+    let cancelled = false;
+    setDetailEnrichedLoading(true);
+    setDetailEnriched(null);
+    gwApi.skillsDetail({ key: detailSkill.skillKey }).then((res: any) => {
+      if (cancelled) return;
+      setDetailEnriched({ readme: res?.readme, version: res?.version, author: res?.author, homepage: res?.homepage || detailSkill.homepage });
+    }).catch(() => { /* non-critical, keep showing basic detail */ }).finally(() => {
+      if (!cancelled) setDetailEnrichedLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [detailSkill?.skillKey, gwReady]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -1991,6 +2008,37 @@ const Skills: React.FC<SkillsProps> = ({ language }) => {
             <div className="flex-1 overflow-y-auto p-5 space-y-4 custom-scrollbar neon-scrollbar">
               {/* Description */}
               {detailSkill.description && <p className="text-[12px] theme-text-secondary leading-relaxed">{dShowTrans && dTrans?.description ? dTrans.description : detailSkill.description}</p>}
+              {/* Enriched detail from skills.detail */}
+              {(detailEnriched?.version || detailEnriched?.author) && (
+                <div className="flex flex-wrap gap-3 text-[10px]">
+                  {detailEnriched.version && (
+                    <span className="flex items-center gap-1 theme-text-muted">
+                      <span className="material-symbols-outlined text-[12px]">tag</span>
+                      v{detailEnriched.version}
+                    </span>
+                  )}
+                  {detailEnriched.author && (
+                    <span className="flex items-center gap-1 theme-text-muted">
+                      <span className="material-symbols-outlined text-[12px]">person</span>
+                      {detailEnriched.author}
+                    </span>
+                  )}
+                </div>
+              )}
+              {detailEnrichedLoading && (
+                <div className="flex items-center gap-1.5 text-[10px] theme-text-muted">
+                  <span className="material-symbols-outlined text-[12px] animate-spin">progress_activity</span>
+                  {sk.loading || 'Loading...'}
+                </div>
+              )}
+              {detailEnriched?.readme && (
+                <div className="mt-1">
+                  <h4 className="text-[10px] font-bold theme-text-muted uppercase tracking-wider mb-1.5">README</h4>
+                  <div className="text-[11px] theme-text-secondary leading-relaxed max-h-40 overflow-y-auto custom-scrollbar neon-scrollbar bg-slate-50 dark:bg-white/[0.02] rounded-lg p-3 border border-slate-200/40 dark:border-white/[0.04] whitespace-pre-wrap font-mono">
+                    {detailEnriched.readme}
+                  </div>
+                </div>
+              )}
               {/* Status badges */}
               <div className="flex flex-wrap gap-1.5">
                 <span className="text-[10px] px-2 py-0.5 rounded-full theme-field theme-text-muted font-bold">{detailSkill.source}</span>
@@ -2064,8 +2112,8 @@ const Skills: React.FC<SkillsProps> = ({ language }) => {
                 className="h-8 px-4 theme-field theme-text-secondary text-[11px] font-bold rounded-lg hover:bg-slate-200 dark:hover:bg-white/10 flex items-center gap-1.5">
                 <span className="material-symbols-outlined text-[14px]">tune</span>{sk.configure}
               </button>
-              {detailSkill.homepage && (
-                <a href={detailSkill.homepage} target="_blank" rel="noopener noreferrer"
+              {(detailSkill.homepage || detailEnriched?.homepage) && (
+                <a href={detailSkill.homepage || detailEnriched?.homepage} target="_blank" rel="noopener noreferrer"
                   className="h-8 px-4 theme-field theme-text-secondary text-[11px] font-bold rounded-lg hover:bg-slate-200 dark:hover:bg-white/10 flex items-center gap-1.5">
                   <span className="material-symbols-outlined text-[14px]">open_in_new</span>{sk.homepage}
                 </a>

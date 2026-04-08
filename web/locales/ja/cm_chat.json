@@ -195,6 +195,24 @@
     "secProfile_full": "フル",
     "secProfile_minimal": "最小",
     "secProfile_coding": "コーディング",
-    "secProfile_messaging": "メッセージ"
+    "secProfile_messaging": "メッセージ",
+    "cmdDreaming": "メモリードリーミング",
+    "cmdExportSession": "セッションをHTMLにエクスポート",
+    "cmdVoice": "音声設定",
+    "compactionHistory": "圧縮履歴",
+    "compactionRestore": "復元",
+    "compactionBranch": "チェックポイントから分岐",
+    "compactionEmpty": "圧縮履歴なし",
+    "compactionRestoreOk": "復元成功",
+    "compactionRestoreFailed": "復元失敗",
+    "compactionBranchOk": "ブランチ作成完了",
+    "compactionBranchFailed": "ブランチ作成失敗",
+    "compactionCheckpoint": "チェックポイント",
+    "compactionBefore": "前",
+    "compactionAfter": "後",
+    "skillsSearch": "スキル検索",
+    "skillsDetail": "スキル詳細",
+    "compactionSummary": "要約",
+    "compactionNoSummary": "要約なし"
   }
 }

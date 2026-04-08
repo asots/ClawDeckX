@@ -195,6 +195,24 @@
     "secProfile_full": "完整",
     "secProfile_minimal": "最小",
     "secProfile_coding": "编程",
-    "secProfile_messaging": "消息"
+    "secProfile_messaging": "消息",
+    "cmdDreaming": "记忆梦境",
+    "cmdExportSession": "导出会话为 HTML",
+    "cmdVoice": "语音设置",
+    "compactionHistory": "压缩历史",
+    "compactionRestore": "恢复",
+    "compactionBranch": "从检查点分支",
+    "compactionEmpty": "暂无压缩历史",
+    "compactionRestoreOk": "恢复成功",
+    "compactionRestoreFailed": "恢复失败",
+    "compactionBranchOk": "分支已创建",
+    "compactionBranchFailed": "创建分支失败",
+    "compactionCheckpoint": "检查点",
+    "compactionBefore": "之前",
+    "compactionAfter": "之后",
+    "skillsSearch": "搜索技能",
+    "skillsDetail": "技能详情",
+    "compactionSummary": "摘要",
+    "compactionNoSummary": "暂无摘要"
   }
 }

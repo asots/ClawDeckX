@@ -195,6 +195,24 @@
     "secProfile_full": "完整",
     "secProfile_minimal": "最小",
     "secProfile_coding": "程式開發",
-    "secProfile_messaging": "訊息"
+    "secProfile_messaging": "訊息",
+    "cmdDreaming": "記憶夢境",
+    "cmdExportSession": "匯出對話為 HTML",
+    "cmdVoice": "語音設定",
+    "compactionHistory": "壓縮歷史",
+    "compactionRestore": "還原",
+    "compactionBranch": "從檢查點分支",
+    "compactionEmpty": "暫無壓縮歷史",
+    "compactionRestoreOk": "還原成功",
+    "compactionRestoreFailed": "還原失敗",
+    "compactionBranchOk": "分支已建立",
+    "compactionBranchFailed": "建立分支失敗",
+    "compactionCheckpoint": "檢查點",
+    "compactionBefore": "之前",
+    "compactionAfter": "之後",
+    "skillsSearch": "搜尋技能",
+    "skillsDetail": "技能詳情",
+    "compactionSummary": "摘要",
+    "compactionNoSummary": "暫無摘要"
   }
 }

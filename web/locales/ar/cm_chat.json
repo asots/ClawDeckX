@@ -195,6 +195,24 @@
     "secProfile_full": "كامل",
     "secProfile_minimal": "أدنى",
     "secProfile_coding": "برمجة",
-    "secProfile_messaging": "مراسلة"
+    "secProfile_messaging": "مراسلة",
+    "cmdDreaming": "أحلام الذاكرة",
+    "cmdExportSession": "تصدير الجلسة كـ HTML",
+    "cmdVoice": "إعدادات الصوت",
+    "compactionHistory": "سجل الضغط",
+    "compactionRestore": "استعادة",
+    "compactionBranch": "تفريع من نقطة فحص",
+    "compactionEmpty": "لا يوجد سجل ضغط",
+    "compactionRestoreOk": "تمت الاستعادة",
+    "compactionRestoreFailed": "فشلت الاستعادة",
+    "compactionBranchOk": "تم إنشاء الفرع",
+    "compactionBranchFailed": "فشل إنشاء الفرع",
+    "compactionCheckpoint": "نقطة فحص",
+    "compactionBefore": "قبل",
+    "compactionAfter": "بعد",
+    "skillsSearch": "بحث المهارات",
+    "skillsDetail": "تفاصيل المهارة",
+    "compactionSummary": "ملخص",
+    "compactionNoSummary": "لا يوجد ملخص"
   }
 }
