@@ -1295,6 +1295,13 @@ export const gwApi = {
     provider?: string;
     embedding: { ok: boolean; error?: string };
   }>('doctor.memory.status'),
+  // Doctor: Memory dream diary backfill / reset
+  memoryBackfillDreamDiary: (params?: { path?: string }) =>
+    rpc<{ ok: boolean; message?: string }>('doctor.memory.backfillDreamDiary', params),
+  memoryResetDreamDiary: () =>
+    rpc<{ ok: boolean; message?: string }>('doctor.memory.resetDreamDiary'),
+  memoryResetGroundedShortTerm: () =>
+    rpc<{ ok: boolean; message?: string }>('doctor.memory.resetGroundedShortTerm'),
   // Tools catalog
   toolsCatalog: (params?: { agentId?: string; includePlugins?: boolean }) =>
     rpc<{

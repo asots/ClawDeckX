@@ -83,6 +83,9 @@ const DreamsPanel: React.FC<DreamsPanelProps> = ({ gw, toast }) => {
   const [diaryContent, setDiaryContent] = useState<string | null>(null);
   const [diaryPath, setDiaryPath] = useState<string | null>(null);
   const [diaryOpen, setDiaryOpen] = useState(false);
+  const [backfilling, setBackfilling] = useState(false);
+  const [resettingDiary, setResettingDiary] = useState(false);
+  const [resettingGrounded, setResettingGrounded] = useState(false);
   const mountedRef = useRef(true);
 
   const fetchStatus = useCallback(async () => {
@@ -159,6 +162,71 @@ const DreamsPanel: React.FC<DreamsPanelProps> = ({ gw, toast }) => {
       if (mountedRef.current) setDiaryLoading(false);
     }
   }, [toast]);
+
+  const handleBackfill = useCallback(async () => {
+    if (backfilling) return;
+    const ok = await confirm({
+      title: dr.backfillConfirmTitle || 'Backfill Dream Diary',
+      message: dr.backfillConfirmMessage || 'Replay historical daily notes into Dreams and persistent memory? This may take a while.',
+      confirmText: dr.backfillConfirmAction || 'Backfill',
+      danger: false,
+    });
+    if (!ok) return;
+    setBackfilling(true);
+    try {
+      const res: any = await gwApi.memoryBackfillDreamDiary();
+      toast('success', res?.message || (dr.backfillOk || 'Dream diary backfill started'));
+      await fetchStatus();
+    } catch (err: any) {
+      toast('error', err?.message || (dr.backfillFailed || 'Failed to start backfill'));
+    } finally {
+      if (mountedRef.current) setBackfilling(false);
+    }
+  }, [backfilling, confirm, dr, toast, fetchStatus]);
+
+  const handleResetDiary = useCallback(async () => {
+    if (resettingDiary) return;
+    const ok = await confirm({
+      title: dr.resetDiaryConfirmTitle || 'Reset Dream Diary',
+      message: dr.resetDiaryConfirmMessage || 'This will clear all dream diary entries. Promoted long-term memories will not be affected. Continue?',
+      confirmText: dr.resetDiaryConfirmAction || 'Reset',
+      danger: true,
+    });
+    if (!ok) return;
+    setResettingDiary(true);
+    try {
+      const res: any = await gwApi.memoryResetDreamDiary();
+      toast('success', res?.message || (dr.resetDiaryOk || 'Dream diary reset'));
+      setDiaryContent(null);
+      setDiaryOpen(false);
+      await fetchStatus();
+    } catch (err: any) {
+      toast('error', err?.message || (dr.resetDiaryFailed || 'Failed to reset dream diary'));
+    } finally {
+      if (mountedRef.current) setResettingDiary(false);
+    }
+  }, [resettingDiary, confirm, dr, toast, fetchStatus]);
+
+  const handleResetGrounded = useCallback(async () => {
+    if (resettingGrounded) return;
+    const ok = await confirm({
+      title: dr.resetGroundedConfirmTitle || 'Reset Grounded Short-term',
+      message: dr.resetGroundedConfirmMessage || 'This will clear all grounded short-term memory entries. Promoted long-term memories will not be affected. Continue?',
+      confirmText: dr.resetGroundedConfirmAction || 'Reset',
+      danger: true,
+    });
+    if (!ok) return;
+    setResettingGrounded(true);
+    try {
+      const res: any = await gwApi.memoryResetGroundedShortTerm();
+      toast('success', res?.message || (dr.resetGroundedOk || 'Grounded short-term memory reset'));
+      await fetchStatus();
+    } catch (err: any) {
+      toast('error', err?.message || (dr.resetGroundedFailed || 'Failed to reset grounded short-term memory'));
+    } finally {
+      if (mountedRef.current) setResettingGrounded(false);
+    }
+  }, [resettingGrounded, confirm, dr, toast, fetchStatus]);
 
   if (loading) {
     return (
@@ -358,6 +426,58 @@ const DreamsPanel: React.FC<DreamsPanelProps> = ({ gw, toast }) => {
             )}
           </div>
         )}
+      </div>
+
+      {/* Actions: Backfill / Reset */}
+      <div className="rounded-xl border border-slate-200/60 dark:border-white/[0.06] bg-white dark:bg-white/[0.02] p-4 sci-card">
+        <h4 className="text-[10px] font-bold text-slate-500 dark:text-white/40 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+          <span className="material-symbols-outlined text-[13px] text-primary">build</span>
+          {dr.actions || 'Actions'}
+        </h4>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          {/* Backfill Dream Diary */}
+          <button
+            onClick={handleBackfill}
+            disabled={backfilling}
+            className="flex items-center gap-2 rounded-lg border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.02] hover:bg-indigo-50 dark:hover:bg-indigo-500/5 hover:border-indigo-300 dark:hover:border-indigo-500/20 px-3 py-2.5 transition-colors text-start disabled:opacity-50"
+          >
+            <span className="material-symbols-outlined text-[16px] text-indigo-500">
+              {backfilling ? 'progress_activity' : 'history'}
+            </span>
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] font-bold text-slate-700 dark:text-white/70">{dr.backfillAction || 'Backfill Diary'}</p>
+              <p className="text-[9px] text-slate-400 dark:text-white/30">{dr.backfillDesc || 'Replay historical notes into Dreams'}</p>
+            </div>
+          </button>
+          {/* Reset Dream Diary */}
+          <button
+            onClick={handleResetDiary}
+            disabled={resettingDiary}
+            className="flex items-center gap-2 rounded-lg border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.02] hover:bg-red-50 dark:hover:bg-red-500/5 hover:border-red-300 dark:hover:border-red-500/20 px-3 py-2.5 transition-colors text-start disabled:opacity-50"
+          >
+            <span className="material-symbols-outlined text-[16px] text-red-500">
+              {resettingDiary ? 'progress_activity' : 'delete_sweep'}
+            </span>
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] font-bold text-slate-700 dark:text-white/70">{dr.resetDiaryAction || 'Reset Diary'}</p>
+              <p className="text-[9px] text-slate-400 dark:text-white/30">{dr.resetDiaryDesc || 'Clear all dream diary entries'}</p>
+            </div>
+          </button>
+          {/* Reset Grounded Short-term */}
+          <button
+            onClick={handleResetGrounded}
+            disabled={resettingGrounded}
+            className="flex items-center gap-2 rounded-lg border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.02] hover:bg-red-50 dark:hover:bg-red-500/5 hover:border-red-300 dark:hover:border-red-500/20 px-3 py-2.5 transition-colors text-start disabled:opacity-50"
+          >
+            <span className="material-symbols-outlined text-[16px] text-red-500">
+              {resettingGrounded ? 'progress_activity' : 'restart_alt'}
+            </span>
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] font-bold text-slate-700 dark:text-white/70">{dr.resetGroundedAction || 'Reset Grounded'}</p>
+              <p className="text-[9px] text-slate-400 dark:text-white/30">{dr.resetGroundedDesc || 'Clear grounded short-term memory'}</p>
+            </div>
+          </button>
+        </div>
       </div>
 
       {/* Storage Info */}
