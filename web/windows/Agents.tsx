@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
-import { Language } from '../types';
+import { Language, dispatchOpenWindow } from '../types';
 import { getTranslation } from '../locales';
 import { gwApi, workspaceMemoryApi, MemoryFileEntry, multiAgentApi, WizardStep2Request } from '../services/api';
 import { useGatewayStatus } from '../hooks/useGatewayStatus';
@@ -128,6 +128,7 @@ const Agents: React.FC<AgentsProps> = ({ language }) => {
   const [cronStatus, setCronStatus] = useState<any>(null);
   const [cronJobs, setCronJobs] = useState<any[]>([]);
   const [tasksData, setTasksData] = useState<any>(null);
+  const [taskAudit, setTaskAudit] = useState<any>(null);
   const [tasksLoading, setTasksLoading] = useState(false);
   const [skillsLoaded, setSkillsLoaded] = useState(false);
 
@@ -369,7 +370,7 @@ const Agents: React.FC<AgentsProps> = ({ language }) => {
     }
     if (p === 'tasks') {
       setTasksLoading(true);
-      gwApi.info().then((d: any) => { setTasksData(d?.tasks ?? null); }).catch((err: any) => { toast('error', err?.message || a.tasksFetchFailed || 'Failed to fetch tasks'); }).finally(() => setTasksLoading(false));
+      gwApi.info().then((d: any) => { setTasksData(d?.tasks ?? null); setTaskAudit(d?.taskAudit ?? null); }).catch((err: any) => { toast('error', err?.message || a.tasksFetchFailed || 'Failed to fetch tasks'); }).finally(() => setTasksLoading(false));
     }
   }, [selectedId, panel, hasUnsavedDraft, confirm, a]);
 
@@ -2906,15 +2907,20 @@ const Agents: React.FC<AgentsProps> = ({ language }) => {
                           </p>
                         )}
                       </div>
-                      <button onClick={() => { gwApi.cronStatus().then(setCronStatus).catch((err: any) => { toast('error', err?.message || a.cronFetchFailed); }); gwApi.cron().then((d: any) => setCronJobs(Array.isArray(d) ? d : d?.jobs || [])).catch((err: any) => { toast('error', err?.message || a.cronFetchFailed); }); }}
-                        className="text-[10px] text-primary hover:underline">{a.refresh}</button>
+                      <div className="flex items-center gap-3">
+                        <button onClick={() => dispatchOpenWindow({ id: 'scheduler' })} className="text-[10px] text-amber-600 dark:text-amber-400 font-bold hover:underline flex items-center gap-0.5">
+                          {a.viewScheduler || 'View Scheduler'}<span className="material-symbols-outlined text-[12px]">chevron_right</span>
+                        </button>
+                        <button onClick={() => { gwApi.cronStatus().then(setCronStatus).catch((err: any) => { toast('error', err?.message || a.cronFetchFailed); }); gwApi.cron().then((d: any) => setCronJobs(Array.isArray(d) ? d : d?.jobs || [])).catch((err: any) => { toast('error', err?.message || a.cronFetchFailed); }); }}
+                          className="text-[10px] text-primary hover:underline">{a.refresh}</button>
+                      </div>
                     </div>
                     {jobs.length === 0 ? (
                       <p className="text-[10px] text-slate-400 dark:text-white/20 py-8 text-center">{a.noJobs}</p>
                     ) : (
                       <div className="space-y-2">
                         {jobs.map((job: any, i: number) => (
-                          <div key={job.name || i} className="px-3 py-2.5 rounded-xl bg-white dark:bg-white/[0.03] border border-slate-200/60 dark:border-white/[0.06]">
+                          <div key={job.name || i} onClick={() => dispatchOpenWindow({ id: 'scheduler' })} className="px-3 py-2.5 rounded-xl bg-white dark:bg-white/[0.03] border border-slate-200/60 dark:border-white/[0.06] cursor-pointer hover:border-amber-400/40 hover:ring-1 hover:ring-amber-400/20 transition-all">
                             <div className="flex items-center justify-between">
                               <p className="text-[11px] font-semibold text-slate-700 dark:text-white/60">{job.name}</p>
                               <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${job.enabled ? 'bg-mac-green/10 text-mac-green' : 'bg-slate-100 dark:bg-white/5 text-slate-400'}`}>
@@ -2961,6 +2967,21 @@ const Agents: React.FC<AgentsProps> = ({ language }) => {
                   cli: 'terminal',
                   cron: 'schedule',
                 };
+                const statusLabels: Record<string, string> = {
+                  queued: a.taskStatusQueued || 'Queued',
+                  running: a.taskStatusRunning || 'Running',
+                  succeeded: a.taskStatusSucceeded || 'Succeeded',
+                  failed: a.taskStatusFailed || 'Failed',
+                  timed_out: a.taskStatusTimedOut || 'Timed Out',
+                  cancelled: a.taskStatusCancelled || 'Cancelled',
+                  lost: a.taskStatusLost || 'Lost',
+                };
+                const runtimeLabels: Record<string, string> = {
+                  subagent: a.taskRuntimeSubagent || 'Subagent',
+                  acp: a.taskRuntimeAcp || 'ACP',
+                  cli: a.taskRuntimeCli || 'CLI',
+                  cron: a.taskRuntimeCron || 'Cron',
+                };
                 return (
                   <div className="space-y-4 max-w-5xl">
                     <div className="flex items-center justify-between">
@@ -2974,7 +2995,7 @@ const Agents: React.FC<AgentsProps> = ({ language }) => {
                       </div>
                       <button onClick={() => {
                         setTasksLoading(true);
-                        gwApi.info().then((d: any) => { setTasksData(d?.tasks ?? null); }).catch((err: any) => { toast('error', err?.message || a.tasksFetchFailed || 'Failed to fetch tasks'); }).finally(() => setTasksLoading(false));
+                        gwApi.info().then((d: any) => { setTasksData(d?.tasks ?? null); setTaskAudit(d?.taskAudit ?? null); }).catch((err: any) => { toast('error', err?.message || a.tasksFetchFailed || 'Failed to fetch tasks'); }).finally(() => setTasksLoading(false));
                       }} className="text-[10px] text-primary hover:underline">{a.refresh}</button>
                     </div>
 
@@ -3014,7 +3035,7 @@ const Agents: React.FC<AgentsProps> = ({ language }) => {
                               {Object.entries(td.byStatus as Record<string, number>).map(([status, count]) => (
                                 <div key={status} className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold ${statusColors[status] || 'bg-slate-100 dark:bg-white/5 text-slate-400'}`}>
                                   <span className="material-symbols-outlined text-[12px]">{statusIcons[status] || 'radio_button_unchecked'}</span>
-                                  {status}: {count}
+                                  {statusLabels[status] || status}: {count}
                                 </div>
                               ))}
                             </div>
@@ -3027,14 +3048,55 @@ const Agents: React.FC<AgentsProps> = ({ language }) => {
                             <h4 className="text-[10px] font-bold text-slate-500 dark:text-white/40 uppercase mb-2">{a.tasksByRuntime || 'By Runtime'}</h4>
                             <div className="flex flex-wrap gap-2">
                               {Object.entries(td.byRuntime as Record<string, number>).map(([runtime, count]) => (
-                                <div key={runtime} className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-white/50">
-                                  <span className="material-symbols-outlined text-[12px]">{runtimeIcons[runtime] || 'memory'}</span>
-                                  {runtime}: {count}
-                                </div>
+                                runtime === 'cron' ? (
+                                  <button key={runtime} onClick={() => dispatchOpenWindow({ id: 'scheduler' })} className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold bg-amber-100 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 cursor-pointer hover:ring-1 hover:ring-amber-400/40 transition-all">
+                                    <span className="material-symbols-outlined text-[12px]">{runtimeIcons[runtime] || 'memory'}</span>
+                                    {runtimeLabels[runtime] || runtime}: {count}
+                                    <span className="material-symbols-outlined text-[10px]">open_in_new</span>
+                                  </button>
+                                ) : (
+                                  <div key={runtime} className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-white/50">
+                                    <span className="material-symbols-outlined text-[12px]">{runtimeIcons[runtime] || 'memory'}</span>
+                                    {runtimeLabels[runtime] || runtime}: {count}
+                                  </div>
+                                )
                               ))}
                             </div>
                           </div>
                         )}
+
+                        {/* Task Audit Health */}
+                        {taskAudit && taskAudit.total > 0 && (() => {
+                          const auditLabels: Record<string, string> = {
+                            stale_queued: a.taskAuditStaleQueued || 'Stale queued',
+                            stale_running: a.taskAuditStaleRunning || 'Stale running',
+                            lost: a.taskAuditLost || 'Lost tasks',
+                            delivery_failed: a.taskAuditDeliveryFailed || 'Delivery failed',
+                            missing_cleanup: a.taskAuditMissingCleanup || 'Missing cleanup',
+                            inconsistent_timestamps: a.taskAuditInconsistent || 'Inconsistent',
+                          };
+                          const errorCodes = ['stale_running', 'lost'];
+                          return (
+                            <div className={`px-3 py-3 rounded-xl border ${taskAudit.errors > 0 ? 'border-red-200/60 dark:border-red-500/20 bg-red-50/50 dark:bg-red-500/[0.04]' : 'border-amber-200/60 dark:border-amber-500/20 bg-amber-50/50 dark:bg-amber-500/[0.04]'}`}>
+                              <div className="flex items-center gap-2 mb-2">
+                                <span className={`material-symbols-outlined text-[14px] ${taskAudit.errors > 0 ? 'text-red-500' : 'text-amber-500'}`}>health_and_safety</span>
+                                <h4 className="text-[10px] font-bold text-slate-600 dark:text-white/60 uppercase">{a.taskAuditTitle || 'Task Health'}</h4>
+                                <span className={`text-[10px] font-bold ${taskAudit.errors > 0 ? 'text-red-500' : 'text-amber-500'}`}>
+                                  {(a.taskAuditFindings || '{{total}} finding(s)').replace('{{total}}', String(taskAudit.total))}
+                                </span>
+                              </div>
+                              <div className="flex flex-wrap gap-1.5">
+                                {Object.entries(taskAudit.byCode as Record<string, number>)
+                                  .filter(([, v]) => v > 0)
+                                  .map(([code, count]) => (
+                                    <span key={code} className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold ${errorCodes.includes(code) ? 'bg-red-100 dark:bg-red-500/10 text-red-600 dark:text-red-400' : 'bg-amber-100 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400'}`}>
+                                      {auditLabels[code] || code} <b>{count as number}</b>
+                                    </span>
+                                  ))}
+                              </div>
+                            </div>
+                          );
+                        })()}
 
                         {/* Info note */}
                         <div className="px-3 py-2 rounded-xl bg-blue-50 dark:bg-blue-500/5 border border-blue-200/60 dark:border-blue-500/10 text-[10px] text-blue-600 dark:text-blue-400 flex items-start gap-1.5">

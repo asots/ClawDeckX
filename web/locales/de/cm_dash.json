@@ -148,6 +148,7 @@
     "taskAllClear": "Alles in Ordnung — keine Hintergrundaufgaben",
     "taskBusyBanner": "{{count}} Hintergrundaufgabe(n) laufen",
     "taskViewAgents": "Agenten anzeigen",
+    "taskViewScheduler": "Scheduler anzeigen",
     "compatIncompatTitle": "OpenClaw-Version inkompatibel",
     "compatIncompatDesc": "Aktuell: {{current}} · Erforderlich: {{required}}",
     "compatGoUpdate": "Aktualisieren",

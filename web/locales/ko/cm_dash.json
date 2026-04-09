@@ -148,6 +148,7 @@
     "taskAllClear": "이상 없음 — 백그라운드 작업 없음",
     "taskBusyBanner": "{{count}}개 백그라운드 작업 실행 중",
     "taskViewAgents": "에이전트 보기",
+    "taskViewScheduler": "스케줄러 보기",
     "compatIncompatTitle": "OpenClaw 버전 호환 불가",
     "compatIncompatDesc": "현재: {{current}} · 필요: {{required}}",
     "compatGoUpdate": "업데이트",

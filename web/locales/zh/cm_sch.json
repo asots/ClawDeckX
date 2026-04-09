@@ -143,7 +143,18 @@
     "cronPresetDaily9am": "每天 9:00",
     "cronPresetWeekday9am": "工作日 9:00",
     "cronPresetWeekend10am": "周末 10:00",
-    "cronPresetMonthly1st": "每月 1 号 9:00"
+    "cronPresetMonthly1st": "每月 1 号 9:00",
+    "taskAuditTitle": "任务健康",
+    "taskAuditOk": "一切正常",
+    "taskAuditErrors": "{{count}} 个错误",
+    "taskAuditWarnings": "{{count}} 个警告",
+    "taskAuditFindings": "{{total}} 个发现",
+    "taskAuditStaleQueued": "排队超时",
+    "taskAuditStaleRunning": "运行超时",
+    "taskAuditLost": "丢失任务",
+    "taskAuditDeliveryFailed": "投递失败",
+    "taskAuditMissingCleanup": "缺少清理",
+    "taskAuditInconsistent": "时间异常"
   },
   "cron": {
     "title": "定时任务",

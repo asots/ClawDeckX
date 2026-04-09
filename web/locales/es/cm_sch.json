@@ -143,7 +143,18 @@
     "cronPresetDaily9am": "Diario a las 9:00",
     "cronPresetWeekday9am": "Laborables a las 9:00",
     "cronPresetWeekend10am": "Fines de semana a las 10:00",
-    "cronPresetMonthly1st": "Mensual el 1º a las 9:00"
+    "cronPresetMonthly1st": "Mensual el 1º a las 9:00",
+    "taskAuditTitle": "Salud de tareas",
+    "taskAuditOk": "Todo bien",
+    "taskAuditErrors": "{{count}} error(es)",
+    "taskAuditWarnings": "{{count}} advertencia(s)",
+    "taskAuditFindings": "{{total}} hallazgo(s)",
+    "taskAuditStaleQueued": "Cola obsoleta",
+    "taskAuditStaleRunning": "Ejecución obsoleta",
+    "taskAuditLost": "Tareas perdidas",
+    "taskAuditDeliveryFailed": "Entrega fallida",
+    "taskAuditMissingCleanup": "Limpieza faltante",
+    "taskAuditInconsistent": "Inconsistente"
   },
   "cron": {
     "title": "Tareas programadas",

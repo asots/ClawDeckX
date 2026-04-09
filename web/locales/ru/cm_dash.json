@@ -148,6 +148,7 @@
     "taskAllClear": "Всё в порядке — нет фоновых задач",
     "taskBusyBanner": "{{count}} фоновых задач выполняется",
     "taskViewAgents": "Показать агентов",
+    "taskViewScheduler": "Просмотр планировщика",
     "compatIncompatTitle": "Версия OpenClaw несовместима",
     "compatIncompatDesc": "Текущая: {{current}} · Требуется: {{required}}",
     "compatGoUpdate": "Обновить",

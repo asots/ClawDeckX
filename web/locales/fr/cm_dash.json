@@ -148,6 +148,7 @@
     "taskAllClear": "Tout est en ordre — aucune tâche en arrière-plan",
     "taskBusyBanner": "{{count}} tâche(s) en arrière-plan en cours",
     "taskViewAgents": "Voir les agents",
+    "taskViewScheduler": "Voir le planificateur",
     "compatIncompatTitle": "Version OpenClaw incompatible",
     "compatIncompatDesc": "Actuelle: {{current}} · Requise: {{required}}",
     "compatGoUpdate": "Mettre à jour",

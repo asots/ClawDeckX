@@ -788,9 +788,14 @@ const Dashboard: React.FC<DashboardProps> = ({ language }) => {
                 {taskSummary.byStatus?.queued > 0 && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 font-bold">{taskSummary.byStatus.queued} {d.taskQueued || 'queued'}</span>}
               </div>
             </div>
-            <button onClick={() => openWindow('agents')} className="text-[10px] text-cyan-600 dark:text-cyan-400 font-bold hover:underline shrink-0 flex items-center gap-0.5">
-              {d.taskViewAgents || 'View Agents'}<span className="material-symbols-outlined text-[12px]">chevron_right</span>
-            </button>
+            <div className="flex items-center gap-2 shrink-0">
+              <button onClick={() => openWindow('agents')} className="text-[10px] text-cyan-600 dark:text-cyan-400 font-bold hover:underline flex items-center gap-0.5">
+                {d.taskViewAgents || 'View Agents'}<span className="material-symbols-outlined text-[12px]">chevron_right</span>
+              </button>
+              <button onClick={() => openWindow('scheduler')} className="text-[10px] text-amber-600 dark:text-amber-400 font-bold hover:underline flex items-center gap-0.5">
+                {d.taskViewScheduler || 'View Scheduler'}<span className="material-symbols-outlined text-[12px]">chevron_right</span>
+              </button>
+            </div>
           </div>
         )}
 
@@ -819,7 +824,10 @@ const Dashboard: React.FC<DashboardProps> = ({ language }) => {
               ) : taskSummary.total === 0 ? (
                 <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-emerald-500/10 text-emerald-500">{d.taskAuditOk || 'All clear'}</span>
               ) : null}
-              <button onClick={() => openWindow('agents')} className="text-[10px] text-primary font-bold hover:underline shrink-0">{d.taskViewAgents || 'View Agents'}</button>
+              <div className="flex items-center gap-2 shrink-0">
+                <button onClick={() => openWindow('agents')} className="text-[10px] text-primary font-bold hover:underline">{d.taskViewAgents || 'View Agents'}</button>
+                <button onClick={() => openWindow('scheduler')} className="text-[10px] text-amber-600 dark:text-amber-400 font-bold hover:underline">{d.taskViewScheduler || 'View Scheduler'}</button>
+              </div>
             </div>
 
             {taskSummary.total > 0 && (
@@ -897,9 +905,16 @@ const Dashboard: React.FC<DashboardProps> = ({ language }) => {
                         <h4 className="text-[10px] font-bold text-slate-500 dark:text-white/40 uppercase mb-2">{d.taskByRuntime || 'By Runtime'}</h4>
                         <div className="flex flex-wrap gap-1.5">
                           {rtEntries.map(([rt, count]) => (
-                            <span key={rt} className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold ${rtColors[rt] || 'bg-slate-100 dark:bg-white/5 text-slate-400'}`}>
-                              {rtLabels[rt] || rt} <b>{count}</b>
-                            </span>
+                            rt === 'cron' ? (
+                              <button key={rt} onClick={() => openWindow('scheduler')} className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold cursor-pointer hover:ring-1 hover:ring-amber-400/40 transition-all ${rtColors[rt] || 'bg-slate-100 dark:bg-white/5 text-slate-400'}`}>
+                                {rtLabels[rt] || rt} <b>{count}</b>
+                                <span className="material-symbols-outlined text-[10px]">open_in_new</span>
+                              </button>
+                            ) : (
+                              <span key={rt} className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold ${rtColors[rt] || 'bg-slate-100 dark:bg-white/5 text-slate-400'}`}>
+                                {rtLabels[rt] || rt} <b>{count}</b>
+                              </span>
+                            )
                           ))}
                         </div>
                       </div>

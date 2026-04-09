@@ -200,6 +200,12 @@ const Scheduler: React.FC<SchedulerProps> = ({ language }) => {
   const [runsLoading, setRunsLoading] = useState(false);
   const [runsStatusFilter, setRunsStatusFilter] = useState<string>('all');
 
+  // Task audit health
+  const [taskAudit, setTaskAudit] = useState<any>(null);
+
+  // Sessions list for session key picker
+  const [sessionsList, setSessionsList] = useState<any[]>([]);
+
   const na = s?.na || '-';
 
 
@@ -220,11 +226,13 @@ const Scheduler: React.FC<SchedulerProps> = ({ language }) => {
     if (!gwReady) return;
     setLoading(true); clearError();
     try {
-      const [statusData, jobsData] = await Promise.all([
+      const [statusData, jobsData, infoData] = await Promise.all([
         gwApi.cronStatus().catch(() => null),
         gwApi.cronList({ includeDisabled: true, sortBy, sortDir, query: searchQuery || undefined, enabled: filterEnabled === 'all' ? undefined : filterEnabled }).catch(() => null),
+        gwApi.info().catch(() => null),
       ]);
       if (statusData) setStatus(statusData);
+      setTaskAudit((infoData as any)?.taskAudit ?? null);
       if (jobsData) {
         const list = Array.isArray(jobsData) ? jobsData : (jobsData as any)?.jobs || [];
         setJobs(list);
@@ -238,6 +246,16 @@ const Scheduler: React.FC<SchedulerProps> = ({ language }) => {
 
   // Auto-refresh every 10s + on mount
   useVisibilityPolling(loadAll, 10000, gwReady);
+
+  // Load sessions list when form opens
+  useEffect(() => {
+    if (showForm && gwReady) {
+      gwApi.sessions().then((data: any) => {
+        const list = Array.isArray(data) ? data : data?.sessions || [];
+        setSessionsList(list);
+      }).catch(() => {});
+    }
+  }, [showForm, gwReady]);
 
   const patchForm = useCallback((patch: Partial<CronForm>) => {
     setForm(prev => ({ ...prev, ...patch }));
@@ -498,6 +516,39 @@ const Scheduler: React.FC<SchedulerProps> = ({ language }) => {
             </div>
           </div>
 
+          {/* Task Audit Health */}
+          {taskAudit && taskAudit.total > 0 && (() => {
+            const auditLabels: Record<string, string> = {
+              stale_queued: s.taskAuditStaleQueued || 'Stale queued',
+              stale_running: s.taskAuditStaleRunning || 'Stale running',
+              lost: s.taskAuditLost || 'Lost tasks',
+              delivery_failed: s.taskAuditDeliveryFailed || 'Delivery failed',
+              missing_cleanup: s.taskAuditMissingCleanup || 'Missing cleanup',
+              inconsistent_timestamps: s.taskAuditInconsistent || 'Inconsistent',
+            };
+            const errorCodes = ['stale_running', 'lost'];
+            return (
+              <div className={`rounded-2xl border p-4 sci-card ${taskAudit.errors > 0 ? 'border-red-200/60 dark:border-red-500/20 bg-red-50/50 dark:bg-red-500/[0.04]' : 'border-amber-200/60 dark:border-amber-500/20 bg-amber-50/50 dark:bg-amber-500/[0.04]'}`}>
+                <div className="flex items-center gap-2 mb-2.5">
+                  <span className={`material-symbols-outlined text-[16px] ${taskAudit.errors > 0 ? 'text-red-500' : 'text-amber-500'}`}>health_and_safety</span>
+                  <h3 className="text-[11px] font-bold text-slate-600 dark:text-white/60 uppercase">{s.taskAuditTitle || 'Task Health'}</h3>
+                  <span className={`text-[10px] font-bold ${taskAudit.errors > 0 ? 'text-red-500' : 'text-amber-500'}`}>
+                    {(s.taskAuditFindings || '{{total}} finding(s)').replace('{{total}}', String(taskAudit.total))}
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {Object.entries(taskAudit.byCode as Record<string, number>)
+                    .filter(([, v]) => v > 0)
+                    .map(([code, count]) => (
+                      <span key={code} className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold ${errorCodes.includes(code) ? 'bg-red-100 dark:bg-red-500/10 text-red-600 dark:text-red-400' : 'bg-amber-100 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400'}`}>
+                        {auditLabels[code] || code} <b>{count as number}</b>
+                      </span>
+                    ))}
+                </div>
+              </div>
+            );
+          })()}
+
           {/* Form Modal (add / edit) */}
           {showForm && (
             <div className="rounded-2xl border border-primary/20 bg-white dark:bg-white/[0.02] p-4 max-h-[70vh] overflow-y-auto custom-scrollbar neon-scrollbar sci-card">
@@ -652,7 +703,15 @@ const Scheduler: React.FC<SchedulerProps> = ({ language }) => {
                 {/* Session key */}
                 <label className="block">
                   <span className={labelCls}>{s.sessionKey}</span>
-                  <input value={form.sessionKey} onChange={e => patchForm({ sessionKey: e.target.value })} placeholder={s.sessionKeyPlaceholder} className={inputCls} />
+                  <CustomSelect value={form.sessionKey} onChange={v => patchForm({ sessionKey: v })}
+                    options={[
+                      { value: '', label: s.sessionKeyPlaceholder || 'Use default session' },
+                      ...sessionsList.map((sess: any) => {
+                        const key = sess.key || sess.sessionKey || '';
+                        const label = sess.label ? `${sess.label} (${key})` : key;
+                        return { value: key, label };
+                      }),
+                    ]} className={selectCls} />
                 </label>
                 {/* Submit */}
                 <div className="flex items-center justify-end gap-2 pt-1">

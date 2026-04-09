@@ -148,6 +148,7 @@
     "taskAllClear": "Tudo certo — sem tarefas em segundo plano",
     "taskBusyBanner": "{{count}} tarefa(s) em segundo plano executando",
     "taskViewAgents": "Ver agentes",
+    "taskViewScheduler": "Ver Agendador",
     "compatIncompatTitle": "Versão do OpenClaw incompatível",
     "compatIncompatDesc": "Atual: {{current}} · Necessário: {{required}}",
     "compatGoUpdate": "Atualizar",

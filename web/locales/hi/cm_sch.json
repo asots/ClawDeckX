@@ -143,7 +143,18 @@
     "cronPresetDaily9am": "रोज़ 9:00 बजे",
     "cronPresetWeekday9am": "कार्यदिवस 9:00 बजे",
     "cronPresetWeekend10am": "सप्ताहांत 10:00 बजे",
-    "cronPresetMonthly1st": "महीने की 1 तारीख 9:00 बजे"
+    "cronPresetMonthly1st": "महीने की 1 तारीख 9:00 बजे",
+    "taskAuditTitle": "कार्य स्वास्थ्य",
+    "taskAuditOk": "सब ठीक",
+    "taskAuditErrors": "{{count}} त्रुटि",
+    "taskAuditWarnings": "{{count}} चेतावनी",
+    "taskAuditFindings": "{{total}} खोज",
+    "taskAuditStaleQueued": "पुरानी कतार",
+    "taskAuditStaleRunning": "पुराना चलन",
+    "taskAuditLost": "खोए कार्य",
+    "taskAuditDeliveryFailed": "वितरण विफल",
+    "taskAuditMissingCleanup": "सफाई गायब",
+    "taskAuditInconsistent": "असंगत"
   },
   "cron": {
     "title": "शेड्यूल किए गए कार्य",

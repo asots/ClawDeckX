@@ -143,7 +143,18 @@
     "cronPresetDaily9am": "Täglich um 9:00",
     "cronPresetWeekday9am": "Werktags um 9:00",
     "cronPresetWeekend10am": "Wochenende um 10:00",
-    "cronPresetMonthly1st": "Monatlich am 1. um 9:00"
+    "cronPresetMonthly1st": "Monatlich am 1. um 9:00",
+    "taskAuditTitle": "Aufgaben-Gesundheit",
+    "taskAuditOk": "Alles in Ordnung",
+    "taskAuditErrors": "{{count}} Fehler",
+    "taskAuditWarnings": "{{count}} Warnung(en)",
+    "taskAuditFindings": "{{total}} Befund(e)",
+    "taskAuditStaleQueued": "Warteschlange veraltet",
+    "taskAuditStaleRunning": "Laufzeit veraltet",
+    "taskAuditLost": "Verlorene Aufgaben",
+    "taskAuditDeliveryFailed": "Zustellung fehlgeschlagen",
+    "taskAuditMissingCleanup": "Bereinigung fehlt",
+    "taskAuditInconsistent": "Inkonsistent"
   },
   "cron": {
     "title": "Geplante Aufgaben",

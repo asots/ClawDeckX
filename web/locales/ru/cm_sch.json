@@ -143,7 +143,18 @@
     "cronPresetDaily9am": "Ежедневно в 9:00",
     "cronPresetWeekday9am": "Будни в 9:00",
     "cronPresetWeekend10am": "Выходные в 10:00",
-    "cronPresetMonthly1st": "Ежемесячно 1-го в 9:00"
+    "cronPresetMonthly1st": "Ежемесячно 1-го в 9:00",
+    "taskAuditTitle": "Здоровье задач",
+    "taskAuditOk": "Всё в порядке",
+    "taskAuditErrors": "{{count}} ошибок",
+    "taskAuditWarnings": "{{count}} предупреждений",
+    "taskAuditFindings": "{{total}} обнаружений",
+    "taskAuditStaleQueued": "Устаревшая очередь",
+    "taskAuditStaleRunning": "Устаревшее выполнение",
+    "taskAuditLost": "Потерянные задачи",
+    "taskAuditDeliveryFailed": "Ошибка доставки",
+    "taskAuditMissingCleanup": "Отсутствует очистка",
+    "taskAuditInconsistent": "Несоответствие"
   },
   "cron": {
     "title": "Запланированные задачи",
