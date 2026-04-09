@@ -16,16 +16,18 @@ import (
 
 	"ClawDeckX/internal/database"
 	"ClawDeckX/internal/web"
+	"ClawDeckX/internal/webconfig"
 )
 
 // MirrorConfig holds the user's preferred mirror settings.
 type MirrorConfig struct {
-	Preset       string `json:"preset"`       // "cn", "global", "custom"
-	NpmRegistry  string `json:"npmRegistry"`  // full URL
-	GithubProxy  string `json:"githubProxy"`  // prefix URL, "" = disabled
-	DockerMirror string `json:"dockerMirror"` // mirror URL, "" = disabled
-	PipIndex     string `json:"pipIndex"`     // full URL
-	GoProxy      string `json:"goProxy"`      // GOPROXY value
+	Preset          string `json:"preset"`          // "cn", "global", "custom"
+	NpmRegistry     string `json:"npmRegistry"`     // full URL
+	GithubProxy     string `json:"githubProxy"`     // prefix URL, "" = disabled
+	DockerMirror    string `json:"dockerMirror"`    // mirror URL, "" = disabled
+	PipIndex        string `json:"pipIndex"`        // full URL
+	GoProxy         string `json:"goProxy"`         // GOPROXY value
+	ClawHubRegistry string `json:"clawHubRegistry"` // ClawHub mirror URL, "" = use default
 }
 
 // SystemMirrorStatus holds the detected current system-level config for each tool.
@@ -38,12 +40,13 @@ type SystemMirrorStatus struct {
 }
 
 const (
-	settingKeyMirrorPreset       = "mirror_preset"
-	settingKeyMirrorNpm          = "mirror_npm_registry"
-	settingKeyMirrorGithub       = "mirror_github_proxy"
-	settingKeyMirrorDocker       = "mirror_docker_mirror"
-	settingKeyMirrorPip          = "mirror_pip_index"
-	settingKeyMirrorGo           = "mirror_go_proxy"
+	settingKeyMirrorPreset  = "mirror_preset"
+	settingKeyMirrorNpm     = "mirror_npm_registry"
+	settingKeyMirrorGithub  = "mirror_github_proxy"
+	settingKeyMirrorDocker  = "mirror_docker_mirror"
+	settingKeyMirrorPip     = "mirror_pip_index"
+	settingKeyMirrorGo      = "mirror_go_proxy"
+	settingKeyMirrorClawHub = "mirror_clawhub_registry"
 )
 
 // MirrorConfigHandler manages mirror/acceleration settings.
@@ -60,12 +63,13 @@ func NewMirrorConfigHandler() *MirrorConfigHandler {
 func (h *MirrorConfigHandler) Get(w http.ResponseWriter, r *http.Request) {
 	all, _ := h.settingRepo.GetAll()
 	cfg := MirrorConfig{
-		Preset:       strVal(all, settingKeyMirrorPreset, "custom"),
-		NpmRegistry:  strVal(all, settingKeyMirrorNpm, ""),
-		GithubProxy:  strVal(all, settingKeyMirrorGithub, ""),
-		DockerMirror: strVal(all, settingKeyMirrorDocker, ""),
-		PipIndex:     strVal(all, settingKeyMirrorPip, ""),
-		GoProxy:      strVal(all, settingKeyMirrorGo, ""),
+		Preset:          strVal(all, settingKeyMirrorPreset, "custom"),
+		NpmRegistry:     strVal(all, settingKeyMirrorNpm, ""),
+		GithubProxy:     strVal(all, settingKeyMirrorGithub, ""),
+		DockerMirror:    strVal(all, settingKeyMirrorDocker, ""),
+		PipIndex:        strVal(all, settingKeyMirrorPip, ""),
+		GoProxy:         strVal(all, settingKeyMirrorGo, ""),
+		ClawHubRegistry: strVal(all, settingKeyMirrorClawHub, ""),
 	}
 	web.OK(w, r, cfg)
 }
@@ -85,6 +89,7 @@ func (h *MirrorConfigHandler) Set(w http.ResponseWriter, r *http.Request) {
 		settingKeyMirrorDocker:  cfg.DockerMirror,
 		settingKeyMirrorPip:     cfg.PipIndex,
 		settingKeyMirrorGo:      cfg.GoProxy,
+		settingKeyMirrorClawHub: cfg.ClawHubRegistry,
 	})
 	if err != nil {
 		web.FailErr(w, r, web.ErrSettingsUpdateFail)
@@ -113,7 +118,7 @@ func (h *MirrorConfigHandler) DetectSystem(w http.ResponseWriter, r *http.Reques
 // POST /api/v1/mirror-config/apply
 func (h *MirrorConfigHandler) ApplyToSystem(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		Tools []string     `json:"tools"` // which tools to apply: "npm","go","pip","git","docker"
+		Tools []string     `json:"tools"` // which tools to apply: "npm","go","pip","git","docker","clawhub"
 		Cfg   MirrorConfig `json:"config"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -145,6 +150,8 @@ func (h *MirrorConfigHandler) ApplyToSystem(w http.ResponseWriter, r *http.Reque
 			ok, msg = applyGitHubProxy(req.Cfg.GithubProxy)
 		case "docker":
 			ok, msg = applyDockerMirror(req.Cfg.DockerMirror)
+		case "clawhub":
+			ok, msg = applyClawHubRegistry(req.Cfg.ClawHubRegistry)
 		default:
 			ok, msg = false, "unknown tool: "+tool
 		}
@@ -400,6 +407,23 @@ func applyDockerMirror(mirror string) (bool, string) {
 		msg = fmt.Sprintf("Docker registry-mirrors removed from %s (restart Docker daemon to take effect)", confPath)
 	}
 	return true, msg
+}
+
+func applyClawHubRegistry(registry string) (bool, string) {
+	cfg, err := webconfig.Load()
+	if err != nil {
+		return false, fmt.Sprintf("load webconfig failed: %v", err)
+	}
+	url := strings.TrimRight(strings.TrimSpace(registry), "/")
+	if url == "" {
+		// Reset to default
+		url = webconfig.Default().Server.ClawHubQueryURL
+	}
+	cfg.Server.ClawHubQueryURL = url
+	if err := webconfig.Save(cfg); err != nil {
+		return false, fmt.Sprintf("save webconfig failed: %v", err)
+	}
+	return true, fmt.Sprintf("ClawHub registry set to %s", url)
 }
 
 // ── ini helpers ───────────────────────────────────────────────────────────────

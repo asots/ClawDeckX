@@ -519,7 +519,8 @@
       "speedTestBtn": "गति परीक्षण",
       "speedTesting": "परीक्षण जारी है...",
       "speedTestDone": "गति परीक्षण पूर्ण, सबसे तेज़ मिरर चुना गया",
-      "fastest": "सबसे तेज़"
+      "fastest": "सबसे तेज़",
+      "clawHubDesc": "ClawHub कौशल बाज़ार डेटा स्रोत मिरर"
     }
   },
   "hi": {

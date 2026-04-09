@@ -519,7 +519,8 @@
       "speedTestBtn": "Speedtest",
       "speedTesting": "Teste...",
       "speedTestDone": "Speedtest abgeschlossen, schnellsten Mirror ausgewählt",
-      "fastest": "Schnellste"
+      "fastest": "Schnellste",
+      "clawHubDesc": "ClawHub Skill-Marktplatz Datenquelle Mirror"
     }
   },
   "hi": {

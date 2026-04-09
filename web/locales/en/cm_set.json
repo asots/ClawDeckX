@@ -519,7 +519,8 @@
       "speedTestBtn": "Speed Test",
       "speedTesting": "Testing...",
       "speedTestDone": "Speed test complete, fastest mirror selected",
-      "fastest": "Fastest"
+      "fastest": "Fastest",
+      "clawHubDesc": "ClawHub skill marketplace data source mirror"
     }
   },
   "hi": {

@@ -519,7 +519,8 @@
       "speedTestBtn": "اختبار السرعة",
       "speedTesting": "جارٍ الاختبار...",
       "speedTestDone": "اكتمل اختبار السرعة، تم اختيار المرآة الأسرع",
-      "fastest": "الأسرع"
+      "fastest": "الأسرع",
+      "clawHubDesc": "مرآة مصدر بيانات سوق المهارات ClawHub"
     }
   },
   "hi": {

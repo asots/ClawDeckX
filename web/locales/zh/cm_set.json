@@ -519,7 +519,8 @@
       "speedTestBtn": "测速",
       "speedTesting": "测速中...",
       "speedTestDone": "测速完成，已自动选中最快镜像",
-      "fastest": "最快"
+      "fastest": "最快",
+      "clawHubDesc": "ClawHub 技能市场数据源镜像"
     }
   },
   "hi": {

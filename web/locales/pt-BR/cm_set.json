@@ -519,7 +519,8 @@
       "speedTestBtn": "Teste de velocidade",
       "speedTesting": "Testando...",
       "speedTestDone": "Teste concluído, mirror mais rápido selecionado",
-      "fastest": "Mais rápido"
+      "fastest": "Mais rápido",
+      "clawHubDesc": "Espelho de fonte de dados do mercado de habilidades ClawHub"
     }
   },
   "hi": {

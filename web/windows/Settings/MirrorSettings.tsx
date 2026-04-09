@@ -11,19 +11,21 @@ interface MirrorSettingsProps {
 // ── Preset definitions ────────────────────────────────────────────────────────
 
 const PRESET_CN: Omit<MirrorConfig, 'preset'> = {
-  npmRegistry:  'https://registry.npmmirror.com',
-  githubProxy:  'https://ghproxy.com',
-  dockerMirror: 'https://mirror.ccs.tencentyun.com',
-  pipIndex:     'https://pypi.tuna.tsinghua.edu.cn/simple',
-  goProxy:      'https://goproxy.cn,direct',
+  npmRegistry:     'https://registry.npmmirror.com',
+  githubProxy:     'https://ghproxy.com',
+  dockerMirror:    'https://mirror.ccs.tencentyun.com',
+  pipIndex:        'https://pypi.tuna.tsinghua.edu.cn/simple',
+  goProxy:         'https://goproxy.cn,direct',
+  clawHubRegistry: 'https://cn.clawhub-mirror.com',
 };
 
 const PRESET_GLOBAL: Omit<MirrorConfig, 'preset'> = {
-  npmRegistry:  'https://registry.npmjs.org',
-  githubProxy:  '',
-  dockerMirror: '',
-  pipIndex:     'https://pypi.org/simple',
-  goProxy:      'https://proxy.golang.org,direct',
+  npmRegistry:     'https://registry.npmjs.org',
+  githubProxy:     '',
+  dockerMirror:    '',
+  pipIndex:        'https://pypi.org/simple',
+  goProxy:         'https://proxy.golang.org,direct',
+  clawHubRegistry: '',
 };
 
 // ── Preset options per tool ───────────────────────────────────────────────────
@@ -65,6 +67,12 @@ const GO_PRESETS = [
   { label: '阿里云', value: 'https://mirrors.aliyun.com/goproxy/,direct' },
 ];
 
+const CLAWHUB_PRESETS = [
+  { label: '官方 (Global)', value: '' },
+  { label: '中国镜像 (火山引擎)', value: 'https://cn.clawhub-mirror.com' },
+  { label: '中国镜像 (备用)', value: 'https://mirror-cn.clawhub.com' },
+];
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const defaultConfig = (): MirrorConfig => ({
@@ -74,6 +82,7 @@ const defaultConfig = (): MirrorConfig => ({
   dockerMirror: '',
   pipIndex: '',
   goProxy: '',
+  clawHubRegistry: '',
 });
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -260,11 +269,12 @@ const MirrorSettings: React.FC<MirrorSettingsProps> = ({ s, m }) => {
     setSpeedTesting(true);
     setSpeedResults({});
     const toolPresets: Record<string, { value: string }[]> = {
-      npm:    NPM_PRESETS,
-      git:    GITHUB_PRESETS.filter(p => p.value),
-      docker: DOCKER_PRESETS.filter(p => p.value && !p.value.includes('<your-id>')),
-      pip:    PIP_PRESETS,
-      go:     GO_PRESETS,
+      npm:     NPM_PRESETS,
+      git:     GITHUB_PRESETS.filter(p => p.value),
+      docker:  DOCKER_PRESETS.filter(p => p.value && !p.value.includes('<your-id>')),
+      pip:     PIP_PRESETS,
+      go:      GO_PRESETS,
+      clawhub: CLAWHUB_PRESETS.filter(p => p.value),
     };
     const allResults: Record<string, Record<string, number>> = {};
     await Promise.all(
@@ -277,7 +287,7 @@ const MirrorSettings: React.FC<MirrorSettingsProps> = ({ s, m }) => {
     setSpeedResults(allResults);
     // Auto-select the fastest reachable preset for each tool
     const toolToKey: Record<string, keyof MirrorConfig> = {
-      npm: 'npmRegistry', git: 'githubProxy', docker: 'dockerMirror', pip: 'pipIndex', go: 'goProxy',
+      npm: 'npmRegistry', git: 'githubProxy', docker: 'dockerMirror', pip: 'pipIndex', go: 'goProxy', clawhub: 'clawHubRegistry',
     };
     const updates: Partial<MirrorConfig> = {};
     for (const [tool, results] of Object.entries(allResults)) {
@@ -354,19 +364,20 @@ const MirrorSettings: React.FC<MirrorSettingsProps> = ({ s, m }) => {
 
   const applyAll = useCallback(async () => {
     setApplyingTool('all');
-    const tools = ['npm', 'go', 'pip', 'git', 'docker'].filter(t => {
+    const tools = ['npm', 'go', 'pip', 'git', 'docker', 'clawhub'].filter(t => {
       if (t === 'npm') return !!cfg.npmRegistry;
       if (t === 'go') return !!cfg.goProxy;
       if (t === 'pip') return !!cfg.pipIndex;
       if (t === 'git') return !!cfg.githubProxy;
       if (t === 'docker') return !!cfg.dockerMirror;
+      if (t === 'clawhub') return !!cfg.clawHubRegistry;
       return false;
     });
     try {
       await mirrorConfigApi.set(cfg);
       const res = await mirrorConfigApi.apply(tools, cfg);
       const newResults: Record<string, MirrorApplyResult> = {};
-      const toolMap: Record<string, string> = { npm: 'npm', go: 'go', pip: 'pip', git: 'git', docker: 'docker' };
+      const toolMap: Record<string, string> = { npm: 'npm', go: 'go', pip: 'pip', git: 'git', docker: 'docker', clawhub: 'clawhub' };
       for (const r of (res.results ?? [])) {
         newResults[toolMap[r.tool] ?? r.tool] = r;
       }
@@ -548,6 +559,21 @@ const MirrorSettings: React.FC<MirrorSettingsProps> = ({ s, m }) => {
             fastestLabel={m.fastest || '最快'}
             onValueChange={v => updateField('goProxy', v)}
             onApply={() => applyTool('go')}
+          />
+
+          <ToolRow
+            icon="hub"
+            iconColor="text-purple-500"
+            label="ClawHub Registry"
+            description={m.clawHubDesc || 'ClawHub 技能市场数据源镜像'}
+            value={cfg.clawHubRegistry}
+            presets={CLAWHUB_PRESETS}
+            applying={applyingTool === 'clawhub'}
+            applyResult={applyResults['clawhub']}
+            speedResults={speedResults['clawhub']}
+            fastestLabel={m.fastest || '最快'}
+            onValueChange={v => updateField('clawHubRegistry', v)}
+            onApply={() => applyTool('clawhub')}
           />
 
           {/* ── Docker notice ── */}

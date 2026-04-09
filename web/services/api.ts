@@ -2025,6 +2025,7 @@ export interface MirrorConfig {
   dockerMirror: string;
   pipIndex: string;
   goProxy: string;
+  clawHubRegistry: string; // ClawHub mirror URL, "" = use default
 }
 
 export interface SystemMirrorStatus {

@@ -519,7 +519,8 @@
       "speedTestBtn": "速度テスト",
       "speedTesting": "テスト中...",
       "speedTestDone": "速度テスト完了、最速ミラーを自動選択",
-      "fastest": "最速"
+      "fastest": "最速",
+      "clawHubDesc": "ClawHub スキルマーケットデータソースミラー"
     }
   },
   "hi": {

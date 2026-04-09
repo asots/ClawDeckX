@@ -519,7 +519,8 @@
       "speedTestBtn": "속도 테스트",
       "speedTesting": "테스트 중...",
       "speedTestDone": "속도 테스트 완료, 가장 빠른 미러 자동 선택",
-      "fastest": "가장 빠름"
+      "fastest": "가장 빠름",
+      "clawHubDesc": "ClawHub 스킬 마켓 데이터 소스 미러"
     }
   },
   "hi": {
