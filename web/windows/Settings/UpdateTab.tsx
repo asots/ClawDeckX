@@ -59,6 +59,11 @@ const UpdateTab: React.FC<UpdateTabProps> = ({ s, language, inputCls, rowCls }) 
   const [ocShowTranslated, setOcShowTranslated] = useState(false);
   const [ocNotesExpanded, setOcNotesExpanded] = useState(false);
 
+  // ── 忽略版本 ──
+  const [dismissedClawdeckx, setDismissedClawdeckx] = useState('');
+  const [dismissedOpenclaw, setDismissedOpenclaw] = useState('');
+  const [dismissing, setDismissing] = useState<string | null>(null);
+
   // ── 服务状态 ──
   const [serviceStatus, setServiceStatus] = useState<{ openclaw_installed: boolean; clawdeckx_installed: boolean; is_docker?: boolean } | null>(null);
   const [serviceLoading, setServiceLoading] = useState(false);
@@ -318,6 +323,36 @@ const UpdateTab: React.FC<UpdateTabProps> = ({ s, language, inputCls, rowCls }) 
     }
   }, [effectiveOcLogs]);
 
+  // 忽略/取消忽略版本更新
+  const handleDismiss = useCallback(async (product: 'clawdeckx' | 'openclaw', version: string) => {
+    if (!version) return;
+    setDismissing(product);
+    try {
+      await selfUpdateApi.dismissUpdate(product, version);
+      if (product === 'clawdeckx') setDismissedClawdeckx(version);
+      else setDismissedOpenclaw(version);
+      toast('success', sRef.current.dismissSuccess || 'Version ignored');
+      window.dispatchEvent(new CustomEvent('clawdeck:refresh-badges'));
+    } catch {
+      toast('error', sRef.current.dismissFailed || 'Failed to ignore version');
+    }
+    setDismissing(null);
+  }, [toast]);
+
+  const handleUndismiss = useCallback(async (product: 'clawdeckx' | 'openclaw') => {
+    setDismissing(product);
+    try {
+      await selfUpdateApi.undismissUpdate(product);
+      if (product === 'clawdeckx') setDismissedClawdeckx('');
+      else setDismissedOpenclaw('');
+      toast('success', sRef.current.dismissSuccess || 'Notification restored');
+      window.dispatchEvent(new CustomEvent('clawdeck:refresh-badges'));
+    } catch {
+      toast('error', sRef.current.dismissFailed || 'Failed to restore notification');
+    }
+    setDismissing(null);
+  }, [toast]);
+
   // 服务管理
   const loadServiceStatus = useCallback(async () => {
     try {
@@ -399,6 +434,10 @@ const UpdateTab: React.FC<UpdateTabProps> = ({ s, language, inputCls, rowCls }) 
       selfUpdateApi.info().then(d => setSelfUpdateVersion(d)).catch(() => { });
       selfUpdateApi.history().then(setUpdateHistory).catch(() => { });
       if (!ocUpdateInfo) hostInfoApi.checkUpdate().then(res => setOcUpdateInfo(res)).catch(() => { });
+      selfUpdateApi.getDismissedVersions().then((all: any) => {
+        if (all?.dismissed_clawdeckx_version) setDismissedClawdeckx(all.dismissed_clawdeckx_version);
+        if (all?.dismissed_openclaw_version) setDismissedOpenclaw(all.dismissed_openclaw_version);
+      }).catch(() => { });
       loadServiceStatus();
       loadRuntimeStatus();
       // Auto-check with 1-hour cache — skip if checked recently
@@ -679,6 +718,22 @@ const UpdateTab: React.FC<UpdateTabProps> = ({ s, language, inputCls, rowCls }) 
                   </div>
                 );
               })()}
+              {/* 已忽略此版本 */}
+              {dismissedClawdeckx === selfUpdateInfo.latestVersion && (
+                <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.06]">
+                  <div className="flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-[14px] text-slate-400 dark:text-white/30">notifications_off</span>
+                    <span className="text-[11px] text-slate-500 dark:text-white/40">{s.dismissedVersion || 'This version is ignored'}</span>
+                  </div>
+                  <button onClick={() => handleUndismiss('clawdeckx')} disabled={dismissing === 'clawdeckx'}
+                    className="flex items-center gap-0.5 px-2 py-1 rounded-md text-[10px] font-medium text-primary/70 hover:bg-primary/10 transition-colors disabled:opacity-40">
+                    <span className={`material-symbols-outlined text-[12px] ${dismissing === 'clawdeckx' ? 'animate-spin' : ''}`}>
+                      {dismissing === 'clawdeckx' ? 'progress_activity' : 'notifications_active'}
+                    </span>
+                    {s.undismiss || 'Restore'}
+                  </button>
+                </div>
+              )}
               {/* 操作按钮 */}
               {!selfUpdating && !selfUpdateProgress?.done && (
                 <div className="flex gap-2">
@@ -687,6 +742,16 @@ const UpdateTab: React.FC<UpdateTabProps> = ({ s, language, inputCls, rowCls }) 
                     <span className="material-symbols-outlined text-[16px]">download</span>
                     {selfUpdateInfo.downloadUrl ? (isDockerRuntime ? (s.runtimeOverlay || s.selfUpdateDownload) : s.selfUpdateDownload) : s.selfUpdateNoAsset}
                   </button>
+                  {dismissedClawdeckx !== selfUpdateInfo.latestVersion && (
+                    <button onClick={() => handleDismiss('clawdeckx', selfUpdateInfo.latestVersion!)} disabled={dismissing === 'clawdeckx'}
+                      className="flex items-center justify-center gap-1 px-4 py-2.5 rounded-lg border border-slate-200 dark:border-white/10 text-slate-500 dark:text-white/40 text-[12px] font-bold hover:bg-slate-50 dark:hover:bg-white/5 transition-all disabled:opacity-40"
+                      title={s.dismissTooltip || 'Ignore this version, no more reminders until a newer version is released'}>
+                      <span className={`material-symbols-outlined text-[14px] ${dismissing === 'clawdeckx' ? 'animate-spin' : ''}`}>
+                        {dismissing === 'clawdeckx' ? 'progress_activity' : 'notifications_off'}
+                      </span>
+                      {s.dismiss || 'Ignore'}
+                    </button>
+                  )}
                   <SmartLink href="https://github.com/ClawDeckX/ClawDeckX/releases"
                     className="flex items-center justify-center gap-1 px-4 py-2.5 rounded-lg border border-slate-200 dark:border-white/10 text-slate-600 dark:text-white/60 text-[12px] font-bold hover:bg-slate-50 dark:hover:bg-white/5 transition-all">
                     <span className="material-symbols-outlined text-[14px]">open_in_new</span>
@@ -903,12 +968,38 @@ const UpdateTab: React.FC<UpdateTabProps> = ({ s, language, inputCls, rowCls }) 
                   </div>
                 );
               })()}
+              {/* 已忽略此版本 */}
+              {dismissedOpenclaw === ocUpdateInfo.latestVersion && (
+                <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.06]">
+                  <div className="flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-[14px] text-slate-400 dark:text-white/30">notifications_off</span>
+                    <span className="text-[11px] text-slate-500 dark:text-white/40">{s.dismissedVersion || 'This version is ignored'}</span>
+                  </div>
+                  <button onClick={() => handleUndismiss('openclaw')} disabled={dismissing === 'openclaw'}
+                    className="flex items-center gap-0.5 px-2 py-1 rounded-md text-[10px] font-medium text-primary/70 hover:bg-primary/10 transition-colors disabled:opacity-40">
+                    <span className={`material-symbols-outlined text-[12px] ${dismissing === 'openclaw' ? 'animate-spin' : ''}`}>
+                      {dismissing === 'openclaw' ? 'progress_activity' : 'notifications_active'}
+                    </span>
+                    {s.undismiss || 'Restore'}
+                  </button>
+                </div>
+              )}
               <div className="flex gap-2">
                 <button onClick={handleOcUpdateRun} disabled={effectiveOcUpdating}
                   className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-emerald-500 text-white text-[12px] font-bold disabled:opacity-40 hover:opacity-90 shadow-sm transition-all">
                   <span className={`material-symbols-outlined text-[16px] ${effectiveOcUpdating ? 'animate-spin' : ''}`}>{effectiveOcUpdating ? 'progress_activity' : 'download'}</span>
                   {effectiveOcUpdating ? s.openclawUpdateRunning : s.openclawUpdateRun}
                 </button>
+                {dismissedOpenclaw !== ocUpdateInfo.latestVersion && (
+                  <button onClick={() => handleDismiss('openclaw', ocUpdateInfo.latestVersion!)} disabled={dismissing === 'openclaw'}
+                    className="flex items-center justify-center gap-1 px-4 py-2.5 rounded-lg border border-slate-200 dark:border-white/10 text-slate-500 dark:text-white/40 text-[12px] font-bold hover:bg-slate-50 dark:hover:bg-white/5 transition-all disabled:opacity-40"
+                    title={s.dismissTooltip || 'Ignore this version, no more reminders until a newer version is released'}>
+                    <span className={`material-symbols-outlined text-[14px] ${dismissing === 'openclaw' ? 'animate-spin' : ''}`}>
+                      {dismissing === 'openclaw' ? 'progress_activity' : 'notifications_off'}
+                    </span>
+                    {s.dismiss || 'Ignore'}
+                  </button>
+                )}
                 <SmartLink href="https://github.com/openclaw/openclaw/releases"
                   className="flex items-center justify-center gap-1 px-4 py-2.5 rounded-lg border border-slate-200 dark:border-white/10 text-slate-600 dark:text-white/60 text-[12px] font-bold hover:bg-slate-50 dark:hover:bg-white/5 transition-all">
                   <span className="material-symbols-outlined text-[14px]">open_in_new</span>

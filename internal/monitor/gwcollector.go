@@ -305,8 +305,11 @@ func (c *GWCollector) broadcastBadges() {
 	}
 
 	// Settings: show badge when software updates are available or version incompatible
+	// Skip products whose latest version has been explicitly dismissed by the user.
 	if overview, err := updatecheck.GetOverview(context.Background(), false); err == nil && overview != nil {
-		if overview.ClawDeckX.UpdateAvailable || overview.OpenClaw.UpdateAvailable || !overview.Compatibility.Compatible {
+		clawNeedsBadge := overview.ClawDeckX.UpdateAvailable && !updatecheck.IsUpdateDismissed(settingRepo, "clawdeckx", overview.ClawDeckX.LatestVersion)
+		ocNeedsBadge := overview.OpenClaw.UpdateAvailable && !updatecheck.IsUpdateDismissed(settingRepo, "openclaw", overview.OpenClaw.LatestVersion)
+		if clawNeedsBadge || ocNeedsBadge || !overview.Compatibility.Compatible {
 			badges["settings"] = badges["settings"] + 1
 		}
 	}

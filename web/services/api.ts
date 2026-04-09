@@ -73,6 +73,15 @@ export const selfUpdateApi = {
   checkChannel: (channel: string) => get<UpdateCheckResult>(`/api/v1/self-update/check-channel?channel=${channel}`),
   history: () => get<UpdateHistoryEntry[]>('/api/v1/self-update/history'),
   translateNotes: (text: string, lang: string, product?: string, version?: string) => post<{ translated: string; status: string }>('/api/v1/self-update/translate-notes', { text, lang, product, version }),
+  dismissUpdate: async (product: 'clawdeckx' | 'openclaw', version: string) => {
+    const key = product === 'clawdeckx' ? 'dismissed_clawdeckx_version' : 'dismissed_openclaw_version';
+    await put('/api/v1/settings', { [key]: version });
+  },
+  undismissUpdate: async (product: 'clawdeckx' | 'openclaw') => {
+    const key = product === 'clawdeckx' ? 'dismissed_clawdeckx_version' : 'dismissed_openclaw_version';
+    await put('/api/v1/settings', { [key]: '' });
+  },
+  getDismissedVersions: () => get<Record<string, string>>('/api/v1/settings'),
 };
 
 export const serviceApi = {

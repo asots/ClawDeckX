@@ -40,6 +40,28 @@ type Overview struct {
 	Compatibility CompatibilityStatus `json:"compatibility"`
 }
 
+const (
+	DismissedClawDeckXKey = "dismissed_clawdeckx_version"
+	DismissedOpenClawKey  = "dismissed_openclaw_version"
+)
+
+// IsUpdateDismissed returns true when the latest available version for a
+// product matches the version the user explicitly dismissed.
+func IsUpdateDismissed(settingRepo *database.SettingRepo, product string, latestVersion string) bool {
+	if latestVersion == "" {
+		return false
+	}
+	key := DismissedClawDeckXKey
+	if product == "openclaw" {
+		key = DismissedOpenClawKey
+	}
+	dismissed, err := settingRepo.Get(key)
+	if err != nil || dismissed == "" {
+		return false
+	}
+	return dismissed == latestVersion
+}
+
 // InvalidateCache removes the cached overview so the next GetOverview call
 // performs a fresh check. Call this after a successful upgrade of either
 // ClawDeckX or OpenClaw so that badge counts reflect the new state immediately.

@@ -57,8 +57,11 @@ func (h *BadgeHandler) Counts(w http.ResponseWriter, r *http.Request) {
 
 	// Settings: show a badge when the 12-hour unified update overview indicates
 	// ClawDeckX/OpenClaw updates are available or the current OpenClaw version is incompatible.
+	// Skip products whose latest version has been explicitly dismissed by the user.
 	if overview, err := updatecheck.GetOverview(r.Context(), false); err == nil && overview != nil {
-		if overview.ClawDeckX.UpdateAvailable || overview.OpenClaw.UpdateAvailable || !overview.Compatibility.Compatible {
+		clawNeedsBadge := overview.ClawDeckX.UpdateAvailable && !updatecheck.IsUpdateDismissed(settingRepo, "clawdeckx", overview.ClawDeckX.LatestVersion)
+		ocNeedsBadge := overview.OpenClaw.UpdateAvailable && !updatecheck.IsUpdateDismissed(settingRepo, "openclaw", overview.OpenClaw.LatestVersion)
+		if clawNeedsBadge || ocNeedsBadge || !overview.Compatibility.Compatible {
 			result["settings"] = result["settings"] + 1
 		}
 	}
