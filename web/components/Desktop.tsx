@@ -458,6 +458,42 @@ const Desktop: React.FC<DesktopProps> = ({
         </div>
 
         <div className="flex items-center gap-2 md:gap-4">
+          {/* Contact QR — WeChat for Chinese, Telegram for others */}
+          <div className="hidden md:block relative group/qr">
+            <button className="hover:opacity-60 transition-opacity flex items-center h-full" title={language === 'zh' || language === 'zh-TW' ? '微信' : 'Telegram'}>
+              {language === 'zh' || language === 'zh-TW' ? (
+                <svg className="w-[15px] h-[15px]" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M8.691 2.188C3.891 2.188 0 5.476 0 9.53c0 2.212 1.17 4.203 3.002 5.55a.59.59 0 0 1 .213.665l-.39 1.48c-.019.07-.048.141-.048.213 0 .163.13.295.29.295a.326.326 0 0 0 .167-.054l1.903-1.114a.864.864 0 0 1 .717-.098 10.16 10.16 0 0 0 2.837.403c.276 0 .543-.027.811-.05-.857-2.578.157-4.972 1.932-6.446 1.703-1.415 3.882-1.98 5.853-1.838-.576-3.583-4.196-6.348-8.596-6.348zM5.785 5.991c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178A1.17 1.17 0 0 1 4.623 7.17c0-.651.52-1.18 1.162-1.18zm5.813 0c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178 1.17 1.17 0 0 1-1.162-1.178c0-.651.52-1.18 1.162-1.18zm5.34 2.867c-1.797-.052-3.746.512-5.28 1.786-1.72 1.428-2.687 3.72-1.78 6.22.942 2.453 3.666 4.229 6.884 4.229.826 0 1.622-.12 2.361-.336a.722.722 0 0 1 .598.082l1.584.926a.272.272 0 0 0 .14.047c.134 0 .24-.111.24-.247 0-.06-.023-.12-.038-.177l-.327-1.233a.582.582 0 0 1-.023-.156.49.49 0 0 1 .201-.398C23.024 18.48 24 16.82 24 14.98c0-3.21-2.931-5.837-7.062-6.122zm-2.036 2.84c.535 0 .969.44.969.982a.976.976 0 0 1-.969.983.976.976 0 0 1-.969-.983c0-.542.434-.981.97-.981zm4.844 0c.535 0 .969.44.969.982a.976.976 0 0 1-.969.983.976.976 0 0 1-.969-.983c0-.542.434-.981.97-.981z"/>
+                </svg>
+              ) : (
+                <svg className="w-[15px] h-[15px]" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
+                </svg>
+              )}
+            </button>
+            {/* Hover QR card — fixed position to escape header overflow constraints */}
+            <div className="fixed top-[28px] opacity-0 scale-95 pointer-events-none group-hover/qr:opacity-100 group-hover/qr:scale-100 group-hover/qr:pointer-events-auto transition-all duration-200 ease-out z-[99999]" style={{ right: '80px' }}>
+              <div className={`rounded-2xl p-4 shadow-2xl border backdrop-blur-xl ${theme === 'dark' ? 'bg-[#1e1e1e]/95 border-white/10' : 'bg-white/95 border-slate-200/80'}`}>
+                {language === 'zh' || language === 'zh-TW' ? (
+                  <div className="flex gap-4">
+                    <div className="flex flex-col items-center gap-2">
+                      <img src="/mp.jpg" alt="公众号" className="rounded-xl block" style={{ width: '160px', height: 'auto' }} />
+                      <span className={`text-[11px] font-bold ${theme === 'dark' ? 'text-white/60' : 'text-slate-500'}`}>公众号</span>
+                    </div>
+                    <div className="flex flex-col items-center gap-2">
+                      <img src="/wx.png" alt="微信" className="rounded-xl block" style={{ width: '160px', height: 'auto' }} />
+                      <span className={`text-[11px] font-bold ${theme === 'dark' ? 'text-white/60' : 'text-slate-500'}`}>微信</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-2">
+                    <img src="/tg.png" alt="Telegram" className="rounded-xl block" style={{ width: '180px', height: 'auto' }} />
+                    <span className={`text-[11px] font-bold ${theme === 'dark' ? 'text-white/60' : 'text-slate-500'}`}>Telegram</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
           <a href="https://github.com/ClawDeckX/ClawDeckX" target="_blank" rel="noopener noreferrer" className="hover:opacity-60 transition-opacity flex items-center" title="GitHub">
             <svg className="w-[15px] h-[15px]" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
           </a>
