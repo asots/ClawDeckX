@@ -31,6 +31,6 @@ jobs:
       - name: Create PR if merge failed
         if: failure()
         run: |
-          gh pr create --title "Sync with upstream" --body "自动同步上游更新"
+          gh pr create --title "Sync with upstream" --body "自动同步上游更新" || true
         env:
           GH_TOKEN: ${ secrets.GITHUB_TOKEN }
