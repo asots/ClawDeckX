@@ -2132,7 +2132,20 @@ export const ChannelsSection: React.FC<SectionProps> = ({ config, schema, setFie
               {stepActive(2) && chId && (
                 <div className="px-4 pb-4 border-t border-slate-100 dark:border-white/[0.04]">
                   <div className="pt-3 space-y-2">
-                    {renderChannelFields(chId, cfg, wizBasePath)}
+                    {/* QR login channels: show simplified hint instead of advanced config fields */}
+                    {(chId === 'openclaw-weixin' || chId === 'whatsapp') ? (
+                      <div className="flex items-start gap-2.5 p-3 rounded-lg bg-green-50 dark:bg-green-500/5 border border-green-200 dark:border-green-500/20">
+                        <span className="material-symbols-outlined text-[18px] text-green-500 mt-0.5 shrink-0">qr_code_2</span>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[11px] font-bold text-green-700 dark:text-green-400">
+                            {chId === 'openclaw-weixin' ? (cw.weixinQrHint || 'This channel uses QR code scanning to connect — no credentials needed.') : (cw.whatsappQrHint || 'This channel uses QR code scanning to connect — no credentials needed.')}
+                          </p>
+                          <p className="text-[10px] text-green-600/70 dark:text-green-400/60 mt-1">
+                            {cw.qrSaveFirstHint || 'Click Next to configure access control, then save and scan the QR code.'}
+                          </p>
+                        </div>
+                      </div>
+                    ) : renderChannelFields(chId, cfg, wizBasePath)}
                   </div>
                   {/* Test connection (non-QR channels only; QR login moved to Step 4 post-save) */}
                   {chId !== 'whatsapp' && chId !== 'openclaw-weixin' && (
