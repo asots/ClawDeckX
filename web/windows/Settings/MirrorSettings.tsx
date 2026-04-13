@@ -209,7 +209,7 @@ const ToolRow: React.FC<ToolRowProps> = ({
         <div className="flex items-center gap-2 pt-1">
           <button
             onClick={onApply}
-            disabled={applying || !value}
+            disabled={applying}
             className="h-7 px-3 rounded-lg text-[10px] font-bold bg-primary/10 text-primary hover:bg-primary/20 disabled:opacity-40 flex items-center gap-1.5 transition-colors"
           >
             {applying
@@ -342,7 +342,11 @@ const MirrorSettings: React.FC<MirrorSettingsProps> = ({ s, m }) => {
   }, [confirm, toast, m]);
 
   const updateField = useCallback(<K extends keyof MirrorConfig>(key: K, value: MirrorConfig[K]) => {
-    setCfg(prev => ({ ...prev, [key]: value, preset: 'custom' }));
+    setCfg(prev => {
+      const next = { ...prev, [key]: value, preset: 'custom' as const };
+      mirrorConfigApi.set(next).catch(() => {});
+      return next;
+    });
   }, []);
 
   const applyTool = useCallback(async (tool: string) => {
@@ -365,13 +369,12 @@ const MirrorSettings: React.FC<MirrorSettingsProps> = ({ s, m }) => {
   const applyAll = useCallback(async () => {
     setApplyingTool('all');
     const tools = ['npm', 'go', 'pip', 'git', 'docker', 'clawhub'].filter(t => {
+      // Tools that require a non-empty value (no "off" option)
       if (t === 'npm') return !!cfg.npmRegistry;
       if (t === 'go') return !!cfg.goProxy;
       if (t === 'pip') return !!cfg.pipIndex;
-      if (t === 'git') return !!cfg.githubProxy;
-      if (t === 'docker') return !!cfg.dockerMirror;
-      if (t === 'clawhub') return !!cfg.clawHubRegistry;
-      return false;
+      // Tools with an "off" option: always apply (empty = clear/remove)
+      return true;
     });
     try {
       await mirrorConfigApi.set(cfg);
