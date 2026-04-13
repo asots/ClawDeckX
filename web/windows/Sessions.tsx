@@ -393,11 +393,25 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
   sessionKeyRef.current = sessionKey;
   const [drawerOpen, setDrawerOpen] = useState(false);
 
+  // Gateway dynamic commands (4.10+)
+  const [gwCommands, setGwCommands] = useState<Array<{ name: string; description: string; category?: string; source: string }>>([]);
+
   // Talk mode (real-time event)
   const [talkMode, setTalkMode] = useState<string | null>(null);
 
   // Session history cleared notice (when navigating from Usage to a deleted/reset session)
   const [sessionNotice, setSessionNotice] = useState<string | null>(null);
+
+  // Load gateway commands list (4.10+) — merges plugin/skill commands into slash palette
+  useEffect(() => {
+    if (!gwReady) return;
+    let cancelled = false;
+    gwApi.commandsList({ scope: 'text', includeArgs: false }).then(res => {
+      if (cancelled || !res?.commands) return;
+      setGwCommands(res.commands);
+    }).catch(() => { /* gateway may not support commands.list yet */ });
+    return () => { cancelled = true; };
+  }, [gwReady]);
 
   // Handle pending session key from cross-window navigation
   useEffect(() => {
@@ -683,12 +697,38 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
     { cmd: '/voice', desc: c.cmdVoice, icon: 'graphic_eq', cat: 'media' },
   ], [c]);
 
+  // Merge gateway dynamic commands (plugin/skill) into the local slash palette
+  const mergedSlashCommands = useMemo(() => {
+    if (!gwCommands.length) return SLASH_COMMANDS;
+    const localCmds = new Set(SLASH_COMMANDS.map(s => s.cmd.toLowerCase()));
+    const CAT_ICON: Record<string, string> = {
+      tools: 'build', session: 'tune', status: 'info', options: 'settings',
+      management: 'settings', media: 'graphic_eq',
+    };
+    const extra = gwCommands
+      .filter(gc => {
+        const name = gc.name.startsWith('/') ? gc.name : `/${gc.name}`;
+        return !localCmds.has(name.toLowerCase());
+      })
+      .map(gc => {
+        const name = gc.name.startsWith('/') ? gc.name : `/${gc.name}`;
+        const cat = gc.source === 'skill' ? 'tools' : (gc.category || 'management');
+        return {
+          cmd: name,
+          desc: gc.description || name,
+          icon: gc.source === 'skill' ? 'extension' : (gc.source === 'plugin' ? 'widgets' : (CAT_ICON[cat] || 'terminal')),
+          cat,
+        };
+      });
+    return [...SLASH_COMMANDS, ...extra];
+  }, [SLASH_COMMANDS, gwCommands]);
+
   const slashFiltered = useMemo(() => {
     if (!slashOpen) return [];
     const q = input.slice(1).toLowerCase();
-    if (!q) return SLASH_COMMANDS;
-    return SLASH_COMMANDS.filter(s => s.cmd.toLowerCase().includes(q) || s.desc.toLowerCase().includes(q));
-  }, [slashOpen, input, SLASH_COMMANDS]);
+    if (!q) return mergedSlashCommands;
+    return mergedSlashCommands.filter(s => s.cmd.toLowerCase().includes(q) || s.desc.toLowerCase().includes(q));
+  }, [slashOpen, input, mergedSlashCommands]);
 
   const CAT_LABELS: Record<string, string> = useMemo(() => ({
     session: c.catSession, options: c.catOptions, status: c.catStatus,

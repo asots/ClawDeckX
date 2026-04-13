@@ -1076,6 +1076,9 @@ export const gwApi = {
     rpc('sessions.usage.timeseries', { key, ...params }),
   sessionsUsageLogs: (key: string, params?: { startDate?: string; endDate?: string; limit?: number; offset?: number }) =>
     rpc('sessions.usage.logs', { key, ...params }),
+  // Commands (4.10+)
+  commandsList: (params?: { agentId?: string; scope?: 'native' | 'text' | 'both'; includeArgs?: boolean }) =>
+    rpc<{ commands: Array<{ name: string; nativeName?: string; textAliases?: string[]; description: string; category?: string; source: string; scope: string; acceptsArgs: boolean; args?: any[] }> }>('commands.list', { scope: 'text', includeArgs: false, ...params }),
   // Models
   models: () => rpc<any[]>('models.list'),
   // Usage
