@@ -37,8 +37,10 @@ type memoryFileEntry struct {
 	ModTime string `json:"modTime"`
 }
 
-// validMemoryFilename allows only date-based .md files (YYYY-MM-DD.md) to prevent path traversal.
-var validMemoryFilename = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}\.md$`)
+// validMemoryFilename allows date-based .md files with optional suffix (e.g. 2026-04-10.md,
+// 2026-04-10-strategy-review.md) and uppercase named files (e.g. MEMORY.md), while preventing
+// path traversal (no slashes, backslashes, or ".." sequences).
+var validMemoryFilename = regexp.MustCompile(`^[A-Za-z0-9][\w.-]*\.md$`)
 
 // resolveAgentWorkspace fetches the agent's workspace path from the gateway.
 func (h *WorkspaceMemoryHandler) resolveAgentWorkspace(agentID string) (string, error) {
