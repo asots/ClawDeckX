@@ -44,8 +44,24 @@ type EventFrame struct {
 }
 
 type RPCError struct {
-	Code    int    `json:"code"`
-	Message string `json:"message"`
+	Code    int              `json:"code"`
+	Message string           `json:"message"`
+	Details *json.RawMessage `json:"details,omitempty"`
+}
+
+// extractPairingRequestID extracts the requestId from an RPCError's details
+// field, as returned by the gateway when pairing is required.
+func (e *RPCError) extractPairingRequestID() string {
+	if e == nil || e.Details == nil {
+		return ""
+	}
+	var d struct {
+		RequestID string `json:"requestId"`
+	}
+	if json.Unmarshal(*e.Details, &d) == nil && d.RequestID != "" {
+		return d.RequestID
+	}
+	return ""
 }
 
 // GatewayRPCError represents a business-logic error returned by the gateway
@@ -917,8 +933,9 @@ func (c *GWClient) connectLoop() {
 				Msg(i18n.T(i18n.MsgLogGatewayWsConnectFailed))
 			// Close 1008 "pairing required" lands here when the server sends it
 			// before the JSON response can be delivered (close frame race).
+			// No requestId available from the close frame, so pass empty hint.
 			if isPairingErr && c.IsLocalGateway() {
-				go c.autoApprovePairing()
+				go c.autoApprovePairing("")
 			}
 		}
 
@@ -1260,8 +1277,10 @@ func (c *GWClient) sendConnect(conn *websocket.Conn, nonce string) {
 			}
 		} else {
 			msg := i18n.T(i18n.MsgGwclientUnknownError)
+			var pairingRequestID string
 			if resp != nil && resp.Error != nil {
 				msg = resp.Error.Message
+				pairingRequestID = resp.Error.extractPairingRequestID()
 			} else if resp == nil {
 				// Channel closed — usually means the server closed the connection
 				// right after sending an error (e.g. "pairing required").
@@ -1279,7 +1298,7 @@ func (c *GWClient) sendConnect(conn *websocket.Conn, nonce string) {
 			logger.Log.Error().Str("error", msg).Msg(i18n.T(i18n.MsgLogGatewayWsAuthFail))
 			conn.Close()
 			if isPairing && c.IsLocalGateway() {
-				go c.autoApprovePairing()
+				go c.autoApprovePairing(pairingRequestID)
 			} else if isAuthError(msg) {
 				go c.autoRefreshToken()
 			}
@@ -1295,10 +1314,15 @@ func (c *GWClient) sendConnect(conn *websocket.Conn, nonce string) {
 	}
 }
 
-// autoApprovePairing runs `openclaw devices approve --latest` automatically
-// when a local gateway rejects the WS connection with "pairing required".
+// autoApprovePairing approves a pending device pairing request for the local
+// gateway. If hintRequestID is non-empty (extracted from the connect error
+// details), it is used directly. Otherwise the function falls back to
+// `openclaw devices approve --latest --json` to discover the request ID,
+// then runs `openclaw devices approve <requestId>` to complete approval.
+// This two-step flow is required since OpenClaw ≥2026.4.8 changed --latest
+// to preview-only mode (exits 1 without approving).
 // It is safe to call concurrently — only one run proceeds at a time.
-func (c *GWClient) autoApprovePairing() {
+func (c *GWClient) autoApprovePairing(hintRequestID string) {
 	if !c.pairingApprovingMu.TryLock() {
 		return
 	}
@@ -1309,20 +1333,69 @@ func (c *GWClient) autoApprovePairing() {
 	c.lastError = "pairing required: auto-approving device..."
 	c.mu.Unlock()
 
-	logger.Log.Info().Msg("local gateway requires device pairing — running auto-approve")
+	logger.Log.Info().Str("hintRequestID", hintRequestID).
+		Msg("local gateway requires device pairing — running auto-approve")
 
 	// Brief wait to let the WS close frame complete before we write the approval file
 	time.Sleep(600 * time.Millisecond)
 
-	_, err := RunCLIWithTimeout("devices", "approve", "--latest")
+	requestID := hintRequestID
+
+	// If we don't have a requestId from the connect error details, discover it
+	// via `openclaw devices approve --latest --json`.
+	if requestID == "" {
+		out, err := RunCLIWithTimeout("devices", "approve", "--latest", "--json")
+		if err != nil {
+			// --latest --json outputs JSON with the selected request info then exits 1.
+			// Parse the output even on error to extract the requestId.
+			requestID = extractRequestIDFromApproveLatest(out)
+			if requestID == "" {
+				// Also try listing pending devices as a final fallback
+				listOut, listErr := RunCLIWithTimeout("devices", "list", "--json")
+				if listErr == nil {
+					requestID = extractLatestPendingRequestID(listOut)
+				}
+			}
+		} else {
+			// Older OpenClaw: --latest succeeded directly (pre-4.8 behavior)
+			c.mu.Lock()
+			c.pairingAutoApprove = false
+			c.lastError = ""
+			c.backoffMs = 1000
+			c.mu.Unlock()
+			logger.Log.Info().Msg("device pairing approved (legacy --latest) — triggering immediate reconnect")
+			select {
+			case c.reconnectNowCh <- struct{}{}:
+			default:
+			}
+			return
+		}
+	}
+
+	if requestID == "" {
+		c.mu.Lock()
+		c.pairingAutoApprove = false
+		c.lastError = "pairing auto-approve failed: could not resolve request ID"
+		c.mu.Unlock()
+		logger.Log.Error().Msg("device pairing auto-approve failed: no requestId found")
+		return
+	}
+
+	logger.Log.Info().Str("requestId", requestID).Msg("approving device pairing request")
+
+	c.mu.Lock()
+	c.lastError = fmt.Sprintf("pairing required: approving request %s...", requestID)
+	c.mu.Unlock()
+
+	_, err := RunCLIWithTimeout("devices", "approve", requestID)
 
 	c.mu.Lock()
 	c.pairingAutoApprove = false
 	if err != nil {
-		logger.Log.Error().Err(err).Msg("device pairing auto-approve failed")
+		logger.Log.Error().Err(err).Str("requestId", requestID).Msg("device pairing auto-approve failed")
 		c.lastError = fmt.Sprintf("pairing auto-approve failed: %v", err)
 	} else {
-		logger.Log.Info().Msg("device pairing approved — triggering immediate reconnect")
+		logger.Log.Info().Str("requestId", requestID).Msg("device pairing approved — triggering immediate reconnect")
 		c.lastError = ""
 		c.backoffMs = 1000
 	}
@@ -1335,6 +1408,61 @@ func (c *GWClient) autoApprovePairing() {
 		default:
 		}
 	}
+}
+
+// extractRequestIDFromApproveLatest parses the JSON output from
+// `openclaw devices approve --latest --json` which returns:
+// {"selected":{"requestId":"..."},"approveCommand":"..."}
+func extractRequestIDFromApproveLatest(output string) string {
+	output = strings.TrimSpace(output)
+	if output == "" {
+		return ""
+	}
+	// The CLI may prefix error text before the JSON; find the first '{'.
+	idx := strings.Index(output, "{")
+	if idx < 0 {
+		return ""
+	}
+	output = output[idx:]
+	var parsed struct {
+		Selected struct {
+			RequestID string `json:"requestId"`
+		} `json:"selected"`
+	}
+	if json.Unmarshal([]byte(output), &parsed) == nil && parsed.Selected.RequestID != "" {
+		return parsed.Selected.RequestID
+	}
+	return ""
+}
+
+// extractLatestPendingRequestID parses the JSON output from
+// `openclaw devices list --json` and returns the most recent pending requestId.
+func extractLatestPendingRequestID(output string) string {
+	output = strings.TrimSpace(output)
+	if output == "" {
+		return ""
+	}
+	idx := strings.Index(output, "{")
+	if idx < 0 {
+		return ""
+	}
+	output = output[idx:]
+	var parsed struct {
+		Pending []struct {
+			RequestID string `json:"requestId"`
+			Ts        int64  `json:"ts"`
+		} `json:"pending"`
+	}
+	if json.Unmarshal([]byte(output), &parsed) != nil || len(parsed.Pending) == 0 {
+		return ""
+	}
+	latest := parsed.Pending[0]
+	for _, p := range parsed.Pending[1:] {
+		if p.Ts > latest.Ts {
+			latest = p
+		}
+	}
+	return latest.RequestID
 }
 
 // isAuthError returns true if the connect rejection message indicates a token/auth problem.
