@@ -22,6 +22,9 @@
 
 <br>
 
+> [!TIP]
+> **Using [HermesAgent](https://github.com/NousResearch/hermes-agent) instead?** Check out [HermesDeckX](https://github.com/HermesDeckX/HermesDeckX) — a sister project offering the same visual management experience for HermesAgent.
+
 ## Quick Navigation
 
 - [Screenshots](#-screenshots)

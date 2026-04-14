@@ -21,6 +21,9 @@
 > [!CAUTION]
 > **Beta 预览版** — 当前为初始预览版本，尚未进行深度完整的覆盖测试，**请勿用于生产环境。**
 
+> [!TIP]
+> **正在使用 [HermesAgent](https://github.com/NousResearch/hermes-agent)？** 欢迎了解姊妹项目 [HermesDeckX](https://github.com/HermesDeckX/HermesDeckX) — 为 HermesAgent 提供同样的可视化管理体验。
+
 ## 快速导航
 
 - [界面预览](#-界面预览)
