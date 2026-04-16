@@ -38,6 +38,7 @@ const WINDOW_META: Record<WindowID, { icon: string; gradient: string }> = {
   agents:       { icon: 'robot_2',           gradient: 'from-[#5856D6] to-[#3634A3]' },
   scheduler:    { icon: 'event_repeat',      gradient: 'from-[#FF375F] to-[#BF2A47]' },
   maintenance:  { icon: 'health_and_safety', gradient: 'from-[#22C55E] to-[#15803D]' },
+  terminal:     { icon: 'terminal',          gradient: 'from-[#0EA5E9] to-[#0369A1]' },
   setup_wizard: { icon: 'rocket_launch',     gradient: 'from-[#FF6B6B] to-[#FF3D3D]' },
   usage_wizard: { icon: 'auto_fix_high',     gradient: 'from-[#A855F7] to-[#7C3AED]' },
   settings:     { icon: 'settings',          gradient: 'from-[#8E8E93] to-[#636366]' },
@@ -47,7 +48,7 @@ const WINDOW_META: Record<WindowID, { icon: string; gradient: string }> = {
 const ALL_WINDOW_IDS: WindowID[] = [
   'dashboard', 'editor', 'gateway', 'sessions', 'activity', 'skills',
   'knowledge', 'usage', 'alerts', 'agents', 'scheduler',
-  'maintenance', 'setup_wizard', 'usage_wizard', 'settings', 'nodes',
+  'maintenance', 'terminal', 'setup_wizard', 'usage_wizard', 'settings', 'nodes',
 ];
 
 // ---------------------------------------------------------------------------

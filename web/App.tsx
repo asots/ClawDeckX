@@ -38,6 +38,7 @@ const loadNodes = () => import('./windows/Nodes');
 const loadSetupWizard = () => import('./windows/SetupWizard');
 const loadUsageWizard = () => import('./windows/UsageWizard');
 const loadKnowledge = () => import('./windows/Knowledge');
+const loadTerminal = () => import('./windows/Terminal');
 
 const WINDOW_LOADERS: Record<WindowID, () => Promise<unknown>> = {
   dashboard: loadDashboard,
@@ -56,6 +57,7 @@ const WINDOW_LOADERS: Record<WindowID, () => Promise<unknown>> = {
   setup_wizard: loadSetupWizard,
   usage_wizard: loadUsageWizard,
   knowledge: loadKnowledge,
+  terminal: loadTerminal,
 };
 
 const PRIORITY_WARMUP_LOADERS: Array<() => Promise<unknown>> = [
@@ -94,6 +96,7 @@ const Nodes = React.lazy(loadNodes);
 const SetupWizard = React.lazy(loadSetupWizard);
 const UsageWizard = React.lazy(loadUsageWizard);
 const Knowledge = React.lazy(loadKnowledge);
+const TerminalPage = React.lazy(loadTerminal);
 
 const WINDOW_IDS: { id: WindowID; openByDefault?: boolean }[] = [
   { id: 'dashboard', openByDefault: true },
@@ -110,6 +113,7 @@ const WINDOW_IDS: { id: WindowID; openByDefault?: boolean }[] = [
   { id: 'settings' },
   { id: 'nodes' },
   { id: 'knowledge' },
+  { id: 'terminal' },
   { id: 'setup_wizard' },
   { id: 'usage_wizard' },
 ];
@@ -496,6 +500,7 @@ const App: React.FC = () => {
                     {w.id === 'settings' && <Settings language={language} onLogout={logout} pendingTab={detailFor('settings')?.tab ?? null} onTabConsumed={consumeDetail} onPrefsChange={handlePrefsChange} badges={badges} />}
                     {w.id === 'nodes' && <Nodes language={language} />}
                     {w.id === 'knowledge' && <Knowledge language={language} pendingExpandItem={detailFor('knowledge')?.expandItem ?? null} onExpandItemConsumed={consumeDetail} />}
+                    {w.id === 'terminal' && <TerminalPage language={language} />}
                     {w.id === 'setup_wizard' && (
                       <SetupWizard
                         language={language}

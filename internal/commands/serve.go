@@ -30,6 +30,7 @@ import (
 	"ClawDeckX/internal/proclock"
 	"ClawDeckX/internal/runtime"
 	"ClawDeckX/internal/sentinel"
+	"ClawDeckX/internal/sshterm"
 	"ClawDeckX/internal/tray"
 	"ClawDeckX/internal/version"
 	"ClawDeckX/internal/web"
@@ -453,6 +454,17 @@ func RunServe(args []string) int {
 	}
 	runtimeHandler := handlers.NewRuntimeHandler(runtimeMgr)
 
+	if err := database.DB.AutoMigrate(&sshterm.SSHHost{}, &sshterm.SSHSnippet{}); err != nil {
+		logger.Log.Error().Err(err).Msg("failed to migrate SSH tables")
+	}
+	termManager := sshterm.NewManager()
+	defer termManager.CloseAll()
+	terminalWSHandler := handlers.NewTerminalWSHandler(termManager)
+	sshHostsHandler := handlers.NewSSHHostsHandler()
+	sftpHandler := handlers.NewSFTPHandler(termManager)
+	sysInfoHandler := handlers.NewSysInfoHandler(termManager)
+	snippetHandler := handlers.NewSnippetHandler()
+
 	router := web.NewRouter()
 
 	router.GET("/api/v1/auth/needs-setup", authHandler.NeedsSetup)
@@ -768,6 +780,29 @@ func RunServe(args []string) int {
 
 	router.GET("/api/v1/badges", badgeHandler.Counts)
 
+	router.GET("/api/v1/terminal/ws", terminalWSHandler.HandleWS(cfg.Auth.JWTSecret))
+	router.GET("/api/v1/ssh-hosts", sshHostsHandler.List)
+	router.POST("/api/v1/ssh-hosts", web.RequireAdmin(sshHostsHandler.Create))
+	router.PUT("/api/v1/ssh-hosts", web.RequireAdmin(sshHostsHandler.Update))
+	router.DELETE("/api/v1/ssh-hosts", web.RequireAdmin(sshHostsHandler.Delete))
+	router.POST("/api/v1/ssh-hosts/test", web.RequireAdmin(sshHostsHandler.TestConnection))
+
+	router.GET("/api/v1/sftp/list", sftpHandler.List)
+	router.GET("/api/v1/sftp/download", sftpHandler.Download)
+	router.POST("/api/v1/sftp/upload", sftpHandler.Upload)
+	router.POST("/api/v1/sftp/mkdir", sftpHandler.Mkdir)
+	router.POST("/api/v1/sftp/remove", sftpHandler.Remove)
+	router.POST("/api/v1/sftp/rename", sftpHandler.Rename)
+	router.GET("/api/v1/sftp/read", sftpHandler.ReadFile)
+	router.PUT("/api/v1/sftp/write", web.RequireAdmin(sftpHandler.WriteFile))
+
+	router.GET("/api/v1/ssh/sysinfo", sysInfoHandler.Get)
+
+	router.GET("/api/v1/ssh/snippets", snippetHandler.List)
+	router.POST("/api/v1/ssh/snippets", web.RequireAdmin(snippetHandler.Record))
+	router.PUT("/api/v1/ssh/snippets/favorite", web.RequireAdmin(snippetHandler.ToggleFavorite))
+	router.DELETE("/api/v1/ssh/snippets", web.RequireAdmin(snippetHandler.Delete))
+
 	// WebSocket
 	router.GET("/api/v1/ws", wsHub.HandleWS(cfg.Auth.JWTSecret))
 
@@ -805,6 +840,7 @@ func RunServe(args []string) int {
 		"/api/v1/auth/needs-setup",
 		"/api/v1/health",
 		"/api/v1/ws",
+		"/api/v1/terminal/ws",
 	}
 
 	rlCtx, rlCancel := context.WithCancel(context.Background())

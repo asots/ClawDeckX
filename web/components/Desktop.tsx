@@ -73,6 +73,7 @@ const ALL_DESKTOP_APPS: AppInfo[] = [
   { id: 'scheduler', titleKey: 'scheduler', icon: 'event_repeat', gradient: 'from-[#FF375F] to-[#BF2A47]' },
   // — Low frequency —
   { id: 'maintenance', titleKey: 'maintenance', icon: 'health_and_safety', gradient: 'from-[#22C55E] to-[#15803D]' },
+  { id: 'terminal', titleKey: 'terminal', icon: 'terminal', gradient: 'from-[#0EA5E9] to-[#0369A1]' },
   { id: 'setup_wizard', titleKey: 'setup_wizard', icon: 'rocket_launch', gradient: 'from-[#FF6B6B] to-[#FF3D3D]' },
   { id: 'usage_wizard', titleKey: 'usage_wizard', icon: 'auto_fix_high', gradient: 'from-[#A855F7] to-[#7C3AED]' },
   { id: 'settings', titleKey: 'settings', icon: 'settings', gradient: 'from-[#8E8E93] to-[#636366]' },
@@ -124,6 +125,7 @@ const DOCK_GROUPS: AppGroup[] = [
     apps: [
       { id: 'nodes', icon: 'hub', color: 'bg-sky-600' },
       { id: 'maintenance', icon: 'health_and_safety', color: 'bg-emerald-600' },
+      { id: 'terminal', icon: 'terminal', color: 'bg-sky-600' },
       { id: 'settings', icon: 'settings', color: 'bg-zinc-600' },
       { id: 'setup_wizard', icon: 'rocket_launch', color: 'bg-red-500' },
     ]
