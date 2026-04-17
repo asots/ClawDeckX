@@ -11,6 +11,7 @@ import { useConfirm } from '../components/ConfirmDialog';
 import { parseEventTitle } from '../utils/parseEventText';
 import { saTranslateAlertTitle } from '../utils/saTranslate';
 import { normalizeExecSecurity, profileTextColor, execSecurityTextColor, execHostTextColor, execAskTextColor } from '../utils/exec-policy';
+import ModelAuthStatusCard from '../components/ModelAuthStatusCard';
 
 interface DashboardProps {
   language: Language;
@@ -797,6 +798,15 @@ const Dashboard: React.FC<DashboardProps> = ({ language }) => {
               </button>
             </div>
           </div>
+        )}
+
+        {/* Model Auth Status (v2026.4.15+) */}
+        {gwRunning && (
+          <ModelAuthStatusCard
+            language={language}
+            gwConnected={gwRunning}
+            onOpenTarget={() => dispatchOpenWindow({ id: 'editor', section: 'auth' })}
+          />
         )}
 
         {/* Background Work — Task Summary Section */}

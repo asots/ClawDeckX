@@ -761,6 +761,53 @@ export interface LlmProbeSummary {
   failCount: number;
 }
 
+// Model Auth Status (v2026.4.15+ — gateway RPC `models.authStatus`)
+// Mirrors `ModelAuthStatusResult` / `ModelAuthStatusProvider` in
+// openclaw/src/gateway/server-methods/models-auth-status.ts
+export type ModelAuthProviderStatus = 'ok' | 'expiring' | 'expired' | 'missing' | 'static';
+export type ModelAuthProfileStatus = 'ok' | 'expiring' | 'expired' | 'missing' | 'static';
+export type ModelAuthCredentialType = 'oauth' | 'token' | 'api_key';
+
+export interface ModelAuthExpiry {
+  at: number;
+  remainingMs: number;
+  label: string;
+}
+
+export interface ModelAuthStatusProfile {
+  profileId: string;
+  type: ModelAuthCredentialType;
+  status: ModelAuthProfileStatus;
+  expiry?: ModelAuthExpiry;
+}
+
+export interface ModelAuthUsageWindow {
+  label?: string;
+  windowMs?: number;
+  percentUsed?: number;
+  limit?: number;
+  used?: number;
+  resetsAt?: number;
+  [k: string]: unknown;
+}
+
+export interface ModelAuthStatusProvider {
+  provider: string;
+  displayName: string;
+  status: ModelAuthProviderStatus;
+  expiry?: ModelAuthExpiry;
+  profiles: ModelAuthStatusProfile[];
+  usage?: {
+    windows: ModelAuthUsageWindow[];
+    plan?: string;
+  };
+}
+
+export interface ModelAuthStatusResult {
+  ts: number;
+  providers: ModelAuthStatusProvider[];
+}
+
 export interface LlmModelsStatusResponse {
   providers: LlmAuthHealthSummary;
   models: Array<{
@@ -1081,6 +1128,9 @@ export const gwApi = {
     rpc<{ commands: Array<{ name: string; nativeName?: string; textAliases?: string[]; description: string; category?: string; source: string; scope: string; acceptsArgs: boolean; args?: any[] }> }>('commands.list', { scope: 'text', includeArgs: false, ...params }),
   // Models
   models: () => rpc<any[]>('models.list'),
+  // Model Auth Status (v2026.4.15+)
+  modelsAuthStatus: (params?: { refresh?: boolean }) =>
+    rpc<ModelAuthStatusResult>('models.authStatus', params || {}),
   // Usage
   usageStatus: () => rpc('usage.status'),
   // Skills
