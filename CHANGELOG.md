@@ -6,6 +6,7 @@ _2026-04-17_
 
 ### ✨ New Features / 新功能
 
+- add HermesDeckX link in about section
 - add legacy slash commands trace, pair, card, phone, active-memory
 - surface contextLimits, skillsLimits, localModelLean and unknownToolThreshold
 - add models.authStatus support and Dashboard auth card
@@ -1327,6 +1328,7 @@ _2026-03-15_
 
 
 ---
+
 
 
 
