@@ -41,6 +41,17 @@ export interface TerminalErrorPayload {
   message: string;
 }
 
+// Optional credential overrides for a single terminal.create attempt.
+// Used when the user re-enters credentials after an AUTH_FAILED error
+// without persisting them to the host record.
+export interface TerminalCredentialOverride {
+  authType?: 'password' | 'key';
+  username?: string;
+  password?: string;
+  privateKey?: string;
+  passphrase?: string;
+}
+
 type MessageHandler = (msg: TerminalMessage) => void;
 
 export class TerminalWSClient {
@@ -97,8 +108,8 @@ export class TerminalWSClient {
     this.ws.send(JSON.stringify({ type, payload }));
   }
 
-  createSession(hostId: number, cols: number, rows: number): void {
-    this.send('terminal.create', { hostId, cols, rows });
+  createSession(hostId: number, cols: number, rows: number, override?: TerminalCredentialOverride): void {
+    this.send('terminal.create', { hostId, cols, rows, ...(override || {}) });
   }
 
   sendInput(sessionId: string, data: string): void {
