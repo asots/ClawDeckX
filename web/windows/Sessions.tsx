@@ -692,6 +692,12 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
     { cmd: '/debug', desc: c.cmdDebug, icon: 'bug_report', cat: 'management' },
     // — Memory —
     { cmd: '/dreaming', desc: c.cmdDreaming, icon: 'bedtime', cat: 'management' },
+    { cmd: '/active-memory', desc: c.cmdActiveMemory || 'Enable, disable, or inspect Active Memory for this session.', icon: 'memory_alt', cat: 'management' },
+    // — Plugins (device-pair / line / phone-control) —
+    { cmd: '/trace', desc: c.cmdTrace || 'Toggle plugin trace lines.', icon: 'analytics', cat: 'options' },
+    { cmd: '/pair', desc: c.cmdPair || 'Generate setup codes and approve device pairing requests.', icon: 'qr_code', cat: 'management' },
+    { cmd: '/card', desc: c.cmdCard || 'Send a rich card message (LINE).', icon: 'credit_card', cat: 'media' },
+    { cmd: '/phone', desc: c.cmdPhone || 'Arm/disarm high-risk phone node commands.', icon: 'smartphone', cat: 'management' },
     // — Media —
     { cmd: '/tts', desc: c.catMedia, icon: 'record_voice_over', cat: 'media' },
     { cmd: '/voice', desc: c.cmdVoice, icon: 'graphic_eq', cat: 'media' },
