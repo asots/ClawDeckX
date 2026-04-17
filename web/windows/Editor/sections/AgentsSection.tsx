@@ -91,6 +91,21 @@ export const AgentsSection: React.FC<SectionProps> = ({ config, schema, setField
         <TextField label={es.message} tooltip={tip('agents.defaults.heartbeat.message')} value={d(['heartbeat', 'message']) || ''} onChange={v => sd(['heartbeat', 'message'], v)} mono={false} />
       </ConfigSection>
 
+      <ConfigSection title={es.contextLimits || 'Context Limits'} icon="data_usage" iconColor="text-amber-500" defaultOpen={false}>
+        <NumberField label={es.memoryGetDefaultLines || 'memory_get Default Lines'} tooltip={tip('agents.defaults.contextLimits.memoryGetDefaultLines')} value={d(['contextLimits', 'memoryGetDefaultLines'])} onChange={v => sd(['contextLimits', 'memoryGetDefaultLines'], v)} min={0} />
+        <NumberField label={es.memoryGetMaxChars || 'memory_get Max Chars'} tooltip={tip('agents.defaults.contextLimits.memoryGetMaxChars')} value={d(['contextLimits', 'memoryGetMaxChars'])} onChange={v => sd(['contextLimits', 'memoryGetMaxChars'], v)} min={0} />
+        <NumberField label={es.postCompactionMaxChars || 'Post-compaction Max Chars'} tooltip={tip('agents.defaults.contextLimits.postCompactionMaxChars')} value={d(['contextLimits', 'postCompactionMaxChars'])} onChange={v => sd(['contextLimits', 'postCompactionMaxChars'], v)} min={0} />
+        <NumberField label={es.toolResultMaxChars || 'Tool Result Max Chars'} tooltip={tip('agents.defaults.contextLimits.toolResultMaxChars')} value={d(['contextLimits', 'toolResultMaxChars'])} onChange={v => sd(['contextLimits', 'toolResultMaxChars'], v)} min={0} />
+      </ConfigSection>
+
+      <ConfigSection title={es.skillsLimits || 'Skills Limits'} icon="construction" iconColor="text-lime-500" defaultOpen={false}>
+        <NumberField label={es.maxSkillsPromptChars || 'Max Skills Prompt Chars'} tooltip={tip('agents.defaults.skillsLimits.maxSkillsPromptChars')} value={d(['skillsLimits', 'maxSkillsPromptChars'])} onChange={v => sd(['skillsLimits', 'maxSkillsPromptChars'], v)} min={0} />
+      </ConfigSection>
+
+      <ConfigSection title={es.experimental || 'Experimental'} icon="science" iconColor="text-fuchsia-500" defaultOpen={false}>
+        <SwitchField label={es.localModelLean || 'Local Model Lean Mode'} desc={es.localModelLeanDesc || 'Drop heavyweight default tools (browser, cron, message) to reduce prompt size for weaker local models.'} tooltip={tip('agents.defaults.experimental.localModelLean')} value={d(['experimental', 'localModelLean']) === true} onChange={v => sd(['experimental', 'localModelLean'], v)} />
+      </ConfigSection>
+
       <ConfigSection title={es.contextPruning} icon="content_cut" iconColor="text-orange-500" defaultOpen={false}>
         <SelectField label={es.mode} tooltip={tip('agents.defaults.contextPruning.mode')} value={d(['contextPruning', 'mode']) || 'off'} onChange={v => sd(['contextPruning', 'mode'], v)} options={CTX_PRUNING_MODE_OPTIONS} />
         <TextField label={es.ctxPruningTtl || 'Cache TTL'} tooltip={tip('agents.defaults.contextPruning.ttl')} value={d(['contextPruning', 'ttl']) || ''} onChange={v => sd(['contextPruning', 'ttl'], v)} placeholder="30m" />
@@ -183,6 +198,7 @@ export const AgentsSection: React.FC<SectionProps> = ({ config, schema, setField
           'thinkingDefault', 'verboseDefault', 'elevatedDefault', 'typingMode',
           'compaction', 'bootstrapTruncationWarning', 'contextInjection', 'params', 'systemPromptOverride',
           'humanDelay', 'heartbeat', 'contextPruning', 'memorySearch', 'sandbox',
+          'contextLimits', 'skillsLimits', 'experimental',
         ]}
         config={config}
         setField={setField}
