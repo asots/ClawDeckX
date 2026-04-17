@@ -213,6 +213,11 @@
     "skillsSearch": "بحث المهارات",
     "skillsDetail": "تفاصيل المهارة",
     "compactionSummary": "ملخص",
-    "compactionNoSummary": "لا يوجد ملخص"
+    "compactionNoSummary": "لا يوجد ملخص",
+    "cmdActiveMemory": "Manage Active Memory",
+    "cmdTrace": "Toggle plugin trace",
+    "cmdPair": "Approve device pairing",
+    "cmdCard": "Send LINE rich card",
+    "cmdPhone": "Arm phone node commands"
   }
 }

@@ -1523,5 +1523,17 @@
   "dreamingEnabled": "ドリーミングを有効化",
   "dreamingFrequency": "頻度",
   "dreamingRecencyHalfLife": "直近半減期（日）",
-  "dreamingMaxAge": "最大保持日数"
+  "dreamingMaxAge": "最大保持日数",
+  "contextLimits": "コンテキスト制限",
+  "memoryGetDefaultLines": "memory_get デフォルト行数",
+  "memoryGetMaxChars": "memory_get 最大文字数",
+  "postCompactionMaxChars": "圧縮後最大文字数",
+  "toolResultMaxChars": "ツール結果最大文字数",
+  "skillsLimits": "スキル制限",
+  "maxSkillsPromptChars": "スキル Prompt 最大文字数",
+  "experimental": "実験的",
+  "localModelLean": "ローカルモデル軽量モード",
+  "localModelLeanDesc": "browser/cron/message などの重いデフォルトツールを除外し、プロンプトサイズを縮小（弱いローカルモデル向け）。",
+  "unknownToolThreshold": "不明ツールしきい値",
+  "unknownToolThresholdDesc": "N 回の不明ツールストリーム試行後にハルシネーションループを停止（既定 10、ストリームガードは既定で有効）。"
 }

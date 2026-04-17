@@ -213,6 +213,11 @@
     "skillsSearch": "搜索技能",
     "skillsDetail": "技能详情",
     "compactionSummary": "摘要",
-    "compactionNoSummary": "暂无摘要"
+    "compactionNoSummary": "暂无摘要",
+    "cmdActiveMemory": "主动记忆控制",
+    "cmdTrace": "切换插件追踪",
+    "cmdPair": "设备配对审批",
+    "cmdCard": "发送 LINE 卡片",
+    "cmdPhone": "开关手机节点命令"
   }
 }

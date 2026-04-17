@@ -213,6 +213,11 @@
     "skillsSearch": "搜尋技能",
     "skillsDetail": "技能詳情",
     "compactionSummary": "摘要",
-    "compactionNoSummary": "暫無摘要"
+    "compactionNoSummary": "暫無摘要",
+    "cmdActiveMemory": "主動記憶控制",
+    "cmdTrace": "切換外掛追蹤",
+    "cmdPair": "裝置配對審批",
+    "cmdCard": "傳送 LINE 卡片",
+    "cmdPhone": "啟用手機節點指令"
   }
 }

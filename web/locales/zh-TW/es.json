@@ -1523,5 +1523,17 @@
   "dreamingEnabled": "啟用夢境記憶",
   "dreamingFrequency": "頻率",
   "dreamingRecencyHalfLife": "近期衰減半衰期（天）",
-  "dreamingMaxAge": "最大保留天數"
+  "dreamingMaxAge": "最大保留天數",
+  "contextLimits": "上下文限制",
+  "memoryGetDefaultLines": "memory_get 預設行數",
+  "memoryGetMaxChars": "memory_get 最大字元數",
+  "postCompactionMaxChars": "壓縮後最大字元數",
+  "toolResultMaxChars": "工具結果最大字元數",
+  "skillsLimits": "技能限制",
+  "maxSkillsPromptChars": "技能 Prompt 最大字元數",
+  "experimental": "實驗性",
+  "localModelLean": "本地模型精簡模式",
+  "localModelLeanDesc": "丟棄 browser / cron / message 等重量級預設工具，減少 prompt 大小，適合較弱的本地模型。",
+  "unknownToolThreshold": "未知工具閾值",
+  "unknownToolThresholdDesc": "N 次未知工具串流嘗試後終止幻覺迴圈（預設 10；串流保護預設啟用）。"
 }

@@ -213,6 +213,11 @@
     "skillsSearch": "कौशल खोजें",
     "skillsDetail": "कौशल विवरण",
     "compactionSummary": "सारांश",
-    "compactionNoSummary": "कोई सारांश उपलब्ध नहीं"
+    "compactionNoSummary": "कोई सारांश उपलब्ध नहीं",
+    "cmdActiveMemory": "Manage Active Memory",
+    "cmdTrace": "Toggle plugin trace",
+    "cmdPair": "Approve device pairing",
+    "cmdCard": "Send LINE rich card",
+    "cmdPhone": "Arm phone node commands"
   }
 }

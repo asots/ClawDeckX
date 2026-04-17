@@ -1523,5 +1523,17 @@
   "dreamingEnabled": "Ativar Dreaming",
   "dreamingFrequency": "Frequência",
   "dreamingRecencyHalfLife": "Meia-vida de Recência (dias)",
-  "dreamingMaxAge": "Idade Máxima (dias)"
+  "dreamingMaxAge": "Idade Máxima (dias)",
+  "contextLimits": "Context Limits",
+  "memoryGetDefaultLines": "memory_get Default Lines",
+  "memoryGetMaxChars": "memory_get Max Chars",
+  "postCompactionMaxChars": "Post-compaction Max Chars",
+  "toolResultMaxChars": "Tool Result Max Chars",
+  "skillsLimits": "Skills Limits",
+  "maxSkillsPromptChars": "Max Skills Prompt Chars",
+  "experimental": "Experimental",
+  "localModelLean": "Local Model Lean Mode",
+  "localModelLeanDesc": "Drop heavyweight default tools (browser, cron, message) to reduce prompt size for weaker local models.",
+  "unknownToolThreshold": "Unknown-tool Threshold",
+  "unknownToolThresholdDesc": "Stop hallucinated tool loops after N unknown-tool stream attempts (default 10; stream guard is on by default)."
 }

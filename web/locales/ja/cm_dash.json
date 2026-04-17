@@ -156,5 +156,23 @@
     "dreamingOn": "稼働中",
     "dreamingOff": "オフ",
     "dreamingPromoted": "昇格済み"
+  },
+  "d": {
+    "mas": {
+      "title": "モデル認証ステータス",
+      "refresh": "更新",
+      "providersCount": "{{n}} 件のプロバイダ",
+      "openAuth": "認証設定を開く",
+      "loadError": "認証状態の読み込みに失敗",
+      "empty": "更新可能な認証情報はありません。",
+      "statusOk": "正常",
+      "statusExpiring": "期限間近",
+      "statusExpired": "期限切れ",
+      "statusMissing": "未設定",
+      "statusStatic": "静的",
+      "expiresIn": "残り",
+      "showAll": "すべて表示 ({{n}})",
+      "collapse": "折りたたむ"
+    }
   }
 }

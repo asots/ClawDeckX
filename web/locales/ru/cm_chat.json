@@ -213,6 +213,11 @@
     "skillsSearch": "Поиск навыков",
     "skillsDetail": "Детали навыка",
     "compactionSummary": "Сводка",
-    "compactionNoSummary": "Сводка недоступна"
+    "compactionNoSummary": "Сводка недоступна",
+    "cmdActiveMemory": "Manage Active Memory",
+    "cmdTrace": "Toggle plugin trace",
+    "cmdPair": "Approve device pairing",
+    "cmdCard": "Send LINE rich card",
+    "cmdPhone": "Arm phone node commands"
   }
 }

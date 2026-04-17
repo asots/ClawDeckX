@@ -156,5 +156,23 @@
     "dreamingOn": "활성",
     "dreamingOff": "꺼짐",
     "dreamingPromoted": "승격됨"
+  },
+  "d": {
+    "mas": {
+      "title": "모델 인증 상태",
+      "refresh": "새로 고침",
+      "providersCount": "공급자 {{n}}개",
+      "openAuth": "인증 설정 열기",
+      "loadError": "인증 상태 로드 실패",
+      "empty": "갱신 가능한 자격 증명이 없습니다.",
+      "statusOk": "정상",
+      "statusExpiring": "만료 임박",
+      "statusExpired": "만료됨",
+      "statusMissing": "없음",
+      "statusStatic": "고정",
+      "expiresIn": "남음",
+      "showAll": "모두 보기 ({{n}})",
+      "collapse": "접기"
+    }
   }
 }

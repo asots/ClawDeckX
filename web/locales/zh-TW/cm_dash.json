@@ -156,5 +156,23 @@
     "dreamingOn": "運行中",
     "dreamingOff": "已關閉",
     "dreamingPromoted": "已提升"
+  },
+  "d": {
+    "mas": {
+      "title": "模型驗證狀態",
+      "refresh": "重新整理",
+      "providersCount": "{{n}} 個 Provider",
+      "openAuth": "開啟驗證設定",
+      "loadError": "載入驗證狀態失敗",
+      "empty": "沒有可重新整理的憑證。",
+      "statusOk": "正常",
+      "statusExpiring": "即將過期",
+      "statusExpired": "已過期",
+      "statusMissing": "缺失",
+      "statusStatic": "靜態",
+      "expiresIn": "剩餘",
+      "showAll": "顯示全部 ({{n}})",
+      "collapse": "收合"
+    }
   }
 }

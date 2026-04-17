@@ -156,5 +156,23 @@
     "dreamingOn": "运行中",
     "dreamingOff": "已关闭",
     "dreamingPromoted": "已提升"
+  },
+  "d": {
+    "mas": {
+      "title": "模型鉴权状态",
+      "refresh": "刷新",
+      "providersCount": "{{n}} 个 Provider",
+      "openAuth": "打开鉴权设置",
+      "loadError": "加载鉴权状态失败",
+      "empty": "没有可刷新的凭据。",
+      "statusOk": "正常",
+      "statusExpiring": "即将过期",
+      "statusExpired": "已过期",
+      "statusMissing": "缺失",
+      "statusStatic": "静态",
+      "expiresIn": "剩余",
+      "showAll": "显示全部 ({{n}})",
+      "collapse": "收起"
+    }
   }
 }

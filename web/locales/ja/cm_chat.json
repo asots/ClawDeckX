@@ -213,6 +213,11 @@
     "skillsSearch": "スキル検索",
     "skillsDetail": "スキル詳細",
     "compactionSummary": "要約",
-    "compactionNoSummary": "要約なし"
+    "compactionNoSummary": "要約なし",
+    "cmdActiveMemory": "アクティブメモリ管理",
+    "cmdTrace": "プラグイントレース切替",
+    "cmdPair": "デバイスペアリング承認",
+    "cmdCard": "LINE カード送信",
+    "cmdPhone": "電話ノード指令を有効化"
   }
 }

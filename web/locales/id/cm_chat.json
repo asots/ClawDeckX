@@ -213,6 +213,11 @@
     "skillsSearch": "Cari skill",
     "skillsDetail": "Detail skill",
     "compactionSummary": "Ringkasan",
-    "compactionNoSummary": "Tidak ada ringkasan"
+    "compactionNoSummary": "Tidak ada ringkasan",
+    "cmdActiveMemory": "Manage Active Memory",
+    "cmdTrace": "Toggle plugin trace",
+    "cmdPair": "Approve device pairing",
+    "cmdCard": "Send LINE rich card",
+    "cmdPhone": "Arm phone node commands"
   }
 }

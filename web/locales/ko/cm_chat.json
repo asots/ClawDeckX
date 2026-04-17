@@ -213,6 +213,11 @@
     "skillsSearch": "스킬 검색",
     "skillsDetail": "스킬 상세",
     "compactionSummary": "요약",
-    "compactionNoSummary": "요약 없음"
+    "compactionNoSummary": "요약 없음",
+    "cmdActiveMemory": "액티브 메모리 관리",
+    "cmdTrace": "플러그인 트레이스 전환",
+    "cmdPair": "기기 페어링 승인",
+    "cmdCard": "LINE 카드 전송",
+    "cmdPhone": "전화 노드 명령 활성화"
   }
 }

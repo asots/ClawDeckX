@@ -156,5 +156,23 @@
     "dreamingOn": "نشط",
     "dreamingOff": "معطّل",
     "dreamingPromoted": "مُرقّاة"
+  },
+  "d": {
+    "mas": {
+      "title": "Model Auth Status",
+      "refresh": "Refresh",
+      "providersCount": "{{n}} providers",
+      "openAuth": "Open auth settings",
+      "loadError": "Failed to load auth status",
+      "empty": "No refreshable credentials configured.",
+      "statusOk": "ok",
+      "statusExpiring": "expiring",
+      "statusExpired": "expired",
+      "statusMissing": "missing",
+      "statusStatic": "static",
+      "expiresIn": "Expires in",
+      "showAll": "Show all ({{n}})",
+      "collapse": "Show less"
+    }
   }
 }

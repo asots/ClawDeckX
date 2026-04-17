@@ -213,6 +213,11 @@
     "skillsSearch": "Skills suchen",
     "skillsDetail": "Skill-Details",
     "compactionSummary": "Zusammenfassung",
-    "compactionNoSummary": "Keine Zusammenfassung verfügbar"
+    "compactionNoSummary": "Keine Zusammenfassung verfügbar",
+    "cmdActiveMemory": "Manage Active Memory",
+    "cmdTrace": "Toggle plugin trace",
+    "cmdPair": "Approve device pairing",
+    "cmdCard": "Send LINE rich card",
+    "cmdPhone": "Arm phone node commands"
   }
 }

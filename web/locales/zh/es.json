@@ -1523,5 +1523,17 @@
   "dreamingEnabled": "启用梦境记忆",
   "dreamingFrequency": "频率",
   "dreamingRecencyHalfLife": "近期衰减半衰期（天）",
-  "dreamingMaxAge": "最大保留天数"
+  "dreamingMaxAge": "最大保留天数",
+  "contextLimits": "上下文限制",
+  "memoryGetDefaultLines": "memory_get 默认行数",
+  "memoryGetMaxChars": "memory_get 最大字符数",
+  "postCompactionMaxChars": "压缩后最大字符数",
+  "toolResultMaxChars": "工具结果最大字符数",
+  "skillsLimits": "技能限制",
+  "maxSkillsPromptChars": "技能 Prompt 最大字符数",
+  "experimental": "实验性",
+  "localModelLean": "本地模型精简模式",
+  "localModelLeanDesc": "丢弃 browser / cron / message 等重量级默认工具，减小 prompt 体积，适合弱本地模型。",
+  "unknownToolThreshold": "未知工具阈值",
+  "unknownToolThresholdDesc": "N 次未知工具流式尝试后终止幻觉循环（默认 10；流保护默认启用）。"
 }
