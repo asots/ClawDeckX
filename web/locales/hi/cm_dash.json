@@ -159,20 +159,20 @@
   },
   "d": {
     "mas": {
-      "title": "Model Auth Status",
-      "refresh": "Refresh",
-      "providersCount": "{{n}} providers",
-      "openAuth": "Open auth settings",
-      "loadError": "Failed to load auth status",
-      "empty": "No refreshable credentials configured.",
-      "statusOk": "ok",
-      "statusExpiring": "expiring",
-      "statusExpired": "expired",
-      "statusMissing": "missing",
-      "statusStatic": "static",
-      "expiresIn": "Expires in",
-      "showAll": "Show all ({{n}})",
-      "collapse": "Show less"
+      "title": "मॉडल प्रमाणीकरण स्थिति",
+      "refresh": "रिफ़्रेश",
+      "providersCount": "{{n}} प्रदाता",
+      "openAuth": "प्रमाणीकरण सेटिंग खोलें",
+      "loadError": "प्रमाणीकरण स्थिति लोड करने में विफल",
+      "empty": "कोई रिफ़्रेश योग्य क्रेडेंशियल कॉन्फ़िगर नहीं हैं।",
+      "statusOk": "ठीक",
+      "statusExpiring": "समाप्त होने वाला",
+      "statusExpired": "समाप्त",
+      "statusMissing": "अनुपलब्ध",
+      "statusStatic": "स्थिर",
+      "expiresIn": "शेष",
+      "showAll": "सभी दिखाएँ ({{n}})",
+      "collapse": "कम दिखाएँ"
     }
   }
 }

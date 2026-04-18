@@ -159,20 +159,20 @@
   },
   "d": {
     "mas": {
-      "title": "Model Auth Status",
-      "refresh": "Refresh",
-      "providersCount": "{{n}} providers",
-      "openAuth": "Open auth settings",
-      "loadError": "Failed to load auth status",
-      "empty": "No refreshable credentials configured.",
-      "statusOk": "ok",
-      "statusExpiring": "expiring",
-      "statusExpired": "expired",
-      "statusMissing": "missing",
-      "statusStatic": "static",
-      "expiresIn": "Expires in",
-      "showAll": "Show all ({{n}})",
-      "collapse": "Show less"
+      "title": "حالة مصادقة النموذج",
+      "refresh": "تحديث",
+      "providersCount": "{{n}} مزوّد",
+      "openAuth": "فتح إعدادات المصادقة",
+      "loadError": "فشل تحميل حالة المصادقة",
+      "empty": "لا توجد بيانات اعتماد قابلة للتحديث.",
+      "statusOk": "جيد",
+      "statusExpiring": "قارب على الانتهاء",
+      "statusExpired": "منتهي",
+      "statusMissing": "مفقود",
+      "statusStatic": "ثابت",
+      "expiresIn": "ينتهي خلال",
+      "showAll": "عرض الكل ({{n}})",
+      "collapse": "إخفاء"
     }
   }
 }

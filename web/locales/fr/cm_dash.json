@@ -159,20 +159,20 @@
   },
   "d": {
     "mas": {
-      "title": "Model Auth Status",
-      "refresh": "Refresh",
-      "providersCount": "{{n}} providers",
-      "openAuth": "Open auth settings",
-      "loadError": "Failed to load auth status",
-      "empty": "No refreshable credentials configured.",
-      "statusOk": "ok",
-      "statusExpiring": "expiring",
-      "statusExpired": "expired",
-      "statusMissing": "missing",
-      "statusStatic": "static",
-      "expiresIn": "Expires in",
-      "showAll": "Show all ({{n}})",
-      "collapse": "Show less"
+      "title": "État d’authentification des modèles",
+      "refresh": "Actualiser",
+      "providersCount": "{{n}} fournisseurs",
+      "openAuth": "Ouvrir les paramètres d’authentification",
+      "loadError": "Échec du chargement de l’état d’authentification",
+      "empty": "Aucune accréditation actualisable configurée.",
+      "statusOk": "OK",
+      "statusExpiring": "Bientôt expiré",
+      "statusExpired": "Expiré",
+      "statusMissing": "Manquant",
+      "statusStatic": "Statique",
+      "expiresIn": "Expire dans",
+      "showAll": "Tout afficher ({{n}})",
+      "collapse": "Réduire"
     }
   }
 }

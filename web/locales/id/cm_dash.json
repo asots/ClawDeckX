@@ -159,20 +159,20 @@
   },
   "d": {
     "mas": {
-      "title": "Model Auth Status",
-      "refresh": "Refresh",
-      "providersCount": "{{n}} providers",
-      "openAuth": "Open auth settings",
-      "loadError": "Failed to load auth status",
-      "empty": "No refreshable credentials configured.",
-      "statusOk": "ok",
-      "statusExpiring": "expiring",
-      "statusExpired": "expired",
-      "statusMissing": "missing",
-      "statusStatic": "static",
-      "expiresIn": "Expires in",
-      "showAll": "Show all ({{n}})",
-      "collapse": "Show less"
+      "title": "Status Autentikasi Model",
+      "refresh": "Segarkan",
+      "providersCount": "{{n}} penyedia",
+      "openAuth": "Buka pengaturan autentikasi",
+      "loadError": "Gagal memuat status autentikasi",
+      "empty": "Tidak ada kredensial yang dapat disegarkan.",
+      "statusOk": "OK",
+      "statusExpiring": "Segera kedaluwarsa",
+      "statusExpired": "Kedaluwarsa",
+      "statusMissing": "Tidak ada",
+      "statusStatic": "Statis",
+      "expiresIn": "Kedaluwarsa dalam",
+      "showAll": "Tampilkan semua ({{n}})",
+      "collapse": "Tampilkan lebih sedikit"
     }
   }
 }

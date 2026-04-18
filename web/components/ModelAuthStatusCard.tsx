@@ -23,7 +23,7 @@ const statusColor: Record<ModelAuthProviderStatus, { bg: string; text: string; d
 
 function getMas(language: Language): Record<string, string> {
   const t = getTranslation(language) as any;
-  return (t?.dash?.mas || t?.mas || {}) as Record<string, string>;
+  return (t?.d?.mas || {}) as Record<string, string>;
 }
 
 function severityOrder(s: ModelAuthProviderStatus): number {
