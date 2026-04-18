@@ -418,6 +418,10 @@ export const ChannelsSection: React.FC<SectionProps> = ({ config, schema, setFie
   // Plugin install state
   const [canInstallPlugin, setCanInstallPlugin] = useState<boolean | null>(null);
   const [pluginInstalled, setPluginInstalled] = useState<Record<string, boolean>>({});
+  // True while checkCanInstallPlugin() is running — used to gate the install
+  // button so users can't click it before detection completes and accidentally
+  // reinstall an already-installed plugin.
+  const [pluginCheckInProgress, setPluginCheckInProgress] = useState(false);
   const [pluginInstalling, setPluginInstalling] = useState(false);
   const [pluginInstallResult, setPluginInstallResult] = useState<{ ok: boolean; msg: string; phase?: 'installed' | 'restarting' | 'ready'; canForceRetry?: boolean; pendingSpec?: string; pendingChannelId?: string } | null>(null);
 
@@ -547,6 +551,7 @@ export const ChannelsSection: React.FC<SectionProps> = ({ config, schema, setFie
 
   // Check if plugin install is available (local gateway only) and check installed status
   const checkCanInstallPlugin = useCallback(async () => {
+    setPluginCheckInProgress(true);
     try {
       const res = await pluginApi.canInstall();
       setCanInstallPlugin(res.can_install);
@@ -579,6 +584,7 @@ export const ChannelsSection: React.FC<SectionProps> = ({ config, schema, setFie
       })
     );
     setPluginInstalled(installed);
+    setPluginCheckInProgress(false);
   }, []);
 
   // Install plugin with gateway restart detection
@@ -615,13 +621,11 @@ export const ChannelsSection: React.FC<SectionProps> = ({ config, schema, setFie
             clearInterval(poll);
             // Phase 3: Gateway ready, refresh plugin status
             setPluginInstallResult({ ok: true, msg: 'success', phase: 'ready' });
-            // Update plugin installed status
-            try {
-              const checkRes = await pluginApi.checkInstalled(spec);
-              if (checkRes.installed) {
-                setPluginInstalled(prev => ({ ...prev, [channelId]: true }));
-              }
-            } catch { /* ignore */ }
+            // Trust the successful install — checkInstalled can race with the
+            // gateway's plugin registry reload and return false for a few
+            // seconds after restart, which leaves the UI stuck showing the
+            // "install" button for an already-installed plugin.
+            setPluginInstalled(prev => ({ ...prev, [channelId]: true }));
             // Reload editor config so the in-memory snapshot includes the newly
             // installed plugin's plugins.installs record.  Without this, a
             // subsequent save() would push the stale pre-install snapshot back
@@ -635,6 +639,7 @@ export const ChannelsSection: React.FC<SectionProps> = ({ config, schema, setFie
             clearInterval(poll);
             // Timeout - gateway didn't come back, but plugin was installed
             setPluginInstallResult({ ok: true, msg: 'success', phase: 'ready' });
+            setPluginInstalled(prev => ({ ...prev, [channelId]: true }));
             // Still try to reload config even on timeout
             try {
               if (reload) await reload();
@@ -716,6 +721,29 @@ export const ChannelsSection: React.FC<SectionProps> = ({ config, schema, setFie
     setPairingError('');
   }, []);
 
+  // Wait for the gateway WS to reconnect and answer a health probe after a
+  // restart. gatewayApi.restart() returns as soon as the HTTP call completes,
+  // but the plugin (e.g. WhatsApp / WeChat provider) may still be loading.
+  // Polling /api/v1/gw/status → connected AND a successful gw health probe
+  // ensures we only reveal post-restart UI (QR button) once the gateway is
+  // actually able to service requests.
+  const waitGatewayReady = useCallback(async (timeoutMs = 30000): Promise<boolean> => {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      try {
+        const st = (await gwApi.status()) as any;
+        if (st?.connected) {
+          try {
+            await gwApi.proxy('health', {});
+            return true;
+          } catch { /* gateway connected but not ready yet, keep polling */ }
+        }
+      } catch { /* network blip, keep polling */ }
+      await new Promise(r => setTimeout(r, 500));
+    }
+    return false;
+  }, []);
+
   const handleFinishWizard = useCallback(async (chId: string) => {
     const acctKey = wizardAccount || 'default';
     const acctCfg = channels[chId]?.accounts?.[acctKey] || {};
@@ -738,6 +766,13 @@ export const ChannelsSection: React.FC<SectionProps> = ({ config, schema, setFie
       }
       // Then restart the gateway
       await gatewayApi.restart();
+      // Wait for WS to reconnect + health probe to succeed before exposing
+      // QR / pairing UI. Otherwise the user clicks "Generate QR" before the
+      // plugin has finished loading and hits a transient failure.
+      const ready = await waitGatewayReady();
+      if (!ready) {
+        toast('error', cw.gatewayRestartTimeout || 'Gateway restart timeout — please retry');
+      }
     } catch (err) {
       console.error('Failed to finish wizard:', err);
     }
@@ -750,7 +785,7 @@ export const ChannelsSection: React.FC<SectionProps> = ({ config, schema, setFie
     } else {
       resetWizard();
     }
-  }, [getField, resetWizard, save, channels, es, toast, wizardAccount]);
+  }, [getField, resetWizard, save, channels, es, toast, wizardAccount, waitGatewayReady, cw]);
 
   const handleApprovePairing = useCallback(async (chId: string) => {
     if (!pairingCode.trim()) return;
@@ -2078,7 +2113,20 @@ export const ChannelsSection: React.FC<SectionProps> = ({ config, schema, setFie
                                       chId === 'matrix' ? '@openclaw/matrix' :
                                         chId === 'voicecall' ? '@openclaw/voice-call' : '';
                       const isInstalled = pluginInstalled[chId] === true;
-                      
+
+                      // Still detecting — show a neutral "checking" pill so users
+                      // cannot click "install" before the status is known (which
+                      // would trigger a redundant reinstall of an already-present
+                      // plugin).
+                      if (pluginCheckInProgress && !isInstalled) {
+                        return (
+                          <div className="flex items-center gap-2 p-2.5 rounded-lg bg-slate-50 dark:bg-white/[0.03] border border-slate-200/60 dark:border-white/[0.06]">
+                            <span className="material-symbols-outlined text-[14px] text-slate-500 animate-spin">progress_activity</span>
+                            <p className="text-[10px] font-bold text-slate-600 dark:text-white/60">{cw.pluginChecking}</p>
+                          </div>
+                        );
+                      }
+
                       // Already installed - show green success
                       if (isInstalled) {
                         return (

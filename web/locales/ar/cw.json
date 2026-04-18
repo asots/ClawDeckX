@@ -55,6 +55,7 @@
   "qrReady": "رمز QR جاهز، يرجى المسح",
   "loginSuccess": "تم تسجيل الدخول بنجاح",
   "loginTimeout": "انتهت مهلة تسجيل الدخول، يرجى المحاولة مرة أخرى",
+  "gatewayRestartTimeout": "انتهت مهلة إعادة تشغيل البوابة — يرجى إعادة المحاولة",
   "loginFailed": "فشل تسجيل الدخول",
   "webLoginPluginError": "فشل تحميل إضافة القناة أو أنها غير مثبتة. يرجى التحقق من أن الإضافة مثبتة بشكل صحيح ومتوافقة مع إصدار OpenClaw الحالي. راجع GitHub issue openclaw/openclaw#52341 للتفاصيل.",
   "started": "بدأ تسجيل الدخول",
@@ -73,6 +74,7 @@
   "pluginInstallSuccess": "تم تثبيت الإضافة بنجاح",
   "gatewayRestarting": "جارٍ إعادة تشغيل البوابة...",
   "pluginReady": "الإضافة جاهزة",
+  "pluginChecking": "جارٍ التحقق من حالة الإضافة...",
   "pluginInstalled": "الإضافة مثبتة",
   "remoteGatewayHint": "ثبّت يدوياً على البوابة البعيدة",
   "copyPermJson": "نسخ أذونات JSON",
@@ -91,5 +93,205 @@
   "pairingSuccess": "اكتمل الإقران! يمكنك الآن المراسلة.",
   "skipPairing": "تخطي الإقران",
   "noPrepNeeded": "لا يحتاج تحضيراً",
-  "prepDone": "اكتمل التحضير"
+  "prepDone": "اكتمل التحضير",
+  "telegramHelpUrl": "دليل إعداد Telegram",
+  "telegramPrep": [
+    "Open Telegram, search for @BotFather (or click the link above)",
+    "Send /newbot, follow prompts for name and username",
+    "Copy the generated Bot Token (format: digits:alphanumeric, e.g. 123456789:ABCdef-GHI)",
+    "For groups: /setprivacy → Disable (turn off privacy mode)",
+    "⚠️ After disabling privacy mode, you MUST remove and re-add the Bot to the group for it to take effect",
+    "For admin features (pin/delete messages): set Bot as group admin"
+  ],
+  "discordHelpUrl": "دليل إعداد Discord",
+  "discordPrep": [
+    "Open Discord Developer Portal → New Application (or click the link above)",
+    "Bot → Add Bot → Reset Token → Copy Bot Token (note: this is NOT the OAuth2 Client Secret)",
+    "⚠️ MUST enable Message Content Intent (otherwise Bot connects but reads empty message content)",
+    "Also enable Server Members Intent (if you need member lists)",
+    "OAuth2 URL Generator → Check bot + applications.commands",
+    "Select permissions: View Channels, Send Messages, Read Message History, Embed Links, Attach Files (use Permission Calculator)",
+    "Generate invite URL and add Bot to server",
+    "Note: Bots in 75+ servers require additional Privileged Intent approval"
+  ],
+  "slackHelpUrl": "دليل إعداد Slack",
+  "slackPrep": [
+    "Create App at api.slack.com/apps (From scratch, or click the link above)",
+    "Socket Mode → Enable → Generate App-Level Token (xapp-..., requires connections:write scope)",
+    "OAuth & Permissions → Add Bot Token Scopes → Install to Workspace → Copy Bot Token (xoxb-...)",
+    "⚠️ Three different tokens: App Token (xapp-) for Socket Mode, Bot Token (xoxb-) for API calls, User Token (xoxp-) optional",
+    "Event Subscriptions → Subscribe to message.channels, message.groups, message.im, message.mpim, app_mention",
+    "App Home → Enable Messages Tab (otherwise users cannot DM the Bot)",
+    "Use /invite @botname to add Bot to target channels",
+    "After modifying Scopes, you must Reinstall to Workspace for changes to take effect"
+  ],
+  "whatsappPrep": [
+    "⚠️ Gateway MUST run on Node.js (WhatsApp/Baileys is unstable on Bun, causes frequent disconnects)",
+    "Prepare a dedicated phone number (strongly recommended — unofficial protocol carries ban risk)",
+    "Ensure the number is registered on WhatsApp and can send/receive messages",
+    "Check linked devices count (max 4 — cannot connect if limit reached)",
+    "You will scan a QR code on your phone later (QR expires in ~20 seconds, be ready)",
+    "If connection fails, delete the session files in ~/.openclaw/sessions/ and re-scan"
+  ],
+  "signalHelpUrl": "دليل إعداد Signal",
+  "signalPrep": [
+    "Install Java 21+ runtime (required by signal-cli — most common failure cause)",
+    "Install signal-cli (click the link below for latest version and install instructions)",
+    "ARM Linux users may need to manually compile libsignal-client native library",
+    "Prepare a dedicated phone number (recommended — Bot ignores its own messages to prevent loops)",
+    "Run signal-cli link, then scan QR code in phone Signal → Settings → Linked Devices",
+    "If signal-cli is not in system PATH, specify the full path in config",
+    "Note: Signal has strict rate limits — bulk sending can trigger throttling"
+  ],
+  "telegramPitfall": "تأكد من أن الرمز من @BotFather وليس رمز API",
+  "discordPitfall": "فعّل غرض Message Content في بوابة المطورين → Bot → Privileged Gateway Intents",
+  "slackPitfall": "استخدم رمز Bot Token (xoxb-...) وليس User Token",
+  "whatsappPitfall": "استخدم رقم هاتف منفصل أو eSIM موصى به",
+  "signalPitfall": "يتطلب تشغيل signal-cli كخادم REST",
+  "feishuPrep": [
+    "Install Feishu plugin: openclaw plugins install @openclaw/feishu",
+    "Sign in to Feishu Open Platform open.feishu.cn → Create enterprise app",
+    "Copy App Key and App Secret from Credentials page",
+    "Add Bot capability in App Capabilities, set bot name",
+    "Add required permissions: im:message, im:message.p2p_msg:readonly, im:message.group_at_msg:readonly, im:message:send_as_bot, im:resource (use \"Copy Permission JSON\" below for batch import)",
+    "In Events & Callbacks, select \"Receive events via long connection\" (recommended, no public IP needed), add events: im.message.receive_v1, im.message.message_read_v1, im.chat.member.bot.added_v1, im.chat.member.bot.deleted_v1",
+    "Create and publish a version in Version Management (required after every config change)",
+    "⚠️ Bot can only be found in Feishu search after publishing"
+  ],
+  "feishuPitfall": "تأكد من نشر التطبيق وتمكين أذونات الأحداث",
+  "feishuHelpUrl": "دليل إعداد Feishu",
+  "dingtalkPrep": [
+    "Install DingTalk plugin: openclaw plugins install @openclaw-china/dingtalk",
+    "In DingTalk, tap \"Create or Join Organization\" → Create one (no documents needed, 5 minutes)",
+    "Sign in to DingTalk Open Platform open-dev.dingtalk.com → Switch to the new org → Create app",
+    "Add Bot capability in App Capabilities, message receive mode MUST be Stream (no public IP needed)",
+    "Get Client ID (AppKey) and Client Secret (AppSecret) from Credentials page",
+    "Create and publish a version in Version Management (bot appears in DingTalk search only after publishing)",
+    "(Optional) For AI Card streaming, enable Card.Instance.Write and Card.Streaming.Write permissions"
+  ],
+  "dingtalkPitfall": "فعّل صلاحيات Stream للبوت في وحدة تحكم DingTalk",
+  "dingtalkHelpUrl": "دليل إعداد DingTalk",
+  "wecomPrep": [
+    "Install WeCom plugin: openclaw plugins install @wecom/wecom-openclaw-plugin",
+    "Visit work.weixin.qq.com to register and sign in to WeCom admin console",
+    "In App Management → Smart Bot, create a bot",
+    "Set callback URL: http://<your-ip-or-domain>:18789/wecom (ensure port 18789 is accessible)",
+    "Note the generated Token and EncodingAESKey (click \"Random Generate\")",
+    "⚠️ Configure OpenClaw and start the gateway FIRST, then go back to WeCom console and click \"Create\" — otherwise callback verification will fail",
+    "After creation, scan QR code to add the bot and start chatting"
+  ],
+  "wecomPitfall": "تأكد من تطابق عنوان الاستدعاء والرمز ومفتاح AES مع وحدة تحكم WeCom",
+  "wecomHelpUrl": "دليل إعداد WeCom",
+  "wecom_kfPrep": [
+    "Install WeCom App plugin: openclaw plugins install @wecom/wecom-openclaw-plugin-app",
+    "Sign in to WeCom admin console work.weixin.qq.com",
+    "In App Management → Self-built, create an app, get AgentId and Secret (corpSecret)",
+    "Get Corp ID from My Enterprise page",
+    "In app details → Receive Messages → Set API Receive, fill URL (http://IP:18789/wecom-app), Token, EncodingAESKey",
+    "Add server public IP to Trusted IP list",
+    "⚠️ Configure OpenClaw and start gateway first, then click \"Save\" in WeCom — otherwise verification fails",
+    "Supports proactive messaging, image/voice/file send & receive, WeChat Work entry access"
+  ],
+  "wecom_kfPitfall": "يتطلب إذن مسؤول المؤسسة لإنشاء التطبيق",
+  "qqPrep": [
+    "Install QQ plugin: openclaw plugins install @sliverp/qqbot@latest",
+    "Visit QQ Open Platform q.qq.com → Register developer account and complete review",
+    "Create a Bot application (not mini-program or game)",
+    "Get AppKey and AppSecret from app details page",
+    "Enable permissions and add test members (optionally add bot to test group)",
+    "(Optional) For Markdown rendering, apply for Markdown template permission separately (review takes time)"
+  ],
+  "qqPitfall": "يتطلب تطبيق بوت QQ رسمي — لا يدعم بروتوكولات الطرف الثالث",
+  "qqHelpUrl": "دليل إعداد QQ",
+  "yuanbaoPrep": [
+    "Install Yuanbao plugin on the deployed OpenClaw device: openclaw plugins install openclaw-plugin-yuanbao@latest",
+    "Open Yuanbao App  Party  My Bot  Link existing OpenClaw  Select 'Method 2: Channel Config'",
+    "نسخ App ID و AppSecret من صفحة الربط (انسخ بالضبط، لا تفوت أي حرف)",
+    "املأ App ID و AppSecret أدناه، أو شغّل: openclaw channels add --channel yuanbao --token \"<AppKey>:<AppSecret>\"",
+    "Restart OpenClaw gateway: openclaw gateway restart",
+    "Return to Yuanbao App and tap 'Done' to complete linking"
+  ],
+  "yuanbaoPitfall": "⚠️ Common pitfalls: 1) AppKey and AppSecret must be copied exactly  don't miss any characters; 2) Gateway must be restarted after config changes; 3) Yuanbao App must be V2.60.10 or above; 4) Token format is AppKey:AppSecret when using CLI",
+  "yuanbaoHelpUrl": "https://yuanbao.tencent.com",
+  "wechatPrep": [
+    "Personal WeChat requires a third-party bridge (e.g. wechatbot-webhook)",
+    "Official account requires a verified service account on mp.weixin.qq.com",
+    "Get AppKey and AppSecret",
+    "Configure server URL, Token, and EncodingAESKey",
+    "Note: Personal account stability depends on third-party tools; WeCom is recommended instead"
+  ],
+  "wechatPitfall": "حساب WeChat الرسمي يتطلب التحقق لواجهة الرد المخصص",
+  "wechatHelpUrl": "دليل إعداد WeChat",
+  "doubaoPrep": [
+    "Register a developer account on Doubao Open Platform",
+    "Create an app and get credentials",
+    "Configure callback URL"
+  ],
+  "doubaoPitfall": "يتطلب إنشاء تطبيق على منصة Doubao",
+  "imessageHelpUrl": "دليل إعداد iMessage",
+  "imessagePrep": [
+    "Requires an always-on Mac as iMessage server",
+    "Install BlueBubbles Server and sign in with Apple ID",
+    "For full features (Tapbacks etc.) you need to disable SIP (System Integrity Protection)",
+    "Configure BlueBubbles API address and password"
+  ],
+  "imessagePitfall": "macOS فقط، يحتاج وصول كامل للقرص",
+  "bluebbubblesHelpUrl": "دليل إعداد BlueBubbles",
+  "bluebbubblesPrep": [
+    "Requires an always-on Mac running BlueBubbles Server",
+    "Download and install BlueBubbles Server (see link below)",
+    "Sign in with Apple ID and ensure iMessage works",
+    "Configure connection method and API password in BlueBubbles",
+    "Private API features require disabling SIP"
+  ],
+  "bluebbubblesPitfall": "يحتاج خادم BlueBubbles على جهاز Mac",
+  "googlechatHelpUrl": "دليل إعداد Google Chat",
+  "googlechatPrep": [
+    "Requires a Google Workspace account (personal Gmail does not support Chat API)",
+    "Create a project in Google Cloud Console and enable Chat API",
+    "Create a Service Account with chat.bot scope",
+    "Get Workspace admin to approve the Chat App installation",
+    "Configure Chat App callback URL or use Pub/Sub"
+  ],
+  "googlechatPitfall": "يحتاج حساب Google Workspace — لا يعمل مع حسابات المستهلك",
+  "msteamsHelpUrl": "دليل إعداد Microsoft Teams",
+  "msteamsPrep": [
+    "Create App Registration in Azure Portal, get App Key",
+    "Create Client Secret as App Password",
+    "Register Bot in Bot Framework",
+    "Enable Sideloading in Teams admin center (for testing)",
+    "Plugin required: openclaw plugins install <msteams-plugin-url>"
+  ],
+  "msteamsPitfall": "يحتاج تسجيل Azure Bot — قد يتطلب اشتراك Azure مدفوع",
+  "matrixHelpUrl": "دليل إعداد Matrix",
+  "matrixPrep": [
+    "Register or deploy a Matrix Homeserver (e.g. matrix.org or self-hosted Synapse)",
+    "Create a Bot account and get Access Token (via /_matrix/client/r0/login API)",
+    "Homeserver URL must include protocol (e.g. https://matrix.org)",
+    "E2EE rooms may require additional configuration"
+  ],
+  "matrixPitfall": "استخدم رمز الوصول — كلمات المرور لا تعمل مع جميع الخوادم الرئيسية",
+  "mattermostHelpUrl": "دليل إعداد Mattermost",
+  "mattermostPrep": [
+    "Create a Bot Account in Mattermost admin console",
+    "Copy the Bot Token",
+    "Ensure Bot is added to target channels/teams",
+    "Configure Mattermost server Base URL"
+  ],
+  "mattermostPitfall": "يحتاج حساب بوت من وحدة تحكم النظام",
+  "zaloPrep": [
+    "Register on Zalo Developer Platform",
+    "Create app and get credentials",
+    "Configure Webhook callback URL",
+    "Plugin required"
+  ],
+  "zaloPitfall": "يحتاج حساب Zalo Official Account المعتمد",
+  "voicecallPrep": [
+    "Configure voice call provider (e.g. Twilio, Vonage)",
+    "Get API credentials (Account SID, Auth Token)",
+    "Prepare a voice-capable phone number",
+    "Plugin required"
+  ],
+  "voicecallPitfall": "يحتاج حساب Twilio/Telnyx مع رقم هاتف",
+  "pluginInstallCmd": "أمر التثبيت"
 }

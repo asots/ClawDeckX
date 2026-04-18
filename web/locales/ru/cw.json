@@ -55,6 +55,7 @@
   "qrReady": "QR-код готов, отсканируйте",
   "loginSuccess": "Вход выполнен",
   "loginTimeout": "Время входа истекло, попробуйте снова",
+  "gatewayRestartTimeout": "Таймаут перезапуска шлюза — повторите попытку",
   "loginFailed": "Ошибка входа",
   "webLoginPluginError": "Плагин канала не удалось загрузить или он не установлен. Убедитесь, что плагин правильно установлен и совместим с вашей версией OpenClaw. Подробности см. в GitHub issue openclaw/openclaw#52341.",
   "started": "Вход начат",
@@ -73,6 +74,7 @@
   "pluginInstallSuccess": "Плагин установлен!",
   "gatewayRestarting": "Перезапуск шлюза...",
   "pluginReady": "Плагин готов, продолжите настройку",
+  "pluginChecking": "Проверка состояния плагина...",
   "pluginInstalled": "✓ Плагин установлен",
   "remoteGatewayHint": "Обнаружен удалённый шлюз. Выполните команду на сервере:",
   "copyPermJson": "Скопировать JSON разрешений",
@@ -91,5 +93,205 @@
   "pairingSuccess": "Сопряжение успешно!",
   "skipPairing": "Пропустить",
   "noPrepNeeded": "Дополнительная подготовка не требуется",
-  "prepDone": "Подготовка завершена"
+  "prepDone": "Подготовка завершена",
+  "telegramHelpUrl": "https://t.me/BotFather",
+  "telegramPrep": [
+    "Откройте Telegram, найдите @BotFather (или перейдите по ссылке выше)",
+    "Отправьте /newbot, следуйте подсказкам для имени и юзернейма",
+    "Скопируйте сгенерированный Bot Token (формат: цифры:буквенно-цифровой, напр. 123456789:ABCdef-GHI)",
+    "Для групп: /setprivacy → Disable (отключить режим приватности)",
+    "⚠️ После отключения Privacy Mode необходимо УДАЛИТЬ и заново ДОБАВИТЬ бота в группу",
+    "Для админ-функций (закрепление/удаление сообщений): назначьте бота администратором группы"
+  ],
+  "discordHelpUrl": "https://discord.com/developers/applications",
+  "discordPrep": [
+    "Откройте Discord Developer Portal → New Application (или перейдите по ссылке выше)",
+    "Bot → Add Bot → Reset Token → Скопируйте Bot Token (это НЕ OAuth2 Client Secret)",
+    "⚠️ ОБЯЗАТЕЛЬНО включите Message Content Intent (иначе бот подключится, но получит пустое содержимое)",
+    "Также включите Server Members Intent (если нужен список участников)",
+    "OAuth2 URL Generator → Отметьте bot + applications.commands",
+    "Выберите права: View Channels, Send Messages, Read Message History, Embed Links, Attach Files (используйте калькулятор прав)",
+    "Сгенерируйте ссылку-приглашение и добавьте бота на сервер",
+    "Примечание: Боты на 75+ серверах требуют дополнительного одобрения Privileged Intent"
+  ],
+  "slackHelpUrl": "https://api.slack.com/apps",
+  "slackPrep": [
+    "Создайте приложение на api.slack.com/apps (С нуля, или перейдите по ссылке выше)",
+    "Socket Mode → Enable → Сгенерируйте App-Level Token (xapp-..., требуется scope connections:write)",
+    "OAuth & Permissions → Добавьте Bot Token Scopes → Install to Workspace → Скопируйте Bot Token (xoxb-...)",
+    "⚠️ Три разных токена: App Token (xapp-) для Socket Mode, Bot Token (xoxb-) для API, User Token (xoxp-) опционально",
+    "Event Subscriptions → Подпишитесь на message.channels, message.groups, message.im, message.mpim, app_mention",
+    "App Home → Включите Messages Tab (иначе пользователи не смогут писать боту в ЛС)",
+    "Используйте /invite @botname для добавления бота в нужные каналы",
+    "После изменения Scopes необходимо переустановить приложение в Workspace"
+  ],
+  "whatsappPrep": [
+    "⚠️ Шлюз ДОЛЖЕН работать на Node.js (WhatsApp/Baileys нестабилен на Bun, частые отключения)",
+    "Подготовьте отдельный номер телефона (настоятельно рекомендуется — неофициальный протокол несёт риск бана)",
+    "Убедитесь, что номер зарегистрирован в WhatsApp и может отправлять/получать сообщения",
+    "Проверьте количество привязанных устройств (макс. 4 — подключение невозможно при достижении лимита)",
+    "Позже нужно будет отсканировать QR-код на телефоне (QR действителен ~20 секунд, будьте готовы)",
+    "При ошибке подключения удалите файлы сессии в ~/.openclaw/sessions/ и повторите сканирование"
+  ],
+  "signalHelpUrl": "https://github.com/AsamK/signal-cli",
+  "signalPrep": [
+    "Установите Java 21+ (требуется для signal-cli — самая частая причина ошибок)",
+    "Установите signal-cli (перейдите по ссылке ниже для последней версии и инструкций)",
+    "Пользователям ARM Linux может потребоваться ручная компиляция нативной библиотеки libsignal-client",
+    "Подготовьте отдельный номер телефона (рекомендуется — бот игнорирует свои сообщения для предотвращения циклов)",
+    "Запустите signal-cli link, затем отсканируйте QR-код в Signal → Настройки → Привязанные устройства",
+    "Если signal-cli не в системном PATH, укажите полный путь в конфигурации",
+    "Примечание: Signal имеет строгие лимиты частоты — массовая отправка может вызвать ограничение"
+  ],
+  "telegramPitfall": "⚠️ Частые ошибки: 1) После отключения Privacy Mode удалите бота из группы и добавьте заново; 2) Формат токена: цифры:буквенно-цифровой; 3) Макс 20 сообщ./мин в группе, ошибка 429; 4) При наличии Webhook сначала вызовите deleteWebhook",
+  "discordPitfall": "⚠️ Частые ошибки: 1) Без Message Content Intent содержимое пустое (обязательно с авг 2022); 2) Bot Token ≠ OAuth2 Client Secret; 3) requireMention под guilds; 4) Боты в 75+ серверах требуют Privileged Intent; 5) Без прав — тихий сбой",
+  "slackPitfall": "⚠️ Частые ошибки: 1) Три токена: App (xapp-) Socket Mode, Bot (xoxb-) API, User (xoxp-) опционально; 2) Без Messages Tab нет ЛС; 3) Бот должен быть /invite в канал; 4) После изменения Scope переустановить; 5) missing_scope = нет прав",
+  "whatsappPitfall": "⚠️ Частые ошибки: 1) Шлюз ДОЛЖЕН работать на Node.js; 2) Риск бана с неофициальным протоколом; 3) QR действителен ~20с; 4) Повреждённая сессия: удалите ~/.openclaw/sessions/; 5) Макс 4 устройства",
+  "signalPitfall": "⚠️ Частые ошибки: 1) Отсутствие Java 21+ — причина №1; 2) ARM Linux: возможна компиляция libsignal-client; 3) Используйте signal-cli link, не register; 4) QR в терминале требует Unicode; 5) Signal ограничивает частоту сообщений",
+  "feishuPrep": [
+    "Установите плагин Feishu: openclaw plugins install @openclaw/feishu",
+    "Войдите на Feishu Open Platform open.feishu.cn → Создайте корпоративное приложение",
+    "Скопируйте App Key и App Secret со страницы учётных данных",
+    "Добавьте возможность Бот в Возможностях приложения, задайте имя бота",
+    "Добавьте необходимые права: im:message, im:message.p2p_msg:readonly, im:message.group_at_msg:readonly, im:message:send_as_bot, im:resource (используйте \"Copy Permission JSON\" ниже для пакетного импорта)",
+    "В События и обратные вызовы выберите \"Receive events via long connection\" (рекомендуется, не требует публичного IP), добавьте события: im.message.receive_v1, im.message.message_read_v1, im.chat.member.bot.added_v1, im.chat.member.bot.deleted_v1",
+    "Создайте и опубликуйте версию в Управлении версиями (требуется после каждого изменения конфигурации)",
+    "⚠️ Бота можно найти в поиске Feishu только после публикации"
+  ],
+  "feishuPitfall": "⚠️ Частые ошибки: 1) Без im.message.receive_v1 бот отправляет, но не получает; 2) Режим событий должен совпадать с connectionMode; 3) Публиковать версию после каждого изменения; 4) У бота нет корневой папки в облаке",
+  "feishuHelpUrl": "https://open.feishu.cn/app",
+  "dingtalkPrep": [
+    "Установите плагин DingTalk: openclaw plugins install @openclaw-china/dingtalk",
+    "В DingTalk нажмите \"Create or Join Organization\" → Создайте организацию (документы не нужны, 5 минут)",
+    "Войдите на DingTalk Open Platform open-dev.dingtalk.com → Переключитесь на новую организацию → Создайте приложение",
+    "Добавьте возможность Бот в Возможностях приложения, режим приёма сообщений ДОЛЖЕН быть Stream (не требует публичного IP)",
+    "Получите Client ID (AppKey) и Client Secret (AppSecret) со страницы учётных данных",
+    "Создайте и опубликуйте версию в Управлении версиями (бот появляется в поиске DingTalk только после публикации)",
+    "(Опционально) Для AI Card streaming включите права Card.Instance.Write и Card.Streaming.Write"
+  ],
+  "dingtalkPitfall": "⚠️ Частые ошибки: 1) Режим приёма должен быть Stream; 2) Опубликовать версию после создания; 3) API имеет лимиты частоты; 4) Без AI Card используются обычные сообщения",
+  "dingtalkHelpUrl": "https://open-dev.dingtalk.com",
+  "wecomPrep": [
+    "Установите плагин WeCom: openclaw plugins install @wecom/wecom-openclaw-plugin",
+    "Перейдите на work.weixin.qq.com для регистрации и входа в консоль администратора WeCom",
+    "В Управлении приложениями → Smart Bot создайте бота",
+    "Укажите URL обратного вызова: http://<ваш-ip-или-домен>:18789/wecom (порт 18789 должен быть доступен)",
+    "Запишите сгенерированные Token и EncodingAESKey (нажмите \"Random Generate\")",
+    "⚠️ СНАЧАЛА настройте OpenClaw и запустите шлюз, затем вернитесь в консоль WeCom и нажмите \"Create\" — иначе проверка обратного вызова не пройдёт",
+    "После создания отсканируйте QR-код для добавления бота и начните общение"
+  ],
+  "wecomPitfall": "⚠️ Частые ошибки: 1) URL callback должен быть публичным: http://IP:18789/wecom; 2) Сначала настройте OpenClaw; 3) encodingAESKey = 43 символа; 4) Откройте порт 18789",
+  "wecomHelpUrl": "https://open.work.weixin.qq.com/help/wap/detail?docid=21657",
+  "wecom_kfPrep": [
+    "Установите плагин WeCom App: openclaw plugins install @wecom/wecom-openclaw-plugin-app",
+    "Войдите в консоль администратора WeCom work.weixin.qq.com",
+    "В Управлении приложениями → Собственные создайте приложение, получите AgentId и Secret (corpSecret)",
+    "Получите Corp ID на странице Моё предприятие",
+    "В деталях приложения → Приём сообщений → Настройте API Receive, укажите URL (http://IP:18789/wecom-app), Token, EncodingAESKey",
+    "Добавьте публичный IP сервера в список доверенных IP",
+    "⚠️ СНАЧАЛА настройте OpenClaw и запустите шлюз, затем нажмите \"Save\" в WeCom — иначе проверка не пройдёт",
+    "Поддерживает проактивные сообщения, отправку/приём изображений/голоса/файлов, доступ через WeChat Work"
+  ],
+  "wecom_kfPitfall": "⚠️ Частые ошибки: 1) Сначала настройте OpenClaw; 2) Добавьте IP сервера в доверенные; 3) Token и EncodingAESKey должны совпадать",
+  "qqPrep": [
+    "Установите плагин QQ: openclaw plugins install @sliverp/qqbot@latest",
+    "Перейдите на QQ Open Platform q.qq.com → Зарегистрируйте аккаунт разработчика и пройдите проверку",
+    "Создайте приложение Bot (не мини-программу и не игру)",
+    "Получите AppKey и AppSecret на странице деталей приложения",
+    "Включите права и добавьте тестовых участников (опционально добавьте бота в тестовую группу)",
+    "(Опционально) Для рендеринга Markdown подайте заявку на права шаблонов Markdown отдельно (проверка занимает время)"
+  ],
+  "qqPitfall": "⚠️ Частые ошибки: 1) Включите права и добавьте тестовых участников; 2) В группе нужен @Bot; 3) Markdown требует отдельного разрешения; 4) QQ Bot в бета-версии",
+  "qqHelpUrl": "https://q.qq.com",
+  "yuanbaoPrep": [
+    "Install Yuanbao plugin on the deployed OpenClaw device: openclaw plugins install openclaw-plugin-yuanbao@latest",
+    "Open Yuanbao App  Party  My Bot  Link existing OpenClaw  Select 'Method 2: Channel Config'",
+    "Скопируйте App ID и AppSecret со страницы привязки (скопируйте точно, не пропустите символы)",
+    "Заполните App ID и AppSecret ниже или выполните: openclaw channels add --channel yuanbao --token \"<AppKey>:<AppSecret>\"",
+    "Restart OpenClaw gateway: openclaw gateway restart",
+    "Return to Yuanbao App and tap 'Done' to complete linking"
+  ],
+  "yuanbaoPitfall": "⚠️ Common pitfalls: 1) App ID and AppSecret must be copied exactly  don't miss any characters; 2) Gateway must be restarted after config changes; 3) Yuanbao App must be V2.60.10 or above; 4) Token format is App ID:AppSecret when using CLI",
+  "yuanbaoHelpUrl": "https://yuanbao.tencent.com",
+  "wechatPrep": [
+    "Личный WeChat требует стороннего моста (напр. wechatbot-webhook)",
+    "Официальный аккаунт требует сертифицированного сервисного аккаунта на mp.weixin.qq.com",
+    "Получите AppKey и AppSecret",
+    "Настройте URL сервера, Token и EncodingAESKey",
+    "Примечание: стабильность личного аккаунта зависит от сторонних инструментов; рекомендуется WeCom"
+  ],
+  "wechatPitfall": "⚠️ Примечание: 1) Личный WeChat использует неофициальный протокол, риск бана; 2) Официальный аккаунт требует сертифицированный сервис; 3) Предпочтительно WeCom",
+  "wechatHelpUrl": "https://mp.weixin.qq.com",
+  "doubaoPrep": [
+    "Зарегистрируйте аккаунт разработчика на Doubao Open Platform",
+    "Создайте приложение и получите учётные данные",
+    "Настройте URL обратного вызова"
+  ],
+  "doubaoPitfall": "⚠️ Интеграция Doubao может измениться. Сверьтесь с официальной документацией",
+  "imessageHelpUrl": "https://docs.bluebubbles.app",
+  "imessagePrep": [
+    "Требуется постоянно включённый Mac в качестве сервера iMessage",
+    "Установите BlueBubbles Server и войдите с Apple ID",
+    "Для полного функционала (Tapback и т.д.) необходимо отключить SIP (System Integrity Protection)",
+    "Настройте адрес API и пароль BlueBubbles"
+  ],
+  "imessagePitfall": "⚠️ Примечание: 1) iMessage только на macOS; 2) Активация в VM может не сработать; 3) Отключение SIP снижает безопасность; 4) Синхронизация iCloud может дублировать",
+  "bluebbubblesHelpUrl": "https://docs.bluebubbles.app",
+  "bluebbubblesPrep": [
+    "Требуется постоянно включённый Mac с BlueBubbles Server",
+    "Скачайте и установите BlueBubbles Server (см. ссылку ниже)",
+    "Войдите с Apple ID и убедитесь, что iMessage работает",
+    "Настройте способ подключения и пароль API в BlueBubbles",
+    "Функции Private API требуют отключения SIP"
+  ],
+  "bluebbubblesPitfall": "⚠️ BlueBubbles требует постоянно включённый Mac",
+  "googlechatHelpUrl": "https://console.cloud.google.com",
+  "googlechatPrep": [
+    "Требуется аккаунт Google Workspace (личный Gmail не поддерживает Chat API)",
+    "Создайте проект в Google Cloud Console и включите Chat API",
+    "Создайте Service Account с областью chat.bot",
+    "Попросите администратора Workspace одобрить установку Chat App",
+    "Настройте URL обратного вызова Chat App или используйте Pub/Sub"
+  ],
+  "googlechatPitfall": "⚠️ Примечание: 1) Только Google Workspace; 2) Требуется одобрение админа; 3) Service Account сложный",
+  "msteamsHelpUrl": "https://portal.azure.com",
+  "msteamsPrep": [
+    "Создайте регистрацию приложения в Azure Portal, получите App Key",
+    "Создайте Client Secret в качестве пароля приложения",
+    "Зарегистрируйте бота в Bot Framework",
+    "Включите Sideloading в центре администрирования Teams (для тестирования)",
+    "Требуется плагин: openclaw plugins install <msteams-plugin-url>"
+  ],
+  "msteamsPitfall": "⚠️ Примечание: 1) Регистрация Azure многошаговая; 2) Sideloading требует админа Teams; 3) Нужен плагин MS Teams",
+  "matrixHelpUrl": "https://matrix.org",
+  "matrixPrep": [
+    "Зарегистрируйте или разверните Matrix Homeserver (напр. matrix.org или собственный Synapse)",
+    "Создайте аккаунт бота и получите Access Token (через API /_matrix/client/r0/login)",
+    "URL Homeserver должен включать протокол (напр. https://matrix.org)",
+    "Комнаты с E2EE могут требовать дополнительной настройки"
+  ],
+  "matrixPitfall": "⚠️ Примечание: 1) URL требует https://; 2) Access Token через API; 3) E2EE может потребовать доп. настройку",
+  "mattermostHelpUrl": "https://developers.mattermost.com",
+  "mattermostPrep": [
+    "Создайте аккаунт бота в консоли администратора Mattermost",
+    "Скопируйте Bot Token",
+    "Убедитесь, что бот добавлен в нужные каналы/команды",
+    "Настройте Base URL сервера Mattermost"
+  ],
+  "mattermostPitfall": "⚠️ Примечание: 1) Бот должен быть добавлен в канал; 2) Base URL с протоколом и портом",
+  "zaloPrep": [
+    "Зарегистрируйтесь на платформе Zalo Developer",
+    "Создайте приложение и получите учётные данные",
+    "Настройте URL обратного вызова Webhook",
+    "Требуется плагин"
+  ],
+  "zaloPitfall": "⚠️ Zalo для вьетнамского рынка, документация на вьетнамском",
+  "voicecallPrep": [
+    "Настройте провайдера голосовых вызовов (напр. Twilio, Vonage)",
+    "Получите учётные данные API (Account SID, Auth Token)",
+    "Подготовьте номер телефона с поддержкой голосовых вызовов",
+    "Требуется плагин"
+  ],
+  "voicecallPitfall": "⚠️ Голосовые вызовы требуют стороннего провайдера с оплатой",
+  "pluginInstallCmd": "Команда установки"
 }

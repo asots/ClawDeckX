@@ -55,6 +55,7 @@
   "qrReady": "Kode QR siap, silakan pindai",
   "loginSuccess": "Login berhasil",
   "loginTimeout": "Login kedaluwarsa, silakan coba lagi",
+  "gatewayRestartTimeout": "Waktu mulai ulang gateway habis — silakan coba lagi",
   "loginFailed": "Login gagal",
   "webLoginPluginError": "Plugin channel gagal dimuat atau belum terpasang. Pastikan plugin telah terpasang dengan benar dan kompatibel dengan versi OpenClaw Anda. Lihat GitHub issue openclaw/openclaw#52341 untuk detail.",
   "started": "Login dimulai",
@@ -73,6 +74,7 @@
   "pluginInstallSuccess": "Plugin terinstal!",
   "gatewayRestarting": "Gateway merestart...",
   "pluginReady": "Plugin siap, Anda dapat melanjutkan konfigurasi",
+  "pluginChecking": "Memeriksa status plugin...",
   "pluginInstalled": "✓ Plugin terinstal",
   "remoteGatewayHint": "Gateway remote terdeteksi. Silakan instal manual melalui CLI:",
   "copyPermJson": "Salin Permission JSON",
@@ -91,5 +93,205 @@
   "pairingSuccess": "Pairing berhasil!",
   "skipPairing": "Lewati",
   "noPrepNeeded": "Tidak ada persiapan yang diperlukan untuk channel ini, lanjutkan ke langkah berikutnya",
-  "prepDone": "Persiapan selesai"
+  "prepDone": "Persiapan selesai",
+  "telegramHelpUrl": "https://t.me/BotFather",
+  "telegramPrep": [
+    "Buka Telegram, cari @BotFather (atau klik link di atas)",
+    "Kirim /newbot, ikuti petunjuk untuk nama dan username",
+    "Salin Token Bot yang dihasilkan (format: angka:alfanumerik, mis. 123456789:ABCdef-GHI)",
+    "Untuk grup: /setprivacy → Disable (nonaktifkan mode privasi)",
+    "⚠️ Setelah menonaktifkan mode privasi, Anda HARUS menghapus dan menambahkan ulang Bot ke grup agar berlaku",
+    "Untuk fitur admin (pin/hapus pesan): atur Bot sebagai admin grup"
+  ],
+  "discordHelpUrl": "https://discord.com/developers/applications",
+  "discordPrep": [
+    "Buka Discord Developer Portal → New Application (atau klik link di atas)",
+    "Bot → Add Bot → Reset Token → Salin Bot Token (catatan: ini BUKAN OAuth2 Client Secret)",
+    "⚠️ HARUS aktifkan Message Content Intent (jika tidak Bot terhubung tapi konten pesan kosong)",
+    "Aktifkan juga Server Members Intent (jika Anda memerlukan daftar anggota)",
+    "OAuth2 URL Generator → Centang bot + applications.commands",
+    "Pilih izin: View Channels, Send Messages, Read Message History, Embed Links, Attach Files (gunakan Permission Calculator)",
+    "Hasilkan URL undangan dan tambahkan Bot ke server",
+    "Catatan: Bot di 75+ server memerlukan persetujuan Privileged Intent tambahan"
+  ],
+  "slackHelpUrl": "https://api.slack.com/apps",
+  "slackPrep": [
+    "Buat App di api.slack.com/apps (From scratch, atau klik link di atas)",
+    "Socket Mode → Enable → Hasilkan App-Level Token (xapp-..., memerlukan scope connections:write)",
+    "OAuth & Permissions → Tambah Bot Token Scopes → Install to Workspace → Salin Bot Token (xoxb-...)",
+    "⚠️ Tiga token berbeda: App Token (xapp-) untuk Socket Mode, Bot Token (xoxb-) untuk panggilan API, User Token (xoxp-) opsional",
+    "Event Subscriptions → Subscribe ke message.channels, message.groups, message.im, message.mpim, app_mention",
+    "App Home → Aktifkan Messages Tab (jika tidak pengguna tidak bisa DM Bot)",
+    "Gunakan /invite @botname untuk menambahkan Bot ke channel target",
+    "Setelah memodifikasi Scopes, Anda harus Reinstall to Workspace agar perubahan berlaku"
+  ],
+  "whatsappPrep": [
+    "⚠️ Gateway HARUS berjalan di Node.js (WhatsApp/Baileys tidak stabil di Bun, sering terputus)",
+    "Siapkan nomor telepon khusus (sangat direkomendasikan — protokol tidak resmi memiliki risiko ban)",
+    "Pastikan nomor terdaftar di WhatsApp dan dapat mengirim/menerima pesan",
+    "Periksa jumlah perangkat tertaut (maks 4 — tidak bisa terhubung jika batas tercapai)",
+    "Anda akan scan kode QR di ponsel nanti (QR kedaluwarsa dalam ~20 detik, siap-siap)",
+    "Jika koneksi gagal, hapus file sesi di ~/.openclaw/sessions/ dan scan ulang"
+  ],
+  "signalHelpUrl": "https://github.com/AsamK/signal-cli",
+  "signalPrep": [
+    "Instal runtime Java 21+ (diperlukan signal-cli — penyebab kegagalan paling umum)",
+    "Instal signal-cli (klik link di bawah untuk versi terbaru dan instruksi instalasi)",
+    "Pengguna ARM Linux mungkin perlu kompilasi manual pustaka native libsignal-client",
+    "Siapkan nomor telepon khusus (direkomendasikan — Bot mengabaikan pesannya sendiri untuk mencegah loop)",
+    "Jalankan signal-cli link, lalu scan kode QR di ponsel Signal → Settings → Linked Devices",
+    "Jika signal-cli tidak ada di PATH sistem, tentukan path lengkap di konfigurasi",
+    "Catatan: Signal memiliki batas kecepatan ketat — pengiriman massal dapat memicu pembatasan"
+  ],
+  "telegramPitfall": "⚠️ Kesalahan umum: 1) Setelah menonaktifkan Privacy Mode, Anda HARUS menghapus dan menambahkan ulang Bot ke grup (dikonfirmasi docs resmi); 2) Format Bot Token adalah angka:alfanumerik — perhatikan spasi/baris baru saat menyalin; 3) Maks 20 pesan/menit di grup, melebihi mengembalikan 429; 4) Jika Webhook sebelumnya diatur, panggil deleteWebhook sebelum beralih ke polling",
+  "discordPitfall": "⚠️ Kesalahan umum: 1) HARUS aktifkan Message Content Intent — jika tidak Bot terhubung tapi konten pesan kosong (wajib sejak Agu 2022); 2) Bot Token ≠ OAuth2 Client Secret — jangan tertukar; 3) requireMention harus di bawah konfigurasi guilds, tingkat atas diabaikan; 4) Bot 75+ server perlu persetujuan Privileged Intent; 5) Izin tidak cukup menyebabkan kegagalan diam",
+  "slackPitfall": "⚠️ Kesalahan umum: 1) Tiga token: App Token (xapp-) untuk Socket Mode, Bot Token (xoxb-) untuk API, User Token (xoxp-) opsional; 2) App Home → Messages Tab harus diaktifkan atau pengguna tidak bisa DM Bot; 3) Bot harus di-/invite ke channel; 4) Setelah memodifikasi Scopes, harus Reinstall to Workspace; 5) missing_scope = izin tidak cukup",
+  "whatsappPitfall": "⚠️ Kesalahan umum: 1) Gateway HARUS berjalan di Node.js — Baileys tidak stabil di Bun dengan sering terputus; 2) Protokol tidak resmi memiliki risiko ban — gunakan nomor khusus; 3) QR kedaluwarsa dalam ~20d, timeout memerlukan kode baru; 4) Sesi rusak? Hapus file ~/.openclaw/sessions/ dan scan ulang; 5) Maks 4 perangkat tertaut — tidak bisa terhubung jika batas tercapai",
+  "signalPitfall": "⚠️ Kesalahan umum: 1) Java 21+ tidak ada adalah penyebab kegagalan #1; 2) ARM Linux mungkin perlu kompilasi manual pustaka native libsignal-client; 3) Gunakan signal-cli link (perangkat tertaut), BUKAN register (nomor baru); 4) QR di terminal memerlukan Unicode — mungkin rusak melalui SSH; 5) Batas kecepatan ketat — pengiriman massal memicu pembatasan",
+  "feishuPrep": [
+    "Instal plugin Feishu: openclaw plugins install @openclaw/feishu",
+    "Masuk ke Feishu Open Platform open.feishu.cn → Buat aplikasi enterprise",
+    "Salin App Key dan App Secret dari halaman Kredensial",
+    "Tambahkan kemampuan Bot di App Capabilities, atur nama bot",
+    "Tambahkan izin yang diperlukan: im:message, im:message.p2p_msg:readonly, im:message.group_at_msg:readonly, im:message:send_as_bot, im:resource (gunakan \"Salin Permission JSON\" di bawah untuk impor batch)",
+    "Di Events & Callbacks, pilih \"Terima event melalui koneksi panjang\" (direkomendasikan, tidak perlu IP publik), tambahkan event: im.message.receive_v1, im.message.message_read_v1, im.chat.member.bot.added_v1, im.chat.member.bot.deleted_v1",
+    "Buat dan terbitkan versi di Version Management (diperlukan setelah setiap perubahan konfigurasi)",
+    "⚠️ Bot hanya bisa ditemukan di pencarian Feishu setelah diterbitkan"
+  ],
+  "feishuPitfall": "⚠️ Kesalahan umum: 1) Harus tambahkan event im.message.receive_v1 di Events & Callbacks, atau bot bisa mengirim tapi tidak menerima pesan; 2) Metode subscription event harus cocok dengan connectionMode: Long Connection → websocket (direkomendasikan), Request URL → webhook; 3) Harus buat dan terbitkan versi baru setelah setiap perubahan izin/konfigurasi; 4) Bot tidak memiliki root penyimpanan cloud — Anda harus berbagi folder ke bot secara manual agar drive tools berfungsi; 5) Kegagalan instal Windows: unduh tgz manual dan instal secara lokal",
+  "feishuHelpUrl": "https://open.feishu.cn/app",
+  "dingtalkPrep": [
+    "Instal plugin DingTalk: openclaw plugins install @openclaw-china/dingtalk",
+    "Di DingTalk, ketuk \"Buat atau Gabung Organisasi\" → Buat satu (tidak perlu dokumen, 5 menit)",
+    "Masuk ke DingTalk Open Platform open-dev.dingtalk.com → Beralih ke organisasi baru → Buat app",
+    "Tambahkan kemampuan Bot di App Capabilities, mode terima pesan HARUS Stream (tidak perlu IP publik)",
+    "Dapatkan Client ID (AppKey) dan Client Secret (AppSecret) dari halaman Kredensial",
+    "Buat dan terbitkan versi di Version Management (bot muncul di pencarian DingTalk hanya setelah diterbitkan)",
+    "(Opsional) Untuk streaming AI Card, aktifkan izin Card.Instance.Write dan Card.Streaming.Write"
+  ],
+  "dingtalkPitfall": "⚠️ Kesalahan umum: 1) Mode terima pesan harus Stream, jika tidak IP publik diperlukan; 2) Harus terbitkan versi sebelum bot muncul di pencarian DingTalk; 3) API DingTalk memiliki batas kecepatan — pembaruan streaming bisa memicu pembatasan; 4) Izin AI Card opsional — sistem fallback ke pesan biasa jika tidak diaktifkan",
+  "dingtalkHelpUrl": "https://open-dev.dingtalk.com",
+  "wecomPrep": [
+    "Instal plugin WeCom: openclaw plugins install @wecom/wecom-openclaw-plugin",
+    "Kunjungi work.weixin.qq.com untuk mendaftar dan masuk ke konsol admin WeCom",
+    "Di App Management → Smart Bot, buat bot",
+    "Atur URL callback: http://<ip-atau-domain-anda>:18789/wecom (pastikan port 18789 dapat diakses)",
+    "Catat Token dan EncodingAESKey yang dihasilkan (klik \"Random Generate\")",
+    "⚠️ Konfigurasikan OpenClaw dan mulai gateway TERLEBIH DAHULU, lalu kembali ke konsol WeCom dan klik \"Buat\" — jika tidak verifikasi callback akan gagal",
+    "Setelah dibuat, scan kode QR untuk menambahkan bot dan mulai mengobrol"
+  ],
+  "wecomPitfall": "⚠️ Kesalahan umum: 1) URL Callback harus dapat diakses publik, format: http://IP:18789/wecom; 2) Harus konfigurasikan OpenClaw dan mulai gateway terlebih dahulu, lalu klik \"Buat\" di WeCom — jika tidak verifikasi gagal; 3) encodingAESKey harus tepat 43 karakter; 4) Pastikan firewall/grup keamanan mengizinkan port 18789",
+  "wecomHelpUrl": "https://open.work.weixin.qq.com/help/wap/detail?docid=21657",
+  "wecom_kfPrep": [
+    "Instal plugin WeCom App: openclaw plugins install @wecom/wecom-openclaw-plugin-app",
+    "Masuk ke konsol admin WeCom work.weixin.qq.com",
+    "Di App Management → Self-built, buat app, dapatkan AgentId dan Secret (corpSecret)",
+    "Dapatkan Corp ID dari halaman My Enterprise",
+    "Di detail app → Receive Messages → Set API Receive, isi URL (http://IP:18789/wecom-app), Token, EncodingAESKey",
+    "Tambahkan IP publik server ke daftar IP Terpercaya",
+    "⚠️ Konfigurasikan OpenClaw dan mulai gateway terlebih dahulu, lalu klik \"Simpan\" di WeCom — jika tidak verifikasi gagal",
+    "Mendukung pesan proaktif, kirim & terima gambar/suara/file, akses entry WeChat Work"
+  ],
+  "wecom_kfPitfall": "⚠️ Kesalahan umum: 1) Harus konfigurasikan OpenClaw dan mulai gateway terlebih dahulu, lalu klik \"Simpan\" di WeCom — jika tidak verifikasi callback gagal; 2) Harus tambahkan IP server ke daftar IP Terpercaya, jika tidak pengiriman pesan gagal; 3) Token dan EncodingAESKey harus cocok dengan konsol WeCom; 4) Dapat diakses dari WeChat personal melalui entry Work",
+  "qqPrep": [
+    "Instal plugin QQ: openclaw plugins install @sliverp/qqbot@latest",
+    "Kunjungi QQ Open Platform q.qq.com → Daftar akun pengembang dan selesaikan review",
+    "Buat aplikasi Bot (bukan mini-program atau game)",
+    "Dapatkan AppKey dan AppSecret dari halaman detail app",
+    "Aktifkan izin dan tambahkan anggota tes (opsional tambahkan bot ke grup tes)",
+    "(Opsional) Untuk render Markdown, ajukan izin template Markdown secara terpisah (review memerlukan waktu)"
+  ],
+  "qqPitfall": "⚠️ Kesalahan umum: 1) Harus aktifkan izin dan tambahkan anggota tes, jika tidak tidak ada pesan diterima; 2) @mention wajib di chat grup; 3) Markdown memerlukan izin terpisah — atur markdownSupport: false jika tidak diaktifkan; 4) QQ Bot masih dalam beta, beberapa fitur mungkin terbatas",
+  "qqHelpUrl": "https://q.qq.com",
+  "yuanbaoPrep": [
+    "Install Yuanbao plugin on the deployed OpenClaw device: openclaw plugins install openclaw-plugin-yuanbao@latest",
+    "Open Yuanbao App  Party  My Bot  Link existing OpenClaw  Select 'Method 2: Channel Config'",
+    "Salin App ID dan AppSecret dari halaman penautan (salin persis, jangan sampai ada karakter yang terlewat)",
+    "Isi App ID dan AppSecret di bawah, atau jalankan: openclaw channels add --channel yuanbao --token \"<AppKey>:<AppSecret>\"",
+    "Restart OpenClaw gateway: openclaw gateway restart",
+    "Return to Yuanbao App and tap 'Done' to complete linking"
+  ],
+  "yuanbaoPitfall": "⚠️ Common pitfalls: 1) App ID and AppSecret must be copied exactly  don't miss any characters; 2) Gateway must be restarted after config changes; 3) Yuanbao App must be V2.60.10 or above; 4) Token format is App ID:AppSecret when using CLI",
+  "yuanbaoHelpUrl": "https://yuanbao.tencent.com",
+  "wechatPrep": [
+    "WeChat personal memerlukan bridge pihak ketiga (mis. wechatbot-webhook)",
+    "Official account memerlukan akun layanan terverifikasi di mp.weixin.qq.com",
+    "Dapatkan AppKey dan AppSecret",
+    "Konfigurasikan URL server, Token, dan EncodingAESKey",
+    "Catatan: Stabilitas akun personal bergantung pada alat pihak ketiga; WeCom direkomendasikan"
+  ],
+  "wechatPitfall": "⚠️ Catatan: 1) WeChat personal menggunakan protokol tidak resmi — risiko ban akun, gunakan akun sekunder; 2) Official account perlu akun layanan terverifikasi untuk akses API penuh; 3) WeCom direkomendasikan untuk stabilitas dan dukungan resmi",
+  "wechatHelpUrl": "https://mp.weixin.qq.com",
+  "doubaoPrep": [
+    "Daftar akun pengembang di Doubao Open Platform",
+    "Buat app dan dapatkan kredensial",
+    "Konfigurasikan URL callback"
+  ],
+  "doubaoPitfall": "⚠️ Integrasi Doubao dapat berubah dengan pembaruan platform. Rujuk ke docs resmi terbaru",
+  "imessageHelpUrl": "https://docs.bluebubbles.app",
+  "imessagePrep": [
+    "Memerlukan Mac yang selalu menyala sebagai server iMessage",
+    "Instal BlueBubbles Server dan masuk dengan Apple ID",
+    "Untuk fitur lengkap (Tapback dll.) Anda perlu menonaktifkan SIP (System Integrity Protection)",
+    "Konfigurasikan alamat API dan kata sandi BlueBubbles"
+  ],
+  "imessagePitfall": "⚠️ Catatan: 1) iMessage hanya berfungsi melalui macOS — Mac diperlukan; 2) Mengaktifkan iMessage di VM mungkin gagal — mulai dengan Catalina lalu upgrade; 3) Menonaktifkan SIP mengurangi keamanan sistem — nilai risikonya; 4) Sinkronisasi multi-perangkat iCloud dapat menyebabkan pesan duplikat",
+  "bluebbubblesHelpUrl": "https://docs.bluebubbles.app",
+  "bluebbubblesPrep": [
+    "Memerlukan Mac yang selalu menyala menjalankan BlueBubbles Server",
+    "Unduh dan instal BlueBubbles Server (lihat link di bawah)",
+    "Masuk dengan Apple ID dan pastikan iMessage berfungsi",
+    "Konfigurasikan metode koneksi dan kata sandi API di BlueBubbles",
+    "Fitur Private API memerlukan penonaktifan SIP"
+  ],
+  "bluebbubblesPitfall": "⚠️ Catatan: BlueBubbles memerlukan Mac selalu menyala — kehilangan daya atau sleep akan mengganggu pesan",
+  "googlechatHelpUrl": "https://console.cloud.google.com",
+  "googlechatPrep": [
+    "Memerlukan akun Google Workspace (Gmail personal tidak mendukung Chat API)",
+    "Buat proyek di Google Cloud Console dan aktifkan Chat API",
+    "Buat Service Account dengan scope chat.bot",
+    "Minta admin Workspace menyetujui instalasi Chat App",
+    "Konfigurasikan URL callback Chat App atau gunakan Pub/Sub"
+  ],
+  "googlechatPitfall": "⚠️ Catatan: 1) Hanya akun Google Workspace yang didukung, bukan Gmail personal; 2) Memerlukan persetujuan admin Workspace; 3) Pengaturan Service Account kompleks — rujuk ke docs resmi",
+  "msteamsHelpUrl": "https://portal.azure.com",
+  "msteamsPrep": [
+    "Buat App Registration di Azure Portal, dapatkan App Key",
+    "Buat Client Secret sebagai App Password",
+    "Daftar Bot di Bot Framework",
+    "Aktifkan Sideloading di pusat admin Teams (untuk pengujian)",
+    "Plugin diperlukan: openclaw plugins install <msteams-plugin-url>"
+  ],
+  "msteamsPitfall": "⚠️ Catatan: 1) Pendaftaran Azure memiliki banyak langkah — jangan bingung antara App Key dan Client Secret; 2) Pengujian memerlukan admin Teams untuk mengaktifkan Sideloading; 3) Plugin OpenClaw MS Teams diperlukan",
+  "matrixHelpUrl": "https://matrix.org",
+  "matrixPrep": [
+    "Daftar atau deploy Matrix Homeserver (mis. matrix.org atau self-hosted Synapse)",
+    "Buat akun Bot dan dapatkan Access Token (melalui API /_matrix/client/r0/login)",
+    "URL Homeserver harus menyertakan protokol (mis. https://matrix.org)",
+    "Ruangan E2EE mungkin memerlukan konfigurasi tambahan"
+  ],
+  "matrixPitfall": "⚠️ Catatan: 1) URL Homeserver harus menyertakan prefix https://; 2) Access Token diperoleh melalui API, bukan kata sandi; 3) Ruangan terenkripsi end-to-end mungkin perlu konfigurasi ekstra",
+  "mattermostHelpUrl": "https://developers.mattermost.com",
+  "mattermostPrep": [
+    "Buat Bot Account di konsol admin Mattermost",
+    "Salin Bot Token",
+    "Pastikan Bot ditambahkan ke channel/tim target",
+    "Konfigurasikan Base URL server Mattermost"
+  ],
+  "mattermostPitfall": "⚠️ Catatan: 1) Bot harus ditambahkan ke channel target untuk mengirim/menerima pesan; 2) Pastikan Base URL menyertakan protokol dan port (mis. https://mattermost.example.com:8065)",
+  "zaloPrep": [
+    "Daftar di Zalo Developer Platform",
+    "Buat app dan dapatkan kredensial",
+    "Konfigurasikan URL callback Webhook",
+    "Plugin diperlukan"
+  ],
+  "zaloPitfall": "⚠️ Platform Zalo terutama melayani pasar Vietnam, docs API sebagian besar dalam bahasa Vietnam",
+  "voicecallPrep": [
+    "Konfigurasikan provider panggilan suara (mis. Twilio, Vonage)",
+    "Dapatkan kredensial API (Account SID, Auth Token)",
+    "Siapkan nomor telepon yang mampu panggilan suara",
+    "Plugin diperlukan"
+  ],
+  "voicecallPitfall": "⚠️ Panggilan suara memerlukan provider pihak ketiga dan dikenakan biaya panggilan",
+  "pluginInstallCmd": "Perintah instal"
 }

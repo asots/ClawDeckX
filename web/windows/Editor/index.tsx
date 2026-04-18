@@ -436,7 +436,11 @@ const Editor: React.FC<EditorProps> = ({ language, pendingSection, onSectionCons
           className={`flex-1 overflow-y-auto custom-scrollbar neon-scrollbar ${showMobileSaveBar ? 'pb-16 md:pb-0' : ''}`}
           style={{ scrollPaddingBottom: showMobileSaveBar ? 84 : 16 }}
         >
-          {editor.loading ? (
+          {editor.loading && !editor.config ? (
+            // Initial load: no config yet, show full-page spinner.
+            // Subsequent reloads (config already present) keep rendering the
+            // section so local wizard/plugin-install state isn't wiped by an
+            // unmount/remount cycle.
             <div className="flex-1 flex items-center justify-center h-full">
               <div className="flex flex-col items-center gap-3 text-slate-400">
                 <span className="material-symbols-outlined text-[32px] animate-spin">progress_activity</span>

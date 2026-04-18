@@ -55,6 +55,7 @@
   "qrReady": "QRコード準備完了、スキャンしてください",
   "loginSuccess": "ログイン成功",
   "loginTimeout": "ログインタイムアウト、再試行してください",
+  "gatewayRestartTimeout": "ゲートウェイの再起動がタイムアウトしました。再試行してください",
   "loginFailed": "ログイン失敗",
   "webLoginPluginError": "チャンネルプラグインの読み込みに失敗したか、インストールされていません。プラグインが正しくインストールされ、OpenClaw バージョンと互換性があることを確認してください。詳細は GitHub issue openclaw/openclaw#52341 を参照してください。",
   "started": "ログイン開始",
@@ -73,6 +74,7 @@
   "pluginInstallSuccess": "プラグインのインストール成功！",
   "gatewayRestarting": "ゲートウェイを再起動中...",
   "pluginReady": "プラグイン準備完了。設定を続行できます",
+  "pluginChecking": "プラグインの状態を確認中...",
   "pluginInstalled": "✓ プラグインインストール済み",
   "remoteGatewayHint": "リモートゲートウェイを検出しました。リモートサーバーで以下のコマンドを手動実行してプラグインをインストールしてください：",
   "copyPermJson": "権限JSONをコピー",
@@ -91,5 +93,205 @@
   "pairingSuccess": "ペアリング成功！",
   "skipPairing": "スキップ",
   "noPrepNeeded": "このチャンネルは追加の準備不要です。次のステップに進めます",
-  "prepDone": "準備完了"
+  "prepDone": "準備完了",
+  "telegramHelpUrl": "https://t.me/BotFather",
+  "telegramPrep": [
+    "Telegramを開き、@BotFatherを検索（または上のリンクをクリック）",
+    "/newbotを送信し、名前とユーザー名の指示に従う",
+    "生成されたBot Tokenをコピー（形式：数字:英数字、例：123456789:ABCdef-GHI）",
+    "グループ用：/setprivacy → Disable（プライバシーモードを無効化）",
+    "⚠️ プライバシーモード無効化後、Botをグループから削除して再追加する必要があります",
+    "管理機能（ピン留め/メッセージ削除）には：Botをグループ管理者に設定"
+  ],
+  "discordHelpUrl": "https://discord.com/developers/applications",
+  "discordPrep": [
+    "Discord Developer Portalを開く → New Application（または上のリンクをクリック）",
+    "Bot → Add Bot → Reset Token → Bot Tokenをコピー（注意：OAuth2 Client Secretではありません）",
+    "⚠️ Message Content Intentを必ず有効化（そうしないとBotは接続できてもメッセージ内容が空になります）",
+    "Server Members Intentも有効化（メンバーリストが必要な場合）",
+    "OAuth2 URL Generator → bot + applications.commandsをチェック",
+    "権限を選択：View Channels, Send Messages, Read Message History, Embed Links, Attach Files（Permission Calculatorを使用）",
+    "招待URLを生成してBotをサーバーに追加",
+    "注意：75以上のサーバーにいるBotはPrivileged Intentの追加承認が必要"
+  ],
+  "slackHelpUrl": "https://api.slack.com/apps",
+  "slackPrep": [
+    "api.slack.com/appsでAppを作成（From scratch、または上のリンクをクリック）",
+    "Socket Mode → Enable → App-Level Tokenを生成（xapp-...、connections:writeスコープが必要）",
+    "OAuth & Permissions → Bot Token Scopesを追加 → Install to Workspace → Bot Tokenをコピー（xoxb-...）",
+    "⚠️ 3種類のトークン：App Token (xapp-) Socket Mode用、Bot Token (xoxb-) API用、User Token (xoxp-) オプション",
+    "Event Subscriptions → message.channels, message.groups, message.im, message.mpim, app_mentionを購読",
+    "App Home → Messages Tabを有効化（そうしないとユーザーがBotにDMを送れません）",
+    "/invite @botnameでBotをターゲットチャンネルに追加",
+    "Scopes変更後はWorkspaceに再インストールが必要"
+  ],
+  "whatsappPrep": [
+    "⚠️ ゲートウェイはNode.jsで実行必須（WhatsApp/BaileysはBunで不安定、頻繁な切断が発生）",
+    "専用の電話番号を準備（強く推奨 — 非公式プロトコルによるBANリスクあり）",
+    "番号がWhatsAppに登録済みで、メッセージの送受信が可能なことを確認",
+    "リンク済みデバイス数を確認（最大4 — 上限に達すると接続不可）",
+    "後ほどスマホでQRコードをスキャンします（QRは約20秒で期限切れ、準備してください）",
+    "接続失敗時は~/.openclaw/sessions/のセッションファイルを削除して再スキャン"
+  ],
+  "signalHelpUrl": "https://github.com/AsamK/signal-cli",
+  "signalPrep": [
+    "Java 21+をインストール（signal-cliに必須 — 最も一般的な失敗原因）",
+    "signal-cliをインストール（下のリンクで最新版とインストール手順を確認）",
+    "ARM Linuxユーザーはlibsignal-clientネイティブライブラリの手動コンパイルが必要な場合があります",
+    "専用の電話番号を準備（推奨 — Botはループ防止のため自身のメッセージを無視）",
+    "signal-cli linkを実行、次にスマホのSignal → 設定 → リンク済みデバイスでQRコードをスキャン",
+    "signal-cliがシステムPATHにない場合は、設定でフルパスを指定",
+    "注意：Signalには厳しいレート制限があります — 大量送信でスロットリングが発生する可能性"
+  ],
+  "telegramPitfall": "⚠️ よくある落とし穴：1) Privacy Mode無効化後、Botをグループから一度削除して再追加しないと反映されません（公式ドキュメントに明記）；2) Bot Tokenの形式は 数字:英数字混合 です。コピー時に余分なスペースや改行が入らないよう注意；3) グループ内のBotは1分間に最大20件のメッセージ送信が可能で、超過すると429エラー；4) 以前Webhookを設定していた場合、pollingモードに切り替えるにはまずdeleteWebhookを呼び出す必要があります",
+  "discordPitfall": "⚠️ よくある落とし穴：1) Message Content Intentを有効にしないと、Botは接続できてもメッセージ内容が空文字列になります（2022年8月以降必須）；2) Bot TokenとOAuth2 Client Secretは異なるものです。混同しないでください；3) requireMentionはguilds設定内に配置する必要があり、トップレベルに置くと無視されます；4) 75以上のサーバーにいるBotはPrivileged Intent審査の申請が必要；5) 権限不足の場合Botはエラーを出さず静かに失敗します",
+  "slackPitfall": "⚠️ よくある落とし穴：1) 3種類のTokenの用途：App Token (xapp-) はSocket Mode用、Bot Token (xoxb-) はAPI用、User Token (xoxp-) はオプションの強化権限用；2) App Home → Messages Tabが有効でないとユーザーはBotにDMを送れません；3) Botはチャンネルに/inviteされないとメッセージを受信できません；4) Scope変更後はWorkspaceに再インストールが必要；5) missing_scopeエラーは権限不足を意味します",
+  "whatsappPitfall": "⚠️ よくある落とし穴：1) ゲートウェイはNode.jsで実行必須。WhatsApp (Baileys) はBunでは不安定で頻繁に切断されます；2) 非公式プロトコル使用によるアカウント停止のリスクがあります。専用番号の使用を強く推奨；3) QRコードの有効期限は約20秒。タイムアウト時は新しいコードの生成を待つ必要があります；4) Session破損時は~/.openclaw/sessions/の該当ファイルを削除して再スキャン；5) WhatsAppは最大4台のデバイスリンクが可能で、超過すると接続不可",
+  "signalPitfall": "⚠️ よくある落とし穴：1) Java 21+未インストールが最も一般的な失敗原因；2) ARM Linuxではlibsignal-clientネイティブライブラリの手動コンパイルが必要な場合があります；3) signal-cli link（デバイスリンクモード）を使用。register（新番号登録）ではありません；4) ターミナルでのQRコード表示にはUnicodeサポートが必要。SSHリモート操作では表示が異常になる場合があります；5) Signalにはメッセージ頻度の厳しい制限があり、一斉送信でスロットリングが発生しやすい",
+  "feishuPrep": [
+    "Feishuプラグインをインストール：openclaw plugins install @openclaw/feishu",
+    "Feishu Open Platform open.feishu.cnにログイン → エンタープライズアプリを作成",
+    "認証情報ページからApp KeyとApp Secretをコピー",
+    "App CapabilitiesでBot機能を追加、Bot名を設定",
+    "必要な権限を追加：im:message, im:message.p2p_msg:readonly, im:message.group_at_msg:readonly, im:message:send_as_bot, im:resource（下の\"権限JSONをコピー\"で一括インポート可能）",
+    "Events & Callbacksで\"長接続でイベントを受信\"を選択（推奨、パブリックIP不要）、イベントを追加：im.message.receive_v1, im.message.message_read_v1, im.chat.member.bot.added_v1, im.chat.member.bot.deleted_v1",
+    "バージョン管理でバージョンを作成・公開（設定変更後は毎回必要）",
+    "⚠️ Botは公開後にのみFeishu検索に表示されます"
+  ],
+  "feishuPitfall": "⚠️ よくある落とし穴：1) im.message.receive_v1イベントを追加しないとBotはメッセージを送信できても受信できません；2) イベント購読方式はconnectionModeと一致させる必要があります：長接続→websocket（推奨）、リクエストアドレス→webhook；3) 権限/設定変更後は毎回「バージョン作成して公開」が必要；4) Botには独自のクラウドスペースルートディレクトリがないため、フォルダを手動でBotに共有する必要があります",
+  "feishuHelpUrl": "https://open.feishu.cn/app",
+  "dingtalkPrep": [
+    "DingTalkプラグインをインストール：openclaw plugins install @openclaw-china/dingtalk",
+    "DingTalkで\"組織を作成または参加\" → 作成（書類不要、5分）",
+    "DingTalk Open Platform open-dev.dingtalk.comにログイン → 新しい組織に切り替え → アプリを作成",
+    "App CapabilitiesでBot機能を追加、メッセージ受信モードはStream必須（パブリックIP不要）",
+    "認証情報ページからClient ID (AppKey)とClient Secret (AppSecret)を取得",
+    "バージョン管理でバージョンを作成・公開（公開後にのみDingTalk検索に表示）",
+    "（オプション）AI CardストリーミングにはCard.Instance.WriteとCard.Streaming.Write権限を有効化"
+  ],
+  "dingtalkPitfall": "⚠️ よくある落とし穴：1) メッセージ受信モードはStreamモードを選択する必要があります。そうしないとパブリックIPが必要；2) アプリ作成後は「バージョン公開」しないとDingTalkでBotが見つかりません；3) DingTalk APIには頻度制限があり、ストリーム更新でスロットリングが発生しやすい；4) AI Card権限未開通でも通常の会話には影響せず、システムは通常メッセージにフォールバックします",
+  "dingtalkHelpUrl": "https://open-dev.dingtalk.com",
+  "wecomPrep": [
+    "WeComプラグインをインストール：openclaw plugins install @wecom/wecom-openclaw-plugin",
+    "work.weixin.qq.comで登録し、WeCom管理コンソールにログイン",
+    "アプリ管理 → スマートBotでBotを作成",
+    "コールバックURLを設定：http://<あなたのIPまたはドメイン>:18789/wecom（ポート18789がアクセス可能なことを確認）",
+    "生成されたTokenとEncodingAESKeyをメモ（\"ランダム生成\"をクリック）",
+    "⚠️ 先にOpenClawを設定しゲートウェイを起動、その後WeComコンソールで\"作成\"をクリック — そうしないとコールバック検証が失敗します",
+    "作成後、QRコードをスキャンしてBotを追加しチャットを開始"
+  ],
+  "wecomPitfall": "⚠️ よくある落とし穴：1) コールバックURLはパブリックアクセス可能なアドレスである必要があります。形式：http://IP:18789/wecom；2) OpenClawの設定とゲートウェイ起動を先に完了してから、WeCom管理画面で「作成」をクリック。そうしないと検証失敗；3) encodingAESKeyは43文字である必要があります；4) サーバーのファイアウォール/セキュリティグループで18789ポートを許可してください",
+  "wecomHelpUrl": "https://open.work.weixin.qq.com/help/wap/detail?docid=21657",
+  "wecom_kfPrep": [
+    "WeCom Appプラグインをインストール：openclaw plugins install @wecom/wecom-openclaw-plugin-app",
+    "WeCom管理コンソール work.weixin.qq.comにログイン",
+    "アプリ管理 → 自作アプリでアプリを作成、AgentIdとSecret (corpSecret)を取得",
+    "マイエンタープライズページからCorp IDを取得",
+    "アプリ詳細 → メッセージ受信 → API Receiveを設定、URL (http://IP:18789/wecom-app)、Token、EncodingAESKeyを入力",
+    "サーバーのパブリックIPを信頼済みIPリストに追加",
+    "⚠️ 先にOpenClawを設定しゲートウェイを起動、その後WeComで\"保存\"をクリック — そうしないと検証が失敗します",
+    "プロアクティブメッセージング、画像/音声/ファイルの送受信、WeChat Workエントリーアクセスに対応"
+  ],
+  "wecom_kfPitfall": "⚠️ よくある落とし穴：1) OpenClawの設定とゲートウェイ起動を先に完了してから、WeCom管理画面で「保存」をクリック。そうしないとコールバック検証失敗；2) 「企業信頼IP」にサーバーIPを追加しないとメッセージ送信失敗；3) TokenとEncodingAESKeyはWeCom管理画面と一致させる必要があります；4) 個人WeChatからワークベンチ経由での使用に対応",
+  "qqPrep": [
+    "QQプラグインをインストール：openclaw plugins install @sliverp/qqbot@latest",
+    "QQ Open Platform q.qq.comにアクセス → 開発者アカウントを登録し審査を完了",
+    "Botアプリケーションを作成（ミニプログラムやゲームではない）",
+    "アプリ詳細ページからAppKeyとAppSecretを取得",
+    "権限を有効化しテストメンバーを追加（オプションでBotをテストグループに追加）",
+    "（オプション）MarkdownレンダリングにはMarkdownテンプレート権限を別途申請（審査に時間がかかります）"
+  ],
+  "qqPitfall": "⚠️ よくある落とし穴：1) 権限を有効にしてテストメンバーを追加しないとメッセージを受信できません；2) グループチャットでは@Botが必要；3) Markdownには別途権限申請が必要。未開通時はmarkdownSupport: falseに設定可能；4) QQ Botはまだベータ版で、一部機能が制限される場合があります",
+  "qqHelpUrl": "https://q.qq.com",
+  "yuanbaoPrep": [
+    "OpenClaw を導入済みのデバイスで Yuanbao Party プラグインをインストール: openclaw plugins install openclaw-plugin-yuanbao@latest",
+    "Yuanbao App  Party  マイ Bot  既存の OpenClaw を連携  「方法2: チャンネル設定」を選択",
+    "連携ページから App ID と AppSecret をコピー（文字欠けなく正確にコピー）",
+    "下で App ID と AppSecret を入力するか、次を実行: openclaw channels add --channel yuanbao --token \"<AppKey>:<AppSecret>\"",
+    "OpenClaw ゲートウェイを再起動: openclaw gateway restart",
+    "Yuanbao App に戻り、「我已操作」をタップして連携完了"
+  ],
+  "yuanbaoPitfall": "⚠️ よくある落とし穴: 1) App ID と AppSecret は欠けなく正確にコピーすること; 2) 設定変更後はゲートウェイ再起動が必須; 3) Yuanbao App は V2.60.10 以上が必要; 4) CLI 利用時の token 形式は App ID:AppSecret",
+  "yuanbaoHelpUrl": "https://yuanbao.tencent.com",
+  "wechatPrep": [
+    "個人 WeChatはサードパーティブリッジが必要（例：wechatbot-webhook）",
+    "公式アカウントはmp.weixin.qq.comで認証済みサービスアカウントが必要",
+    "AppKeyとAppSecretを取得",
+    "サーバーURL、Token、EncodingAESKeyを設定",
+    "注意：個人アカウントの安定性はサードパーティツールに依存します。WeComの使用を推奨"
+  ],
+  "wechatPitfall": "⚠️ 注意：1) 個人WeChatの接続はサードパーティプロトコルに依存しアカウント停止のリスクがあります。サブアカウントの使用を推奨；2) 公式アカウントは認証済みサービスアカウントが必要；3) 企業WeChatの優先使用を推奨。より安定で公式サポートあり",
+  "wechatHelpUrl": "https://mp.weixin.qq.com",
+  "doubaoPrep": [
+    "Doubao Open Platformで開発者アカウントを登録",
+    "アプリを作成し認証情報を取得",
+    "コールバックURLを設定"
+  ],
+  "doubaoPitfall": "⚠️ Doubaoプラットフォームの接続方式はバージョン更新で変更される場合があります。最新の公式ドキュメントを参照してください",
+  "imessageHelpUrl": "https://docs.bluebubbles.app",
+  "imessagePrep": [
+    "iMessageサーバーとして常時稼働のMacが必要",
+    "BlueBubbles ServerをインストールしApple IDでログイン",
+    "完全な機能（Tapbacks等）にはSIP（System Integrity Protection）の無効化が必要",
+    "BlueBubbles APIアドレスとパスワードを設定"
+  ],
+  "imessagePitfall": "⚠️ 注意：1) iMessageはmacOS経由でのみ動作し、Macが必要；2) VM内でのiMessageアクティベーションは失敗する可能性があります。先にCatalinaで試してからアップグレード推奨；3) SIP無効化はシステムセキュリティを低下させます。リスクを評価してください；4) iCloudマルチデバイス同期でメッセージが重複する場合があります",
+  "bluebbubblesHelpUrl": "https://docs.bluebubbles.app",
+  "bluebbubblesPrep": [
+    "BlueBubbles Serverを実行する常時稼働のMacが必要",
+    "BlueBubbles Serverをダウンロードしてインストール（下のリンクを参照）",
+    "Apple IDでログインし、iMessageが動作することを確認",
+    "BlueBubblesで接続方法とAPIパスワードを設定",
+    "Private API機能にはSIPの無効化が必要"
+  ],
+  "bluebbubblesPitfall": "⚠️ 注意：BlueBubblesはMacが常時稼働している必要があります。電源オフやスリープでメッセージが中断します",
+  "googlechatHelpUrl": "https://console.cloud.google.com",
+  "googlechatPrep": [
+    "Google Workspaceアカウントが必要（個人GmailはChat API非対応）",
+    "Google Cloud Consoleでプロジェクトを作成しChat APIを有効化",
+    "chat.botスコープでService Accountを作成",
+    "Workspace管理者にChat Appのインストールを承認してもらう",
+    "Chat AppのコールバックURLを設定またはPub/Subを使用"
+  ],
+  "googlechatPitfall": "⚠️ 注意：1) Google Workspaceアカウントのみ対応。個人Gmailは使用不可；2) Workspace管理者によるインストール承認が必要；3) Service Account設定は複雑です。公式ドキュメントを参照してください",
+  "msteamsHelpUrl": "https://portal.azure.com",
+  "msteamsPrep": [
+    "Azure PortalでApp Registrationを作成、App Keyを取得",
+    "Client SecretをApp Passwordとして作成",
+    "Bot FrameworkでBotを登録",
+    "Teams管理センターでSideloadingを有効化（テスト用）",
+    "プラグインが必要：openclaw plugins install <msteams-plugin-url>"
+  ],
+  "msteamsPitfall": "⚠️ 注意：1) Azure登録は手順が多いです。App KeyとClient Secretを混同しないでください；2) テスト時はTeams管理者がSideloading権限を有効にする必要があります；3) OpenClaw MS Teamsプラグインのインストールが必要",
+  "matrixHelpUrl": "https://matrix.org",
+  "matrixPrep": [
+    "Matrix Homeserverを登録またはデプロイ（例：matrix.orgまたはセルフホストのSynapse）",
+    "Botアカウントを作成しAccess Tokenを取得（/_matrix/client/r0/login API経由）",
+    "Homeserver URLにはプロトコルを含める（例：https://matrix.org）",
+    "E2EEルームは追加設定が必要な場合があります"
+  ],
+  "matrixPitfall": "⚠️ 注意：1) Homeserver URLにはhttps://プレフィックスが必要；2) Access TokenはAPI経由で取得します。パスワードではありません；3) E2EE暗号化ルームには追加設定が必要な場合があります",
+  "mattermostHelpUrl": "https://developers.mattermost.com",
+  "mattermostPrep": [
+    "Mattermost管理コンソールでBotアカウントを作成",
+    "Bot Tokenをコピー",
+    "Botがターゲットチャンネル/チームに追加されていることを確認",
+    "MattermostサーバーのBase URLを設定"
+  ],
+  "mattermostPitfall": "⚠️ 注意：1) Botがメッセージを送受信するには対象チャンネルに追加する必要があります；2) Base URLにはプロトコルとポートを含めてください（例：https://mattermost.example.com:8065）",
+  "zaloPrep": [
+    "Zalo Developer Platformで登録",
+    "アプリを作成し認証情報を取得",
+    "WebhookコールバックURLを設定",
+    "プラグインが必要"
+  ],
+  "zaloPitfall": "⚠️ ZaloプラットフォームはベトナムのVietnam市場向けです。APIドキュメントは主にベトナム語です",
+  "voicecallPrep": [
+    "音声通話プロバイダーを設定（例：Twilio, Vonage）",
+    "API認証情報を取得（Account SID, Auth Token）",
+    "音声対応の電話番号を準備",
+    "プラグインが必要"
+  ],
+  "voicecallPitfall": "⚠️ 音声通話にはサードパーティプロバイダーが必要で、通話料金が発生します",
+  "pluginInstallCmd": "インストールコマンド"
 }
