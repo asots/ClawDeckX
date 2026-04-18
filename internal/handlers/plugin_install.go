@@ -237,15 +237,11 @@ func (h *PluginInstallHandler) CheckInstalled(w http.ResponseWriter, r *http.Req
 		logger.Log.Debug().Err(err).Msg("failed to unmarshal config response")
 	}
 
-	// Fallback: when plugins.installs has no matching record, the plugin may
-	// still be loaded at runtime (e.g., a residue directory from a prior failed
-	// install was auto-loaded — the gateway logs this as "loaded without
-	// install/load-path provenance").  Check plugins.entries from the same
-	// config.get response — if the plugin appears there without an install
-	// record, the residue-directory case is highly likely.
-	//
-	// Note: we do NOT call the `plugins.status` RPC here because older gateway
-	// versions return INVALID_REQUEST ("unknown method: plugins.status").
+	// Fallback 1 — plugins.entries: when plugins.installs has no matching
+	// record, the plugin may still have a runtime entry in config (user-
+	// configured or auto-registered).  OpenClaw core gateway does NOT expose a
+	// `plugins.status` RPC (only config.get and channels.status), so we must
+	// read from config.
 	loadedWithoutRecord := false
 	if !installed && specPluginId != "" {
 		var respMap map[string]interface{}
@@ -263,6 +259,28 @@ func (h *PluginInstallHandler) CheckInstalled(w http.ResponseWriter, r *http.Req
 					}
 				}
 			}
+		}
+	}
+
+	// Fallback 2 — channels.status: for channel plugins, a channel only appears
+	// in the registered channels map when its plugin is actually loaded at
+	// runtime.  This catches residue-directory plugins (loaded without install
+	// record AND without an entries block).  In openclaw's channels.status
+	// response, channels are keyed by plugin.id.
+	if !installed && specPluginId != "" {
+		if chResp, cerr := h.gwClient.RequestWithTimeout("channels.status", map[string]interface{}{}, 3*time.Second); cerr == nil {
+			var chMap map[string]interface{}
+			if jerr := json.Unmarshal(chResp, &chMap); jerr == nil {
+				if channels, ok := chMap["channels"].(map[string]interface{}); ok {
+					if _, present := channels[specPluginId]; present {
+						installed = true
+						matchedPluginId = specPluginId
+						loadedWithoutRecord = true
+					}
+				}
+			}
+		} else {
+			logger.Log.Debug().Err(cerr).Msg("channels.status fallback failed during CheckInstalled")
 		}
 	}
 
