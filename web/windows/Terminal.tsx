@@ -11,8 +11,14 @@ import type { SSHHost, SSHHostCreateRequest } from '../services/ssh-hosts';
 import { TerminalWSClient } from '../services/terminal-ws';
 import type { TerminalMessage, TerminalCreatedPayload, TerminalOutputPayload, TerminalExitPayload, TerminalErrorPayload, TerminalCredentialOverride } from '../services/terminal-ws';
 import { localTerminalApi, type LocalTerminalAvailability } from '../services/api';
-import { sftpApi } from '../services/sftp';
+import { sftpApi, localFilesApi } from '../services/sftp';
 import type { FileEntry, ReadFileResult } from '../services/sftp';
+
+// Route file operations through /api/v1/sftp/* for SSH tabs and through
+// /api/v1/local-files/* for local/container tabs. The two APIs share an
+// identical TypeScript shape (see services/sftp.ts).
+const filesApiFor = (tab: { isLocal?: boolean } | null | undefined) =>
+  tab?.isLocal ? localFilesApi : sftpApi;
 import { sysInfoApi } from '../services/sysinfo';
 import type { SysInfo } from '../services/sysinfo';
 import { snippetsApi } from '../services/snippets';
@@ -769,7 +775,7 @@ const TerminalPage: React.FC<Props> = ({ language }) => {
       // Background refresh — use tabsRef for latest cache
       const tabId = activeTab.id;
       const refreshPath = activeTab.sftpPath;
-      sftpApi.list(activeTab.sessionId, refreshPath).then((result) => {
+      filesApiFor(activeTab).list(activeTab.sessionId, refreshPath).then((result) => {
         const latestTab = tabsRef.current.find((t) => t.id === tabId);
         const latestCache = latestTab?.treeCache || {};
         updateTab(tabId, { sftpEntries: result.entries, treeCache: { ...latestCache, [result.path]: result.entries } });
@@ -781,7 +787,7 @@ const TerminalPage: React.FC<Props> = ({ language }) => {
     refitActiveTerminal();
     try {
       // 1. Get home directory listing (backend defaults to $HOME when no path)
-      const homeResult = await sftpApi.list(activeTab.sessionId);
+      const homeResult = await filesApiFor(activeTab).list(activeTab.sessionId);
       const homePath = homeResult.path; // e.g. "/root" or "/home/user"
       const newCache: Record<string, FileEntry[]> = { ...activeTab.treeCache, [homePath]: homeResult.entries };
       const newExpanded = new Set(activeTab.expandedDirs);
@@ -797,7 +803,7 @@ const TerminalPage: React.FC<Props> = ({ language }) => {
       // 3. Load each ancestor directory in parallel for the tree
       const ancestorLoads = ancestorPaths
         .filter((p) => p !== homePath && !newCache[p])
-        .map((p) => sftpApi.list(activeTab.sessionId!, p).then((r) => ({ path: r.path, entries: r.entries })).catch(() => null));
+        .map((p) => filesApiFor(activeTab).list(activeTab.sessionId!, p).then((r) => ({ path: r.path, entries: r.entries })).catch(() => null));
       const results = await Promise.all(ancestorLoads);
       for (const r of results) {
         if (r) { newCache[r.path] = r.entries; newExpanded.add(r.path); }
@@ -821,7 +827,7 @@ const TerminalPage: React.FC<Props> = ({ language }) => {
       updateTab(activeTab.id, { sftpPath: path, sftpEntries: cached, sftpLoading: false, expandedDirs: newExpanded });
       // Background refresh — use tabsRef for latest cache
       const tabId = activeTab.id;
-      sftpApi.list(activeTab.sessionId, path).then((result) => {
+      filesApiFor(activeTab).list(activeTab.sessionId, path).then((result) => {
         const latestTab = tabsRef.current.find((t) => t.id === tabId);
         const latestCache = latestTab?.treeCache || {};
         updateTab(tabId, { sftpEntries: result.entries, treeCache: { ...latestCache, [result.path]: result.entries } });
@@ -829,7 +835,7 @@ const TerminalPage: React.FC<Props> = ({ language }) => {
     } else {
       updateTab(activeTab.id, { sftpLoading: true });
       try {
-        const result = await sftpApi.list(activeTab.sessionId, path);
+        const result = await filesApiFor(activeTab).list(activeTab.sessionId, path);
         const newCache = { ...activeTab.treeCache, [result.path]: result.entries };
         const newExpanded = new Set(activeTab.expandedDirs); newExpanded.add(result.path);
         updateTab(activeTab.id, { sftpPath: result.path, sftpEntries: result.entries, sftpLoading: false, treeCache: newCache, expandedDirs: newExpanded });
@@ -856,7 +862,7 @@ const TerminalPage: React.FC<Props> = ({ language }) => {
     const newLoading = new Set(activeTab.treeLoading); newLoading.add(dirPath);
     updateTab(activeTab.id, { treeLoading: newLoading });
     try {
-      const result = await sftpApi.list(activeTab.sessionId, dirPath);
+      const result = await filesApiFor(activeTab).list(activeTab.sessionId, dirPath);
       const newCache = { ...activeTab.treeCache, [dirPath]: result.entries };
       const newExpanded = new Set(activeTab.expandedDirs); newExpanded.add(dirPath);
       const doneLoading = new Set(activeTab.treeLoading); doneLoading.delete(dirPath);
@@ -870,12 +876,12 @@ const TerminalPage: React.FC<Props> = ({ language }) => {
 
   const sftpDownload = useCallback((entry: FileEntry) => {
     if (!activeTab?.sessionId || entry.is_dir) return;
-    const a = document.createElement('a'); a.href = sftpApi.downloadUrl(activeTab.sessionId, entry.path); a.download = entry.name; a.click();
+    const a = document.createElement('a'); a.href = filesApiFor(activeTab).downloadUrl(activeTab.sessionId, entry.path); a.download = entry.name; a.click();
   }, [activeTab]);
 
   const sftpUpload = useCallback(async (file: File) => {
     if (!activeTab?.sessionId) return;
-    try { await sftpApi.upload(activeTab.sessionId, activeTab.sftpPath + '/', file); toast('success', (tt.sftpUploaded || 'Uploaded: {name}').replace('{name}', file.name)); sftpNavigate(activeTab.sftpPath); }
+    try { await filesApiFor(activeTab).upload(activeTab.sessionId, activeTab.sftpPath + '/', file); toast('success', (tt.sftpUploaded || 'Uploaded: {name}').replace('{name}', file.name)); sftpNavigate(activeTab.sftpPath); }
     catch (e: any) { toast('error', e?.message || 'Upload failed'); }
   }, [activeTab, toast, tt, sftpNavigate]);
 
@@ -884,7 +890,7 @@ const TerminalPage: React.FC<Props> = ({ language }) => {
     let ok = 0, fail = 0;
     for (let i = 0; i < files.length; i++) {
       setUploadProgress({ current: i + 1, total: files.length, name: files[i].name });
-      try { await sftpApi.upload(activeTab.sessionId, activeTab.sftpPath + '/', files[i]); ok++; } catch { fail++; }
+      try { await filesApiFor(activeTab).upload(activeTab.sessionId, activeTab.sftpPath + '/', files[i]); ok++; } catch { fail++; }
     }
     setUploadProgress(null);
     if (ok > 0) toast('success', (tt.sftpUploadedCount || '{n} file(s) uploaded').replace('{n}', String(ok)));
@@ -906,7 +912,7 @@ const TerminalPage: React.FC<Props> = ({ language }) => {
       validate: (value) => validateSftpEntryName(value, tt),
     });
     if (!name) return;
-    try { await sftpApi.mkdir(activeTab.sessionId, activeTab.sftpPath === '/' ? `/${name}` : `${activeTab.sftpPath}/${name}`); sftpNavigate(activeTab.sftpPath); }
+    try { await filesApiFor(activeTab).mkdir(activeTab.sessionId, activeTab.sftpPath === '/' ? `/${name}` : `${activeTab.sftpPath}/${name}`); sftpNavigate(activeTab.sftpPath); }
     catch (e: any) { toast('error', e?.message || 'Mkdir failed'); }
   }, [activeTab, toast, tt, sftpNavigate, promptDialog]);
 
@@ -921,7 +927,7 @@ const TerminalPage: React.FC<Props> = ({ language }) => {
     if (!name) return;
     const filePath = activeTab.sftpPath === '/' ? `/${name}` : `${activeTab.sftpPath}/${name}`;
     try {
-      await sftpApi.writeFile(activeTab.sessionId, filePath, '');
+      await filesApiFor(activeTab).writeFile(activeTab.sessionId, filePath, '');
       toast('success', (tt.sftpFileCreated || 'Created: {name}').replace('{name}', name));
       sftpNavigate(activeTab.sftpPath);
     } catch (e: any) { toast('error', e?.message || 'Create file failed'); }
@@ -931,7 +937,7 @@ const TerminalPage: React.FC<Props> = ({ language }) => {
     if (!activeTab?.sessionId) return;
     const ok = await confirm({ title: tt.sftpDeleteTitle || 'Delete', message: (tt.sftpDeleteMsg || 'Delete "{name}"?').replace('{name}', entry.name), danger: true });
     if (!ok) return;
-    try { await sftpApi.remove(activeTab.sessionId, entry.path); toast('success', (tt.sftpDeleted || 'Deleted: {name}').replace('{name}', entry.name)); sftpNavigate(activeTab.sftpPath); }
+    try { await filesApiFor(activeTab).remove(activeTab.sessionId, entry.path); toast('success', (tt.sftpDeleted || 'Deleted: {name}').replace('{name}', entry.name)); sftpNavigate(activeTab.sftpPath); }
     catch (e: any) { toast('error', e?.message || 'Delete failed'); }
   }, [activeTab, confirm, toast, tt, sftpNavigate]);
 
@@ -947,7 +953,7 @@ const TerminalPage: React.FC<Props> = ({ language }) => {
     const parentDir = entry.path.substring(0, entry.path.lastIndexOf('/')) || '/';
     const newPath = parentDir === '/' ? `/${newName}` : `${parentDir}/${newName}`;
     try {
-      await sftpApi.rename(activeTab.sessionId, entry.path, newPath);
+      await filesApiFor(activeTab).rename(activeTab.sessionId, entry.path, newPath);
       toast('success', (tt.sftpRenamed || 'Renamed to {name}').replace('{name}', newName));
       sftpNavigate(activeTab.sftpPath);
     } catch (e: any) { toast('error', e?.message || 'Rename failed'); }
@@ -1420,7 +1426,7 @@ const TerminalPage: React.FC<Props> = ({ language }) => {
     }
     updateTab(activeTab.id, { editorLoading: true });
     try {
-      const result = await sftpApi.readFile(activeTab.sessionId, entry.path);
+      const result = await filesApiFor(activeTab).readFile(activeTab.sessionId, entry.path);
       updateTab(activeTab.id, {
         editorFile: {
           path: result.path,
@@ -1461,7 +1467,7 @@ const TerminalPage: React.FC<Props> = ({ language }) => {
     if (!activeTab?.sessionId || !activeTab.editorFile) return;
     updateTab(activeTab.id, { editorSaving: true });
     try {
-      const result = await sftpApi.writeFile(
+      const result = await filesApiFor(activeTab).writeFile(
         activeTab.sessionId,
         activeTab.editorFile.path,
         activeTab.editorFile.content,
@@ -1749,12 +1755,10 @@ const TerminalPage: React.FC<Props> = ({ language }) => {
                 <span className="hidden sm:inline">{tt.status || 'Status'}</span>
               </button>
               )}
-              {!activeTab.isLocal && (
               <button onClick={toggleSFTP} className={`flex items-center gap-1 px-2.5 py-1 text-xs rounded-lg transition-all ${showSftp ? 'bg-cyan-500/20 text-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.15)]' : isDark ? 'text-white/40 hover:text-white/70 hover:bg-white/10' : 'text-gray-400 hover:text-gray-600 hover:bg-black/5'}`} title={tt.sftpToggle || 'File Browser'}>
                 <span className="material-symbols-outlined text-sm">{showSftp ? 'folder_open' : 'folder'}</span>
                 <span className="hidden sm:inline">{tt.files || 'Files'}</span>
               </button>
-              )}
               <div className="relative" ref={termSettingsRef}>
                 <button onClick={() => setShowTermSettings(!showTermSettings)} className={`flex items-center gap-1 px-2 py-1 text-xs rounded-lg transition-all ${showTermSettings ? 'bg-amber-500/20 text-amber-400' : isDark ? 'text-white/40 hover:text-white/70 hover:bg-white/10' : 'text-gray-400 hover:text-gray-600 hover:bg-black/5'}`} title={tt.termSettings || 'Terminal Settings'}>
                   <span className="material-symbols-outlined text-sm">settings</span>

@@ -808,6 +808,18 @@ func RunServe(args []string) int {
 	localTerminalHandler := handlers.NewLocalTerminalHandler()
 	router.GET("/api/v1/terminal/local/available", localTerminalHandler.Available)
 	router.GET("/api/v1/terminal/local/ws", localTerminalHandler.HandleWS(cfg.Auth.JWTSecret))
+
+	// Local / Container files REST API (mirrors /api/v1/sftp/* but operates on
+	// the local/container filesystem). Same admin-only gate as SSH-free shell.
+	localFilesHandler := handlers.NewLocalFilesHandler()
+	router.GET("/api/v1/local-files/list", web.RequireAdmin(localFilesHandler.List))
+	router.GET("/api/v1/local-files/read", web.RequireAdmin(localFilesHandler.Read))
+	router.PUT("/api/v1/local-files/write", web.RequireAdmin(localFilesHandler.Write))
+	router.POST("/api/v1/local-files/mkdir", web.RequireAdmin(localFilesHandler.Mkdir))
+	router.POST("/api/v1/local-files/remove", web.RequireAdmin(localFilesHandler.Remove))
+	router.POST("/api/v1/local-files/rename", web.RequireAdmin(localFilesHandler.Rename))
+	router.POST("/api/v1/local-files/upload", web.RequireAdmin(localFilesHandler.Upload))
+	router.GET("/api/v1/local-files/download", web.RequireAdmin(localFilesHandler.Download))
 	router.GET("/api/v1/ssh-hosts", sshHostsHandler.List)
 	router.POST("/api/v1/ssh-hosts", web.RequireAdmin(sshHostsHandler.Create))
 	router.PUT("/api/v1/ssh-hosts", web.RequireAdmin(sshHostsHandler.Update))
