@@ -291,6 +291,7 @@ const UpdateTab: React.FC<UpdateTabProps> = ({ s, language, inputCls, rowCls }) 
                 }
                 if (p.done) {
                   toast('success', sRef.current.runtimeUpdateOk || sRef.current.openclawUpdateOk);
+                  toast('info', sRef.current.dockerRestartOcMsg || 'OpenClaw has been updated. Restart the Docker container to activate the new version.');
                   await loadRuntimeStatus();
                   const res = await hostInfoApi.checkUpdate();
                   setOcUpdateInfo({ ...res, available: false });
@@ -419,6 +420,13 @@ const UpdateTab: React.FC<UpdateTabProps> = ({ s, language, inputCls, rowCls }) 
   }, [confirm, toast, s, loadRuntimeStatus]);
 
   const handleRuntimeRestart = useCallback(async () => {
+    const ok = await confirm({
+      title: sRef.current.dockerRestartTitle || 'Restart Docker Container',
+      message: sRef.current.dockerRestartMsg || 'Restart the Docker container now to activate the new version?',
+      confirmText: sRef.current.dockerRestartBtn || 'Restart Now',
+      danger: true,
+    });
+    if (!ok) return;
     try {
       await runtimeApi.restart();
       toast('success', sRef.current.dockerRestarting || 'Restarting Docker container...');
@@ -426,7 +434,7 @@ const UpdateTab: React.FC<UpdateTabProps> = ({ s, language, inputCls, rowCls }) 
     } catch (err: any) {
       toast('error', err?.message || 'Restart failed');
     }
-  }, [toast]);
+  }, [toast, confirm]);
 
   // 初始化数据加载
   useEffect(() => {
