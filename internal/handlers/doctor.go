@@ -923,6 +923,194 @@ func (h *DoctorHandler) CLIFix(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// TasksList runs "openclaw tasks list --json" with optional runtime/status filters.
+func (h *DoctorHandler) TasksList(w http.ResponseWriter, r *http.Request) {
+	if !openclaw.CommandExists("openclaw") {
+		web.Fail(w, r, "CLI_NOT_INSTALLED", "openclaw CLI is not installed on this machine", http.StatusUnprocessableEntity)
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+	defer cancel()
+
+	args := []string{"tasks", "list", "--json"}
+	if rt := r.URL.Query().Get("runtime"); rt != "" {
+		args = append(args, "--runtime", rt)
+	}
+	if st := r.URL.Query().Get("status"); st != "" {
+		args = append(args, "--status", st)
+	}
+	cmd := exec.CommandContext(ctx, "openclaw", args...)
+	executil.HideWindow(cmd)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		if ctx.Err() != nil {
+			web.Fail(w, r, "TASKS_LIST_TIMEOUT", "openclaw tasks list timed out", http.StatusGatewayTimeout)
+			return
+		}
+		// Still return output even on non-zero exit
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(output)
+}
+
+// TasksShow runs "openclaw tasks show <id> --json".
+func (h *DoctorHandler) TasksShow(w http.ResponseWriter, r *http.Request) {
+	if !openclaw.CommandExists("openclaw") {
+		web.Fail(w, r, "CLI_NOT_INSTALLED", "openclaw CLI is not installed on this machine", http.StatusUnprocessableEntity)
+		return
+	}
+	lookup := r.URL.Query().Get("id")
+	if lookup == "" {
+		web.Fail(w, r, "MISSING_ID", "id query parameter is required", http.StatusBadRequest)
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "openclaw", "tasks", "show", lookup, "--json")
+	executil.HideWindow(cmd)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		if ctx.Err() != nil {
+			web.Fail(w, r, "TASKS_SHOW_TIMEOUT", "openclaw tasks show timed out", http.StatusGatewayTimeout)
+			return
+		}
+		if exitErr, ok := err.(*exec.ExitError); ok && exitErr.ExitCode() != 0 {
+			web.Fail(w, r, "TASK_NOT_FOUND", strings.TrimSpace(string(output)), http.StatusNotFound)
+			return
+		}
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(output)
+}
+
+// TasksCancel runs "openclaw tasks cancel <id>".
+func (h *DoctorHandler) TasksCancel(w http.ResponseWriter, r *http.Request) {
+	if !openclaw.CommandExists("openclaw") {
+		web.Fail(w, r, "CLI_NOT_INSTALLED", "openclaw CLI is not installed on this machine", http.StatusUnprocessableEntity)
+		return
+	}
+	var req struct {
+		ID string `json:"id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.ID == "" {
+		web.Fail(w, r, "MISSING_ID", "id field is required", http.StatusBadRequest)
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "openclaw", "tasks", "cancel", req.ID)
+	executil.HideWindow(cmd)
+	output, err := cmd.CombinedOutput()
+	exitCode := 0
+	if err != nil {
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			exitCode = exitErr.ExitCode()
+		} else if ctx.Err() != nil {
+			web.Fail(w, r, "TASKS_CANCEL_TIMEOUT", "openclaw tasks cancel timed out", http.StatusGatewayTimeout)
+			return
+		} else {
+			web.Fail(w, r, "TASKS_CANCEL_EXEC_FAILED", err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+
+	h.auditRepo.Create(&database.AuditLog{
+		UserID:   web.GetUserID(r),
+		Username: web.GetUsername(r),
+		Action:   "tasks_cancel",
+		Result:   fmt.Sprintf("tasks-cancel id=%s exit=%d", req.ID, exitCode),
+		Detail:   strings.TrimSpace(string(output)),
+		IP:       r.RemoteAddr,
+	})
+
+	logger.Doctor.Info().Str("taskId", req.ID).Int("exitCode", exitCode).Msg("openclaw tasks cancel completed")
+	web.OK(w, r, map[string]interface{}{
+		"exitCode": exitCode,
+		"output":   strings.TrimSpace(string(output)),
+		"success":  exitCode == 0,
+	})
+}
+
+// TasksAudit runs "openclaw tasks audit --json" for detailed audit findings.
+func (h *DoctorHandler) TasksAudit(w http.ResponseWriter, r *http.Request) {
+	if !openclaw.CommandExists("openclaw") {
+		web.Fail(w, r, "CLI_NOT_INSTALLED", "openclaw CLI is not installed on this machine", http.StatusUnprocessableEntity)
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+	defer cancel()
+
+	args := []string{"tasks", "audit", "--json"}
+	if sev := r.URL.Query().Get("severity"); sev != "" {
+		args = append(args, "--severity", sev)
+	}
+	cmd := exec.CommandContext(ctx, "openclaw", args...)
+	executil.HideWindow(cmd)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		if ctx.Err() != nil {
+			web.Fail(w, r, "TASKS_AUDIT_TIMEOUT", "openclaw tasks audit timed out", http.StatusGatewayTimeout)
+			return
+		}
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(output)
+}
+
+// TasksMaintenance runs "openclaw tasks maintenance --apply --json" on the local machine.
+// This reconciles stale tasks, stamps cleanup markers, and prunes expired records.
+func (h *DoctorHandler) TasksMaintenance(w http.ResponseWriter, r *http.Request) {
+	if !openclaw.CommandExists("openclaw") {
+		web.Fail(w, r, "CLI_NOT_INSTALLED", "openclaw CLI is not installed on this machine", http.StatusUnprocessableEntity)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 60*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "openclaw", "tasks", "maintenance", "--apply", "--json")
+	executil.HideWindow(cmd)
+	output, err := cmd.CombinedOutput()
+	exitCode := 0
+	if err != nil {
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			exitCode = exitErr.ExitCode()
+		} else if ctx.Err() != nil {
+			web.Fail(w, r, "TASKS_MAINTENANCE_TIMEOUT", "openclaw tasks maintenance timed out after 60s", http.StatusGatewayTimeout)
+			return
+		} else {
+			web.Fail(w, r, "TASKS_MAINTENANCE_EXEC_FAILED", err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+
+	h.auditRepo.Create(&database.AuditLog{
+		UserID:   web.GetUserID(r),
+		Username: web.GetUsername(r),
+		Action:   "tasks_maintenance",
+		Result:   fmt.Sprintf("tasks-maintenance exit=%d", exitCode),
+		Detail: func(s string) string {
+			if len(s) > 2000 {
+				return s[:2000] + "..."
+			}
+			return s
+		}(string(output)),
+		IP: r.RemoteAddr,
+	})
+
+	logger.Doctor.Info().Int("exitCode", exitCode).Msg("openclaw tasks maintenance --apply completed")
+	web.OK(w, r, map[string]interface{}{
+		"exitCode": exitCode,
+		"output":   string(output),
+		"success":  exitCode == 0,
+	})
+}
+
 func (h *DoctorHandler) checkInstalled() CheckItem {
 	if openclaw.CommandExists("openclaw") {
 		path, _ := exec.LookPath("openclaw")

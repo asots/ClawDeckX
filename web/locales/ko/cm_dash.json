@@ -144,6 +144,13 @@
     "taskAuditDeliveryFailed": "전달 실패",
     "taskAuditMissingCleanup": "정리 누락",
     "taskAuditInconsistent": "시간 불일치",
+    "taskCronHistoryHint": "({{count}}개 이력, 활성 예약 작업 없음)",
+    "taskAuditCleanup": "정리",
+    "taskAuditCleanupConfirm": "작업 기록 정리",
+    "taskAuditCleanupConfirmMsg": "만료된 작업 기록을 조정하고, 정리 마커를 설정하고, 만료된 레코드를 정리합니다. 계속하시겠습니까?",
+    "taskAuditCleaning": "정리 중...",
+    "taskAuditCleanupDone": "작업 정리 완료",
+    "taskAuditCleanupFailed": "작업 정리 실패",
     "taskNoData": "작업 데이터 없음",
     "taskAllClear": "이상 없음 — 백그라운드 작업 없음",
     "taskBusyBanner": "{{count}}개 백그라운드 작업 실행 중",
@@ -155,7 +162,10 @@
     "dreaming": "드리밍",
     "dreamingOn": "활성",
     "dreamingOff": "꺼짐",
-    "dreamingPromoted": "승격됨"
+    "dreamingPromoted": "승격됨",
+    "cronFinishedOk": "Cron \"{{name}}\" 완료",
+    "cronFinishedError": "Cron \"{{name}}\" 실패",
+    "cronRunningLabel": "실행 중"
   },
   "d": {
     "mas": {

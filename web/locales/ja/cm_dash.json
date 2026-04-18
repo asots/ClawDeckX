@@ -144,6 +144,13 @@
     "taskAuditDeliveryFailed": "配信失敗",
     "taskAuditMissingCleanup": "クリーンアップ不足",
     "taskAuditInconsistent": "時間不整合",
+    "taskCronHistoryHint": "（{{count}} 件の履歴、アクティブなスケジュールなし）",
+    "taskAuditCleanup": "クリーンアップ",
+    "taskAuditCleanupConfirm": "タスクレコードをクリーンアップ",
+    "taskAuditCleanupConfirmMsg": "期限切れのタスクレコードを調整し、クリーンアップマーカーを設定し、期限切れのレコードをプルーニングします。続行しますか？",
+    "taskAuditCleaning": "クリーンアップ中...",
+    "taskAuditCleanupDone": "タスククリーンアップ完了",
+    "taskAuditCleanupFailed": "タスククリーンアップ失敗",
     "taskNoData": "タスクデータなし",
     "taskAllClear": "問題なし — バックグラウンドタスクなし",
     "taskBusyBanner": "{{count}} 件のバックグラウンドタスク実行中",
@@ -155,7 +162,10 @@
     "dreaming": "ドリーミング",
     "dreamingOn": "稼働中",
     "dreamingOff": "オフ",
-    "dreamingPromoted": "昇格済み"
+    "dreamingPromoted": "昇格済み",
+    "cronFinishedOk": "Cron \"{{name}}\" 完了",
+    "cronFinishedError": "Cron \"{{name}}\" 失敗",
+    "cronRunningLabel": "実行中"
   },
   "d": {
     "mas": {

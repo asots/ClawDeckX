@@ -711,6 +711,20 @@ export const doctorApi = {
   }>('/api/v1/doctor/overview', ttlMs, force),
   fix: (checks?: string[]) => post('/api/v1/doctor/fix', checks && checks.length > 0 ? { checks } : {}),
   cliFix: () => post<{ exitCode: number; output: string; success: boolean }>('/api/v1/doctor/cli-fix', {}),
+  tasksMaintenance: () => post<{ exitCode: number; output: string; success: boolean }>('/api/v1/doctor/tasks-maintenance', {}),
+  tasksList: (opts?: { runtime?: string; status?: string }) => {
+    const params = new URLSearchParams();
+    if (opts?.runtime) params.set('runtime', opts.runtime);
+    if (opts?.status) params.set('status', opts.status);
+    const qs = params.toString();
+    return get<{ count: number; tasks: any[] }>(`/api/v1/doctor/tasks-list${qs ? `?${qs}` : ''}`);
+  },
+  tasksShow: (id: string) => get<any>(`/api/v1/doctor/tasks-show?id=${encodeURIComponent(id)}`),
+  tasksCancel: (id: string) => post<{ exitCode: number; output: string; success: boolean }>('/api/v1/doctor/tasks-cancel', { id }),
+  tasksAudit: (severity?: string) => {
+    const qs = severity ? `?severity=${encodeURIComponent(severity)}` : '';
+    return get<{ count: number; findings: any[]; summary: any }>(`/api/v1/doctor/tasks-audit${qs}`);
+  },
 };
 
 // ==================== Recipe 步骤操作 ====================

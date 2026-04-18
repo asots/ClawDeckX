@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"ClawDeckX/internal/database"
@@ -15,6 +16,11 @@ import (
 	"ClawDeckX/internal/web"
 )
 
+// maxPauseDuration is the safety ceiling for how long the collector stays
+// paused. If Resume() is never called (e.g. handler panic, orphaned npm),
+// the collector auto-resumes after this duration to prevent permanent stall.
+const maxPauseDuration = 15 * time.Minute
+
 type GWCollector struct {
 	client       *openclaw.GWClient
 	activityRepo *database.ActivityRepo
@@ -22,6 +28,9 @@ type GWCollector struct {
 	interval     time.Duration
 	stopCh       chan struct{}
 	running      bool
+
+	pauseMu  sync.Mutex
+	pausedAt time.Time // zero value = not paused; non-zero = paused since this time
 
 	lastSessions map[string]sessionSnapshot
 
@@ -80,9 +89,15 @@ func (c *GWCollector) Start() {
 	for {
 		select {
 		case <-ticker.C:
+			if c.isPaused() {
+				continue
+			}
 			c.poll()
 			c.broadcastBadges()
 		case <-logTicker.C:
+			if c.isPaused() {
+				continue
+			}
 			c.pollLogs(false)
 		case <-c.stopCh:
 			c.running = false
@@ -97,6 +112,42 @@ func (c *GWCollector) Stop() {
 		close(c.stopCh)
 		c.stopCh = make(chan struct{})
 	}
+}
+
+// Pause temporarily suspends polling, log fetching, and badge broadcasts.
+// Call this before starting an OpenClaw upgrade to avoid wasted CPU on RPC
+// calls that will fail while the gateway is restarting or npm is running.
+// The pause auto-expires after maxPauseDuration as a safety net.
+func (c *GWCollector) Pause() {
+	c.pauseMu.Lock()
+	c.pausedAt = time.Now()
+	c.pauseMu.Unlock()
+	logger.Monitor.Info().Msg("GWCollector paused (upgrade in progress)")
+}
+
+// Resume restores normal polling after an upgrade completes.
+func (c *GWCollector) Resume() {
+	c.pauseMu.Lock()
+	c.pausedAt = time.Time{}
+	c.pauseMu.Unlock()
+	logger.Monitor.Info().Msg("GWCollector resumed")
+}
+
+// isPaused returns true if the collector is currently paused and the pause
+// has not exceeded the safety timeout. If the timeout has elapsed, it
+// auto-resumes and returns false to prevent permanent stalls.
+func (c *GWCollector) isPaused() bool {
+	c.pauseMu.Lock()
+	defer c.pauseMu.Unlock()
+	if c.pausedAt.IsZero() {
+		return false
+	}
+	if time.Since(c.pausedAt) > maxPauseDuration {
+		c.pausedAt = time.Time{}
+		logger.Monitor.Warn().Msg("GWCollector pause exceeded safety timeout, auto-resuming")
+		return false
+	}
+	return true
 }
 
 func (c *GWCollector) IsRunning() bool {

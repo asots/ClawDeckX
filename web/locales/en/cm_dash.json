@@ -144,6 +144,13 @@
     "taskAuditDeliveryFailed": "Delivery failed",
     "taskAuditMissingCleanup": "Missing cleanup",
     "taskAuditInconsistent": "Inconsistent",
+    "taskCronHistoryHint": "({{count}} historical record(s), no active scheduled jobs)",
+    "taskAuditCleanup": "Clean Up",
+    "taskAuditCleanupConfirm": "Clean Up Task Records",
+    "taskAuditCleanupConfirmMsg": "This will reconcile stale tasks, stamp cleanup markers, and prune expired records. Continue?",
+    "taskAuditCleaning": "Cleaning...",
+    "taskAuditCleanupDone": "Task cleanup completed",
+    "taskAuditCleanupFailed": "Task cleanup failed",
     "taskNoData": "No task data available",
     "taskAllClear": "All clear — no background tasks",
     "taskBusyBanner": "{{count}} background task(s) running",
@@ -155,7 +162,10 @@
     "dreaming": "Dreaming",
     "dreamingOn": "Active",
     "dreamingOff": "Off",
-    "dreamingPromoted": "promoted"
+    "dreamingPromoted": "promoted",
+    "cronFinishedOk": "Cron \"{{name}}\" completed",
+    "cronFinishedError": "Cron \"{{name}}\" failed",
+    "cronRunningLabel": "running"
   },
   "d": {
     "mas": {

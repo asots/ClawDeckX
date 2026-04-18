@@ -144,6 +144,13 @@
     "taskAuditDeliveryFailed": "Ошибка доставки",
     "taskAuditMissingCleanup": "Отсутствует очистка",
     "taskAuditInconsistent": "Несоответствие",
+    "taskCronHistoryHint": "({{count}} запись(ей) в истории, нет активных запланированных задач)",
+    "taskAuditCleanup": "Очистить",
+    "taskAuditCleanupConfirm": "Очистить записи задач",
+    "taskAuditCleanupConfirmMsg": "Будут согласованы устаревшие задачи, установлены метки очистки и удалены просроченные записи. Продолжить?",
+    "taskAuditCleaning": "Очистка...",
+    "taskAuditCleanupDone": "Очистка задач завершена",
+    "taskAuditCleanupFailed": "Не удалось очистить задачи",
     "taskNoData": "Нет данных о задачах",
     "taskAllClear": "Всё в порядке — нет фоновых задач",
     "taskBusyBanner": "{{count}} фоновых задач выполняется",
@@ -155,7 +162,10 @@
     "dreaming": "Dreaming",
     "dreamingOn": "Активно",
     "dreamingOff": "Выкл",
-    "dreamingPromoted": "продвинуто"
+    "dreamingPromoted": "продвинуто",
+    "cronFinishedOk": "Cron \"{{name}}\" завершён",
+    "cronFinishedError": "Cron \"{{name}}\" не удался",
+    "cronRunningLabel": "выполняется"
   },
   "d": {
     "mas": {

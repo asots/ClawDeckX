@@ -144,6 +144,13 @@
     "taskAuditDeliveryFailed": "投递失败",
     "taskAuditMissingCleanup": "缺少清理",
     "taskAuditInconsistent": "时间异常",
+    "taskCronHistoryHint": "（{{count}} 条历史记录，无活跃定时任务）",
+    "taskAuditCleanup": "一键清理",
+    "taskAuditCleanupConfirm": "清理任务记录",
+    "taskAuditCleanupConfirmMsg": "将清理过期任务记录、标记清理状态并修剪过期数据。确定继续？",
+    "taskAuditCleaning": "正在清理...",
+    "taskAuditCleanupDone": "任务清理完成",
+    "taskAuditCleanupFailed": "任务清理失败",
     "taskNoData": "暂无任务数据",
     "taskAllClear": "一切正常 — 无后台任务",
     "taskBusyBanner": "{{count}} 个后台任务运行中",
@@ -155,7 +162,10 @@
     "dreaming": "梦境",
     "dreamingOn": "运行中",
     "dreamingOff": "已关闭",
-    "dreamingPromoted": "已提升"
+    "dreamingPromoted": "已提升",
+    "cronFinishedOk": "定时任务 \"{{name}}\" 已完成",
+    "cronFinishedError": "定时任务 \"{{name}}\" 执行失败",
+    "cronRunningLabel": "运行中"
   },
   "d": {
     "mas": {

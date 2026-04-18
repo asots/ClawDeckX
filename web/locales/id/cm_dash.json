@@ -144,6 +144,13 @@
     "taskAuditDeliveryFailed": "Delivery failed",
     "taskAuditMissingCleanup": "Missing cleanup",
     "taskAuditInconsistent": "Inconsistent",
+    "taskCronHistoryHint": "({{count}} catatan riwayat, tidak ada tugas terjadwal aktif)",
+    "taskAuditCleanup": "Bersihkan",
+    "taskAuditCleanupConfirm": "Bersihkan catatan tugas",
+    "taskAuditCleanupConfirmMsg": "Ini akan merekonsiliasi tugas kedaluwarsa, menandai pembersihan, dan memangkas catatan kedaluwarsa. Lanjutkan?",
+    "taskAuditCleaning": "Membersihkan...",
+    "taskAuditCleanupDone": "Pembersihan tugas selesai",
+    "taskAuditCleanupFailed": "Pembersihan tugas gagal",
     "taskNoData": "No task data available",
     "taskAllClear": "All clear — no background tasks",
     "taskBusyBanner": "{{count}} background task(s) running",
@@ -155,7 +162,10 @@
     "dreaming": "Dreaming",
     "dreamingOn": "Aktif",
     "dreamingOff": "Mati",
-    "dreamingPromoted": "dipromosikan"
+    "dreamingPromoted": "dipromosikan",
+    "cronFinishedOk": "Cron \"{{name}}\" selesai",
+    "cronFinishedError": "Cron \"{{name}}\" gagal",
+    "cronRunningLabel": "berjalan"
   },
   "d": {
     "mas": {

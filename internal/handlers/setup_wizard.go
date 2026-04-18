@@ -19,6 +19,7 @@ type SetupWizardHandler struct {
 	auditRepo *database.AuditLogRepo
 	svc       *openclaw.Service
 	gwClient  *openclaw.GWClient
+	collector CollectorPauser
 }
 
 // NewSetupWizardHandler creates a new SetupWizardHandler.
@@ -36,6 +37,11 @@ func (h *SetupWizardHandler) SetGWClient(client *openclaw.GWClient) {
 // SetAuditRepo sets the audit log repository.
 func (h *SetupWizardHandler) SetAuditRepo(repo *database.AuditLogRepo) {
 	h.auditRepo = repo
+}
+
+// SetCollector injects the GWCollector so it can be paused during upgrades.
+func (h *SetupWizardHandler) SetCollector(c CollectorPauser) {
+	h.collector = c
 }
 
 // Scan runs an environment scan.
@@ -339,6 +345,13 @@ func (h *SetupWizardHandler) UpdateOpenClaw(w http.ResponseWriter, r *http.Reque
 	if err != nil {
 		web.Fail(w, r, "SSE_ERROR", err.Error(), http.StatusInternalServerError)
 		return
+	}
+
+	// Pause the GWCollector during upgrade to avoid wasted CPU on RPC calls
+	// that will fail while npm is running and the gateway is stopped.
+	if h.collector != nil {
+		h.collector.Pause()
+		defer h.collector.Resume()
 	}
 
 	emitter.EmitPhase("update", "Checking current version...", 0)

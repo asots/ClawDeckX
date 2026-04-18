@@ -144,6 +144,13 @@
     "taskAuditDeliveryFailed": "Zustellung fehlgeschlagen",
     "taskAuditMissingCleanup": "Bereinigung fehlt",
     "taskAuditInconsistent": "Inkonsistenz",
+    "taskCronHistoryHint": "({{count}} Verlaufseintrag/einträge, keine aktiven geplanten Jobs)",
+    "taskAuditCleanup": "Bereinigen",
+    "taskAuditCleanupConfirm": "Aufgabeneinträge bereinigen",
+    "taskAuditCleanupConfirmMsg": "Dies wird veraltete Aufgaben abstimmen, Bereinigungsmarkierungen setzen und abgelaufene Einträge entfernen. Fortfahren?",
+    "taskAuditCleaning": "Bereinigung...",
+    "taskAuditCleanupDone": "Aufgabenbereinigung abgeschlossen",
+    "taskAuditCleanupFailed": "Aufgabenbereinigung fehlgeschlagen",
     "taskNoData": "Keine Aufgabendaten verfügbar",
     "taskAllClear": "Alles in Ordnung — keine Hintergrundaufgaben",
     "taskBusyBanner": "{{count}} Hintergrundaufgabe(n) laufen",
@@ -155,7 +162,10 @@
     "dreaming": "Dreaming",
     "dreamingOn": "Aktiv",
     "dreamingOff": "Aus",
-    "dreamingPromoted": "befördert"
+    "dreamingPromoted": "befördert",
+    "cronFinishedOk": "Cron \"{{name}}\" abgeschlossen",
+    "cronFinishedError": "Cron \"{{name}}\" fehlgeschlagen",
+    "cronRunningLabel": "läuft"
   },
   "d": {
     "mas": {

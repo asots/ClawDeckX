@@ -144,6 +144,13 @@
     "taskAuditDeliveryFailed": "Entrega fallida",
     "taskAuditMissingCleanup": "Limpieza faltante",
     "taskAuditInconsistent": "Inconsistencia",
+    "taskCronHistoryHint": "({{count}} registro(s) histórico(s), sin tareas programadas activas)",
+    "taskAuditCleanup": "Limpiar",
+    "taskAuditCleanupConfirm": "Limpiar registros de tareas",
+    "taskAuditCleanupConfirmMsg": "Esto reconciliará tareas obsoletas, marcará limpieza y eliminará registros expirados. ¿Continuar?",
+    "taskAuditCleaning": "Limpiando...",
+    "taskAuditCleanupDone": "Limpieza de tareas completada",
+    "taskAuditCleanupFailed": "Limpieza de tareas fallida",
     "taskNoData": "Sin datos de tareas",
     "taskAllClear": "Todo bien — sin tareas en segundo plano",
     "taskBusyBanner": "{{count}} tarea(s) en segundo plano ejecutándose",
@@ -155,7 +162,10 @@
     "dreaming": "Dreaming",
     "dreamingOn": "Activo",
     "dreamingOff": "Apagado",
-    "dreamingPromoted": "promovidos"
+    "dreamingPromoted": "promovidos",
+    "cronFinishedOk": "Cron \"{{name}}\" completado",
+    "cronFinishedError": "Cron \"{{name}}\" falló",
+    "cronRunningLabel": "en ejecución"
   },
   "d": {
     "mas": {

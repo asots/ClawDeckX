@@ -167,10 +167,18 @@ func (m *Manager) InstallOpenClaw(ctx context.Context, progressFn func(updater.A
 		npmPrefix = filepath.Join(dir, "npm")
 	}
 
+	// Use --maxsockets=3 to limit network concurrency and reduce memory/CPU
+	// pressure during install on low-resource Docker hosts.
+	// Also set MAKEFLAGS=-j1 to serialize native addon compilation (e.g.
+	// better-sqlite3) which is the primary CPU bottleneck during upgrades.
 	cmd := exec.CommandContext(ctx, "npm", "install", "-g", "openclaw@latest",
-		"--prefix", npmPrefix)
+		"--prefix", npmPrefix, "--maxsockets=3")
 	executil.HideWindow(cmd)
-	cmd.Env = append(os.Environ(), "NPM_CONFIG_PREFIX="+npmPrefix)
+	cmd.Env = append(os.Environ(),
+		"NPM_CONFIG_PREFIX="+npmPrefix,
+		"MAKEFLAGS=-j1",
+		"npm_config_jobs=1",
+	)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		progressFn(updater.ApplyProgress{Stage: "error", Error: "npm install failed: " + string(output)})

@@ -144,6 +144,13 @@
     "taskAuditDeliveryFailed": "Livraison échouée",
     "taskAuditMissingCleanup": "Nettoyage manquant",
     "taskAuditInconsistent": "Incohérence",
+    "taskCronHistoryHint": "({{count}} enregistrement(s) historique(s), aucune tâche planifiée active)",
+    "taskAuditCleanup": "Nettoyer",
+    "taskAuditCleanupConfirm": "Nettoyer les enregistrements de tâches",
+    "taskAuditCleanupConfirmMsg": "Cela réconciliera les tâches obsolètes, marquera le nettoyage et supprimera les enregistrements expirés. Continuer ?",
+    "taskAuditCleaning": "Nettoyage...",
+    "taskAuditCleanupDone": "Nettoyage des tâches terminé",
+    "taskAuditCleanupFailed": "Échec du nettoyage des tâches",
     "taskNoData": "Aucune donnée de tâche",
     "taskAllClear": "Tout est en ordre — aucune tâche en arrière-plan",
     "taskBusyBanner": "{{count}} tâche(s) en arrière-plan en cours",
@@ -155,7 +162,10 @@
     "dreaming": "Dreaming",
     "dreamingOn": "Actif",
     "dreamingOff": "Désactivé",
-    "dreamingPromoted": "promus"
+    "dreamingPromoted": "promus",
+    "cronFinishedOk": "Cron \"{{name}}\" terminé",
+    "cronFinishedError": "Cron \"{{name}}\" échoué",
+    "cronRunningLabel": "en cours"
   },
   "d": {
     "mas": {

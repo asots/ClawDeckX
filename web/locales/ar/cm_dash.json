@@ -144,6 +144,13 @@
     "taskAuditDeliveryFailed": "فشل التسليم",
     "taskAuditMissingCleanup": "تنظيف مفقود",
     "taskAuditInconsistent": "عدم اتساق",
+    "taskCronHistoryHint": "({{count}} سجل تاريخي، لا توجد مهام مجدولة نشطة)",
+    "taskAuditCleanup": "تنظيف",
+    "taskAuditCleanupConfirm": "تنظيف سجلات المهام",
+    "taskAuditCleanupConfirmMsg": "سيتم تسوية المهام المتوقفة ووضع علامات التنظيف وتقليم السجلات المنتهية. هل تريد المتابعة؟",
+    "taskAuditCleaning": "جاري التنظيف...",
+    "taskAuditCleanupDone": "اكتمل تنظيف المهام",
+    "taskAuditCleanupFailed": "فشل تنظيف المهام",
     "taskNoData": "لا توجد بيانات مهام",
     "taskAllClear": "كل شيء على ما يرام — لا مهام خلفية",
     "taskBusyBanner": "{{count}} مهمة خلفية قيد التشغيل",
@@ -155,7 +162,10 @@
     "dreaming": "الأحلام",
     "dreamingOn": "نشط",
     "dreamingOff": "معطّل",
-    "dreamingPromoted": "مُرقّاة"
+    "dreamingPromoted": "مُرقّاة",
+    "cronFinishedOk": "اكتملت المهمة \"{{name}}\"",
+    "cronFinishedError": "فشلت المهمة \"{{name}}\"",
+    "cronRunningLabel": "قيد التشغيل"
   },
   "d": {
     "mas": {

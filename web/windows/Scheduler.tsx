@@ -2,7 +2,8 @@
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import { Language } from '../types';
 import { getTranslation } from '../locales';
-import { gwApi } from '../services/api';
+import { gwApi, doctorApi } from '../services/api';
+import { useGatewayEvents } from '../hooks/useGatewayEvents';
 import { useGatewayStatus } from '../hooks/useGatewayStatus';
 import { fmtRelativeFuture } from '../utils/time';
 import { useVisibilityPolling } from '../hooks/useVisibilityPolling';
@@ -203,8 +204,35 @@ const Scheduler: React.FC<SchedulerProps> = ({ language }) => {
   // Task audit health
   const [taskAudit, setTaskAudit] = useState<any>(null);
 
+  // Global run history (scope: all)
+  const [globalRuns, setGlobalRuns] = useState<any[]>([]);
+  const [globalRunsTotal, setGlobalRunsTotal] = useState(0);
+  const [globalRunsHasMore, setGlobalRunsHasMore] = useState(false);
+  const [globalRunsOffset, setGlobalRunsOffset] = useState(0);
+  const [globalRunsLoading, setGlobalRunsLoading] = useState(false);
+
   // Sessions list for session key picker
   const [sessionsList, setSessionsList] = useState<any[]>([]);
+
+  // Tab: 'jobs' | 'tasks'
+  type SchedulerTab = 'jobs' | 'tasks';
+  const [activeTab, setActiveTab] = useState<SchedulerTab>('jobs');
+
+  // Background Tasks state
+  const [bgTasks, setBgTasks] = useState<any[]>([]);
+  const [bgTasksCount, setBgTasksCount] = useState(0);
+  const [bgTasksLoading, setBgTasksLoading] = useState(false);
+  const [bgRuntimeFilter, setBgRuntimeFilter] = useState('');
+  const [bgStatusFilter, setBgStatusFilter] = useState('');
+  const [bgExpandedId, setBgExpandedId] = useState<string | null>(null);
+  const [bgExpandedDetail, setBgExpandedDetail] = useState<any>(null);
+  const [bgCancelBusy, setBgCancelBusy] = useState<Set<string>>(new Set());
+
+  // Audit detail state
+  const [auditFindings, setAuditFindings] = useState<any[] | null>(null);
+  const [auditSummary, setAuditSummary] = useState<any>(null);
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [auditExpanded, setAuditExpanded] = useState(false);
 
   const na = s?.na || '-';
 
@@ -246,6 +274,93 @@ const Scheduler: React.FC<SchedulerProps> = ({ language }) => {
 
   // Auto-refresh every 10s + on mount
   useVisibilityPolling(loadAll, 10000, gwReady);
+
+  // Listen to cron gateway events for real-time refresh
+  useGatewayEvents({
+    cron: () => {
+      loadAll();
+      if (runsJobId) loadRuns(runsJobId);
+      else loadGlobalRuns();
+    },
+  });
+
+  // Load background tasks
+  const loadBgTasks = useCallback(async () => {
+    setBgTasksLoading(true);
+    try {
+      const res = await doctorApi.tasksList({
+        runtime: bgRuntimeFilter || undefined,
+        status: bgStatusFilter || undefined,
+      });
+      if (res) {
+        setBgTasks(Array.isArray(res.tasks) ? res.tasks : []);
+        setBgTasksCount(res.count ?? 0);
+      }
+    } catch { /* ignore */ }
+    setBgTasksLoading(false);
+  }, [bgRuntimeFilter, bgStatusFilter]);
+
+  // Load audit detail
+  const loadAuditDetail = useCallback(async () => {
+    setAuditLoading(true);
+    try {
+      const res = await doctorApi.tasksAudit();
+      if (res) {
+        setAuditFindings(Array.isArray(res.findings) ? res.findings : []);
+        setAuditSummary(res.summary ?? null);
+      }
+    } catch { /* ignore */ }
+    setAuditLoading(false);
+  }, []);
+
+  // Cancel a background task
+  const cancelBgTask = useCallback(async (taskId: string) => {
+    const ok = await confirm({
+      title: s.bgTaskCancelConfirm || 'Cancel Task',
+      message: (s.bgTaskCancelMsg || 'Cancel background task {{id}}?').replace('{{id}}', taskId.slice(0, 10)),
+      confirmText: s.bgTaskCancel || 'Cancel Task',
+      danger: true,
+    });
+    if (!ok) return;
+    setBgCancelBusy(prev => new Set(prev).add(taskId));
+    try {
+      const res = await doctorApi.tasksCancel(taskId);
+      if (res?.success) {
+        toast('success', s.bgTaskCancelled || 'Task cancelled');
+        await loadBgTasks();
+      } else {
+        toast('error', s.bgTaskCancelFailed || 'Failed to cancel task');
+      }
+    } catch {
+      toast('error', s.bgTaskCancelFailed || 'Failed to cancel task');
+    }
+    setBgCancelBusy(prev => { const n = new Set(prev); n.delete(taskId); return n; });
+  }, [confirm, s, toast, loadBgTasks]);
+
+  // Expand task detail
+  const expandBgTask = useCallback(async (taskId: string) => {
+    if (bgExpandedId === taskId) { setBgExpandedId(null); setBgExpandedDetail(null); return; }
+    setBgExpandedId(taskId);
+    setBgExpandedDetail(null);
+    try {
+      const res = await doctorApi.tasksShow(taskId);
+      setBgExpandedDetail(res);
+    } catch { setBgExpandedDetail({ error: 'Failed to load' }); }
+  }, [bgExpandedId]);
+
+  // Auto-load bg tasks when tab switches
+  useEffect(() => {
+    if (activeTab === 'tasks' && gwReady) {
+      loadBgTasks();
+    }
+  }, [activeTab, gwReady, loadBgTasks]);
+
+  // Auto-refresh bg tasks every 10s when on tasks tab
+  useEffect(() => {
+    if (activeTab !== 'tasks' || !gwReady) return;
+    const timer = setInterval(loadBgTasks, 10000);
+    return () => clearInterval(timer);
+  }, [activeTab, gwReady, loadBgTasks]);
 
   // Load sessions list when form opens
   useEffect(() => {
@@ -366,6 +481,28 @@ const Scheduler: React.FC<SchedulerProps> = ({ language }) => {
     if (runsJobId && !runsLoading) loadRuns(runsJobId, runsOffset, true);
   }, [runsJobId, runsLoading, runsOffset, loadRuns]);
 
+  // Load global run history (scope: all)
+  const loadGlobalRuns = useCallback(async (offset = 0, append = false) => {
+    setGlobalRunsLoading(true);
+    try {
+      const res = await gwApi.cronRunsAll({
+        limit: 20,
+        offset,
+        sortDir: 'desc',
+      }) as any;
+      const entries = Array.isArray(res?.entries) ? res.entries : [];
+      setGlobalRuns(prev => append ? [...prev, ...entries] : entries);
+      setGlobalRunsTotal(res?.total ?? entries.length);
+      setGlobalRunsHasMore(!!res?.hasMore);
+      setGlobalRunsOffset(offset + entries.length);
+    } catch { /* ignore */ }
+    setGlobalRunsLoading(false);
+  }, []);
+
+  const loadMoreGlobalRuns = useCallback(() => {
+    if (!globalRunsLoading) loadGlobalRuns(globalRunsOffset, true);
+  }, [globalRunsLoading, globalRunsOffset, loadGlobalRuns]);
+
   const toggleJob = useCallback(async (job: any) => {
     if (busyJobs.has(job.id)) return;
     setBusyJobs(prev => new Set(prev).add(job.id));
@@ -429,6 +566,13 @@ const Scheduler: React.FC<SchedulerProps> = ({ language }) => {
     return () => clearInterval(timer);
   }, [runsJobId, gwReady, loadRuns]);
 
+  // Load global run history on mount and when no specific job is selected
+  useEffect(() => {
+    if (gwReady && !runsJobId) {
+      loadGlobalRuns();
+    }
+  }, [gwReady, runsJobId, loadGlobalRuns]);
+
   const selectedJobName = runsJobId ? (jobs.find(j => j.id === runsJobId)?.name || runsJobId) : null;
 
   const inputCls = 'w-full mt-0.5 px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-white/[0.03] border border-slate-200/60 dark:border-white/[0.06] text-[11px] text-slate-700 dark:text-white/70 focus:outline-none focus:ring-1 focus:ring-primary/30';
@@ -486,7 +630,22 @@ const Scheduler: React.FC<SchedulerProps> = ({ language }) => {
 
       {error && <div className="mb-3 px-3 py-2 rounded-xl bg-mac-red/10 border border-mac-red/20 text-[10px] text-mac-red animate-fade-in">{error}</div>}
 
-      <div className="space-y-4 max-w-6xl">
+      {/* Tab Bar */}
+      <div className="flex items-center gap-1 mb-4 border-b border-slate-200/60 dark:border-white/[0.06]">
+        <button onClick={() => setActiveTab('jobs')}
+          className={`px-4 py-2 text-[11px] font-bold transition-all border-b-2 -mb-px ${activeTab === 'jobs' ? 'border-primary text-primary' : 'border-transparent text-slate-400 dark:text-white/40 hover:text-slate-600 dark:hover:text-white/60'}`}>
+          <span className="material-symbols-outlined text-[14px] align-middle me-1">schedule</span>
+          {s.tabJobs || 'Scheduled Jobs'}
+        </button>
+        <button onClick={() => setActiveTab('tasks')}
+          className={`px-4 py-2 text-[11px] font-bold transition-all border-b-2 -mb-px ${activeTab === 'tasks' ? 'border-primary text-primary' : 'border-transparent text-slate-400 dark:text-white/40 hover:text-slate-600 dark:hover:text-white/60'}`}>
+          <span className="material-symbols-outlined text-[14px] align-middle me-1">task_alt</span>
+          {s.tabTasks || 'Background Tasks'}
+          {bgTasksCount > 0 && <span className="ms-1.5 px-1.5 py-0.5 rounded-full bg-primary/10 text-primary text-[9px] font-bold">{bgTasksCount}</span>}
+        </button>
+      </div>
+
+      {activeTab === 'jobs' && <div className="space-y-4 max-w-6xl">
         {/* Status Card - full width when no form */}
         <div className={`grid grid-cols-1 ${showForm ? 'lg:grid-cols-2' : ''} gap-4`}>
           <div className="rounded-2xl border border-slate-200/60 dark:border-white/[0.06] bg-white dark:bg-white/[0.02] p-4 sci-card">
@@ -841,7 +1000,7 @@ const Scheduler: React.FC<SchedulerProps> = ({ language }) => {
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-[11px] font-bold text-slate-600 dark:text-white/60 uppercase tracking-wider flex items-center gap-2">
               <span className="material-symbols-outlined text-[14px] text-indigo-500">history</span>
-              {s.runHistory}
+              {runsJobId ? s.runHistory : (s.globalRunHistory || 'Global Run History')}
               {selectedJobName && <span className="text-[11px] font-normal text-slate-400 dark:text-white/35">— {selectedJobName}</span>}
             </h3>
             {runsJobId && (
@@ -857,11 +1016,44 @@ const Scheduler: React.FC<SchedulerProps> = ({ language }) => {
             )}
           </div>
           {!runsJobId ? (
-            <div className="flex flex-col items-center justify-center py-8 text-slate-400 dark:text-white/30">
-              <span className="material-symbols-outlined text-3xl mb-2">touch_app</span>
-              <p className="text-[11px] font-bold mb-1">{s.selectJob}</p>
-              <p className="text-[10px] text-center">{s.selectJobHint}</p>
-            </div>
+            globalRuns.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 text-slate-400 dark:text-white/30">
+                <span className="material-symbols-outlined text-3xl mb-2">schedule</span>
+                <p className="text-[11px] font-bold mb-1">{s.noGlobalRuns || 'No run history'}</p>
+                <p className="text-[10px] text-center">{s.noGlobalRunsHint || 'Run history will appear here once scheduled tasks have been executed'}</p>
+              </div>
+            ) : (
+              <>
+                <p className="text-[10px] text-slate-400 dark:text-white/30 mb-2">{s.globalRunHistoryDesc || 'Recent run records from all scheduled tasks, including deleted jobs'}</p>
+                <div className="space-y-1.5">
+                  {globalRuns.map((run: any, i: number) => (
+                    <div key={`g-${run.ts}-${i}`} className="flex items-center gap-3 px-3 py-2 rounded-xl bg-slate-50 dark:bg-white/[0.03] border border-slate-100 dark:border-white/5">
+                      <div className={`w-2 h-2 rounded-full shrink-0 ${run.status === 'ok' ? 'bg-mac-green' : run.status === 'error' ? 'bg-mac-red' : 'bg-mac-yellow'}`} />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className={`text-[10px] font-bold ${run.status === 'ok' ? 'text-mac-green' : run.status === 'error' ? 'text-mac-red' : 'text-mac-yellow'}`}>
+                            {run.status === 'ok' ? s.ok : run.status === 'error' ? s.error : s.skipped}
+                          </span>
+                          {run.jobName && <span className="text-[10px] text-slate-500 dark:text-white/50 font-semibold">{run.jobName}</span>}
+                          {run.durationMs != null && <span className="text-[11px] text-slate-400 dark:text-white/35">{run.durationMs}ms</span>}
+                        </div>
+                        {run.summary && <p className="text-[11px] text-slate-500 dark:text-white/40 truncate mt-0.5">{run.summary}</p>}
+                        {run.error && <p className="text-[11px] text-mac-red truncate mt-0.5">{run.error}</p>}
+                      </div>
+                      <span className="text-[11px] text-slate-400 dark:text-white/20 shrink-0">{run.ts ? new Date(run.ts).toLocaleString() : na}</span>
+                    </div>
+                  ))}
+                </div>
+                {globalRunsHasMore && (
+                  <div className="flex justify-center mt-3">
+                    <button onClick={loadMoreGlobalRuns} disabled={globalRunsLoading}
+                      className="text-[10px] text-primary font-bold hover:underline disabled:opacity-40">
+                      {globalRunsLoading ? (s.loading || 'Loading...') : s.loadMore}
+                    </button>
+                  </div>
+                )}
+              </>
+            )
           ) : runs.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-8 text-slate-400 dark:text-white/30">
               <span className="material-symbols-outlined text-3xl mb-2">history</span>
@@ -899,7 +1091,152 @@ const Scheduler: React.FC<SchedulerProps> = ({ language }) => {
             </>
           )}
         </div>
-      </div>
+      </div>}
+
+      {/* Background Tasks Tab */}
+      {activeTab === 'tasks' && <div className="space-y-4 max-w-6xl">
+        {/* Filters */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <CustomSelect value={bgRuntimeFilter} onChange={v => setBgRuntimeFilter(v)}
+            options={[{ value: '', label: s.bgAllRuntimes || 'All runtimes' }, { value: 'cron', label: 'Cron' }, { value: 'subagent', label: 'Subagent' }, { value: 'acp', label: 'ACP' }, { value: 'cli', label: 'CLI' }]}
+            className="px-2 py-1 rounded-lg bg-slate-50 dark:bg-white/[0.03] border border-slate-200/60 dark:border-white/[0.06] text-[10px] text-slate-600 dark:text-white/60" />
+          <CustomSelect value={bgStatusFilter} onChange={v => setBgStatusFilter(v)}
+            options={[{ value: '', label: s.bgAllStatuses || 'All statuses' }, { value: 'running', label: s.bgRunning || 'Running' }, { value: 'queued', label: s.bgQueued || 'Queued' }, { value: 'succeeded', label: s.bgSucceeded || 'Succeeded' }, { value: 'failed', label: s.bgFailed || 'Failed' }, { value: 'cancelled', label: s.bgCancelled || 'Cancelled' }, { value: 'lost', label: s.bgLost || 'Lost' }, { value: 'timed_out', label: s.bgTimedOut || 'Timed out' }]}
+            className="px-2 py-1 rounded-lg bg-slate-50 dark:bg-white/[0.03] border border-slate-200/60 dark:border-white/[0.06] text-[10px] text-slate-600 dark:text-white/60" />
+          <button onClick={loadBgTasks} disabled={bgTasksLoading} className="text-slate-400 hover:text-primary disabled:opacity-40" title={s.refresh}>
+            <span className={`material-symbols-outlined text-[16px] ${bgTasksLoading ? 'animate-spin' : ''}`}>refresh</span>
+          </button>
+          <span className="text-[10px] text-slate-400 dark:text-white/30 ms-auto">{bgTasksCount} {s.bgTasksLabel || 'task(s)'}</span>
+        </div>
+
+        {/* Task list */}
+        {bgTasks.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-slate-400 dark:text-white/30">
+            <span className="material-symbols-outlined text-3xl mb-2">task_alt</span>
+            <p className="text-[11px] font-bold mb-1">{s.bgNoTasks || 'No background tasks'}</p>
+            <p className="text-[10px] text-center">{s.bgNoTasksHint || 'Background tasks will appear here when agents run scheduled or spawned work'}</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {bgTasks.map((task: any) => {
+              const isExpanded = bgExpandedId === task.taskId;
+              const isCancelling = bgCancelBusy.has(task.taskId);
+              const statusColors: Record<string, string> = {
+                running: 'bg-blue-500', queued: 'bg-slate-400', succeeded: 'bg-mac-green',
+                failed: 'bg-mac-red', cancelled: 'bg-slate-300 dark:bg-slate-600', lost: 'bg-mac-yellow', timed_out: 'bg-mac-red',
+              };
+              const statusTextColors: Record<string, string> = {
+                running: 'text-blue-600 dark:text-blue-400', queued: 'text-slate-500', succeeded: 'text-mac-green',
+                failed: 'text-mac-red', cancelled: 'text-slate-400', lost: 'text-mac-yellow', timed_out: 'text-mac-red',
+              };
+              const rtIcons: Record<string, string> = { cron: 'schedule', subagent: 'smart_toy', acp: 'extension', cli: 'terminal' };
+              const age = task.createdAt ? Math.round((Date.now() - task.createdAt) / 60000) : null;
+              return (
+                <div key={task.taskId} className="rounded-xl border border-slate-200/60 dark:border-white/[0.06] bg-white dark:bg-white/[0.02] transition-all">
+                  <div className="flex items-center gap-3 px-3.5 py-2.5 cursor-pointer hover:bg-slate-50/50 dark:hover:bg-white/[0.01] rounded-xl" onClick={() => expandBgTask(task.taskId)}>
+                    <div className={`w-2 h-2 rounded-full shrink-0 ${statusColors[task.status] || 'bg-slate-300'} ${task.status === 'running' ? 'animate-pulse' : ''}`} />
+                    <span className="material-symbols-outlined text-[14px] text-slate-400 dark:text-white/30">{rtIcons[task.runtime] || 'task'}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className={`text-[10px] font-bold uppercase ${statusTextColors[task.status] || 'text-slate-400'}`}>{task.status}</span>
+                        <span className="text-[10px] text-slate-400 dark:text-white/30">{task.runtime}</span>
+                        {task.label && <span className="text-[10px] text-slate-500 dark:text-white/50 font-semibold truncate">{task.label}</span>}
+                      </div>
+                      <p className="text-[11px] text-slate-500 dark:text-white/40 truncate mt-0.5">{task.progressSummary || task.terminalSummary || task.task}</p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {task.status === 'running' && (
+                        <button onClick={e => { e.stopPropagation(); cancelBgTask(task.taskId); }} disabled={isCancelling}
+                          className="text-[10px] px-2 py-0.5 rounded bg-mac-red/10 text-mac-red font-bold disabled:opacity-30">{s.bgTaskCancel || 'Cancel'}</button>
+                      )}
+                      {task.childSessionKey && (
+                        <button onClick={e => { e.stopPropagation(); window.dispatchEvent(new CustomEvent('clawdeck:open-window', { detail: { id: 'sessions' } })); }}
+                          className="text-[10px] text-primary hover:underline" title={task.childSessionKey}>
+                          <span className="material-symbols-outlined text-[12px]">chat</span>
+                        </button>
+                      )}
+                      <span className="text-[10px] text-slate-400 dark:text-white/20">{age != null ? (age < 60 ? `${age}m` : `${Math.round(age / 60)}h`) : na}</span>
+                      <span className={`material-symbols-outlined text-[14px] text-slate-300 dark:text-white/20 transition-transform ${isExpanded ? 'rotate-180' : ''}`}>expand_more</span>
+                    </div>
+                  </div>
+                  {isExpanded && (
+                    <div className="px-3.5 pb-3 pt-1 border-t border-slate-100 dark:border-white/5">
+                      {!bgExpandedDetail ? (
+                        <div className="flex items-center gap-2 py-2 text-[10px] text-slate-400"><span className="material-symbols-outlined text-[14px] animate-spin">progress_activity</span>{s.loading || 'Loading...'}</div>
+                      ) : (
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[10px]">
+                          <div><span className="font-bold text-slate-400 dark:text-white/30">Task ID</span> <span className="text-slate-600 dark:text-white/60 font-mono">{bgExpandedDetail.taskId}</span></div>
+                          <div><span className="font-bold text-slate-400 dark:text-white/30">Run ID</span> <span className="text-slate-600 dark:text-white/60 font-mono">{bgExpandedDetail.runId || na}</span></div>
+                          <div><span className="font-bold text-slate-400 dark:text-white/30">{s.bgDelivery || 'Delivery'}</span> <span className="text-slate-600 dark:text-white/60">{bgExpandedDetail.deliveryStatus || na}</span></div>
+                          <div><span className="font-bold text-slate-400 dark:text-white/30">{s.bgNotify || 'Notify'}</span> <span className="text-slate-600 dark:text-white/60">{bgExpandedDetail.notifyPolicy || na}</span></div>
+                          <div><span className="font-bold text-slate-400 dark:text-white/30">{s.bgOwner || 'Owner'}</span> <span className="text-slate-600 dark:text-white/60 truncate">{bgExpandedDetail.ownerKey || na}</span></div>
+                          <div><span className="font-bold text-slate-400 dark:text-white/30">{s.bgSession || 'Session'}</span>
+                            {bgExpandedDetail.childSessionKey ? (
+                              <button onClick={() => window.dispatchEvent(new CustomEvent('clawdeck:open-window', { detail: { id: 'sessions' } }))}
+                                className="text-primary hover:underline ms-1">{bgExpandedDetail.childSessionKey}</button>
+                            ) : <span className="text-slate-600 dark:text-white/60 ms-1">{na}</span>}
+                          </div>
+                          {bgExpandedDetail.agentId && <div><span className="font-bold text-slate-400 dark:text-white/30">Agent</span> <span className="text-slate-600 dark:text-white/60">{bgExpandedDetail.agentId}</span></div>}
+                          <div><span className="font-bold text-slate-400 dark:text-white/30">{s.bgCreated || 'Created'}</span> <span className="text-slate-600 dark:text-white/60">{bgExpandedDetail.createdAt ? new Date(bgExpandedDetail.createdAt).toLocaleString() : na}</span></div>
+                          {bgExpandedDetail.startedAt && <div><span className="font-bold text-slate-400 dark:text-white/30">{s.bgStarted || 'Started'}</span> <span className="text-slate-600 dark:text-white/60">{new Date(bgExpandedDetail.startedAt).toLocaleString()}</span></div>}
+                          {bgExpandedDetail.endedAt && <div><span className="font-bold text-slate-400 dark:text-white/30">{s.bgEnded || 'Ended'}</span> <span className="text-slate-600 dark:text-white/60">{new Date(bgExpandedDetail.endedAt).toLocaleString()}</span></div>}
+                          {bgExpandedDetail.error && <div className="col-span-2"><span className="font-bold text-mac-red">{s.error || 'Error'}</span> <span className="text-mac-red">{bgExpandedDetail.error}</span></div>}
+                          {bgExpandedDetail.terminalSummary && <div className="col-span-2"><span className="font-bold text-slate-400 dark:text-white/30">{s.bgResult || 'Result'}</span> <span className="text-slate-600 dark:text-white/60">{bgExpandedDetail.terminalSummary}</span></div>}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Audit Detail Section */}
+        {taskAudit && taskAudit.total > 0 && (
+          <div className="rounded-2xl border border-amber-200/60 dark:border-amber-500/20 bg-amber-50/30 dark:bg-amber-500/[0.03] p-4">
+            <div className="flex items-center justify-between mb-2">
+              <button onClick={() => { if (!auditExpanded) { setAuditExpanded(true); loadAuditDetail(); } else { setAuditExpanded(false); } }}
+                className="flex items-center gap-2 text-[11px] font-bold text-slate-600 dark:text-white/60 uppercase hover:text-primary transition-colors">
+                <span className="material-symbols-outlined text-[14px] text-amber-500">health_and_safety</span>
+                {s.bgAuditTitle || 'Task Audit Detail'}
+                <span className={`text-[10px] font-bold ${taskAudit.errors > 0 ? 'text-red-500' : 'text-amber-500'}`}>
+                  {(s.taskAuditFindings || '{{total}} finding(s)').replace('{{total}}', String(taskAudit.total))}
+                </span>
+                <span className={`material-symbols-outlined text-[14px] text-slate-300 transition-transform ${auditExpanded ? 'rotate-180' : ''}`}>expand_more</span>
+              </button>
+            </div>
+            {auditExpanded && (
+              <div className="mt-2">
+                {auditLoading ? (
+                  <div className="flex items-center gap-2 py-3 text-[10px] text-slate-400"><span className="material-symbols-outlined text-[14px] animate-spin">progress_activity</span>{s.loading || 'Loading...'}</div>
+                ) : auditFindings && auditFindings.length > 0 ? (
+                  <div className="space-y-1.5">
+                    {auditFindings.map((f: any, i: number) => (
+                      <div key={i} className="flex items-start gap-2 px-3 py-2 rounded-lg bg-white/60 dark:bg-white/[0.02] border border-slate-100 dark:border-white/5 text-[10px]">
+                        <span className={`material-symbols-outlined text-[12px] mt-0.5 ${f.severity === 'error' ? 'text-mac-red' : 'text-amber-500'}`}>
+                          {f.severity === 'error' ? 'error' : 'warning'}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-slate-600 dark:text-white/60">{f.code}</span>
+                            <span className={`font-bold uppercase ${f.severity === 'error' ? 'text-mac-red' : 'text-amber-500'}`}>{f.severity}</span>
+                            {f.kind && <span className="text-slate-400">{f.kind}</span>}
+                          </div>
+                          <p className="text-slate-500 dark:text-white/40 mt-0.5">{f.detail}</p>
+                        </div>
+                        {f.ageMs != null && <span className="text-slate-400 shrink-0">{f.ageMs < 60000 ? `${Math.round(f.ageMs / 1000)}s` : f.ageMs < 3600000 ? `${Math.round(f.ageMs / 60000)}m` : `${Math.round(f.ageMs / 3600000)}h`}</span>}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[10px] text-slate-400 py-2">{s.bgNoAuditFindings || 'No audit findings'}</p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </div>}
     </main>
   );
 };

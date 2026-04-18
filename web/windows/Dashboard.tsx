@@ -239,6 +239,8 @@ const Dashboard: React.FC<DashboardProps> = ({ language }) => {
   const [refreshCountdown, setRefreshCountdown] = useState(FAST_INTERVAL / 1000);
   const [hasFirstDashboardData, setHasFirstDashboardData] = useState(!!cachedFast?.data || !!cachedFast?.gwStatus);
   const [dreamingStatus, setDreamingStatus] = useState<{ enabled: boolean; shortTermCount: number; promotedTotal: number; promotedToday: number } | null>(null);
+  const [taskCleanupBusy, setTaskCleanupBusy] = useState(false);
+  const [cronRunningIds, setCronRunningIds] = useState<Set<string>>(new Set());
 
   const { data, gwStatus, sessions, models, skills, agents, cronStatus, channels, usageCost, health, instances, hostInfo, userConfig, activeGateway, taskSummary, taskAudit } = ds;
 
@@ -459,8 +461,22 @@ const Dashboard: React.FC<DashboardProps> = ({ language }) => {
       setDs(prev => ({ ...prev, gwStatus: { ...prev.gwStatus, running: false, connected: false }, health: null }));
     },
     health: (p: any) => { setDs(prev => ({ ...prev, health: p ?? prev.health })); },
-    cron: () => {
+    cron: (p: any) => {
       gwApi.cronStatus().then(cr => { if (!abortRef.current) setDs(prev => ({ ...prev, cronStatus: cr ?? prev.cronStatus })); }).catch(() => {});
+      // Track running state
+      if (p?.id && p?.action === 'started') {
+        setCronRunningIds(prev => new Set(prev).add(p.id));
+      }
+      if (p?.id && p?.action === 'finished') {
+        setCronRunningIds(prev => { const n = new Set(prev); n.delete(p.id); return n; });
+        // Toast notification for completed cron jobs
+        const name = p.name || p.jobName || p.id?.slice(0, 8);
+        if (p.status === 'ok') {
+          toast('success', (d.cronFinishedOk || 'Cron "{{name}}" completed').replace('{{name}}', name));
+        } else if (p.status === 'error') {
+          toast('error', (d.cronFinishedError || 'Cron "{{name}}" failed').replace('{{name}}', name));
+        }
+      }
     },
     heartbeat: () => { fetchFast(); },
   }), [fetchFast]));
@@ -918,6 +934,7 @@ const Dashboard: React.FC<DashboardProps> = ({ language }) => {
                             rt === 'cron' ? (
                               <button key={rt} onClick={() => openWindow('scheduler')} className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold cursor-pointer hover:ring-1 hover:ring-amber-400/40 transition-all ${rtColors[rt] || 'bg-slate-100 dark:bg-white/5 text-slate-400'}`}>
                                 {rtLabels[rt] || rt} <b>{count}</b>
+                                {cronJobCount === 0 && <span className="text-[9px] opacity-70 font-normal">{(d.taskCronHistoryHint || '({{count}} historical record(s), no active scheduled jobs)').replace('{{count}}', String(count))}</span>}
                                 <span className="material-symbols-outlined text-[10px]">open_in_new</span>
                               </button>
                             ) : (
@@ -941,6 +958,35 @@ const Dashboard: React.FC<DashboardProps> = ({ language }) => {
                       <span className={`text-[10px] font-bold ${taskAudit.errors > 0 ? 'text-red-500' : 'text-amber-500'}`}>
                         {(d.taskAuditFindings || '{{total}} finding(s)').replace('{{total}}', String(taskAudit.total))}
                       </span>
+                      <button
+                        disabled={taskCleanupBusy}
+                        onClick={async () => {
+                          const ok = await confirm({
+                            title: d.taskAuditCleanupConfirm || 'Clean Up Task Records',
+                            message: d.taskAuditCleanupConfirmMsg || 'This will reconcile stale tasks, stamp cleanup markers, and prune expired records. Continue?',
+                            confirmText: d.taskAuditCleanup || 'Clean Up',
+                            danger: false,
+                          });
+                          if (!ok) return;
+                          setTaskCleanupBusy(true);
+                          try {
+                            const res = await doctorApi.tasksMaintenance();
+                            if (res && (res as any).success) {
+                              toast('success', d.taskAuditCleanupDone || 'Task cleanup completed');
+                              void fetchSlow();
+                            } else {
+                              toast('error', d.taskAuditCleanupFailed || 'Task cleanup failed');
+                            }
+                          } catch {
+                            toast('error', d.taskAuditCleanupFailed || 'Task cleanup failed');
+                          }
+                          setTaskCleanupBusy(false);
+                        }}
+                        className="ms-auto text-[10px] px-2.5 py-1 rounded-lg font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 transition-all disabled:opacity-40 flex items-center gap-1 shrink-0"
+                      >
+                        <span className="material-symbols-outlined text-[12px]">{taskCleanupBusy ? 'hourglass_top' : 'cleaning_services'}</span>
+                        {taskCleanupBusy ? (d.taskAuditCleaning || 'Cleaning...') : (d.taskAuditCleanup || 'Clean Up')}
+                      </button>
                     </div>
                     <div className="flex flex-wrap gap-1.5">
                       {(() => {
@@ -1265,7 +1311,11 @@ const Dashboard: React.FC<DashboardProps> = ({ language }) => {
                 )}
               </div>
               <div className="rounded-xl bg-slate-50 dark:bg-white/[0.03] border border-slate-100 dark:border-white/5 p-3">
-                <div className="flex items-center gap-2 mb-2"><HealthDot ok={!!cronEnabled} /><span className="text-[10px] font-bold text-slate-600 dark:text-white/50 uppercase">{d.cron}</span></div>
+                <div className="flex items-center gap-2 mb-2">
+                  <HealthDot ok={!!cronEnabled} />
+                  <span className="text-[10px] font-bold text-slate-600 dark:text-white/50 uppercase">{d.cron}</span>
+                  {cronRunningIds.size > 0 && <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-500/15 text-[9px] font-bold text-blue-600 dark:text-blue-400 animate-pulse">{cronRunningIds.size} {d.cronRunningLabel || 'running'}</span>}
+                </div>
                 <p className="text-xs font-bold text-slate-700 dark:text-white/70">{cronEnabled ? `${cronJobCount} ${d.cronJobs}` : d.disabled}</p>
                 {cronNextRun && <p className="text-[10px] text-slate-400 dark:text-white/40 mt-0.5">{d.cronNextRun}: {timeFormatter.format(new Date(cronNextRun))}</p>}
                 {cronErrorCount > 0 && <p className="text-[10px] text-red-500 font-bold mt-0.5">{d.cronErrors}: {cronErrorCount}</p>}

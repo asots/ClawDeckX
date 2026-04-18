@@ -1,9 +1,11 @@
 package runtime
 
 import (
+	"context"
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 
 	"ClawDeckX/internal/executil"
 	"ClawDeckX/internal/version"
@@ -53,7 +55,9 @@ func imageOpenClawVersion() string {
 
 // currentOpenClawVersion returns the currently active OpenClaw version.
 func currentOpenClawVersion() string {
-	cmd := exec.Command("openclaw", "--version")
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "openclaw", "--version")
 	executil.HideWindow(cmd)
 	out, err := cmd.CombinedOutput()
 	if err != nil {

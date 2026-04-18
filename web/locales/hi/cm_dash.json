@@ -144,6 +144,13 @@
     "taskAuditDeliveryFailed": "Delivery failed",
     "taskAuditMissingCleanup": "Missing cleanup",
     "taskAuditInconsistent": "Inconsistent",
+    "taskCronHistoryHint": "({{count}} ऐतिहासिक रिकॉर्ड, कोई सक्रिय शेड्यूल नहीं)",
+    "taskAuditCleanup": "साफ़ करें",
+    "taskAuditCleanupConfirm": "कार्य रिकॉर्ड साफ़ करें",
+    "taskAuditCleanupConfirmMsg": "यह पुराने कार्यों को समायोजित करेगा, सफ़ाई चिह्न लगाएगा और समय-सीमा पार कर चुके रिकॉर्ड हटाएगा। जारी रखें?",
+    "taskAuditCleaning": "साफ़ कर रहे हैं...",
+    "taskAuditCleanupDone": "कार्य सफ़ाई पूरी हुई",
+    "taskAuditCleanupFailed": "कार्य सफ़ाई विफल",
     "taskNoData": "No task data available",
     "taskAllClear": "All clear — no background tasks",
     "taskBusyBanner": "{{count}} background task(s) running",
@@ -155,7 +162,10 @@
     "dreaming": "ड्रीमिंग",
     "dreamingOn": "सक्रिय",
     "dreamingOff": "बंद",
-    "dreamingPromoted": "प्रमोटेड"
+    "dreamingPromoted": "प्रमोटेड",
+    "cronFinishedOk": "Cron \"{{name}}\" पूरा हुआ",
+    "cronFinishedError": "Cron \"{{name}}\" विफल",
+    "cronRunningLabel": "चल रहा है"
   },
   "d": {
     "mas": {

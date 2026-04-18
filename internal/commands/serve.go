@@ -587,6 +587,11 @@ func RunServe(args []string) int {
 	router.GET("/api/v1/doctor/overview", doctorHandler.Overview)
 	router.POST("/api/v1/doctor/fix", web.RequireAdmin(doctorHandler.Fix))
 	router.POST("/api/v1/doctor/cli-fix", web.RequireAdmin(doctorHandler.CLIFix))
+	router.POST("/api/v1/doctor/tasks-maintenance", web.RequireAdmin(doctorHandler.TasksMaintenance))
+	router.GET("/api/v1/doctor/tasks-list", web.RequireAdmin(doctorHandler.TasksList))
+	router.GET("/api/v1/doctor/tasks-show", web.RequireAdmin(doctorHandler.TasksShow))
+	router.POST("/api/v1/doctor/tasks-cancel", web.RequireAdmin(doctorHandler.TasksCancel))
+	router.GET("/api/v1/doctor/tasks-audit", web.RequireAdmin(doctorHandler.TasksAudit))
 
 	router.POST("/api/v1/recipe/apply-step", web.RequireAdmin(recipeHandler.ApplyStep))
 
