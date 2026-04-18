@@ -37,6 +37,8 @@ const ModelAuthStatusCard: React.FC<Props> = ({ language, gwConnected = true, on
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
   const abortRef = useRef(false);
+  const failCountRef = useRef(0);
+  const [unsupported, setUnsupported] = useState(false);
 
   const fetchStatus = useCallback(async (refresh = false) => {
     if (!gwConnected) return;
@@ -45,10 +47,15 @@ const ModelAuthStatusCard: React.FC<Props> = ({ language, gwConnected = true, on
     try {
       const r = await gwApi.modelsAuthStatus(refresh ? { refresh: true } : undefined);
       if (abortRef.current) return;
+      failCountRef.current = 0;
       setResult(r);
     } catch (e: any) {
       if (abortRef.current) return;
-      setError(e?.message || String(e));
+      const msg = e?.message || String(e);
+      // Gateway doesn't support this method — hide card permanently
+      if (/unknown method/i.test(msg)) { setUnsupported(true); return; }
+      failCountRef.current += 1;
+      setError(msg);
     } finally {
       if (!abortRef.current) setLoading(false);
     }
@@ -56,8 +63,13 @@ const ModelAuthStatusCard: React.FC<Props> = ({ language, gwConnected = true, on
 
   useEffect(() => {
     abortRef.current = false;
+    failCountRef.current = 0;
     void fetchStatus(false);
-    const timer = setInterval(() => { void fetchStatus(false); }, REFRESH_INTERVAL_MS);
+    const timer = setInterval(() => {
+      // Stop auto-polling after first failure to avoid repeated 30s timeouts
+      if (failCountRef.current > 0) return;
+      void fetchStatus(false);
+    }, REFRESH_INTERVAL_MS);
     return () => { abortRef.current = true; clearInterval(timer); };
   }, [fetchStatus]);
 
@@ -79,7 +91,7 @@ const ModelAuthStatusCard: React.FC<Props> = ({ language, gwConnected = true, on
 
   const hasAttention = summary.expired > 0 || summary.missing > 0 || summary.expiring > 0;
 
-  if (!gwConnected) return null;
+  if (!gwConnected || unsupported) return null;
 
   return (
     <div className={`rounded-2xl border p-4 sci-card ${hasAttention ? 'border-amber-200/60 dark:border-amber-500/20 bg-gradient-to-r from-amber-50/40 to-white dark:from-amber-500/[0.04] dark:to-transparent' : 'border-slate-200/60 dark:border-white/[0.06] bg-white dark:bg-white/[0.02]'}`}>
@@ -117,7 +129,7 @@ const ModelAuthStatusCard: React.FC<Props> = ({ language, gwConnected = true, on
       </div>
 
       {error && (
-        <div className="text-[11px] text-red-600 dark:text-red-400 bg-red-500/5 rounded-lg px-3 py-2 mb-2">
+        <div className="text-[11px] text-slate-500 dark:text-white/40 bg-slate-500/5 dark:bg-white/[0.02] rounded-lg px-3 py-2 mb-2">
           {(mas.loadError || 'Failed to load auth status') + ': ' + error}
         </div>
       )}
