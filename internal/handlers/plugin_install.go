@@ -240,38 +240,29 @@ func (h *PluginInstallHandler) CheckInstalled(w http.ResponseWriter, r *http.Req
 	// Fallback: when plugins.installs has no matching record, the plugin may
 	// still be loaded at runtime (e.g., a residue directory from a prior failed
 	// install was auto-loaded — the gateway logs this as "loaded without
-	// install/load-path provenance").  Query plugins.status to catch that case,
-	// so the UI doesn't keep offering "one-click install" which would then fail
-	// with "plugin already exists".
+	// install/load-path provenance").  Check plugins.entries from the same
+	// config.get response — if the plugin appears there without an install
+	// record, the residue-directory case is highly likely.
+	//
+	// Note: we do NOT call the `plugins.status` RPC here because older gateway
+	// versions return INVALID_REQUEST ("unknown method: plugins.status").
 	loadedWithoutRecord := false
 	if !installed && specPluginId != "" {
-		if statusResp, serr := h.gwClient.RequestWithTimeout("plugins.status", map[string]interface{}{}, 3*time.Second); serr == nil {
-			var statusMap map[string]interface{}
-			if jerr := json.Unmarshal(statusResp, &statusMap); jerr == nil {
-				if pluginsArr, ok := statusMap["plugins"].([]interface{}); ok {
-					for _, p := range pluginsArr {
-						entry, ok := p.(map[string]interface{})
-						if !ok {
-							continue
-						}
-						id, _ := entry["id"].(string)
-						if id != specPluginId {
-							continue
-						}
-						status, _ := entry["status"].(string)
-						// Treat loaded / disabled / error as "present"; only
-						// "not_installed" (or missing) means truly absent.
-						if status == "loaded" || status == "disabled" || status == "error" {
-							installed = true
-							matchedPluginId = id
-							loadedWithoutRecord = true
-						}
-						break
+		var respMap map[string]interface{}
+		if json.Unmarshal(resp, &respMap) == nil {
+			configObj := respMap
+			if cfg, ok := respMap["config"].(map[string]interface{}); ok {
+				configObj = cfg
+			}
+			if plugins, ok := configObj["plugins"].(map[string]interface{}); ok {
+				if entries, ok := plugins["entries"].(map[string]interface{}); ok {
+					if _, present := entries[specPluginId]; present {
+						installed = true
+						matchedPluginId = specPluginId
+						loadedWithoutRecord = true
 					}
 				}
 			}
-		} else {
-			logger.Log.Debug().Err(serr).Msg("plugins.status RPC failed during CheckInstalled fallback")
 		}
 	}
 
