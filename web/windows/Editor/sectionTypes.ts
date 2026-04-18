@@ -10,4 +10,5 @@ export interface SectionProps {
   removeFromArray: (path: string[], index: number) => void;
   language: Language;
   save?: () => Promise<boolean>;
+  reload?: () => Promise<void>;
 }

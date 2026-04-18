@@ -342,11 +342,16 @@ func (h *PluginInstallHandler) Install(w http.ResponseWriter, r *http.Request) {
 
 	logger.Log.Info().Str("spec", spec).Str("output", output).Msg("plugin installed successfully")
 
-	// Auto-add to plugins.allow so the gateway loads it without manual config
+	// Auto-add to plugins.allow so the gateway loads it without manual config.
+	// The install may trigger a gateway restart (config change → SIGUSR1), which
+	// closes the WS connection before we can call ensurePluginAllowed. To handle
+	// this, try once synchronously; on failure, retry in a background goroutine
+	// that waits for the WS to reconnect.
 	pluginId := extractPluginIdFromSpec(spec)
 	if pluginId != "" {
 		if err := h.ensurePluginAllowed(pluginId); err != nil {
-			logger.Log.Warn().Err(err).Str("pluginId", pluginId).Msg("failed to auto-add plugin to allow list")
+			logger.Log.Warn().Err(err).Str("pluginId", pluginId).Msg("ensurePluginAllowed failed (gateway likely restarting), will retry after reconnect")
+			go h.ensurePluginAllowedRetry(pluginId, 60*time.Second)
 		}
 	}
 
@@ -997,6 +1002,33 @@ func (h *PluginInstallHandler) ensurePluginAllowed(pluginId string) error {
 
 	logger.Log.Info().Str("pluginId", pluginId).Msg("auto-added plugin to plugins.allow")
 	return nil
+}
+
+// ensurePluginAllowedRetry polls for WS reconnection and retries ensurePluginAllowed.
+// Called as a goroutine when the initial attempt fails (typically because the
+// gateway restarted and killed the WS connection right after plugin install).
+func (h *PluginInstallHandler) ensurePluginAllowedRetry(pluginId string, timeout time.Duration) {
+	deadline := time.Now().Add(timeout)
+	ticker := time.NewTicker(2 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		<-ticker.C
+		if time.Now().After(deadline) {
+			logger.Log.Warn().Str("pluginId", pluginId).Msg("ensurePluginAllowed retry timed out waiting for gateway reconnect")
+			return
+		}
+		if h.gwClient == nil || !h.gwClient.IsConnected() {
+			continue
+		}
+		// Gateway reconnected, retry
+		if err := h.ensurePluginAllowed(pluginId); err != nil {
+			logger.Log.Warn().Err(err).Str("pluginId", pluginId).Msg("ensurePluginAllowed retry failed")
+			continue
+		}
+		logger.Log.Info().Str("pluginId", pluginId).Msg("ensurePluginAllowed retry succeeded after gateway reconnect")
+		return
+	}
 }
 
 // removePluginAllowed removes pluginId from plugins.allow in the gateway config.

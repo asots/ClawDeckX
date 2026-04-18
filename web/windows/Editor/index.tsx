@@ -263,8 +263,9 @@ const Editor: React.FC<EditorProps> = ({ language, pendingSection, onSectionCons
       removeFromArray: editor.removeFromArray,
       language,
       save: editor.save,
+      reload: editor.reload,
     };
-  }, [editor.config, editor.schema, editor.setField, editor.getField, editor.deleteField, editor.appendToArray, editor.removeFromArray, language, editor.save]);
+  }, [editor.config, editor.schema, editor.setField, editor.getField, editor.deleteField, editor.appendToArray, editor.removeFromArray, language, editor.save, editor.reload]);
 
   const renderedSection = useMemo(() => {
     if (!editor.config || !sectionProps) return null;

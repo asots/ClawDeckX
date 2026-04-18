@@ -278,7 +278,7 @@ const PairingSection: React.FC<{ channel: string; es: any; cw: any; toast: (type
 };
 
 // ============================================================================
-export const ChannelsSection: React.FC<SectionProps> = ({ config, schema, setField, getField, deleteField, language, save }) => {
+export const ChannelsSection: React.FC<SectionProps> = ({ config, schema, setField, getField, deleteField, language, save, reload }) => {
   const { toast } = useToast();
   const es = useMemo(() => (getTranslation(language) as any).es || {}, [language]);
   const cw = useMemo(() => (getTranslation(language) as any).cw || {}, [language]);
@@ -534,18 +534,14 @@ export const ChannelsSection: React.FC<SectionProps> = ({ config, schema, setFie
     try {
       const res = await pluginApi.install(spec);
       if (res.success) {
-        // Phase 1: Plugin installed, now restarting gateway
+        // Phase 1: Plugin installed — gateway auto-restarts via config change detection
+        // (no need to call gatewayApi.restart() — that caused a redundant double restart)
         setPluginInstallResult({ ok: true, msg: 'success', phase: 'restarting' });
         setPluginInstalling(false);
         
-        // Trigger gateway restart
-        try {
-          await gatewayApi.restart();
-        } catch { /* ignore restart errors */ }
-        
-        // Phase 2: Poll for gateway ready (up to 30 seconds)
+        // Phase 2: Poll for gateway ready (up to 60 seconds — gateway restart can take a while)
         let retries = 0;
-        const maxRetries = 30;
+        const maxRetries = 60;
         const pollInterval = 1000;
         
         const checkGatewayReady = async (): Promise<boolean> => {
@@ -572,12 +568,23 @@ export const ChannelsSection: React.FC<SectionProps> = ({ config, schema, setFie
                 setPluginInstalled(prev => ({ ...prev, [channelId]: true }));
               }
             } catch { /* ignore */ }
+            // Reload editor config so the in-memory snapshot includes the newly
+            // installed plugin's plugins.installs record.  Without this, a
+            // subsequent save() would push the stale pre-install snapshot back
+            // to the gateway, overwriting the plugin install state (size-drop).
+            try {
+              if (reload) await reload();
+            } catch { /* ignore */ }
             // Clear result after 2 seconds
             setTimeout(() => setPluginInstallResult(null), 2000);
           } else if (retries >= maxRetries) {
             clearInterval(poll);
             // Timeout - gateway didn't come back, but plugin was installed
             setPluginInstallResult({ ok: true, msg: 'success', phase: 'ready' });
+            // Still try to reload config even on timeout
+            try {
+              if (reload) await reload();
+            } catch { /* ignore */ }
             setTimeout(() => setPluginInstallResult(null), 2000);
           }
         }, pollInterval);
@@ -589,7 +596,7 @@ export const ChannelsSection: React.FC<SectionProps> = ({ config, schema, setFie
       setPluginInstallResult({ ok: false, msg: err?.message || es.failed });
       setPluginInstalling(false);
     }
-  }, [es]);
+  }, [es, reload]);
 
   const handleSendTest = useCallback(async (ch: string) => {
     if (!sendTo.trim() || !sendMsg.trim()) return;

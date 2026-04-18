@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { Language } from '../types';
 import { getTranslation } from '../locales';
-import { pluginApi, gwApi, gatewayApi, PluginStatusPlugin, PluginDiagnostic, PluginStatusResponse } from '../services/api';
+import { pluginApi, gwApi, PluginStatusPlugin, PluginDiagnostic, PluginStatusResponse } from '../services/api';
 import { useToast } from '../components/Toast';
 import { useConfirm } from '../components/ConfirmDialog';
 import EmptyState from '../components/EmptyState';
@@ -223,7 +223,7 @@ const PluginCenter: React.FC<PluginCenterProps> = ({ language }) => {
     const poll = setInterval(async () => {
       retries++;
       try { await gwApi.proxy('health', {}); clearInterval(poll); onDone(); setTimeout(fetchPlugins, 500); } catch { /* not ready */ }
-      if (retries >= 30) { clearInterval(poll); onDone(); fetchPlugins(); }
+      if (retries >= 60) { clearInterval(poll); onDone(); fetchPlugins(); }
     }, 1000);
   }, [fetchPlugins]);
 
@@ -234,7 +234,8 @@ const PluginCenter: React.FC<PluginCenterProps> = ({ language }) => {
       const res = await pluginApi.install(plugin.spec);
       if (res.success) {
         setInstallPhase('restarting');
-        try { await gatewayApi.restart(); } catch { /* ignore */ }
+        // Gateway auto-restarts via config change detection after plugin install;
+        // no need for explicit restart (that caused redundant double restart).
         pollGatewayAndRefresh(() => { toast('success', skRef.current.pluginInstallOk); setInstallingSpec(null); setInstallPhase(null); });
       } else { toast('error', `${skRef.current.pluginInstallFail}: ${extractFailureMessage(res.output)}`); setInstallingSpec(null); setInstallPhase(null); }
     } catch (err: any) { toast('error', `${skRef.current.pluginInstallFail}: ${err?.message || ''}`); setInstallingSpec(null); setInstallPhase(null); }
@@ -249,7 +250,7 @@ const PluginCenter: React.FC<PluginCenterProps> = ({ language }) => {
       const res = await pluginApi.uninstall(plugin.id);
       if (res.success) {
         toast('success', skRef.current.pluginUninstallOk);
-        try { await gatewayApi.restart(); } catch { /* ignore */ }
+        // Gateway auto-restarts via config change detection after uninstall.
         pollGatewayAndRefresh(() => setUninstallingId(null));
       } else { toast('error', `${skRef.current.pluginUninstallFail}: ${res.output || ''}`); setUninstallingId(null); }
     } catch (err: any) { toast('error', `${skRef.current.pluginUninstallFail}: ${err?.message || ''}`); setUninstallingId(null); }
@@ -262,7 +263,7 @@ const PluginCenter: React.FC<PluginCenterProps> = ({ language }) => {
       const res = await pluginApi.update(pluginId, all);
       if (res.success) {
         toast('success', all ? skRef.current.pluginUpdateAllOk : skRef.current.pluginUpdateOk);
-        try { await gatewayApi.restart(); } catch { /* ignore */ }
+        // Gateway auto-restarts via config change detection after update.
         pollGatewayAndRefresh(() => setUpdatingId(null));
       } else { toast('error', `${skRef.current.pluginUpdateFail}: ${extractFailureMessage(res.output)}`); setUpdatingId(null); }
     } catch (err: any) { toast('error', `${skRef.current.pluginUpdateFail}: ${err?.message || ''}`); setUpdatingId(null); }
