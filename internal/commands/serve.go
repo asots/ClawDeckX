@@ -743,6 +743,14 @@ func RunServe(args []string) int {
 	router.POST("/api/v1/plugins/uninstall", web.RequireAdmin(pluginInstallHandler.Uninstall))
 	router.POST("/api/v1/plugins/update", web.RequireAdmin(pluginInstallHandler.Update))
 
+	// Weixin (openclaw-weixin) QR login — bypass the plugin's missing
+	// web.login.start gateway method and speak to iLink's public HTTP API
+	// directly (ported from HermesDeckX/wizard_qrlogin.go).
+	weixinQRHandler := handlers.NewWeixinQRHandler(gwClient)
+	router.POST("/api/v1/plugins/weixin/qr-start", web.RequireAdmin(weixinQRHandler.QRStart))
+	router.POST("/api/v1/plugins/weixin/qr-poll", weixinQRHandler.QRPoll)
+	router.POST("/api/v1/plugins/weixin/qr-cancel", web.RequireAdmin(weixinQRHandler.QRCancel))
+
 	skillHubHandler := handlers.NewSkillHubHandler()
 	skillHubHandler.SetGatewayClient(gwClient)
 	router.GET("/api/v1/skillhub/cli-status", skillHubHandler.CLIStatus)

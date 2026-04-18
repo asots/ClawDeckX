@@ -956,6 +956,26 @@ export const pluginApi = {
   update: (id?: string, all?: boolean) => post<{ success: boolean; id: string; all: boolean; output: string }>('/api/v1/plugins/update', { id, all }),
 };
 
+// Weixin (openclaw-weixin) QR login — bypasses the plugin's missing
+// web.login.start gateway method by talking to iLink's public HTTP API
+// through the ClawDeckX backend.
+export interface WeixinQRStartResponse { qrcode: string; qrImgUrl: string; status: string; }
+export interface WeixinQRPollResponse {
+  status: 'wait' | 'scaned' | 'refreshed' | 'confirmed' | 'expired' | 'error' | 'timeout' | 'cancelled';
+  message?: string;
+  qrImgUrl?: string;
+  qrcode?: string;
+  accountId?: string;
+  rawAccountId?: string;
+  userId?: string;
+  baseUrl?: string;
+}
+export const weixinQRApi = {
+  start: () => post<WeixinQRStartResponse>('/api/v1/plugins/weixin/qr-start', {}),
+  poll: () => post<WeixinQRPollResponse>('/api/v1/plugins/weixin/qr-poll', {}),
+  cancel: () => post<{ cancelled: boolean }>('/api/v1/plugins/weixin/qr-cancel', {}),
+};
+
 export interface WallpaperRandomResponse {
   provider: 'wallhaven';
   id: string;

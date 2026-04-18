@@ -3,7 +3,7 @@ import { SectionProps } from '../sectionTypes';
 import { ConfigSection, TextField, PasswordField, SelectField, SwitchField, ArrayField, NumberField, KeyValueField, EmptyState, DiscordGuildField } from '../fields';
 import { getTranslation } from '../../../locales';
 import { schemaTooltip } from '../schemaTooltip';
-import { gwApi, gatewayApi, pairingApi, pluginApi } from '../../../services/api';
+import { gwApi, gatewayApi, pairingApi, pluginApi, weixinQRApi } from '../../../services/api';
 import { post } from '../../../services/request';
 import CustomSelect from '../../../components/CustomSelect';
 import { useToast } from '../../../components/Toast';
@@ -468,14 +468,60 @@ export const ChannelsSection: React.FC<SectionProps> = ({ config, schema, setFie
   const [webLoginBusy, setWebLoginBusy] = useState(false);
   const [webLoginResult, setWebLoginResult] = useState<{ ok: boolean; text: string; qr?: string; qrDataUrl?: string } | null>(null);
 
-  const handleWebLogin = useCallback(async () => {
+  // Weixin (openclaw-weixin) uses a dedicated flow that bypasses the plugin's
+  // missing web.login.start gateway method and talks to iLink's public HTTP
+  // API directly via the ClawDeckX backend.
+  const handleWeixinQRLogin = useCallback(async () => {
+    setWebLoginBusy(true);
+    setWebLoginResult(null);
+    try {
+      const start = await weixinQRApi.start();
+      if (!start.qrImgUrl) {
+        setWebLoginResult({ ok: false, text: cw.loginFailed });
+        setWebLoginBusy(false);
+        return;
+      }
+      setWebLoginResult({ ok: true, text: cw.qrReady, qrDataUrl: start.qrImgUrl });
+
+      // Poll every 2s up to the session TTL (10 min ≈ 300 polls).
+      const deadline = Date.now() + 10 * 60 * 1000;
+      while (Date.now() < deadline) {
+        await new Promise(r => setTimeout(r, 2000));
+        let poll;
+        try {
+          poll = await weixinQRApi.poll();
+        } catch {
+          continue;
+        }
+        // Refresh QR image on refresh / scan state changes.
+        if (poll.qrImgUrl && poll.status !== 'confirmed') {
+          setWebLoginResult({ ok: true, text: poll.message || cw.qrReady, qrDataUrl: poll.qrImgUrl });
+        }
+        if (poll.status === 'confirmed') {
+          setWebLoginResult({ ok: true, text: cw.loginSuccess });
+          return;
+        }
+        if (poll.status === 'error' || poll.status === 'timeout' || poll.status === 'cancelled') {
+          setWebLoginResult({ ok: false, text: poll.message || cw.loginTimeout });
+          return;
+        }
+      }
+      setWebLoginResult({ ok: false, text: cw.loginTimeout });
+    } catch (err: any) {
+      setWebLoginResult({ ok: false, text: `${cw.loginFailed}: ${err?.message || ''}` });
+    } finally {
+      setWebLoginBusy(false);
+    }
+  }, [cw]);
+
+  // WhatsApp (and any other plugin that actually implements web.login.start).
+  const handleWhatsAppLogin = useCallback(async () => {
     setWebLoginBusy(true);
     setWebLoginResult(null);
     try {
       const res = await gwApi.webLoginStart({}) as any;
       if (res?.qr || res?.qrDataUrl) {
         setWebLoginResult({ ok: true, text: res?.message || cw.qrReady, qr: res.qr, qrDataUrl: res.qrDataUrl });
-        // Wait for scan (weixin needs longer timeout — up to 480s)
         try {
           await gwApi.webLoginWait({ timeoutMs: res?.qrDataUrl ? 480000 : 60000, sessionKey: res?.sessionKey });
           setWebLoginResult({ ok: true, text: cw.loginSuccess });
@@ -490,6 +536,14 @@ export const ChannelsSection: React.FC<SectionProps> = ({ config, schema, setFie
     }
     setWebLoginBusy(false);
   }, [cw]);
+
+  // Dispatch by channel id.
+  const handleWebLogin = useCallback((chId?: string) => {
+    if (chId === 'openclaw-weixin') {
+      return handleWeixinQRLogin();
+    }
+    return handleWhatsAppLogin();
+  }, [handleWeixinQRLogin, handleWhatsAppLogin]);
 
   // Check if plugin install is available (local gateway only) and check installed status
   const checkCanInstallPlugin = useCallback(async () => {
@@ -2323,7 +2377,7 @@ export const ChannelsSection: React.FC<SectionProps> = ({ config, schema, setFie
                         <p className="text-[10px] text-slate-500 dark:text-white/50">
                           {chId === 'openclaw-weixin' ? (cw.weixinLoginDesc || 'Scan the QR code with WeChat to connect your account.') : cw.whatsappLoginDesc}
                         </p>
-                        <button onClick={handleWebLogin} disabled={webLoginBusy}
+                        <button onClick={() => handleWebLogin(chId)} disabled={webLoginBusy}
                           className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-[11px] font-bold bg-green-500 hover:bg-green-600 text-white transition-all disabled:opacity-50">
                           <span className={`material-symbols-outlined text-[16px] ${webLoginBusy ? 'animate-spin' : ''}`}>
                             {webLoginBusy ? 'progress_activity' : 'qr_code_2'}
