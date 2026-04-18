@@ -951,7 +951,7 @@ export const pluginApi = {
   status: () => get<PluginStatusResponse>('/api/v1/plugins/status'),
   canInstall: () => get<{ can_install: boolean; is_remote: boolean }>('/api/v1/plugins/can-install'),
   checkInstalled: (spec: string) => get<{ installed: boolean; spec: string }>(`/api/v1/plugins/check?spec=${encodeURIComponent(spec)}`),
-  install: (spec: string) => post<{ success: boolean; spec: string; output: string }>('/api/v1/plugins/install', { spec }),
+  install: (spec: string, force?: boolean) => post<{ success: boolean; spec: string; output: string }>('/api/v1/plugins/install', { spec, force: !!force }),
   uninstall: (id: string) => post<{ success: boolean; id: string; output: string }>('/api/v1/plugins/uninstall', { id }),
   update: (id?: string, all?: boolean) => post<{ success: boolean; id: string; all: boolean; output: string }>('/api/v1/plugins/update', { id, all }),
 };

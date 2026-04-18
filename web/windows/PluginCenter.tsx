@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { Language } from '../types';
 import { getTranslation } from '../locales';
 import { pluginApi, gwApi, PluginStatusPlugin, PluginDiagnostic, PluginStatusResponse } from '../services/api';
+import { ApiError } from '../services/request';
 import { useToast } from '../components/Toast';
 import { useConfirm } from '../components/ConfirmDialog';
 import EmptyState from '../components/EmptyState';
@@ -227,19 +228,37 @@ const PluginCenter: React.FC<PluginCenterProps> = ({ language }) => {
     }, 1000);
   }, [fetchPlugins]);
 
-  const handleInstall = useCallback(async (plugin: MergedPlugin) => {
+  const handleInstall = useCallback(async (plugin: MergedPlugin, force: boolean = false) => {
     if (!canInstall) { toast('error', skRef.current.pluginLocalOnlyAction || skRef.current.pluginLocalOnly); return; }
     setInstallingSpec(plugin.spec); setInstallPhase('installing');
     try {
-      const res = await pluginApi.install(plugin.spec);
+      const res = await pluginApi.install(plugin.spec, force);
       if (res.success) {
         setInstallPhase('restarting');
         // Gateway auto-restarts via config change detection after plugin install;
         // no need for explicit restart (that caused redundant double restart).
         pollGatewayAndRefresh(() => { toast('success', skRef.current.pluginInstallOk); setInstallingSpec(null); setInstallPhase(null); });
       } else { toast('error', `${skRef.current.pluginInstallFail}: ${extractFailureMessage(res.output)}`); setInstallingSpec(null); setInstallPhase(null); }
-    } catch (err: any) { toast('error', `${skRef.current.pluginInstallFail}: ${err?.message || ''}`); setInstallingSpec(null); setInstallPhase(null); }
-  }, [canInstall, toast, pollGatewayAndRefresh]);
+    } catch (err: any) {
+      // PLUGIN_EXISTS: residue directory from a prior failed install.
+      // Ask user to confirm force-reinstall (uninstall the old directory, then install fresh).
+      if (err instanceof ApiError && err.code === 'PLUGIN_EXISTS' && !force) {
+        setInstallingSpec(null); setInstallPhase(null);
+        const ok = await confirm({
+          title: skRef.current.pluginForceReinstallTitle || 'Force reinstall?',
+          message: skRef.current.pluginForceReinstallConfirm || `A previous install left a residue directory for "${plugin.name}". Force reinstall will uninstall it first, then reinstall cleanly. Continue?`,
+          danger: true,
+          confirmText: skRef.current.pluginForceReinstallBtn || 'Force reinstall',
+        });
+        if (ok) {
+          handleInstall(plugin, true);
+        }
+        return;
+      }
+      toast('error', `${skRef.current.pluginInstallFail}: ${err?.message || ''}`);
+      setInstallingSpec(null); setInstallPhase(null);
+    }
+  }, [canInstall, toast, confirm, pollGatewayAndRefresh]);
 
   const handleUninstall = useCallback(async (plugin: MergedPlugin) => {
     if (!canInstall) { toast('error', skRef.current.pluginLocalOnlyAction); return; }

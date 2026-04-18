@@ -419,7 +419,7 @@ export const ChannelsSection: React.FC<SectionProps> = ({ config, schema, setFie
   const [canInstallPlugin, setCanInstallPlugin] = useState<boolean | null>(null);
   const [pluginInstalled, setPluginInstalled] = useState<Record<string, boolean>>({});
   const [pluginInstalling, setPluginInstalling] = useState(false);
-  const [pluginInstallResult, setPluginInstallResult] = useState<{ ok: boolean; msg: string; phase?: 'installed' | 'restarting' | 'ready' } | null>(null);
+  const [pluginInstallResult, setPluginInstallResult] = useState<{ ok: boolean; msg: string; phase?: 'installed' | 'restarting' | 'ready'; canForceRetry?: boolean; pendingSpec?: string; pendingChannelId?: string } | null>(null);
 
   const handleWizardTest = useCallback(async (chId: string, acctKey?: string) => {
     setWizTestStatus('testing');
@@ -528,11 +528,11 @@ export const ChannelsSection: React.FC<SectionProps> = ({ config, schema, setFie
   }, []);
 
   // Install plugin with gateway restart detection
-  const handleInstallPlugin = useCallback(async (spec: string, channelId: string) => {
+  const handleInstallPlugin = useCallback(async (spec: string, channelId: string, force: boolean = false) => {
     setPluginInstalling(true);
     setPluginInstallResult(null);
     try {
-      const res = await pluginApi.install(spec);
+      const res = await pluginApi.install(spec, force);
       if (res.success) {
         // Phase 1: Plugin installed — gateway auto-restarts via config change detection
         // (no need to call gatewayApi.restart() — that caused a redundant double restart)
@@ -593,7 +593,16 @@ export const ChannelsSection: React.FC<SectionProps> = ({ config, schema, setFie
         setPluginInstalling(false);
       }
     } catch (err: any) {
-      setPluginInstallResult({ ok: false, msg: err?.message || es.failed });
+      // PLUGIN_EXISTS: residue directory from a prior failed install.
+      // Offer the user a force-reinstall option (which will uninstall + reinstall).
+      const isExistsErr = err?.code === 'PLUGIN_EXISTS';
+      setPluginInstallResult({
+        ok: false,
+        msg: err?.message || es.failed,
+        canForceRetry: isExistsErr && !force,
+        pendingSpec: spec,
+        pendingChannelId: channelId,
+      });
       setPluginInstalling(false);
     }
   }, [es, reload]);
@@ -2046,24 +2055,36 @@ export const ChannelsSection: React.FC<SectionProps> = ({ config, schema, setFie
                                     {pluginInstalling ? cw.installing : cw.installPlugin}
                                   </button>
                                   {pluginInstallResult && (
-                                    <div className={`px-2 py-1.5 rounded text-[10px] flex items-center gap-1.5 ${pluginInstallResult.ok ? 'bg-green-100 dark:bg-green-500/10 text-green-600' : 'bg-red-100 dark:bg-red-500/10 text-red-500'}`}>
-                                      {pluginInstallResult.ok ? (
-                                        <>
-                                          {pluginInstallResult.phase === 'restarting' && (
-                                            <>
-                                              <span className="material-symbols-outlined text-[12px] animate-spin">progress_activity</span>
-                                              {cw.gatewayRestarting}
-                                            </>
-                                          )}
-                                          {pluginInstallResult.phase === 'ready' && (
-                                            <>
-                                              <span className="material-symbols-outlined text-[12px]">check_circle</span>
-                                              {cw.pluginReady}
-                                            </>
-                                          )}
-                                          {!pluginInstallResult.phase && cw.pluginInstallSuccess}
-                                        </>
-                                      ) : pluginInstallResult.msg}
+                                    <div className={`px-2 py-1.5 rounded text-[10px] flex flex-col gap-1.5 ${pluginInstallResult.ok ? 'bg-green-100 dark:bg-green-500/10 text-green-600' : 'bg-red-100 dark:bg-red-500/10 text-red-500'}`}>
+                                      <div className="flex items-center gap-1.5">
+                                        {pluginInstallResult.ok ? (
+                                          <>
+                                            {pluginInstallResult.phase === 'restarting' && (
+                                              <>
+                                                <span className="material-symbols-outlined text-[12px] animate-spin">progress_activity</span>
+                                                {cw.gatewayRestarting}
+                                              </>
+                                            )}
+                                            {pluginInstallResult.phase === 'ready' && (
+                                              <>
+                                                <span className="material-symbols-outlined text-[12px]">check_circle</span>
+                                                {cw.pluginReady}
+                                              </>
+                                            )}
+                                            {!pluginInstallResult.phase && cw.pluginInstallSuccess}
+                                          </>
+                                        ) : pluginInstallResult.msg}
+                                      </div>
+                                      {pluginInstallResult.canForceRetry && pluginInstallResult.pendingSpec && pluginInstallResult.pendingChannelId && (
+                                        <button
+                                          onClick={() => handleInstallPlugin(pluginInstallResult.pendingSpec!, pluginInstallResult.pendingChannelId!, true)}
+                                          disabled={pluginInstalling}
+                                          className="flex items-center justify-center gap-1 px-2 py-1 rounded bg-red-500 hover:bg-red-600 text-white text-[10px] font-bold transition-all disabled:opacity-50 self-start"
+                                        >
+                                          <span className="material-symbols-outlined text-[12px]">restart_alt</span>
+                                          {cw.pluginForceReinstall || 'Force reinstall (uninstall residue first)'}
+                                        </button>
+                                      )}
                                     </div>
                                   )}
                                 </div>

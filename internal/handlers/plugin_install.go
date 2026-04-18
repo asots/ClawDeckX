@@ -237,22 +237,63 @@ func (h *PluginInstallHandler) CheckInstalled(w http.ResponseWriter, r *http.Req
 		logger.Log.Debug().Err(err).Msg("failed to unmarshal config response")
 	}
 
+	// Fallback: when plugins.installs has no matching record, the plugin may
+	// still be loaded at runtime (e.g., a residue directory from a prior failed
+	// install was auto-loaded — the gateway logs this as "loaded without
+	// install/load-path provenance").  Query plugins.status to catch that case,
+	// so the UI doesn't keep offering "one-click install" which would then fail
+	// with "plugin already exists".
+	loadedWithoutRecord := false
+	if !installed && specPluginId != "" {
+		if statusResp, serr := h.gwClient.RequestWithTimeout("plugins.status", map[string]interface{}{}, 3*time.Second); serr == nil {
+			var statusMap map[string]interface{}
+			if jerr := json.Unmarshal(statusResp, &statusMap); jerr == nil {
+				if pluginsArr, ok := statusMap["plugins"].([]interface{}); ok {
+					for _, p := range pluginsArr {
+						entry, ok := p.(map[string]interface{})
+						if !ok {
+							continue
+						}
+						id, _ := entry["id"].(string)
+						if id != specPluginId {
+							continue
+						}
+						status, _ := entry["status"].(string)
+						// Treat loaded / disabled / error as "present"; only
+						// "not_installed" (or missing) means truly absent.
+						if status == "loaded" || status == "disabled" || status == "error" {
+							installed = true
+							matchedPluginId = id
+							loadedWithoutRecord = true
+						}
+						break
+					}
+				}
+			}
+		} else {
+			logger.Log.Debug().Err(serr).Msg("plugins.status RPC failed during CheckInstalled fallback")
+		}
+	}
+
 	logger.Log.Info().
 		Str("spec", spec).
 		Str("specPluginId", specPluginId).
 		Strs("installedPluginIds", installedPluginIds).
 		Bool("installed", installed).
+		Bool("loadedWithoutRecord", loadedWithoutRecord).
 		Str("matchedPluginId", matchedPluginId).
 		Msg("plugin install check")
 
 	web.OK(w, r, map[string]interface{}{
-		"installed": installed,
-		"spec":      spec,
+		"installed":           installed,
+		"loadedWithoutRecord": loadedWithoutRecord,
+		"spec":                spec,
 	})
 }
 
 type pluginInstallRequest struct {
-	Spec string `json:"spec"` // npm spec like "@openclaw/feishu"
+	Spec  string `json:"spec"`  // npm spec like "@openclaw/feishu"
+	Force bool   `json:"force"` // if true, uninstall any pre-existing plugin first (cleans up residue from a prior failed install)
 }
 
 // Install installs an OpenClaw plugin via CLI.
@@ -282,7 +323,19 @@ func (h *PluginInstallHandler) Install(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	logger.Log.Info().Str("spec", spec).Msg("installing plugin")
+	// If force=true, uninstall any pre-existing plugin first. This cleans up
+	// residue directories left by a prior failed install (the CLI refuses to
+	// install if /extensions/<id> already exists).  Errors are ignored — the
+	// plugin may not be present, and that's fine.
+	if req.Force {
+		pluginId := extractPluginIdFromSpec(spec)
+		if pluginId != "" {
+			logger.Log.Info().Str("pluginId", pluginId).Msg("force=true: uninstalling any existing plugin before install")
+			h.runUninstallForForce(pluginId)
+		}
+	}
+
+	logger.Log.Info().Str("spec", spec).Bool("force", req.Force).Msg("installing plugin")
 
 	// Run openclaw plugins install <spec>
 	var cmd *exec.Cmd
@@ -315,6 +368,12 @@ func (h *PluginInstallHandler) Install(w http.ResponseWriter, r *http.Request) {
 				errMsg = err.Error()
 			}
 			logger.Log.Error().Err(err).Str("spec", spec).Str("stderr", errMsg).Msg("plugin install failed")
+			// Detect the "plugin already exists: <path> (delete it first)" error
+			// so the frontend can offer a force-retry (which will uninstall first).
+			if isPluginAlreadyExistsError(errMsg) {
+				web.Fail(w, r, "PLUGIN_EXISTS", errMsg, http.StatusConflict)
+				return
+			}
 			web.Fail(w, r, "INSTALL_FAILED", errMsg, http.StatusInternalServerError)
 			return
 		}
@@ -328,15 +387,28 @@ func (h *PluginInstallHandler) Install(w http.ResponseWriter, r *http.Request) {
 	}
 
 	output := stdout.String()
+	combined := output + "\n" + stderr.String()
 
 	// CLI may exit 0 but still report failure in output.
 	if strings.Contains(output, "Failed to install") || strings.Contains(output, "Failed to update") {
 		logger.Log.Warn().Str("spec", spec).Str("output", output).Msg("plugin install command exited 0 but output indicates failure")
+		if isPluginAlreadyExistsError(combined) {
+			web.Fail(w, r, "PLUGIN_EXISTS", combined, http.StatusConflict)
+			return
+		}
 		web.OK(w, r, map[string]interface{}{
 			"success": false,
 			"spec":    spec,
 			"output":  output,
 		})
+		return
+	}
+
+	// Some CLI versions exit 0 and don't print "Failed to install" but still
+	// emit "plugin already exists" on stderr.  Catch that case explicitly.
+	if isPluginAlreadyExistsError(combined) {
+		logger.Log.Warn().Str("spec", spec).Str("combined", combined).Msg("plugin install reported already-exists despite exit 0")
+		web.Fail(w, r, "PLUGIN_EXISTS", combined, http.StatusConflict)
 		return
 	}
 
@@ -1002,6 +1074,50 @@ func (h *PluginInstallHandler) ensurePluginAllowed(pluginId string) error {
 
 	logger.Log.Info().Str("pluginId", pluginId).Msg("auto-added plugin to plugins.allow")
 	return nil
+}
+
+// isPluginAlreadyExistsError checks whether an install error message indicates
+// the residual-directory condition: the CLI prints
+//
+//	"plugin already exists: /<path> (delete it first)"
+//
+// when /extensions/<id> already exists from a prior failed install.
+func isPluginAlreadyExistsError(msg string) bool {
+	lower := strings.ToLower(msg)
+	return strings.Contains(lower, "plugin already exists") ||
+		(strings.Contains(lower, "already exists") && strings.Contains(lower, "delete it first"))
+}
+
+// runUninstallForForce runs `openclaw plugins uninstall <id> --force` and
+// silently ignores all errors.  Used by Install(force=true) to clear residue
+// before retrying the install.
+func (h *PluginInstallHandler) runUninstallForForce(pluginId string) {
+	var cmd *exec.Cmd
+	if runtime.GOOS == "windows" {
+		cmd = exec.Command("cmd.exe", "/c", "openclaw", "plugins", "uninstall", pluginId, "--force")
+	} else {
+		cmd = exec.Command("openclaw", "plugins", "uninstall", pluginId, "--force")
+	}
+	executil.HideWindow(cmd)
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	done := make(chan error, 1)
+	go func() { done <- cmd.Run() }()
+	select {
+	case err := <-done:
+		if err != nil {
+			logger.Log.Debug().Err(err).Str("pluginId", pluginId).Str("stderr", stderr.String()).Msg("force-uninstall before install returned error (ignored)")
+		} else {
+			logger.Log.Info().Str("pluginId", pluginId).Str("output", stdout.String()).Msg("force-uninstall before install completed")
+		}
+	case <-time.After(2 * time.Minute):
+		if cmd.Process != nil {
+			cmd.Process.Kill()
+		}
+		logger.Log.Warn().Str("pluginId", pluginId).Msg("force-uninstall before install timed out")
+	}
 }
 
 // ensurePluginAllowedRetry polls for WS reconnection and retries ensurePluginAllowed.
