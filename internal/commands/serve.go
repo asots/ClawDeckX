@@ -808,6 +808,7 @@ func RunServe(args []string) int {
 	localTerminalHandler := handlers.NewLocalTerminalHandler()
 	router.GET("/api/v1/terminal/local/available", localTerminalHandler.Available)
 	router.GET("/api/v1/terminal/local/ws", localTerminalHandler.HandleWS(cfg.Auth.JWTSecret))
+	router.GET("/api/v1/terminal/local/sysinfo", web.RequireAdmin(sysInfoHandler.GetLocal))
 
 	// Local / Container files REST API (mirrors /api/v1/sftp/* but operates on
 	// the local/container filesystem). Same admin-only gate as SSH-free shell.

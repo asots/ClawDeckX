@@ -20,10 +20,12 @@ func NewSnippetHandler() *SnippetHandler {
 }
 
 // List returns all command history for a host (favorites first, then newest).
+// hostId=0 is a reserved sentinel for local/container shell history (no SSH
+// host record); other values must match an ssh_host row.
 // GET /api/v1/ssh/snippets?hostId=xxx
 func (h *SnippetHandler) List(w http.ResponseWriter, r *http.Request) {
 	hostID, err := strconv.ParseUint(r.URL.Query().Get("hostId"), 10, 64)
-	if err != nil || hostID == 0 {
+	if err != nil {
 		web.Fail(w, r, "INVALID_REQUEST", "hostId required", http.StatusBadRequest)
 		return
 	}
@@ -48,8 +50,8 @@ func (h *SnippetHandler) Record(w http.ResponseWriter, r *http.Request) {
 		web.Fail(w, r, "INVALID_REQUEST", "invalid JSON", http.StatusBadRequest)
 		return
 	}
-	if req.HostID == 0 || req.Command == "" {
-		web.Fail(w, r, "INVALID_REQUEST", "host_id and command required", http.StatusBadRequest)
+	if req.Command == "" {
+		web.Fail(w, r, "INVALID_REQUEST", "command required", http.StatusBadRequest)
 		return
 	}
 	s, err := h.repo.RecordCommand(req.HostID, req.Command)

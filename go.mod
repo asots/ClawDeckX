@@ -23,6 +23,7 @@ require (
 )
 
 require (
+	github.com/UserExistsError/conpty v0.1.4 // indirect
 	github.com/blinkbean/dingtalk v1.1.3 // indirect
 	github.com/bwmarrin/discordgo v0.29.0 // indirect
 	github.com/creack/pty v1.1.24 // indirect

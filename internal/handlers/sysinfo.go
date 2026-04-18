@@ -18,6 +18,24 @@ func NewSysInfoHandler(mgr *sshterm.Manager) *SysInfoHandler {
 	return &SysInfoHandler{manager: mgr}
 }
 
+// GetLocal collects system information from the local OS / container in
+// which ClawDeckX itself runs. Used by the Terminal window's Status panel
+// when the active tab is a local/container shell (no SSH session available).
+// GET /api/v1/terminal/local/sysinfo
+func (h *SysInfoHandler) GetLocal(w http.ResponseWriter, r *http.Request) {
+	if !localTerminalEnabled() {
+		web.Fail(w, r, "LOCAL_SYSINFO_DISABLED",
+			"local sysinfo is disabled on this host", http.StatusForbidden)
+		return
+	}
+	info, err := sshterm.CollectSysInfoLocal()
+	if err != nil {
+		web.Fail(w, r, "SYSINFO_ERROR", err.Error(), http.StatusInternalServerError)
+		return
+	}
+	web.OK(w, r, info)
+}
+
 // Get collects and returns system information from the SSH server.
 // GET /api/v1/ssh/sysinfo?sessionId=xxx
 func (h *SysInfoHandler) Get(w http.ResponseWriter, r *http.Request) {

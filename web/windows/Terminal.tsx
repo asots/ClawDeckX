@@ -57,8 +57,8 @@ const emptyForm: HostFormData = {
 interface TabState {
   id: string; hostName: string; hostId: number;
   // When true, this tab is a local/container PTY shell (no SSH host record).
-  // hostId is a sentinel (-1) in that case; SSH-only features (SFTP, SysInfo,
-  // snippets, reauth) are disabled.
+  // hostId is a reserved sentinel (0) in that case; SSH-only features (reauth,
+  // SysInfo via SSH exec) are disabled, but snippets persist under hostId=0.
   isLocal?: boolean;
   sessionId: string | null; connecting: boolean; sftpOpen: boolean;
   xterm: XTerm | null; fitAddon: FitAddon | null;
@@ -549,13 +549,13 @@ const TerminalPage: React.FC<Props> = ({ language }) => {
     const tabId = `tab-${++tabCounter}`;
     const displayName = localTerm.label || (localTerm.inDocker ? 'Container Shell' : 'Local Shell');
     const newTab: TabState = {
-      id: tabId, hostName: displayName, hostId: -1, isLocal: true,
+      id: tabId, hostName: displayName, hostId: 0, isLocal: true,
       sessionId: null, connecting: true, sftpOpen: false,
       xterm: null, fitAddon: null, wsClient: null, resizeObserver: null,
       sftpPath: '/', sftpEntries: [], sftpLoading: false,
       treeCache: {}, expandedDirs: new Set(), treeLoading: new Set(),
-      sysInfo: null, sysInfoOpen: false, netHistory: [],
-      snippets: [], snippetsLoaded: true, collapsedSections: new Set(),
+      sysInfo: null, sysInfoOpen: true, netHistory: [],
+      snippets: [], snippetsLoaded: false, collapsedSections: new Set(),
       editorFile: null, editorDirty: false, editorSaving: false, editorLoading: false,
     };
     setTabs((prev) => [...prev, newTab]);
@@ -623,31 +623,18 @@ const TerminalPage: React.FC<Props> = ({ language }) => {
 
     xterm.onData((data: string) => {
       if (sid) client.sendInput(sid, data);
-      // Buffer keystrokes to capture commands on Enter \u2014 same shape as
-      // connectToHost, but record into in-memory session history instead of
-      // the backend-persisted snippets store (no stable host id for local).
+      // Capture Enter-terminated commands into the persistent snippets store
+      // under the hostId=0 sentinel (shared across all local/container tabs).
       const buf = inputBufRef.current;
       if (!buf[tabId]) buf[tabId] = '';
       if (data === '\r' || data === '\n') {
         const cmd = buf[tabId].trim();
         if (cmd) {
-          const latest = tabsRef.current.find((t) => t.id === tabId);
-          if (latest) {
-            const existing = latest.snippets.filter((s) => s.command !== cmd);
-            const now = new Date().toISOString();
-            const entry: SSHSnippet = {
-              id: -(Date.now() + Math.floor(Math.random() * 1000)),
-              host_id: 0,
-              command: cmd,
-              is_favorite: false,
-              created_at: now,
-              updated_at: now,
-            };
-            updateTab(tabId, {
-              snippets: [entry, ...existing].slice(0, 100),
-              snippetsLoaded: true,
-            });
-          }
+          snippetsApi.record(0, cmd).then(() => {
+            snippetsApi.list(0).then((list) => {
+              updateTab(tabId, { snippets: list || [], snippetsLoaded: true });
+            }).catch(() => {});
+          }).catch(() => {});
         }
         buf[tabId] = '';
       } else if (data === '\x7f' || data === '\b') {
@@ -1014,12 +1001,16 @@ const TerminalPage: React.FC<Props> = ({ language }) => {
     document.addEventListener('mousemove', onMove); document.addEventListener('mouseup', onUp);
   }, [sftpHeight, refitActiveTerminal]);
 
-  // Server status
+  // Server status. Local/container tabs read /proc on the ClawDeckX host;
+  // SSH tabs run the same collector script over the existing SSH session.
   const NET_HISTORY_MAX = 30;
   const fetchSysInfo = useCallback(async () => {
-    if (!activeTab?.sessionId) return;
+    if (!activeTab) return;
+    if (!activeTab.isLocal && !activeTab.sessionId) return;
     try {
-      const info = await sysInfoApi.get(activeTab.sessionId);
+      const info = activeTab.isLocal
+        ? await sysInfoApi.getLocal()
+        : await sysInfoApi.get(activeTab.sessionId!);
       // Accumulate total RX/TX for sparkline
       const totalRx = info.network.reduce((s, n) => s + n.rx_bytes, 0);
       const totalTx = info.network.reduce((s, n) => s + n.tx_bytes, 0);
@@ -1032,30 +1023,27 @@ const TerminalPage: React.FC<Props> = ({ language }) => {
   const toggleSysInfo = useCallback(() => {
     if (!activeTab) return;
     if (activeTab.sysInfoOpen) { updateTab(activeTab.id, { sysInfoOpen: false }); return; }
-    if (!activeTab.sessionId) { toast('error', tt.sysInfoNeedSession || 'Requires an active session'); return; }
+    if (!activeTab.isLocal && !activeTab.sessionId) {
+      toast('error', tt.sysInfoNeedSession || 'Requires an active session');
+      return;
+    }
     updateTab(activeTab.id, { sysInfoOpen: true, netHistory: [] });
     fetchSysInfo();
   }, [activeTab, updateTab, toast, tt, fetchSysInfo]);
 
   // Auto-refresh sysinfo every 5s when open
   useEffect(() => {
-    if (!activeTab?.sysInfoOpen || !activeTab?.sessionId) return;
+    if (!activeTab?.sysInfoOpen) return;
+    if (!activeTab.isLocal && !activeTab.sessionId) return;
     const iv = setInterval(fetchSysInfo, 5000);
     return () => clearInterval(iv);
-  }, [activeTab?.sysInfoOpen, activeTab?.sessionId, fetchSysInfo]);
+  }, [activeTab?.sysInfoOpen, activeTab?.sessionId, activeTab?.isLocal, fetchSysInfo]);
 
   // Snippets / Command History
-  // Local/container tabs are NOT backed by an SSH host record, so the
-  // snippets API (keyed by hostId) cannot persist their history. For those
-  // tabs we keep an in-memory, session-scoped history via synthetic ids.
+  // Local/container tabs use hostId=0 as a reserved sentinel (see backend
+  // SSHSnippetRepo). All tabs — SSH and local — share the same code path.
   const loadSnippets = useCallback(async () => {
     if (!activeTab) return;
-    if (activeTab.isLocal) {
-      // Mark as loaded so the auto-load effect doesn't loop; keep whatever
-      // session-history we've accumulated.
-      if (!activeTab.snippetsLoaded) updateTab(activeTab.id, { snippetsLoaded: true });
-      return;
-    }
     try {
       const list = await snippetsApi.list(activeTab.hostId);
       updateTab(activeTab.id, { snippets: list || [], snippetsLoaded: true });
@@ -1064,26 +1052,6 @@ const TerminalPage: React.FC<Props> = ({ language }) => {
 
   const recordCommand = useCallback(async (command: string) => {
     if (!activeTab || !command.trim()) return;
-    if (activeTab.isLocal) {
-      // Append/move-to-top a synthetic snippet entry so the Commands panel
-      // reflects this session's history even though nothing is persisted.
-      const trimmed = command.trim();
-      const existing = activeTab.snippets.filter((s) => s.command !== trimmed);
-      const now = new Date().toISOString();
-      const entry: SSHSnippet = {
-        id: -(Date.now() + Math.floor(Math.random() * 1000)),
-        host_id: 0,
-        command: trimmed,
-        is_favorite: false,
-        created_at: now,
-        updated_at: now,
-      };
-      updateTab(activeTab.id, {
-        snippets: [entry, ...existing].slice(0, 100),
-        snippetsLoaded: true,
-      });
-      return;
-    }
     try {
       await snippetsApi.record(activeTab.hostId, command);
       const list = await snippetsApi.list(activeTab.hostId);
@@ -1092,28 +1060,14 @@ const TerminalPage: React.FC<Props> = ({ language }) => {
   }, [activeTab, updateTab]);
 
   const toggleFavorite = useCallback(async (id: number) => {
-    // Synthetic ids (id < 0) belong to in-memory local-tab history — flip
-    // the favorite flag locally without hitting the backend.
-    if (id < 0 && activeTab?.isLocal) {
-      updateTab(activeTab.id, {
-        snippets: activeTab.snippets.map((s) =>
-          s.id === id ? { ...s, is_favorite: !s.is_favorite } : s,
-        ),
-      });
-      return;
-    }
     try { await snippetsApi.toggleFavorite(id); loadSnippets(); }
     catch (e: any) { toast('error', e?.message || 'Failed'); }
-  }, [activeTab, updateTab, toast, loadSnippets]);
+  }, [toast, loadSnippets]);
 
   const deleteSnippet = useCallback(async (id: number) => {
-    if (id < 0 && activeTab?.isLocal) {
-      updateTab(activeTab.id, { snippets: activeTab.snippets.filter((s) => s.id !== id) });
-      return;
-    }
     try { await snippetsApi.delete(id); loadSnippets(); }
     catch (e: any) { toast('error', e?.message || 'Delete failed'); }
-  }, [activeTab, updateTab, toast, loadSnippets]);
+  }, [toast, loadSnippets]);
 
   const execSnippet = useCallback((command: string) => {
     if (!activeTab?.sessionId || !activeTab?.wsClient) return;
@@ -1828,12 +1782,10 @@ const TerminalPage: React.FC<Props> = ({ language }) => {
               </>)}
             </div>
             <div className="flex items-center gap-1">
-              {!activeTab.isLocal && (
               <button onClick={toggleSysInfo} className={`flex items-center gap-1 px-2.5 py-1 text-xs rounded-lg transition-all ${activeTab.sysInfoOpen ? 'bg-purple-500/20 text-purple-400 shadow-[0_0_8px_rgba(168,85,247,0.15)]' : isDark ? 'text-white/40 hover:text-white/70 hover:bg-white/10' : 'text-gray-400 hover:text-gray-600 hover:bg-black/5'}`} title={tt.serverStatus || 'Server Status'}>
                 <span className="material-symbols-outlined text-sm">monitoring</span>
                 <span className="hidden sm:inline">{tt.status || 'Status'}</span>
               </button>
-              )}
               <button onClick={toggleSFTP} className={`flex items-center gap-1 px-2.5 py-1 text-xs rounded-lg transition-all ${showSftp ? 'bg-cyan-500/20 text-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.15)]' : isDark ? 'text-white/40 hover:text-white/70 hover:bg-white/10' : 'text-gray-400 hover:text-gray-600 hover:bg-black/5'}`} title={tt.sftpToggle || 'File Browser'}>
                 <span className="material-symbols-outlined text-sm">{showSftp ? 'folder_open' : 'folder'}</span>
                 <span className="hidden sm:inline">{tt.files || 'Files'}</span>
@@ -2399,11 +2351,11 @@ const TerminalPage: React.FC<Props> = ({ language }) => {
                   {/* ── Commands tab content ── */}
                   {bottomTab === 'commands' && (
                     <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-                      {/* Session-scoped history notice for local/container tabs */}
+                      {/* Shared-history notice for local/container tabs */}
                       {activeTab.isLocal && activeTab.snippets.length > 0 && (
                         <div className={`flex items-center gap-1.5 px-3 py-1 text-[10px] border-b shrink-0 ${isDark ? 'border-white/5 text-white/40 bg-white/[.02]' : 'border-black/5 text-black/40 bg-black/[.02]'}`}>
                           <span className="material-symbols-outlined" style={{ fontSize: '12px' }}>info</span>
-                          <span>{tt.localHistoryNotice || 'History is kept in memory for this session only (not persisted).'}</span>
+                          <span>{tt.localHistoryShared || 'History is shared across all local/container shell tabs.'}</span>
                         </div>
                       )}
                       {/* Command input bar */}
