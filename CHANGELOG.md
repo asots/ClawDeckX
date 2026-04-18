@@ -11,6 +11,7 @@ _2026-04-18_
 
 ### 🐛 Bug Fixes / 修复
 
+- handle residue directory via force-reinstall and runtime status check
 - prevent double restart and stale config overwrite on plugin install
 - restore full log tail for docker first-boot credentials
 - remove stray 'local' keyword in top-level Docker scan
@@ -1380,6 +1381,7 @@ _2026-03-15_
 
 
 ---
+
 
 
 
