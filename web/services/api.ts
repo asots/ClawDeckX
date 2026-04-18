@@ -976,6 +976,19 @@ export const weixinQRApi = {
   cancel: () => post<{ cancelled: boolean }>('/api/v1/plugins/weixin/qr-cancel', {}),
 };
 
+// Local / Container PTY shell — only enabled automatically inside Docker,
+// or when CLAWDECKX_ENABLE_LOCAL_TERMINAL=1 is set on the host.
+export interface LocalTerminalAvailability {
+  available: boolean;
+  reason?: string;
+  inDocker: boolean;
+  shell?: string;
+  label?: string;
+}
+export const localTerminalApi = {
+  available: () => get<LocalTerminalAvailability>('/api/v1/terminal/local/available'),
+};
+
 export interface WallpaperRandomResponse {
   provider: 'wallhaven';
   id: string;

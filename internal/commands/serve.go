@@ -801,6 +801,13 @@ func RunServe(args []string) int {
 	router.GET("/api/v1/badges", badgeHandler.Counts)
 
 	router.GET("/api/v1/terminal/ws", terminalWSHandler.HandleWS(cfg.Auth.JWTSecret))
+
+	// Local / Container shell (native PTY, no SSH required). Auto-enabled when
+	// running inside a Docker container; opt-in via CLAWDECKX_ENABLE_LOCAL_TERMINAL=1
+	// outside Docker. See internal/handlers/local_terminal_ws.go.
+	localTerminalHandler := handlers.NewLocalTerminalHandler()
+	router.GET("/api/v1/terminal/local/available", localTerminalHandler.Available)
+	router.GET("/api/v1/terminal/local/ws", localTerminalHandler.HandleWS(cfg.Auth.JWTSecret))
 	router.GET("/api/v1/ssh-hosts", sshHostsHandler.List)
 	router.POST("/api/v1/ssh-hosts", web.RequireAdmin(sshHostsHandler.Create))
 	router.PUT("/api/v1/ssh-hosts", web.RequireAdmin(sshHostsHandler.Update))

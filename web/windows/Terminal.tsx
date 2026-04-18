@@ -10,6 +10,7 @@ import { sshHostsApi } from '../services/ssh-hosts';
 import type { SSHHost, SSHHostCreateRequest } from '../services/ssh-hosts';
 import { TerminalWSClient } from '../services/terminal-ws';
 import type { TerminalMessage, TerminalCreatedPayload, TerminalOutputPayload, TerminalExitPayload, TerminalErrorPayload, TerminalCredentialOverride } from '../services/terminal-ws';
+import { localTerminalApi, type LocalTerminalAvailability } from '../services/api';
 import { sftpApi } from '../services/sftp';
 import type { FileEntry, ReadFileResult } from '../services/sftp';
 import { sysInfoApi } from '../services/sysinfo';
@@ -49,6 +50,10 @@ const emptyForm: HostFormData = {
 
 interface TabState {
   id: string; hostName: string; hostId: number;
+  // When true, this tab is a local/container PTY shell (no SSH host record).
+  // hostId is a sentinel (-1) in that case; SSH-only features (SFTP, SysInfo,
+  // snippets, reauth) are disabled.
+  isLocal?: boolean;
   sessionId: string | null; connecting: boolean; sftpOpen: boolean;
   xterm: XTerm | null; fitAddon: FitAddon | null;
   wsClient: TerminalWSClient | null; resizeObserver: ResizeObserver | null;
@@ -211,6 +216,8 @@ const TerminalPage: React.FC<Props> = ({ language }) => {
   const [view, setView] = useState<View>('hosts');
   const [hosts, setHosts] = useState<SSHHost[]>([]);
   const [loading, setLoading] = useState(true);
+  // Local / container PTY shell availability (auto-on in Docker, opt-in elsewhere).
+  const [localTerm, setLocalTerm] = useState<LocalTerminalAvailability | null>(null);
   const [form, setForm] = useState<HostFormData>({ ...emptyForm });
   const [editId, setEditId] = useState<number | null>(null);
   const [testing, setTesting] = useState(false);
@@ -292,6 +299,12 @@ const TerminalPage: React.FC<Props> = ({ language }) => {
   }, [toast, tt]);
 
   useEffect(() => { loadHosts(); }, [loadHosts]);
+
+  useEffect(() => {
+    localTerminalApi.available()
+      .then((res) => setLocalTerm(res))
+      .catch(() => setLocalTerm(null));
+  }, []);
 
   useEffect(() => {
     return () => { tabsRef.current.forEach((tab) => { tab.wsClient?.disconnect(); tab.xterm?.dispose(); tab.resizeObserver?.disconnect(); }); };
@@ -520,6 +533,105 @@ const TerminalPage: React.FC<Props> = ({ language }) => {
     });
   }, [updateTab, isDark]);
 
+  // Open a local / container PTY shell in a new tab. Uses the dedicated
+  // /api/v1/terminal/local/ws endpoint; no SSH host is involved.
+  const connectToLocalShell = useCallback(async () => {
+    if (!localTerm?.available) {
+      toast('error', tt.localShellUnavailable || 'Local shell is not available on this host');
+      return;
+    }
+    const tabId = `tab-${++tabCounter}`;
+    const displayName = localTerm.label || (localTerm.inDocker ? 'Container Shell' : 'Local Shell');
+    const newTab: TabState = {
+      id: tabId, hostName: displayName, hostId: -1, isLocal: true,
+      sessionId: null, connecting: true, sftpOpen: false,
+      xterm: null, fitAddon: null, wsClient: null, resizeObserver: null,
+      sftpPath: '/', sftpEntries: [], sftpLoading: false,
+      treeCache: {}, expandedDirs: new Set(), treeLoading: new Set(),
+      sysInfo: null, sysInfoOpen: false, netHistory: [],
+      snippets: [], snippetsLoaded: true, collapsedSections: new Set(),
+      editorFile: null, editorDirty: false, editorSaving: false, editorLoading: false,
+    };
+    setTabs((prev) => [...prev, newTab]);
+    setActiveTabId(tabId);
+    setView('sessions');
+
+    const themeColors = TERM_THEMES[termTheme] || TERM_THEMES[DEFAULT_TERM_THEME];
+    const xterm = new XTerm({
+      cursorBlink: true, fontSize: termFontSize,
+      fontFamily: 'JetBrains Mono, Consolas, monospace',
+      theme: isDark ? themeColors.dark : themeColors.light, allowProposedApi: true,
+    });
+    const fitAddon = new FitAddon();
+    xterm.loadAddon(fitAddon);
+    xterm.loadAddon(new WebLinksAddon());
+    xterm.writeln(`\x1b[36m⟡ ${formatTerminalText(tt.localShellOpening || 'Opening {name}...', { name: displayName })}\x1b[0m`);
+
+    xterm.attachCustomKeyEventHandler((e: KeyboardEvent) => {
+      if (e.type !== 'keydown') return true;
+      if (e.ctrlKey && !e.shiftKey && e.key === 'c') {
+        const sel = xterm.getSelection();
+        if (sel) { navigator.clipboard.writeText(sel); xterm.clearSelection(); return false; }
+        return true;
+      }
+      if (e.ctrlKey && !e.shiftKey && e.key === 'v') {
+        navigator.clipboard.readText().then((text) => { if (text) xterm.paste(text); });
+        return false;
+      }
+      if (e.ctrlKey && e.shiftKey && e.key === 'C') {
+        const sel = xterm.getSelection();
+        if (sel) { navigator.clipboard.writeText(sel); xterm.clearSelection(); }
+        return false;
+      }
+      if (e.ctrlKey && e.shiftKey && e.key === 'V') {
+        navigator.clipboard.readText().then((text) => { if (text) xterm.paste(text); });
+        return false;
+      }
+      return true;
+    });
+
+    const client = new TerminalWSClient('local');
+    try { await client.connect(); } catch {
+      xterm.writeln(`\x1b[31m✗ ${tt.termWebsocketFailed || 'WebSocket connection failed'}\x1b[0m`);
+      updateTab(tabId, { connecting: false, xterm, fitAddon, wsClient: client });
+      return;
+    }
+
+    let sid = '';
+    client.on('terminal.created', (msg: TerminalMessage) => {
+      const p = msg.payload as TerminalCreatedPayload; sid = p.sessionId;
+      updateTab(tabId, { sessionId: p.sessionId, connecting: false });
+      xterm.writeln(`\x1b[32m✓ ${formatTerminalText(tt.termConnected || 'Connected (session: {sessionId})', { sessionId: p.sessionId })}\x1b[0m\r\n`);
+      xterm.focus();
+    });
+    client.on('terminal.output', (msg: TerminalMessage) => { xterm.write((msg.payload as TerminalOutputPayload).data); });
+    client.on('terminal.exit', (msg: TerminalMessage) => {
+      xterm.writeln(`\r\n\x1b[33m⟡ ${formatTerminalText(tt.termSessionEndedWithReason || 'Session ended: {reason}', { reason: (msg.payload as TerminalExitPayload).reason })}\x1b[0m`);
+      updateTab(tabId, { sessionId: null });
+    });
+    client.on('terminal.error', (msg: TerminalMessage) => {
+      const raw = (msg.payload as TerminalErrorPayload).message || '';
+      xterm.writeln(`\r\n\x1b[31m✗ ${translateTerminalError(raw, tt)}\x1b[0m`);
+      updateTab(tabId, { connecting: false });
+    });
+
+    xterm.onData((data: string) => { if (sid) client.sendInput(sid, data); });
+    xterm.onResize(({ cols, rows }) => { if (sid) client.resizeSession(sid, cols, rows); });
+
+    updateTab(tabId, { xterm, fitAddon, wsClient: client });
+    requestAnimationFrame(() => {
+      const container = termContainerRefs.current[tabId];
+      if (container) {
+        xterm.open(container); fitAddon.fit();
+        const ro = new ResizeObserver(() => { try { fitAddon.fit(); } catch { /* */ } });
+        ro.observe(container);
+        updateTab(tabId, { resizeObserver: ro });
+      }
+      const dims = fitAddon.proposeDimensions();
+      client.createLocalSession(dims?.cols || 120, dims?.rows || 30);
+    });
+  }, [localTerm, updateTab, isDark, termTheme, termFontSize, tt, toast]);
+
   const closeTab = useCallback(async (tabId: string) => {
     const tab = tabsRef.current.find((tb) => tb.id === tabId);
     if (tab?.sessionId) {
@@ -540,10 +652,46 @@ const TerminalPage: React.FC<Props> = ({ language }) => {
     });
   }, [activeTabId, confirm, tt]);
 
-  // Reconnect a disconnected tab to the same host
+  // Reconnect a disconnected tab to the same host (or local shell).
   const reconnectTab = useCallback(async (tabId: string) => {
     const tab = tabsRef.current.find((tb) => tb.id === tabId);
     if (!tab || !tab.xterm) return;
+
+    // Local tabs: reopen against the local PTY endpoint; no host record needed.
+    if (tab.isLocal) {
+      tab.wsClient?.disconnect();
+      updateTab(tabId, { connecting: true, sessionId: null });
+      tab.xterm.writeln(`\r\n\x1b[36m⟡ ${tt.termReconnecting?.replace('{name}', tab.hostName) || 'Reconnecting...'}\x1b[0m`);
+      const client = new TerminalWSClient('local');
+      try { await client.connect(); } catch {
+        tab.xterm.writeln(`\x1b[31m✗ ${tt.termWebsocketFailed || 'WebSocket connection failed'}\x1b[0m`);
+        updateTab(tabId, { connecting: false, wsClient: client });
+        return;
+      }
+      let lsid = '';
+      client.on('terminal.created', (msg: TerminalMessage) => {
+        const p = msg.payload as TerminalCreatedPayload; lsid = p.sessionId;
+        updateTab(tabId, { sessionId: p.sessionId, connecting: false });
+        tab.xterm!.writeln(`\x1b[32m✓ ${formatTerminalText(tt.termReconnected || 'Reconnected (session: {sessionId})', { sessionId: p.sessionId })}\x1b[0m\r\n`);
+        tab.xterm!.focus();
+      });
+      client.on('terminal.output', (msg: TerminalMessage) => { tab.xterm!.write((msg.payload as TerminalOutputPayload).data); });
+      client.on('terminal.exit', (msg: TerminalMessage) => {
+        tab.xterm!.writeln(`\r\n\x1b[33m⟡ ${formatTerminalText(tt.termSessionEndedWithReason || 'Session ended: {reason}', { reason: (msg.payload as TerminalExitPayload).reason })}\x1b[0m`);
+        updateTab(tabId, { sessionId: null });
+      });
+      client.on('terminal.error', (msg: TerminalMessage) => {
+        tab.xterm!.writeln(`\r\n\x1b[31m✗ ${translateTerminalError((msg.payload as TerminalErrorPayload).message, tt)}\x1b[0m`);
+        updateTab(tabId, { connecting: false });
+      });
+      tab.xterm.onData((data: string) => { if (lsid) client.sendInput(lsid, data); });
+      tab.xterm.onResize(({ cols, rows }) => { if (lsid) client.resizeSession(lsid, cols, rows); });
+      updateTab(tabId, { wsClient: client });
+      const dims = tab.fitAddon?.proposeDimensions();
+      client.createLocalSession(dims?.cols || 120, dims?.rows || 30);
+      return;
+    }
+
     const host = hosts.find((h) => h.id === tab.hostId);
     if (!host) return;
 
@@ -1445,20 +1593,69 @@ const TerminalPage: React.FC<Props> = ({ language }) => {
           </div>
         </div>
         <div className="flex-1 overflow-y-auto p-4 neon-scrollbar">
+          {/* Local / Container shell — auto-enabled inside Docker. Shown above
+              SSH hosts so users deploying via Docker have an obvious "how do
+              I get a shell into the container?" entry point. */}
+          {localTerm?.available && (
+            <div
+              onClick={connectToLocalShell}
+              className="sci-card mb-4 p-4 flex items-center gap-4 cursor-pointer hover:border-emerald-500/40 transition-all active:scale-[0.99] group"
+              style={{ animation: 'card-enter 0.3s ease-out' }}
+            >
+              <div className="w-12 h-12 rounded-xl bg-emerald-500/10 dark:bg-emerald-500/15 flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-2xl text-emerald-400">
+                  {localTerm.inDocker ? 'deployed_code' : 'computer'}
+                </span>
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-semibold">
+                    {localTerm.label || (localTerm.inDocker ? (tt.containerShell || 'Container Shell') : (tt.localShell || 'Local Shell'))}
+                  </span>
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] rounded-full bg-emerald-500/15 text-emerald-500 font-medium">
+                    <span className="w-1 h-1 rounded-full bg-emerald-400" />
+                    {tt.noSshRequired || 'No SSH required'}
+                  </span>
+                </div>
+                <p className="text-xs text-text-muted mt-0.5 truncate">
+                  {localTerm.inDocker
+                    ? (tt.containerShellHint || 'Direct PTY shell into this Docker container — no password, root access.')
+                    : (tt.localShellHint || 'Direct PTY shell on this host.')}
+                  {localTerm.shell && <span className="ms-2 font-mono opacity-60">{localTerm.shell}</span>}
+                </p>
+              </div>
+              <span className="flex items-center gap-1 text-[11px] text-emerald-400 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                {tt.connect || 'Connect'}
+                <span className="material-symbols-outlined" style={{ fontSize: '13px' }}>arrow_forward</span>
+              </span>
+            </div>
+          )}
           {loading ? (
             <div className="flex items-center justify-center h-40"><span className="material-symbols-outlined animate-spin text-2xl text-text-muted">progress_activity</span></div>
           ) : hosts.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-text-muted gap-4 py-12">
-              <div className="w-20 h-20 rounded-2xl bg-cyan-500/10 flex items-center justify-center"><span className="material-symbols-outlined text-4xl text-cyan-400/60">dns</span></div>
-              <div className="text-center">
-                <p className="text-sm font-medium mb-1">{tt.noHosts || 'No SSH hosts configured'}</p>
+            localTerm?.available ? (
+              // When the local shell is available, don't force the user into
+              // "add your first host" — SSH hosts are optional.
+              <div className="flex flex-col items-center justify-center text-text-muted gap-3 py-8">
                 <p className="text-xs opacity-60">{tt.noHostsHint || 'Add a server to get started'}</p>
+                <button onClick={() => { setForm({ ...emptyForm }); setEditId(null); setView('add'); }} className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-lg bg-cyan-500/15 text-cyan-400 hover:bg-cyan-500/25 transition-colors">
+                  <span className="material-symbols-outlined text-sm">add_circle</span>
+                  {tt.addHost || 'Add SSH host'}
+                </button>
               </div>
-              <button onClick={() => { setForm({ ...emptyForm }); setEditId(null); setView('add'); }} className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl bg-cyan-500/15 text-cyan-400 hover:bg-cyan-500/25 transition-colors">
-                <span className="material-symbols-outlined text-lg">add_circle</span>
-                {tt.addFirstHost || 'Add your first host'}
-              </button>
-            </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-full text-text-muted gap-4 py-12">
+                <div className="w-20 h-20 rounded-2xl bg-cyan-500/10 flex items-center justify-center"><span className="material-symbols-outlined text-4xl text-cyan-400/60">dns</span></div>
+                <div className="text-center">
+                  <p className="text-sm font-medium mb-1">{tt.noHosts || 'No SSH hosts configured'}</p>
+                  <p className="text-xs opacity-60">{tt.noHostsHint || 'Add a server to get started'}</p>
+                </div>
+                <button onClick={() => { setForm({ ...emptyForm }); setEditId(null); setView('add'); }} className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl bg-cyan-500/15 text-cyan-400 hover:bg-cyan-500/25 transition-colors">
+                  <span className="material-symbols-outlined text-lg">add_circle</span>
+                  {tt.addFirstHost || 'Add your first host'}
+                </button>
+              </div>
+            )
           ) : (
             <div className="space-y-4">
               {(() => {
@@ -1546,14 +1743,18 @@ const TerminalPage: React.FC<Props> = ({ language }) => {
               </>)}
             </div>
             <div className="flex items-center gap-1">
+              {!activeTab.isLocal && (
               <button onClick={toggleSysInfo} className={`flex items-center gap-1 px-2.5 py-1 text-xs rounded-lg transition-all ${activeTab.sysInfoOpen ? 'bg-purple-500/20 text-purple-400 shadow-[0_0_8px_rgba(168,85,247,0.15)]' : isDark ? 'text-white/40 hover:text-white/70 hover:bg-white/10' : 'text-gray-400 hover:text-gray-600 hover:bg-black/5'}`} title={tt.serverStatus || 'Server Status'}>
                 <span className="material-symbols-outlined text-sm">monitoring</span>
                 <span className="hidden sm:inline">{tt.status || 'Status'}</span>
               </button>
+              )}
+              {!activeTab.isLocal && (
               <button onClick={toggleSFTP} className={`flex items-center gap-1 px-2.5 py-1 text-xs rounded-lg transition-all ${showSftp ? 'bg-cyan-500/20 text-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.15)]' : isDark ? 'text-white/40 hover:text-white/70 hover:bg-white/10' : 'text-gray-400 hover:text-gray-600 hover:bg-black/5'}`} title={tt.sftpToggle || 'File Browser'}>
                 <span className="material-symbols-outlined text-sm">{showSftp ? 'folder_open' : 'folder'}</span>
                 <span className="hidden sm:inline">{tt.files || 'Files'}</span>
               </button>
+              )}
               <div className="relative" ref={termSettingsRef}>
                 <button onClick={() => setShowTermSettings(!showTermSettings)} className={`flex items-center gap-1 px-2 py-1 text-xs rounded-lg transition-all ${showTermSettings ? 'bg-amber-500/20 text-amber-400' : isDark ? 'text-white/40 hover:text-white/70 hover:bg-white/10' : 'text-gray-400 hover:text-gray-600 hover:bg-black/5'}`} title={tt.termSettings || 'Terminal Settings'}>
                   <span className="material-symbols-outlined text-sm">settings</span>
