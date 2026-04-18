@@ -926,14 +926,22 @@ docker_install() {
     echo -e "  OpenClaw:   ${GREEN}${vol_base}/${vol_openclaw}/_data${NC}"
     echo -e "  Runtime:    ${GREEN}${vol_base}/${vol_runtime}/_data${NC}"
     echo ""
-    echo -e "${YELLOW}🔐 First-time login / 首次登录：${NC}"
-    echo -e "  View initial admin credentials in container logs:"
-    echo -e "  查看容器日志中的初始管理员账户信息："
-    echo ""
-    echo "────────────────────────────────────────"
-    $compose_run logs --tail 50
-    echo "────────────────────────────────────────"
-    echo ""
+    # Extract first-boot credentials from container logs. The Go binary prints
+    # "Username: admin" / "Password: XXXX" inside a bi-lingual banner; we grep
+    # those two lines out of the startup log. On upgrade (existing user) no
+    # such lines exist and we silently skip the block.
+    CRED_LINES=$($compose_run logs 2>/dev/null | grep -E '\| (Username|Password): ' | head -2 || true)
+    CRED_USER=$(echo "$CRED_LINES" | grep -E '\| Username: ' | head -1 | sed -E 's/.*Username:[[:space:]]*([^ |]+).*/\1/')
+    CRED_PASS=$(echo "$CRED_LINES" | grep -E '\| Password: ' | head -1 | sed -E 's/.*Password:[[:space:]]*([^ |]+).*/\1/')
+    if [ -n "$CRED_USER" ] && [ -n "$CRED_PASS" ]; then
+        echo -e "${YELLOW}🔐 First-time login / 首次登录：${NC}"
+        echo -e "   Username / 用户名:  ${GREEN}${CRED_USER}${NC}"
+        echo -e "   Password / 密码:    ${GREEN}${CRED_PASS}${NC}"
+        echo ""
+        echo -e "${YELLOW}   ⚠  Please change the password after logging in."
+        echo -e "   ⚠  登录后请立即修改密码。${NC}"
+        echo ""
+    fi
     echo -e "${YELLOW}Docker management commands / Docker 管理命令：${NC}"
     echo -e "  ${GREEN}$compose_run ps${NC}              - Status / 状态"
     echo -e "  ${GREEN}$compose_run logs --tail 50${NC}  - Logs / 日志"
@@ -2459,11 +2467,141 @@ if [[ $REPLY =~ ^[Nn]$ ]]; then
     exit 0
 fi
 
-# 6. Run with arguments (include --port if non-default)
-echo -e "${BLUE}>> Starting ClawDeckX on port $PORT...${NC}"
-echo "----------------------------------------"
-if [ "$PORT" -ne "$DEFAULT_PORT" ]; then
-    "$INSTALLED_BINARY" --port "$PORT" "$@"
-else
-    "$INSTALLED_BINARY" "$@"
+# 6. Start ClawDeckX in the background (preferred) and display first-boot
+#    credentials inline so the user never has to hunt for them. Fallback
+#    chain: systemd --user → nohup+disown → foreground with a warning.
+BG_MODE=""   # "systemd" | "nohup" | "foreground"
+BG_PID=""
+DATA_DIR="$(dirname "$INSTALLED_BINARY")/data"
+CRED_FILE="$DATA_DIR/.first-boot-credentials.tmp"
+mkdir -p "$DATA_DIR" 2>/dev/null || true
+
+# Try systemd --user first if a unit file exists and the user bus is reachable
+if check_systemd_service && [ "$SYSTEMD_SERVICE_TYPE" = "user" ] && can_use_systemctl_user; then
+    echo -e "${BLUE}>> Starting ClawDeckX via systemd --user on port $PORT..."
+    echo -e ">> 通过 systemd --user 在端口 $PORT 启动 ClawDeckX...${NC}"
+    if systemctl --user start clawdeckx 2>/dev/null; then
+        BG_MODE="systemd"
+        # Enable linger so the service survives logout on shared servers
+        if command -v loginctl &>/dev/null; then
+            loginctl enable-linger "$(whoami)" 2>/dev/null || true
+        fi
+    fi
 fi
+
+# Fallback: nohup in background with output redirected to log file
+if [ -z "$BG_MODE" ]; then
+    NOHUP_LOG="$DATA_DIR/ClawDeckX.log"
+    echo -e "${BLUE}>> Starting ClawDeckX in background on port $PORT..."
+    echo -e ">> 在后台启动 ClawDeckX（端口 $PORT）...${NC}"
+    if [ "$PORT" -ne "$DEFAULT_PORT" ]; then
+        nohup "$INSTALLED_BINARY" --port "$PORT" "$@" >"$NOHUP_LOG" 2>&1 </dev/null &
+    else
+        nohup "$INSTALLED_BINARY" "$@" >"$NOHUP_LOG" 2>&1 </dev/null &
+    fi
+    BG_PID=$!
+    disown "$BG_PID" 2>/dev/null || true
+    echo "$BG_PID" > "$DATA_DIR/clawdeckx.pid" 2>/dev/null || true
+    # Sanity check: give it 2s, make sure the process actually stayed up
+    sleep 2
+    if kill -0 "$BG_PID" 2>/dev/null; then
+        BG_MODE="nohup"
+    else
+        BG_MODE=""
+        echo -e "${YELLOW}⚠ Background launch did not stay alive, falling back to foreground."
+        echo -e "  后台启动失败，回退为前台运行。${NC}"
+    fi
+fi
+
+# Final fallback: foreground. The service will die when the terminal closes,
+# so make sure the user understands that before we hand over.
+if [ -z "$BG_MODE" ]; then
+    echo ""
+    echo -e "${YELLOW}═══════════════════════════════════════════════════════════${NC}"
+    echo -e "${YELLOW}  ⚠ RUNNING IN FOREGROUND / 前台运行${NC}"
+    echo -e "${YELLOW}═══════════════════════════════════════════════════════════${NC}"
+    echo -e "${YELLOW}  Keep this terminal open — closing it will stop ClawDeckX."
+    echo -e "  请保持此终端打开 —— 关闭窗口将停止 ClawDeckX。${NC}"
+    echo ""
+    if [ "$PORT" -ne "$DEFAULT_PORT" ]; then
+        exec "$INSTALLED_BINARY" --port "$PORT" "$@"
+    else
+        exec "$INSTALLED_BINARY" "$@"
+    fi
+fi
+
+# Wait for the server to become ready (up to 30s). On slow disks or first-run
+# DB migration this can take a few seconds.
+echo -e "${CYAN}Waiting for ClawDeckX to become ready... / 等待 ClawDeckX 就绪...${NC}"
+HEALTH_OK=false
+for _i in $(seq 1 60); do
+    if curl -sf "http://127.0.0.1:${PORT}/api/v1/health" >/dev/null 2>&1; then
+        HEALTH_OK=true
+        break
+    fi
+    sleep 0.5
+done
+
+if [ "$HEALTH_OK" != true ]; then
+    echo -e "${YELLOW}⚠ ClawDeckX did not report healthy within 30s."
+    echo -e "  ClawDeckX 在 30 秒内未就绪。${NC}"
+    if [ "$BG_MODE" = "nohup" ]; then
+        echo -e "${CYAN}  See log: ${GREEN}$DATA_DIR/ClawDeckX.log${NC}"
+    elif [ "$BG_MODE" = "systemd" ]; then
+        echo -e "${CYAN}  See log: ${GREEN}journalctl --user -u clawdeckx -n 50${NC}"
+    fi
+fi
+
+# Poll for one-shot first-boot credentials file (only exists on fresh install).
+# The file is written by the Go binary when it auto-creates the admin user,
+# and is unlinked by us below. We intentionally do not tell the user about
+# this file; it is an internal handoff mechanism.
+CRED_USER=""
+CRED_PASS=""
+for _i in $(seq 1 20); do
+    if [ -f "$CRED_FILE" ]; then
+        CRED_USER=$(grep -o '"username"[[:space:]]*:[[:space:]]*"[^"]*"' "$CRED_FILE" 2>/dev/null | head -1 | sed 's/.*"\([^"]*\)"$/\1/')
+        CRED_PASS=$(grep -o '"password"[[:space:]]*:[[:space:]]*"[^"]*"' "$CRED_FILE" 2>/dev/null | head -1 | sed 's/.*"\([^"]*\)"$/\1/')
+        rm -f "$CRED_FILE"
+        break
+    fi
+    sleep 0.5
+done
+
+# Display result
+echo ""
+echo -e "${GREEN}═══════════════════════════════════════════════════════════${NC}"
+echo -e "${GREEN}✅ ClawDeckX is running / ClawDeckX 已启动${NC}"
+echo -e "${GREEN}═══════════════════════════════════════════════════════════${NC}"
+echo ""
+
+print_access_urls "$PORT"
+echo ""
+
+if [ -n "$CRED_USER" ] && [ -n "$CRED_PASS" ]; then
+    echo -e "${YELLOW}🔐 First-time login / 首次登录：${NC}"
+    echo -e "   Username / 用户名:  ${GREEN}${CRED_USER}${NC}"
+    echo -e "   Password / 密码:    ${GREEN}${CRED_PASS}${NC}"
+    echo ""
+    echo -e "${YELLOW}   ⚠  Please change the password after logging in."
+    echo -e "   ⚠  登录后请立即修改密码。${NC}"
+    echo ""
+fi
+
+# Management hints tailored to how we actually started it
+case "$BG_MODE" in
+    systemd)
+        echo -e "${CYAN}Service management / 服务管理：${NC}"
+        echo -e "  ${GREEN}systemctl --user status clawdeckx${NC}   - Status / 查看状态"
+        echo -e "  ${GREEN}systemctl --user stop clawdeckx${NC}     - Stop / 停止"
+        echo -e "  ${GREEN}systemctl --user restart clawdeckx${NC}  - Restart / 重启"
+        ;;
+    nohup)
+        echo -e "${CYAN}Process management / 进程管理：${NC}"
+        echo -e "  ${GREEN}cat $DATA_DIR/clawdeckx.pid${NC}         - Show PID / 查看 PID"
+        echo -e "  ${GREEN}tail -f $DATA_DIR/ClawDeckX.log${NC}     - Follow logs / 查看日志"
+        echo -e "  ${GREEN}kill \$(cat $DATA_DIR/clawdeckx.pid)${NC} - Stop / 停止"
+        ;;
+esac
+
+exit 0

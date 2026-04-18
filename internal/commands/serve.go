@@ -1049,6 +1049,7 @@ func RunServe(args []string) int {
 				Role:         constants.RoleAdmin,
 			}); err == nil {
 				logger.Log.Info().Msg(i18n.T(i18n.MsgLogAdminAutoCreated))
+				writeFirstBootCredentials(generatedUsername, generatedPassword)
 			}
 		}
 	}
@@ -1391,6 +1392,43 @@ func generateRandomPassword(length int) string {
 		b[i] = charset[int(randomBytes[i])%len(charset)]
 	}
 	return string(b)
+}
+
+// writeFirstBootCredentials writes a one-shot credentials file that the
+// install script can read out in the terminal immediately after launching
+// the server in the background. The file is:
+//   - Written with 0600 permissions into the data directory.
+//   - Intended to be read exactly once by the install script and unlinked.
+//   - Auto-cleaned by this process after 10 minutes regardless of whether
+//     it was read, so the plaintext password never lingers long-term.
+func writeFirstBootCredentials(username, password string) {
+	dataDir := webconfig.DataDir()
+	if err := os.MkdirAll(dataDir, 0o755); err != nil {
+		logger.Log.Warn().Err(err).Msg("first-boot credentials: failed to ensure data dir")
+		return
+	}
+	path := filepath.Join(dataDir, ".first-boot-credentials.tmp")
+	payload := map[string]interface{}{
+		"username":   username,
+		"password":   password,
+		"created_at": time.Now().UTC().Format(time.RFC3339),
+	}
+	buf, err := json.MarshalIndent(payload, "", "  ")
+	if err != nil {
+		logger.Log.Warn().Err(err).Msg("first-boot credentials: marshal failed")
+		return
+	}
+	if err := os.WriteFile(path, buf, 0o600); err != nil {
+		logger.Log.Warn().Err(err).Msg("first-boot credentials: write failed")
+		return
+	}
+	// Best-effort cleanup after 10 minutes. The install script typically
+	// reads and unlinks the file within seconds; this is a safety net for
+	// the case where the script was interrupted.
+	go func(p string) {
+		time.Sleep(10 * time.Minute)
+		_ = os.Remove(p)
+	}(path)
 }
 
 func getPublicIP() string {
