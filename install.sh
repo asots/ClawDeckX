@@ -926,22 +926,14 @@ docker_install() {
     echo -e "  OpenClaw:   ${GREEN}${vol_base}/${vol_openclaw}/_data${NC}"
     echo -e "  Runtime:    ${GREEN}${vol_base}/${vol_runtime}/_data${NC}"
     echo ""
-    # Extract first-boot credentials from container logs. The Go binary prints
-    # "Username: admin" / "Password: XXXX" inside a bi-lingual banner; we grep
-    # those two lines out of the startup log. On upgrade (existing user) no
-    # such lines exist and we silently skip the block.
-    CRED_LINES=$($compose_run logs 2>/dev/null | grep -E '\| (Username|Password): ' | head -2 || true)
-    CRED_USER=$(echo "$CRED_LINES" | grep -E '\| Username: ' | head -1 | sed -E 's/.*Username:[[:space:]]*([^ |]+).*/\1/')
-    CRED_PASS=$(echo "$CRED_LINES" | grep -E '\| Password: ' | head -1 | sed -E 's/.*Password:[[:space:]]*([^ |]+).*/\1/')
-    if [ -n "$CRED_USER" ] && [ -n "$CRED_PASS" ]; then
-        echo -e "${YELLOW}🔐 First-time login / 首次登录：${NC}"
-        echo -e "   Username / 用户名:  ${GREEN}${CRED_USER}${NC}"
-        echo -e "   Password / 密码:    ${GREEN}${CRED_PASS}${NC}"
-        echo ""
-        echo -e "${YELLOW}   ⚠  Please change the password after logging in."
-        echo -e "   ⚠  登录后请立即修改密码。${NC}"
-        echo ""
-    fi
+    echo -e "${YELLOW}🔐 First-time login / 首次登录：${NC}"
+    echo -e "  View initial admin credentials in container logs below:"
+    echo -e "  初始管理员账户信息见下方容器日志："
+    echo ""
+    echo "────────────────────────────────────────"
+    $compose_run logs --tail 50
+    echo "────────────────────────────────────────"
+    echo ""
     echo -e "${YELLOW}Docker management commands / Docker 管理命令：${NC}"
     echo -e "  ${GREEN}$compose_run ps${NC}              - Status / 状态"
     echo -e "  ${GREEN}$compose_run logs --tail 50${NC}  - Logs / 日志"
