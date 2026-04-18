@@ -936,6 +936,15 @@ func (c *GWClient) connectLoop() {
 			// No requestId available from the close frame, so pass empty hint.
 			if isPairingErr && c.IsLocalGateway() {
 				go c.autoApprovePairing("")
+			} else if isAuthError(errMsg) {
+				// Close 1008 "unauthorized: gateway token mismatch" lands here
+				// when OpenClaw was reinstalled and the new auth token in
+				// ~/.openclaw/openclaw.json no longer matches the stale token
+				// cached in the DB gateway profile. autoRefreshToken reads the
+				// new token, persists it via onTokenRefreshed, and triggers an
+				// immediate reconnect. Safe to call concurrently — it has its
+				// own mutex and 2-minute cooldown.
+				go c.autoRefreshToken()
 			}
 		}
 

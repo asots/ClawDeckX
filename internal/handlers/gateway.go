@@ -147,6 +147,18 @@ func (h *GatewayHandler) Restart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Force the WS client to reset its backoff and reconnect immediately.
+	// Without this, connectLoop may be sitting at a high backoff (up to 60s
+	// after auth errors, or backoffCapMs after connect failures), which means
+	// a user-triggered restart has to wait out the backoff timer before the WS
+	// reconnects — giving the impression that "restart doesn't reconnect until
+	// the watchdog kills the gateway again". Reconnect() closes the current
+	// conn, resets backoffMs to 1000, and signals reconnectNowCh to skip the
+	// current backoff sleep.
+	if h.gwClient != nil {
+		h.gwClient.Reconnect(h.gwClient.GetConfig())
+	}
+
 	after := h.svc.Status()
 	h.writeAudit(r, constants.ActionGatewayRestart, "success", "")
 	h.broadcastStatus()

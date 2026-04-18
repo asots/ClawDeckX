@@ -197,6 +197,28 @@ func RunServe(args []string) int {
 				Str("configPath", cfg.OpenClaw.ConfigPath).
 				Msg(i18n.T(i18n.MsgLogGwTokenReadFailed))
 		}
+	} else {
+		// Proactive staleness check: if the active profile points at a local
+		// gateway and openclaw.json has a different token (e.g. OpenClaw was
+		// reinstalled and regenerated its auth token), sync to the new value
+		// BEFORE the first WS connect so we avoid a 1008 token_mismatch cycle.
+		// Only trigger for local gateways — remote gateways may legitimately
+		// have a different token than the local openclaw.json.
+		if gwHost == "" || gwHost == "127.0.0.1" || gwHost == "localhost" || gwHost == "::1" {
+			if latest := readOpenClawGatewayToken(cfg.OpenClaw.ConfigPath); latest != "" && latest != gwToken {
+				logger.Log.Warn().
+					Int("dbTokenLen", len(gwToken)).
+					Int("configTokenLen", len(latest)).
+					Msg("active gateway profile token differs from openclaw.json (likely OpenClaw reinstall) — syncing before first connect")
+				gwToken = latest
+				if activeProfile, err := profileRepo.GetActive(); err == nil && activeProfile != nil {
+					activeProfile.Token = latest
+					if err := profileRepo.Update(activeProfile); err == nil {
+						logger.Log.Info().Msg("synced openclaw.json token to active DB gateway profile")
+					}
+				}
+			}
+		}
 	}
 
 	svc := openclaw.NewService()
