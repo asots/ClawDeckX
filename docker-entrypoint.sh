@@ -272,25 +272,5 @@ fi
 # Ensure ClawDeckX picks up the correct OpenClaw config path regardless of binary version
 export OCD_OPENCLAW_CONFIG_PATH="${OCD_OPENCLAW_CONFIG_PATH:-$OPENCLAW_STATE_DIR}"
 
-# Generate initial admin credentials on first run
-CRED_FILE="${CLAWDECKX_DATA_DIR}/bootstrap/credentials"
-mkdir -p "${CLAWDECKX_DATA_DIR}/bootstrap"
-INIT_ARGS=()
-if [ ! -f "$CRED_FILE" ]; then
-    INIT_USER="admin"
-    INIT_PASS=$(head -c 32 /dev/urandom | base64 | tr -dc 'a-zA-Z0-9' | head -c 12)
-    printf '%s\n%s\n' "$INIT_USER" "$INIT_PASS" > "$CRED_FILE"
-    chmod 600 "$CRED_FILE"
-    INIT_ARGS=(--user "$INIT_USER" --password "$INIT_PASS")
-    echo "[docker-entrypoint] Generated initial admin credentials"
-else
-    # Pass existing credentials so serve can re-check (idempotent)
-    INIT_USER=$(sed -n '1p' "$CRED_FILE")
-    INIT_PASS=$(sed -n '2p' "$CRED_FILE")
-    if [ -n "$INIT_USER" ] && [ -n "$INIT_PASS" ]; then
-        INIT_ARGS=(--user "$INIT_USER" --password "$INIT_PASS")
-    fi
-fi
-
 # Start ClawDeckX (exec replaces shell so tini can manage signals)
-exec "$CLAWDECKX_BIN" serve "${INIT_ARGS[@]}" "$@"
+exec "$CLAWDECKX_BIN" serve "$@"
