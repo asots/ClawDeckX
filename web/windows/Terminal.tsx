@@ -621,7 +621,43 @@ const TerminalPage: React.FC<Props> = ({ language }) => {
       updateTab(tabId, { connecting: false });
     });
 
-    xterm.onData((data: string) => { if (sid) client.sendInput(sid, data); });
+    xterm.onData((data: string) => {
+      if (sid) client.sendInput(sid, data);
+      // Buffer keystrokes to capture commands on Enter \u2014 same shape as
+      // connectToHost, but record into in-memory session history instead of
+      // the backend-persisted snippets store (no stable host id for local).
+      const buf = inputBufRef.current;
+      if (!buf[tabId]) buf[tabId] = '';
+      if (data === '\r' || data === '\n') {
+        const cmd = buf[tabId].trim();
+        if (cmd) {
+          const latest = tabsRef.current.find((t) => t.id === tabId);
+          if (latest) {
+            const existing = latest.snippets.filter((s) => s.command !== cmd);
+            const now = new Date().toISOString();
+            const entry: SSHSnippet = {
+              id: -(Date.now() + Math.floor(Math.random() * 1000)),
+              host_id: 0,
+              command: cmd,
+              is_favorite: false,
+              created_at: now,
+              updated_at: now,
+            };
+            updateTab(tabId, {
+              snippets: [entry, ...existing].slice(0, 100),
+              snippetsLoaded: true,
+            });
+          }
+        }
+        buf[tabId] = '';
+      } else if (data === '\x7f' || data === '\b') {
+        buf[tabId] = buf[tabId].slice(0, -1);
+      } else if (data.length === 1 && data >= ' ') {
+        buf[tabId] += data;
+      } else if (data.length > 1 && !data.startsWith('\x1b')) {
+        buf[tabId] += data;
+      }
+    });
     xterm.onResize(({ cols, rows }) => { if (sid) client.resizeSession(sid, cols, rows); });
 
     updateTab(tabId, { xterm, fitAddon, wsClient: client });
@@ -1009,8 +1045,17 @@ const TerminalPage: React.FC<Props> = ({ language }) => {
   }, [activeTab?.sysInfoOpen, activeTab?.sessionId, fetchSysInfo]);
 
   // Snippets / Command History
+  // Local/container tabs are NOT backed by an SSH host record, so the
+  // snippets API (keyed by hostId) cannot persist their history. For those
+  // tabs we keep an in-memory, session-scoped history via synthetic ids.
   const loadSnippets = useCallback(async () => {
     if (!activeTab) return;
+    if (activeTab.isLocal) {
+      // Mark as loaded so the auto-load effect doesn't loop; keep whatever
+      // session-history we've accumulated.
+      if (!activeTab.snippetsLoaded) updateTab(activeTab.id, { snippetsLoaded: true });
+      return;
+    }
     try {
       const list = await snippetsApi.list(activeTab.hostId);
       updateTab(activeTab.id, { snippets: list || [], snippetsLoaded: true });
@@ -1019,6 +1064,26 @@ const TerminalPage: React.FC<Props> = ({ language }) => {
 
   const recordCommand = useCallback(async (command: string) => {
     if (!activeTab || !command.trim()) return;
+    if (activeTab.isLocal) {
+      // Append/move-to-top a synthetic snippet entry so the Commands panel
+      // reflects this session's history even though nothing is persisted.
+      const trimmed = command.trim();
+      const existing = activeTab.snippets.filter((s) => s.command !== trimmed);
+      const now = new Date().toISOString();
+      const entry: SSHSnippet = {
+        id: -(Date.now() + Math.floor(Math.random() * 1000)),
+        host_id: 0,
+        command: trimmed,
+        is_favorite: false,
+        created_at: now,
+        updated_at: now,
+      };
+      updateTab(activeTab.id, {
+        snippets: [entry, ...existing].slice(0, 100),
+        snippetsLoaded: true,
+      });
+      return;
+    }
     try {
       await snippetsApi.record(activeTab.hostId, command);
       const list = await snippetsApi.list(activeTab.hostId);
@@ -1027,14 +1092,28 @@ const TerminalPage: React.FC<Props> = ({ language }) => {
   }, [activeTab, updateTab]);
 
   const toggleFavorite = useCallback(async (id: number) => {
+    // Synthetic ids (id < 0) belong to in-memory local-tab history — flip
+    // the favorite flag locally without hitting the backend.
+    if (id < 0 && activeTab?.isLocal) {
+      updateTab(activeTab.id, {
+        snippets: activeTab.snippets.map((s) =>
+          s.id === id ? { ...s, is_favorite: !s.is_favorite } : s,
+        ),
+      });
+      return;
+    }
     try { await snippetsApi.toggleFavorite(id); loadSnippets(); }
     catch (e: any) { toast('error', e?.message || 'Failed'); }
-  }, [toast, loadSnippets]);
+  }, [activeTab, updateTab, toast, loadSnippets]);
 
   const deleteSnippet = useCallback(async (id: number) => {
+    if (id < 0 && activeTab?.isLocal) {
+      updateTab(activeTab.id, { snippets: activeTab.snippets.filter((s) => s.id !== id) });
+      return;
+    }
     try { await snippetsApi.delete(id); loadSnippets(); }
     catch (e: any) { toast('error', e?.message || 'Delete failed'); }
-  }, [toast, loadSnippets]);
+  }, [activeTab, updateTab, toast, loadSnippets]);
 
   const execSnippet = useCallback((command: string) => {
     if (!activeTab?.sessionId || !activeTab?.wsClient) return;
@@ -2320,6 +2399,13 @@ const TerminalPage: React.FC<Props> = ({ language }) => {
                   {/* ── Commands tab content ── */}
                   {bottomTab === 'commands' && (
                     <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+                      {/* Session-scoped history notice for local/container tabs */}
+                      {activeTab.isLocal && activeTab.snippets.length > 0 && (
+                        <div className={`flex items-center gap-1.5 px-3 py-1 text-[10px] border-b shrink-0 ${isDark ? 'border-white/5 text-white/40 bg-white/[.02]' : 'border-black/5 text-black/40 bg-black/[.02]'}`}>
+                          <span className="material-symbols-outlined" style={{ fontSize: '12px' }}>info</span>
+                          <span>{tt.localHistoryNotice || 'History is kept in memory for this session only (not persisted).'}</span>
+                        </div>
+                      )}
                       {/* Command input bar */}
                       <div className={`flex items-center gap-2 px-3 py-2 border-b shrink-0 ${isDark ? 'border-white/5' : 'border-black/5'}`}>
                         <span className={`text-xs font-mono shrink-0 ${isDark ? 'text-cyan-400/60' : 'text-cyan-600/60'}`}>$</span>
