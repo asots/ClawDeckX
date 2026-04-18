@@ -1328,7 +1328,7 @@ if [ "$IS_CONTAINER" = false ] && check_docker && check_docker_compose; then
         [ -f "$cf" ] || continue
         if grep -q "knowhunters/clawdeckx" "$cf" 2>/dev/null; then
             # Skip duplicates (glob may re-match explicit entries)
-            local _dup=false
+            _dup=false
             for _ei in "${DOCKER_INSTANCES[@]}"; do [ "$_ei" = "$cf" ] && _dup=true; done
             [ "$_dup" = true ] && continue
             DOCKER_INSTANCES+=("$cf")
