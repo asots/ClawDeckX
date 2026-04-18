@@ -291,7 +291,6 @@ const UpdateTab: React.FC<UpdateTabProps> = ({ s, language, inputCls, rowCls }) 
                 }
                 if (p.done) {
                   toast('success', sRef.current.runtimeUpdateOk || sRef.current.openclawUpdateOk);
-                  toast('info', sRef.current.dockerRestartOcMsg || 'OpenClaw has been updated. Restart the Docker container to activate the new version.');
                   await loadRuntimeStatus();
                   const res = await hostInfoApi.checkUpdate();
                   setOcUpdateInfo({ ...res, available: false });

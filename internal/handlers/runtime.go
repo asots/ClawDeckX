@@ -16,10 +16,23 @@ import (
 	"ClawDeckX/internal/web"
 )
 
+// CollectorPauser can pause and resume a monitor collector.
+type CollectorPauser interface {
+	Pause()
+	Resume()
+}
+
+// GatewayRestarter can restart the OpenClaw gateway process.
+type GatewayRestarter interface {
+	Restart() error
+}
+
 // RuntimeHandler handles Docker runtime overlay API endpoints.
 type RuntimeHandler struct {
 	mgr       *runtime.Manager
 	auditRepo *database.AuditLogRepo
+	collector CollectorPauser
+	gwSvc     GatewayRestarter
 }
 
 // NewRuntimeHandler creates a RuntimeHandler with the given runtime manager.
@@ -28,6 +41,16 @@ func NewRuntimeHandler(mgr *runtime.Manager) *RuntimeHandler {
 		mgr:       mgr,
 		auditRepo: database.NewAuditLogRepo(),
 	}
+}
+
+// SetCollector injects the GWCollector so it can be paused during upgrades.
+func (h *RuntimeHandler) SetCollector(c CollectorPauser) {
+	h.collector = c
+}
+
+// SetGatewayService injects the gateway service for restarting after upgrades.
+func (h *RuntimeHandler) SetGatewayService(svc GatewayRestarter) {
+	h.gwSvc = svc
 }
 
 // Status returns the runtime overlay status for both components.
@@ -74,6 +97,12 @@ func (h *RuntimeHandler) UpdateClawDeckX(w http.ResponseWriter, r *http.Request)
 		data, _ := json.Marshal(p)
 		fmt.Fprintf(w, "data: %s\n\n", data)
 		flusher.Flush()
+	}
+
+	// Pause the GWCollector during self-update to reduce CPU contention.
+	if h.collector != nil {
+		h.collector.Pause()
+		defer h.collector.Resume()
 	}
 
 	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Minute)
@@ -145,6 +174,13 @@ func (h *RuntimeHandler) UpdateOpenClaw(w http.ResponseWriter, r *http.Request) 
 		flusher.Flush()
 	}
 
+	// Pause the GWCollector during upgrade to avoid wasted CPU on RPC calls
+	// that will fail while npm is running and the gateway is restarting.
+	if h.collector != nil {
+		h.collector.Pause()
+		defer h.collector.Resume()
+	}
+
 	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Minute)
 	defer cancel()
 
@@ -168,6 +204,17 @@ func (h *RuntimeHandler) UpdateOpenClaw(w http.ResponseWriter, r *http.Request) 
 	logger.Log.Info().
 		Str("user", web.GetUsername(r)).
 		Msg("OpenClaw runtime overlay updated via API")
+
+	// Auto-restart the gateway so the new version takes effect immediately.
+	if h.gwSvc != nil {
+		sendSSE(updater.ApplyProgress{Stage: "restarting_gateway", Percent: 95})
+		if err := h.gwSvc.Restart(); err != nil {
+			logger.Log.Warn().Err(err).Msg("gateway restart after OpenClaw upgrade failed")
+			sendSSE(updater.ApplyProgress{Stage: "gateway_restart_failed", Error: err.Error()})
+		} else {
+			logger.Log.Info().Msg("gateway restarted after OpenClaw upgrade")
+		}
+	}
 }
 
 // Restart exits the process so Docker's restart policy brings the container back

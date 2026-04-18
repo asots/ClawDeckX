@@ -423,6 +423,7 @@ func RunServe(args []string) int {
 	skillTransHandler.SetGWClient(gwClient)
 	setupWizardHandler := handlers.NewSetupWizardHandler(svc)
 	setupWizardHandler.SetGWClient(gwClient)
+	setupWizardHandler.SetCollector(gwCollector)
 	gwDiagnoseHandler := handlers.NewGatewayDiagnoseHandler(svc)
 	monConfigHandler := handlers.NewMonitorConfigHandler(monSvc, &cfg)
 	gwLogHandler := handlers.NewGatewayLogHandler(svc, gwClient)
@@ -453,6 +454,8 @@ func RunServe(args []string) int {
 		}
 	}
 	runtimeHandler := handlers.NewRuntimeHandler(runtimeMgr)
+	runtimeHandler.SetCollector(gwCollector)
+	runtimeHandler.SetGatewayService(svc)
 
 	if err := database.DB.AutoMigrate(&sshterm.SSHHost{}, &sshterm.SSHSnippet{}, &sshterm.CommandTemplate{}); err != nil {
 		logger.Log.Error().Err(err).Msg("failed to migrate SSH tables")
