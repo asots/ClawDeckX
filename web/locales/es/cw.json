@@ -194,7 +194,7 @@
   ],
   "wecom_kfPitfall": "⚠️ Errores comunes: 1) Configure OpenClaw primero; 2) Añada IP del servidor a IPs confiables; 3) Token y EncodingAESKey deben coincidir con WeCom",
   "qqPrep": [
-    "Instale el plugin de QQ: openclaw plugins install @sliverp/qqbot@latest",
+    "Instale el plugin de QQ Bot: openclaw plugins install @openclaw/qqbot",
     "Visite QQ Open Platform q.qq.com → Registre una cuenta de desarrollador y complete la revisión",
     "Cree una aplicación Bot (no mini-programa ni juego)",
     "Obtenga AppKey y AppSecret de la página de detalles de la app",
@@ -260,7 +260,7 @@
     "Cree un Client Secret como App Password",
     "Registre el Bot en Bot Framework",
     "Habilite Sideloading en el centro de admin de Teams (para pruebas)",
-    "Plugin requerido: openclaw plugins install <msteams-plugin-url>"
+    "Plugin requerido: openclaw plugins install @openclaw/msteams"
   ],
   "msteamsPitfall": "⚠️ Nota: 1) Registro Azure tiene muchos pasos; 2) Sideloading necesita admin de Teams; 3) Requiere plugin MS Teams",
   "matrixHelpUrl": "https://matrix.org",

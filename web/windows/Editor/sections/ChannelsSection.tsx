@@ -144,7 +144,7 @@ export const REQUIRED_CREDENTIALS: Record<string, RequiredField[]> = {
   yuanbao: [{ field: 'appKey', labelKey: 'appKey' }, { field: 'appSecret', labelKey: 'appSecret' }],
   mattermost: [{ field: 'botToken', labelKey: 'botToken' }, { field: 'baseUrl', labelKey: 'baseUrl' }],
   bluebubbles: [{ field: 'serverUrl', labelKey: 'serverUrl' }, { field: 'password', labelKey: 'password' }],
-  qq: [{ field: 'appId', labelKey: 'appId' }, { field: 'clientSecret', labelKey: 'clientSecret' }],
+  qqbot: [{ field: 'appId', labelKey: 'appId' }, { field: 'clientSecret', labelKey: 'clientSecret' }],
   zalo: [{ field: 'botToken', labelKey: 'botToken' }],
 };
 
@@ -1594,6 +1594,7 @@ export const ChannelsSection: React.FC<SectionProps> = ({ config, schema, setFie
             <TextField label={labelAppId} value={g(['appId']) || ''} onChange={v => s(['appId'], v)} tooltip={es.tipQQAppId} />
             <PasswordField label={labelClientSecret} value={g(['clientSecret']) || ''} onChange={v => s(['clientSecret'], v)} tooltip={es.tipQQClientSecret} />
             <TextField label={es.qqClientSecretFile || 'Client Secret File'} value={g(['clientSecretFile']) || ''} onChange={v => s(['clientSecretFile'], v)} tooltip={es.tipQQClientSecretFile} />
+            <TextField label={es.qqName || 'Display Name'} value={g(['name']) || ''} onChange={v => s(['name'], v)} tooltip={es.tipQQName} />
             <SwitchField label={es.chMarkdownSupport} value={g(['markdownSupport']) === true} onChange={v => s(['markdownSupport'], v)} tooltip={es.tipQQMarkdown} />
             <ArrayField label={es.allowFrom} value={g(['allowFrom']) || []} onChange={v => s(['allowFrom'], v)} placeholder={es.phQQAllowFrom || 'qqbot:user-xxx'} tooltip={es.tipQQAllowFrom} />
             <TextField label={es.systemPrompt || 'System Prompt'} value={g(['systemPrompt']) || ''} onChange={v => s(['systemPrompt'], v)} tooltip={es.tipQQSystemPrompt} />
@@ -1641,8 +1642,14 @@ export const ChannelsSection: React.FC<SectionProps> = ({ config, schema, setFie
                   { value: 'api-key', label: 'API Key' },
                 ]} tooltip={es.tipQQTtsAuthStyle} />
                 <NumberField label={es.qqTtsSpeed || 'Speed'} value={g(['tts', 'speed'])} onChange={v => s(['tts', 'speed'], v)} placeholder="1.0" tooltip={es.tipQQTtsSpeed} />
+                <KeyValueField label={es.qqTtsQueryParams || 'Query Params'} value={g(['tts', 'queryParams']) || {}} onChange={v => s(['tts', 'queryParams'], v)} tooltip={es.tipQQTtsQueryParams} />
               </>
             )}
+            {/* Streaming */}
+            <SelectField label={es.qqStreaming || 'Streaming'} value={(() => { const v = g(['streaming']); if (v === true || (v && typeof v === 'object' && v.mode === 'partial')) return 'partial'; if (v === false || (v && typeof v === 'object' && v.mode === 'off')) return 'off'; return 'partial'; })()} onChange={v => s(['streaming'], v === 'partial' ? { mode: 'partial' } : { mode: 'off' })} options={[
+              { value: 'partial', label: es.optPartial || 'Partial' },
+              { value: 'off', label: es.optOff || 'Off' },
+            ]} tooltip={es.tipQQStreaming} />
           </>
         )}
 
@@ -2020,13 +2027,13 @@ export const ChannelsSection: React.FC<SectionProps> = ({ config, schema, setFie
                       </a>
                     )}
                     {/* Plugin install hint for channels that need plugins */}
-                    {chId && ['feishu', 'dingtalk', 'qq', 'yuanbao', 'msteams', 'zalo', 'voicecall', 'matrix', 'wecom', 'wecom_kf', 'openclaw-weixin'].includes(chId) && (() => {
+                    {chId && ['feishu', 'dingtalk', 'qqbot', 'yuanbao', 'msteams', 'zalo', 'voicecall', 'matrix', 'wecom', 'wecom_kf', 'openclaw-weixin'].includes(chId) && (() => {
                       const pluginSpec = chId === 'feishu' ? '@openclaw/feishu' :
                         chId === 'dingtalk' ? '@openclaw-china/dingtalk' :
                           chId === 'wecom' ? '@wecom/wecom-openclaw-plugin' :
                             chId === 'wecom_kf' ? '@openclaw-china/wecom-app' :
                               chId === 'openclaw-weixin' ? '@tencent-weixin/openclaw-weixin' :
-                                chId === 'qq' ? '@sliverp/qqbot@latest' :
+                                chId === 'qqbot' ? '@openclaw/qqbot' :
                                   chId === 'yuanbao' ? 'openclaw-plugin-yuanbao@latest' :
                                   chId === 'msteams' ? '@openclaw/msteams' :
                                     chId === 'zalo' ? '@openclaw/zalo' :

@@ -194,7 +194,7 @@
   ],
   "wecom_kfPitfall": "⚠️ よくある落とし穴：1) OpenClawの設定とゲートウェイ起動を先に完了してから、WeCom管理画面で「保存」をクリック。そうしないとコールバック検証失敗；2) 「企業信頼IP」にサーバーIPを追加しないとメッセージ送信失敗；3) TokenとEncodingAESKeyはWeCom管理画面と一致させる必要があります；4) 個人WeChatからワークベンチ経由での使用に対応",
   "qqPrep": [
-    "QQプラグインをインストール：openclaw plugins install @sliverp/qqbot@latest",
+    "QQ Botプラグインをインストール：openclaw plugins install @openclaw/qqbot",
     "QQ Open Platform q.qq.comにアクセス → 開発者アカウントを登録し審査を完了",
     "Botアプリケーションを作成（ミニプログラムやゲームではない）",
     "アプリ詳細ページからAppKeyとAppSecretを取得",
@@ -260,7 +260,7 @@
     "Client SecretをApp Passwordとして作成",
     "Bot FrameworkでBotを登録",
     "Teams管理センターでSideloadingを有効化（テスト用）",
-    "プラグインが必要：openclaw plugins install <msteams-plugin-url>"
+    "プラグインが必要：openclaw plugins install @openclaw/msteams"
   ],
   "msteamsPitfall": "⚠️ 注意：1) Azure登録は手順が多いです。App KeyとClient Secretを混同しないでください；2) テスト時はTeams管理者がSideloading権限を有効にする必要があります；3) OpenClaw MS Teamsプラグインのインストールが必要",
   "matrixHelpUrl": "https://matrix.org",

@@ -195,7 +195,7 @@
   ],
   "wecom_kfPitfall": "⚠️ 常见踩坑：1) 必须先設定好 OpenClaw 并启动閘道，再回企微后台点「儲存」，否则回调校验失敗；2) 必须在「企业可信 IP」中添加服务器 IP，否则发送消息失敗；3) Token 和 EncodingAESKey 需与企微后台一致；4) 支持在個人微信中通过工作台入口使用",
   "qqPrep": [
-    "安装 QQ 插件：openclaw plugins install @sliverp/qqbot@latest",
+    "安裝 QQ Bot 插件：openclaw plugins install @openclaw/qqbot",
     "访问 QQ 开放平台 q.qq.com → 注册开发者账号并完成审核",
     "创建「机器人」应用（注意不是小程序或游戏）",
     "在应用详情页获取 AppKey 和 AppSecret",
@@ -261,7 +261,7 @@
     "创建 Client Secret 作为 App Password",
     "在 Bot Framework 中注册 Bot",
     "在 Teams 管理后台开启 Sideloading（测试用）",
-    "需要先安装 MS Teams 插件：openclaw plugins install <msteams-plugin-url>"
+    "需要先安装 MS Teams 插件：openclaw plugins install @openclaw/msteams"
   ],
   "msteamsPitfall": "⚠️ 注意：1) Azure 注册步骤较多，App Key 和 Client Secret 不要混淆；2) 測試时需要 Teams 管理员開啟 Sideloading 權限；3) 需要安装 OpenClaw MS Teams 插件",
   "matrixHelpUrl": "https://matrix.org",

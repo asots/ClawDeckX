@@ -194,7 +194,7 @@
   ],
   "wecom_kfPitfall": "⚠️ Kesalahan umum: 1) Harus konfigurasikan OpenClaw dan mulai gateway terlebih dahulu, lalu klik \"Simpan\" di WeCom — jika tidak verifikasi callback gagal; 2) Harus tambahkan IP server ke daftar IP Terpercaya, jika tidak pengiriman pesan gagal; 3) Token dan EncodingAESKey harus cocok dengan konsol WeCom; 4) Dapat diakses dari WeChat personal melalui entry Work",
   "qqPrep": [
-    "Instal plugin QQ: openclaw plugins install @sliverp/qqbot@latest",
+    "Instal plugin QQ Bot: openclaw plugins install @openclaw/qqbot",
     "Kunjungi QQ Open Platform q.qq.com → Daftar akun pengembang dan selesaikan review",
     "Buat aplikasi Bot (bukan mini-program atau game)",
     "Dapatkan AppKey dan AppSecret dari halaman detail app",
@@ -260,7 +260,7 @@
     "Buat Client Secret sebagai App Password",
     "Daftar Bot di Bot Framework",
     "Aktifkan Sideloading di pusat admin Teams (untuk pengujian)",
-    "Plugin diperlukan: openclaw plugins install <msteams-plugin-url>"
+    "Plugin diperlukan: openclaw plugins install @openclaw/msteams"
   ],
   "msteamsPitfall": "⚠️ Catatan: 1) Pendaftaran Azure memiliki banyak langkah — jangan bingung antara App Key dan Client Secret; 2) Pengujian memerlukan admin Teams untuk mengaktifkan Sideloading; 3) Plugin OpenClaw MS Teams diperlukan",
   "matrixHelpUrl": "https://matrix.org",

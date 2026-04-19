@@ -194,7 +194,7 @@
   ],
   "wecom_kfPitfall": "⚠️ 주의: 1) OpenClaw 설정 및 게이트웨이 시작 후 WeCom에서 '저장' 클릭, 아니면 콜백 검증 실패; 2) '기업 신뢰 IP'에 서버 IP 추가 필수, 아니면 메시지 전송 실패; 3) Token과 EncodingAESKey는 WeCom 관리 화면과 일치 필요",
   "qqPrep": [
-    "QQ 플러그인 설치: openclaw plugins install @sliverp/qqbot@latest",
+    "QQ Bot 플러그인 설치: openclaw plugins install @openclaw/qqbot",
     "QQ 오픈 플랫폼 q.qq.com에 접속 → 개발자 계정을 등록하고 심사를 완료하세요",
     "Bot 애플리케이션을 생성하세요 (미니프로그램이나 게임이 아님)",
     "앱 상세 페이지에서 AppKey와 AppSecret을 받으세요",
@@ -260,7 +260,7 @@
     "Client Secret을 App Password로 생성하세요",
     "Bot Framework에서 Bot을 등록하세요",
     "Teams 관리 센터에서 Sideloading을 활성화하세요 (테스트용)",
-    "플러그인 필요: openclaw plugins install <msteams-plugin-url>"
+    "플러그인 필요: openclaw plugins install @openclaw/msteams"
   ],
   "msteamsPitfall": "⚠️ 주의: 1) Azure 등록 절차가 많음, App Key와 Client Secret 혼동 금지; 2) 테스트 시 Teams 관리자가 Sideloading 권한 활성화 필요; 3) OpenClaw MS Teams 플러그인 설치 필요",
   "matrixHelpUrl": "https://matrix.org",

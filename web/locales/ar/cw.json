@@ -194,7 +194,7 @@
   ],
   "wecom_kfPitfall": "يتطلب إذن مسؤول المؤسسة لإنشاء التطبيق",
   "qqPrep": [
-    "Install QQ plugin: openclaw plugins install @sliverp/qqbot@latest",
+    "Install QQ Bot plugin: openclaw plugins install @openclaw/qqbot",
     "Visit QQ Open Platform q.qq.com → Register developer account and complete review",
     "Create a Bot application (not mini-program or game)",
     "Get AppKey and AppSecret from app details page",
@@ -260,7 +260,7 @@
     "Create Client Secret as App Password",
     "Register Bot in Bot Framework",
     "Enable Sideloading in Teams admin center (for testing)",
-    "Plugin required: openclaw plugins install <msteams-plugin-url>"
+    "Plugin required: openclaw plugins install @openclaw/msteams"
   ],
   "msteamsPitfall": "يحتاج تسجيل Azure Bot — قد يتطلب اشتراك Azure مدفوع",
   "matrixHelpUrl": "دليل إعداد Matrix",
