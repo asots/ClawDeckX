@@ -193,16 +193,6 @@
     "Поддерживает проактивные сообщения, отправку/приём изображений/голоса/файлов, доступ через WeChat Work"
   ],
   "wecom_kfPitfall": "⚠️ Частые ошибки: 1) Сначала настройте OpenClaw; 2) Добавьте IP сервера в доверенные; 3) Token и EncodingAESKey должны совпадать",
-  "qqPrep": [
-    "Установите плагин QQ Bot: openclaw plugins install @openclaw/qqbot",
-    "Перейдите на QQ Open Platform q.qq.com → Зарегистрируйте аккаунт разработчика и пройдите проверку",
-    "Создайте приложение Bot (не мини-программу и не игру)",
-    "Получите AppKey и AppSecret на странице деталей приложения",
-    "Включите права и добавьте тестовых участников (опционально добавьте бота в тестовую группу)",
-    "(Опционально) Для рендеринга Markdown подайте заявку на права шаблонов Markdown отдельно (проверка занимает время)"
-  ],
-  "qqPitfall": "⚠️ Частые ошибки: 1) Включите права и добавьте тестовых участников; 2) В группе нужен @Bot; 3) Markdown требует отдельного разрешения; 4) QQ Bot в бета-версии",
-  "qqHelpUrl": "https://q.qq.com",
   "yuanbaoPrep": [
     "Install Yuanbao plugin on the deployed OpenClaw device: openclaw plugins install openclaw-plugin-yuanbao@latest",
     "Open Yuanbao App  Party  My Bot  Link existing OpenClaw  Select 'Method 2: Channel Config'",
@@ -293,5 +283,15 @@
     "Требуется плагин"
   ],
   "voicecallPitfall": "⚠️ Голосовые вызовы требуют стороннего провайдера с оплатой",
-  "pluginInstallCmd": "Команда установки"
+  "pluginInstallCmd": "Команда установки",
+  "qqbotPrep": [
+    "Установите плагин QQ Bot: openclaw plugins install @openclaw/qqbot",
+    "Перейдите на QQ Open Platform q.qq.com → Зарегистрируйте аккаунт разработчика и пройдите проверку",
+    "Создайте приложение Bot (не мини-программу и не игру)",
+    "Получите AppKey и AppSecret на странице деталей приложения",
+    "Включите права и добавьте тестовых участников (опционально добавьте бота в тестовую группу)",
+    "(Опционально) Для рендеринга Markdown подайте заявку на права шаблонов Markdown отдельно (проверка занимает время)"
+  ],
+  "qqbotPitfall": "⚠️ Частые ошибки: 1) Включите права и добавьте тестовых участников; 2) В группе нужен @Bot; 3) Markdown требует отдельного разрешения; 4) QQ Bot в бета-версии",
+  "qqbotHelpUrl": "https://q.qq.com"
 }

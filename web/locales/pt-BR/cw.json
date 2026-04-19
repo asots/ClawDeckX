@@ -193,16 +193,6 @@
     "Suporta mensagens proativas, envio e recebimento de imagem/voz/arquivo, acesso via WeChat Work"
   ],
   "wecom_kfPitfall": "⚠️ Erros comuns: 1) Configure OpenClaw primeiro; 2) Adicione IP do servidor aos IPs confiáveis; 3) Token e EncodingAESKey devem coincidir",
-  "qqPrep": [
-    "Instale o plugin QQ Bot: openclaw plugins install @openclaw/qqbot",
-    "Visite QQ Open Platform q.qq.com → Registre conta de desenvolvedor e complete a revisão",
-    "Crie um aplicativo Bot (não mini-programa ou jogo)",
-    "Obtenha AppKey e AppSecret da página de detalhes do app",
-    "Habilite permissões e adicione membros de teste (opcionalmente adicione bot ao grupo de teste)",
-    "(Opcional) Para renderização Markdown, solicite permissão de template Markdown separadamente (revisão leva tempo)"
-  ],
-  "qqPitfall": "⚠️ Erros comuns: 1) Ative permissões e adicione membros de teste; 2) Em grupo precisa @Bot; 3) Markdown requer permissão extra; 4) QQ Bot está em beta",
-  "qqHelpUrl": "https://q.qq.com",
   "yuanbaoPrep": [
     "Install Yuanbao plugin on the deployed OpenClaw device: openclaw plugins install openclaw-plugin-yuanbao@latest",
     "Open Yuanbao App  Party  My Bot  Link existing OpenClaw  Select 'Method 2: Channel Config'",
@@ -293,5 +283,15 @@
     "Plugin necessário"
   ],
   "voicecallPitfall": "⚠️ Chamadas de voz requerem provedor externo com custos",
-  "pluginInstallCmd": "Comando de instalação"
+  "pluginInstallCmd": "Comando de instalação",
+  "qqbotPrep": [
+    "Instale o plugin QQ Bot: openclaw plugins install @openclaw/qqbot",
+    "Visite QQ Open Platform q.qq.com → Registre conta de desenvolvedor e complete a revisão",
+    "Crie um aplicativo Bot (não mini-programa ou jogo)",
+    "Obtenha AppKey e AppSecret da página de detalhes do app",
+    "Habilite permissões e adicione membros de teste (opcionalmente adicione bot ao grupo de teste)",
+    "(Opcional) Para renderização Markdown, solicite permissão de template Markdown separadamente (revisão leva tempo)"
+  ],
+  "qqbotPitfall": "⚠️ Erros comuns: 1) Ative permissões e adicione membros de teste; 2) Em grupo precisa @Bot; 3) Markdown requer permissão extra; 4) QQ Bot está em beta",
+  "qqbotHelpUrl": "https://q.qq.com"
 }

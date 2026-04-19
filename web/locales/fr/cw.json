@@ -193,16 +193,6 @@
     "Supporte les messages proactifs, l'envoi/réception d'images/voix/fichiers, l'accès via WeChat Work"
   ],
   "wecom_kfPitfall": "⚠️ Erreurs courantes : 1) Configurer OpenClaw d'abord ; 2) Ajouter IP du serveur aux IP de confiance ; 3) Token et EncodingAESKey doivent correspondre",
-  "qqPrep": [
-    "Installez le plugin QQ Bot : openclaw plugins install @openclaw/qqbot",
-    "Visitez QQ Open Platform q.qq.com → Inscrivez un compte développeur et complétez la vérification",
-    "Créez une application Bot (pas un mini-programme ni un jeu)",
-    "Obtenez AppKey et AppSecret depuis la page de détails de l'app",
-    "Activez les permissions et ajoutez des membres de test (optionnel : ajoutez le bot au groupe de test)",
-    "(Optionnel) Pour le rendu Markdown, demandez la permission de template Markdown séparément (la vérification prend du temps)"
-  ],
-  "qqPitfall": "⚠️ Erreurs courantes : 1) Activer permissions et ajouter membres test ; 2) En groupe @Bot requis ; 3) Markdown nécessite permission extra ; 4) QQ Bot en bêta",
-  "qqHelpUrl": "https://q.qq.com",
   "yuanbaoPrep": [
     "Install Yuanbao plugin on the deployed OpenClaw device: openclaw plugins install openclaw-plugin-yuanbao@latest",
     "Open Yuanbao App  Party  My Bot  Link existing OpenClaw  Select 'Method 2: Channel Config'",
@@ -293,5 +283,15 @@
     "Plugin requis"
   ],
   "voicecallPitfall": "⚠️ Appels vocaux nécessitent un fournisseur tiers avec coûts",
-  "pluginInstallCmd": "Commande d'installation"
+  "pluginInstallCmd": "Commande d'installation",
+  "qqbotPrep": [
+    "Installez le plugin QQ Bot : openclaw plugins install @openclaw/qqbot",
+    "Visitez QQ Open Platform q.qq.com → Inscrivez un compte développeur et complétez la vérification",
+    "Créez une application Bot (pas un mini-programme ni un jeu)",
+    "Obtenez AppKey et AppSecret depuis la page de détails de l'app",
+    "Activez les permissions et ajoutez des membres de test (optionnel : ajoutez le bot au groupe de test)",
+    "(Optionnel) Pour le rendu Markdown, demandez la permission de template Markdown séparément (la vérification prend du temps)"
+  ],
+  "qqbotPitfall": "⚠️ Erreurs courantes : 1) Activer permissions et ajouter membres test ; 2) En groupe @Bot requis ; 3) Markdown nécessite permission extra ; 4) QQ Bot en bêta",
+  "qqbotHelpUrl": "https://q.qq.com"
 }

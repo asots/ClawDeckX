@@ -193,16 +193,6 @@
     "Supports proactive messaging, image/voice/file send & receive, WeChat Work entry access"
   ],
   "wecom_kfPitfall": "⚠️ Common pitfalls: 1) Must configure OpenClaw and start gateway first, then click \"Save\" in WeCom — otherwise callback verification fails; 2) Must add server IP to Trusted IP list, otherwise message sending fails; 3) Token and EncodingAESKey must match WeCom console; 4) Accessible from personal WeChat via Work entry",
-  "qqPrep": [
-    "Install QQ Bot plugin: openclaw plugins install @openclaw/qqbot",
-    "Visit QQ Open Platform q.qq.com → Register developer account and complete review",
-    "Create a Bot application (not mini-program or game)",
-    "Get AppKey and AppSecret from app details page",
-    "Enable permissions and add test members (optionally add bot to test group)",
-    "(Optional) For Markdown rendering, apply for Markdown template permission separately (review takes time)"
-  ],
-  "qqPitfall": "⚠️ Common pitfalls: 1) Must enable permissions and add test members, otherwise no messages received; 2) @mention required in group chats; 3) Markdown requires separate permission — set markdownSupport: false if not enabled; 4) QQ Bot is still in beta, some features may be limited",
-  "qqHelpUrl": "https://q.qq.com",
   "yuanbaoPrep": [
     "Install Yuanbao plugin on the deployed OpenClaw device: openclaw plugins install openclaw-plugin-yuanbao@latest",
     "Open Yuanbao App  Party  My Bot  Link existing OpenClaw  Select 'Method 2: Channel Config'",
@@ -293,5 +283,15 @@
     "Plugin required"
   ],
   "voicecallPitfall": "⚠️ Voice calls require a third-party provider and incur call charges",
-  "pluginInstallCmd": "इंस्टॉल कमांड"
+  "pluginInstallCmd": "इंस्टॉल कमांड",
+  "qqbotPrep": [
+    "Install QQ Bot plugin: openclaw plugins install @openclaw/qqbot",
+    "Visit QQ Open Platform q.qq.com → Register developer account and complete review",
+    "Create a Bot application (not mini-program or game)",
+    "Get AppKey and AppSecret from app details page",
+    "Enable permissions and add test members (optionally add bot to test group)",
+    "(Optional) For Markdown rendering, apply for Markdown template permission separately (review takes time)"
+  ],
+  "qqbotPitfall": "⚠️ Common pitfalls: 1) Must enable permissions and add test members, otherwise no messages received; 2) @mention required in group chats; 3) Markdown requires separate permission — set markdownSupport: false if not enabled; 4) QQ Bot is still in beta, some features may be limited",
+  "qqbotHelpUrl": "https://q.qq.com"
 }

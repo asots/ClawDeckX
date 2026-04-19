@@ -193,16 +193,6 @@
     "Mendukung pesan proaktif, kirim & terima gambar/suara/file, akses entry WeChat Work"
   ],
   "wecom_kfPitfall": "⚠️ Kesalahan umum: 1) Harus konfigurasikan OpenClaw dan mulai gateway terlebih dahulu, lalu klik \"Simpan\" di WeCom — jika tidak verifikasi callback gagal; 2) Harus tambahkan IP server ke daftar IP Terpercaya, jika tidak pengiriman pesan gagal; 3) Token dan EncodingAESKey harus cocok dengan konsol WeCom; 4) Dapat diakses dari WeChat personal melalui entry Work",
-  "qqPrep": [
-    "Instal plugin QQ Bot: openclaw plugins install @openclaw/qqbot",
-    "Kunjungi QQ Open Platform q.qq.com → Daftar akun pengembang dan selesaikan review",
-    "Buat aplikasi Bot (bukan mini-program atau game)",
-    "Dapatkan AppKey dan AppSecret dari halaman detail app",
-    "Aktifkan izin dan tambahkan anggota tes (opsional tambahkan bot ke grup tes)",
-    "(Opsional) Untuk render Markdown, ajukan izin template Markdown secara terpisah (review memerlukan waktu)"
-  ],
-  "qqPitfall": "⚠️ Kesalahan umum: 1) Harus aktifkan izin dan tambahkan anggota tes, jika tidak tidak ada pesan diterima; 2) @mention wajib di chat grup; 3) Markdown memerlukan izin terpisah — atur markdownSupport: false jika tidak diaktifkan; 4) QQ Bot masih dalam beta, beberapa fitur mungkin terbatas",
-  "qqHelpUrl": "https://q.qq.com",
   "yuanbaoPrep": [
     "Install Yuanbao plugin on the deployed OpenClaw device: openclaw plugins install openclaw-plugin-yuanbao@latest",
     "Open Yuanbao App  Party  My Bot  Link existing OpenClaw  Select 'Method 2: Channel Config'",
@@ -293,5 +283,15 @@
     "Plugin diperlukan"
   ],
   "voicecallPitfall": "⚠️ Panggilan suara memerlukan provider pihak ketiga dan dikenakan biaya panggilan",
-  "pluginInstallCmd": "Perintah instal"
+  "pluginInstallCmd": "Perintah instal",
+  "qqbotPrep": [
+    "Instal plugin QQ Bot: openclaw plugins install @openclaw/qqbot",
+    "Kunjungi QQ Open Platform q.qq.com → Daftar akun pengembang dan selesaikan review",
+    "Buat aplikasi Bot (bukan mini-program atau game)",
+    "Dapatkan AppKey dan AppSecret dari halaman detail app",
+    "Aktifkan izin dan tambahkan anggota tes (opsional tambahkan bot ke grup tes)",
+    "(Opsional) Untuk render Markdown, ajukan izin template Markdown secara terpisah (review memerlukan waktu)"
+  ],
+  "qqbotPitfall": "⚠️ Kesalahan umum: 1) Harus aktifkan izin dan tambahkan anggota tes, jika tidak tidak ada pesan diterima; 2) @mention wajib di chat grup; 3) Markdown memerlukan izin terpisah — atur markdownSupport: false jika tidak diaktifkan; 4) QQ Bot masih dalam beta, beberapa fitur mungkin terbatas",
+  "qqbotHelpUrl": "https://q.qq.com"
 }

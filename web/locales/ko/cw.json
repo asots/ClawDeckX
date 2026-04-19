@@ -193,16 +193,6 @@
     "능동적 메시지 전송, 이미지/음성/파일 송수신, WeChat Work 진입 접근을 지원합니다"
   ],
   "wecom_kfPitfall": "⚠️ 주의: 1) OpenClaw 설정 및 게이트웨이 시작 후 WeCom에서 '저장' 클릭, 아니면 콜백 검증 실패; 2) '기업 신뢰 IP'에 서버 IP 추가 필수, 아니면 메시지 전송 실패; 3) Token과 EncodingAESKey는 WeCom 관리 화면과 일치 필요",
-  "qqPrep": [
-    "QQ Bot 플러그인 설치: openclaw plugins install @openclaw/qqbot",
-    "QQ 오픈 플랫폼 q.qq.com에 접속 → 개발자 계정을 등록하고 심사를 완료하세요",
-    "Bot 애플리케이션을 생성하세요 (미니프로그램이나 게임이 아님)",
-    "앱 상세 페이지에서 AppKey와 AppSecret을 받으세요",
-    "권한을 활성화하고 테스트 멤버를 추가하세요 (선택적으로 Bot을 테스트 그룹에 추가)",
-    "(선택) Markdown 렌더링이 필요하면 Markdown 템플릿 권한을 별도로 신청하세요 (심사에 시간이 소요됩니다)"
-  ],
-  "qqPitfall": "⚠️ 주의: 1) 권한 활성화 및 테스트 멤버 추가 필수, 아니면 메시지 수신 불가; 2) 그룹 채팅에서 @Bot 필요; 3) Markdown은 별도 권한 신청 필요; 4) QQ Bot은 아직 베타, 일부 기능 제한 가능",
-  "qqHelpUrl": "https://q.qq.com",
   "yuanbaoPrep": [
     "OpenClaw가 배포된 장치에서 Yuanbao Party 플러그인 설치: openclaw plugins install openclaw-plugin-yuanbao@latest",
     "Yuanbao 앱  파티  내 Bot  기존 OpenClaw 연결  '방법 2: 채널 구성' 선택",
@@ -293,5 +283,15 @@
     "플러그인 설치 필요"
   ],
   "voicecallPitfall": "⚠️ 음성 통화에는 서드파티 제공업체가 필요하며 통화 비용이 발생합니다",
-  "pluginInstallCmd": "설치 명령"
+  "pluginInstallCmd": "설치 명령",
+  "qqbotPrep": [
+    "QQ Bot 플러그인 설치: openclaw plugins install @openclaw/qqbot",
+    "QQ 오픈 플랫폼 q.qq.com에 접속 → 개발자 계정을 등록하고 심사를 완료하세요",
+    "Bot 애플리케이션을 생성하세요 (미니프로그램이나 게임이 아님)",
+    "앱 상세 페이지에서 AppKey와 AppSecret을 받으세요",
+    "권한을 활성화하고 테스트 멤버를 추가하세요 (선택적으로 Bot을 테스트 그룹에 추가)",
+    "(선택) Markdown 렌더링이 필요하면 Markdown 템플릿 권한을 별도로 신청하세요 (심사에 시간이 소요됩니다)"
+  ],
+  "qqbotPitfall": "⚠️ 주의: 1) 권한 활성화 및 테스트 멤버 추가 필수, 아니면 메시지 수신 불가; 2) 그룹 채팅에서 @Bot 필요; 3) Markdown은 별도 권한 신청 필요; 4) QQ Bot은 아직 베타, 일부 기능 제한 가능",
+  "qqbotHelpUrl": "https://q.qq.com"
 }

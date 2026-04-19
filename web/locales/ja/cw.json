@@ -193,16 +193,6 @@
     "プロアクティブメッセージング、画像/音声/ファイルの送受信、WeChat Workエントリーアクセスに対応"
   ],
   "wecom_kfPitfall": "⚠️ よくある落とし穴：1) OpenClawの設定とゲートウェイ起動を先に完了してから、WeCom管理画面で「保存」をクリック。そうしないとコールバック検証失敗；2) 「企業信頼IP」にサーバーIPを追加しないとメッセージ送信失敗；3) TokenとEncodingAESKeyはWeCom管理画面と一致させる必要があります；4) 個人WeChatからワークベンチ経由での使用に対応",
-  "qqPrep": [
-    "QQ Botプラグインをインストール：openclaw plugins install @openclaw/qqbot",
-    "QQ Open Platform q.qq.comにアクセス → 開発者アカウントを登録し審査を完了",
-    "Botアプリケーションを作成（ミニプログラムやゲームではない）",
-    "アプリ詳細ページからAppKeyとAppSecretを取得",
-    "権限を有効化しテストメンバーを追加（オプションでBotをテストグループに追加）",
-    "（オプション）MarkdownレンダリングにはMarkdownテンプレート権限を別途申請（審査に時間がかかります）"
-  ],
-  "qqPitfall": "⚠️ よくある落とし穴：1) 権限を有効にしてテストメンバーを追加しないとメッセージを受信できません；2) グループチャットでは@Botが必要；3) Markdownには別途権限申請が必要。未開通時はmarkdownSupport: falseに設定可能；4) QQ Botはまだベータ版で、一部機能が制限される場合があります",
-  "qqHelpUrl": "https://q.qq.com",
   "yuanbaoPrep": [
     "OpenClaw を導入済みのデバイスで Yuanbao Party プラグインをインストール: openclaw plugins install openclaw-plugin-yuanbao@latest",
     "Yuanbao App  Party  マイ Bot  既存の OpenClaw を連携  「方法2: チャンネル設定」を選択",
@@ -293,5 +283,15 @@
     "プラグインが必要"
   ],
   "voicecallPitfall": "⚠️ 音声通話にはサードパーティプロバイダーが必要で、通話料金が発生します",
-  "pluginInstallCmd": "インストールコマンド"
+  "pluginInstallCmd": "インストールコマンド",
+  "qqbotPrep": [
+    "QQ Botプラグインをインストール：openclaw plugins install @openclaw/qqbot",
+    "QQ Open Platform q.qq.comにアクセス → 開発者アカウントを登録し審査を完了",
+    "Botアプリケーションを作成（ミニプログラムやゲームではない）",
+    "アプリ詳細ページからAppKeyとAppSecretを取得",
+    "権限を有効化しテストメンバーを追加（オプションでBotをテストグループに追加）",
+    "（オプション）MarkdownレンダリングにはMarkdownテンプレート権限を別途申請（審査に時間がかかります）"
+  ],
+  "qqbotPitfall": "⚠️ よくある落とし穴：1) 権限を有効にしてテストメンバーを追加しないとメッセージを受信できません；2) グループチャットでは@Botが必要；3) Markdownには別途権限申請が必要。未開通時はmarkdownSupport: falseに設定可能；4) QQ Botはまだベータ版で、一部機能が制限される場合があります",
+  "qqbotHelpUrl": "https://q.qq.com"
 }

@@ -194,16 +194,6 @@
     "支持主动发送消息、图片/语音/文件收发、微信入口访问"
   ],
   "wecom_kfPitfall": "⚠️ 常见踩坑：1) 必须先設定好 OpenClaw 并启动閘道，再回企微后台点「儲存」，否则回调校验失敗；2) 必须在「企业可信 IP」中添加服务器 IP，否则发送消息失敗；3) Token 和 EncodingAESKey 需与企微后台一致；4) 支持在個人微信中通过工作台入口使用",
-  "qqPrep": [
-    "安裝 QQ Bot 插件：openclaw plugins install @openclaw/qqbot",
-    "访问 QQ 开放平台 q.qq.com → 注册开发者账号并完成审核",
-    "创建「机器人」应用（注意不是小程序或游戏）",
-    "在应用详情页获取 AppKey 和 AppSecret",
-    "开通权限并添加测试成员（可将机器人加入测试群）",
-    "（可选）如需 Markdown 渲染，需单独申请 Markdown 模板权限（有一定审核时间）"
-  ],
-  "qqPitfall": "⚠️ 常见踩坑：1) 必须开通權限并添加測試成员，否则收不到消息；2) 群聊中需要 @机器人 才会响应；3) Markdown 需单独申请權限，未开通时可设置 markdownSupport: false；4) QQ Bot 目前仍在内测，部分功能可能受限",
-  "qqHelpUrl": "https://q.qq.com",
   "yuanbaoPrep": [
     "在已部署 OpenClaw 的裝置上安裝元寶派插件：openclaw plugins install openclaw-plugin-yuanbao@latest",
     "開啟元寶 App  派  我的 Bot  關聯已有 OpenClaw  選擇「方式2：通道設定」",
@@ -294,5 +284,15 @@
     "需要先安装语音通话插件"
   ],
   "voicecallPitfall": "⚠️ 语音通话需要第三方服务商支持，会產生通话费用",
-  "pluginInstallCmd": "安装命令"
+  "pluginInstallCmd": "安装命令",
+  "qqbotPrep": [
+    "安裝 QQ Bot 插件：openclaw plugins install @openclaw/qqbot",
+    "访问 QQ 开放平台 q.qq.com → 注册开发者账号并完成审核",
+    "创建「机器人」应用（注意不是小程序或游戏）",
+    "在应用详情页获取 AppKey 和 AppSecret",
+    "开通权限并添加测试成员（可将机器人加入测试群）",
+    "（可选）如需 Markdown 渲染，需单独申请 Markdown 模板权限（有一定审核时间）"
+  ],
+  "qqbotPitfall": "⚠️ 常见踩坑：1) 必须开通權限并添加測試成员，否则收不到消息；2) 群聊中需要 @机器人 才会响应；3) Markdown 需单独申请權限，未开通时可设置 markdownSupport: false；4) QQ Bot 目前仍在内测，部分功能可能受限",
+  "qqbotHelpUrl": "https://q.qq.com"
 }

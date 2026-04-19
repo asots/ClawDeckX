@@ -193,16 +193,6 @@
     "Soporta mensajes proactivos, envío/recepción de imagen/voz/archivo, acceso desde WeChat Work"
   ],
   "wecom_kfPitfall": "⚠️ Errores comunes: 1) Configure OpenClaw primero; 2) Añada IP del servidor a IPs confiables; 3) Token y EncodingAESKey deben coincidir con WeCom",
-  "qqPrep": [
-    "Instale el plugin de QQ Bot: openclaw plugins install @openclaw/qqbot",
-    "Visite QQ Open Platform q.qq.com → Registre una cuenta de desarrollador y complete la revisión",
-    "Cree una aplicación Bot (no mini-programa ni juego)",
-    "Obtenga AppKey y AppSecret de la página de detalles de la app",
-    "Habilite permisos y añada miembros de prueba (opcionalmente añada el bot al grupo de prueba)",
-    "(Opcional) Para renderizado Markdown, solicite el permiso de plantilla Markdown por separado (la revisión toma tiempo)"
-  ],
-  "qqPitfall": "⚠️ Errores comunes: 1) Active permisos y añada miembros de prueba; 2) En grupo necesita @Bot; 3) Markdown requiere permiso adicional; 4) QQ Bot está en beta",
-  "qqHelpUrl": "https://q.qq.com",
   "yuanbaoPrep": [
     "Install Yuanbao plugin on the deployed OpenClaw device: openclaw plugins install openclaw-plugin-yuanbao@latest",
     "Open Yuanbao App  Party  My Bot  Link existing OpenClaw  Select 'Method 2: Channel Config'",
@@ -293,5 +283,15 @@
     "Plugin requerido"
   ],
   "voicecallPitfall": "⚠️ Llamadas de voz requieren proveedor externo con costos",
-  "pluginInstallCmd": "Comando de instalación"
+  "pluginInstallCmd": "Comando de instalación",
+  "qqbotPrep": [
+    "Instale el plugin de QQ Bot: openclaw plugins install @openclaw/qqbot",
+    "Visite QQ Open Platform q.qq.com → Registre una cuenta de desarrollador y complete la revisión",
+    "Cree una aplicación Bot (no mini-programa ni juego)",
+    "Obtenga AppKey y AppSecret de la página de detalles de la app",
+    "Habilite permisos y añada miembros de prueba (opcionalmente añada el bot al grupo de prueba)",
+    "(Opcional) Para renderizado Markdown, solicite el permiso de plantilla Markdown por separado (la revisión toma tiempo)"
+  ],
+  "qqbotPitfall": "⚠️ Errores comunes: 1) Active permisos y añada miembros de prueba; 2) En grupo necesita @Bot; 3) Markdown requiere permiso adicional; 4) QQ Bot está en beta",
+  "qqbotHelpUrl": "https://q.qq.com"
 }

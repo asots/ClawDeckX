@@ -193,16 +193,6 @@
     "Supports proactive messaging, image/voice/file send & receive, WeChat Work entry access"
   ],
   "wecom_kfPitfall": "يتطلب إذن مسؤول المؤسسة لإنشاء التطبيق",
-  "qqPrep": [
-    "Install QQ Bot plugin: openclaw plugins install @openclaw/qqbot",
-    "Visit QQ Open Platform q.qq.com → Register developer account and complete review",
-    "Create a Bot application (not mini-program or game)",
-    "Get AppKey and AppSecret from app details page",
-    "Enable permissions and add test members (optionally add bot to test group)",
-    "(Optional) For Markdown rendering, apply for Markdown template permission separately (review takes time)"
-  ],
-  "qqPitfall": "يتطلب تطبيق بوت QQ رسمي — لا يدعم بروتوكولات الطرف الثالث",
-  "qqHelpUrl": "دليل إعداد QQ",
   "yuanbaoPrep": [
     "Install Yuanbao plugin on the deployed OpenClaw device: openclaw plugins install openclaw-plugin-yuanbao@latest",
     "Open Yuanbao App  Party  My Bot  Link existing OpenClaw  Select 'Method 2: Channel Config'",
@@ -293,5 +283,15 @@
     "Plugin required"
   ],
   "voicecallPitfall": "يحتاج حساب Twilio/Telnyx مع رقم هاتف",
-  "pluginInstallCmd": "أمر التثبيت"
+  "pluginInstallCmd": "أمر التثبيت",
+  "qqbotPrep": [
+    "Install QQ Bot plugin: openclaw plugins install @openclaw/qqbot",
+    "Visit QQ Open Platform q.qq.com → Register developer account and complete review",
+    "Create a Bot application (not mini-program or game)",
+    "Get AppKey and AppSecret from app details page",
+    "Enable permissions and add test members (optionally add bot to test group)",
+    "(Optional) For Markdown rendering, apply for Markdown template permission separately (review takes time)"
+  ],
+  "qqbotPitfall": "يتطلب تطبيق بوت QQ رسمي — لا يدعم بروتوكولات الطرف الثالث",
+  "qqbotHelpUrl": "دليل إعداد QQ"
 }

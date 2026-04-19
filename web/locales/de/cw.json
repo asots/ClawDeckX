@@ -193,16 +193,6 @@
     "Unterstützt proaktive Nachrichten, Bild-/Sprach-/Dateiübertragung und WeChat Work Zugang"
   ],
   "wecom_kfPitfall": "⚠️ Häufige Fehler: 1) Erst OpenClaw konfigurieren; 2) Server-IP zu vertrauenswürdigen IPs hinzufügen; 3) Token und EncodingAESKey müssen übereinstimmen",
-  "qqPrep": [
-    "QQ Bot-Plugin installieren: openclaw plugins install @openclaw/qqbot",
-    "QQ Open Platform q.qq.com besuchen → Entwicklerkonto registrieren und Prüfung abschließen",
-    "Eine Bot-Anwendung erstellen (kein Mini-Programm oder Spiel)",
-    "AppKey und AppSecret von der App-Detailseite holen",
-    "Berechtigungen aktivieren und Testmitglieder hinzufügen (optional Bot zur Testgruppe hinzufügen)",
-    "(Optional) Für Markdown-Rendering: Markdown-Vorlagenberechtigung separat beantragen (Prüfung dauert)"
-  ],
-  "qqPitfall": "⚠️ Häufige Fehler: 1) Berechtigungen aktivieren und Testmitglieder hinzufügen; 2) In Gruppen @Bot nötig; 3) Markdown braucht extra Berechtigung; 4) QQ Bot ist Beta",
-  "qqHelpUrl": "https://q.qq.com",
   "yuanbaoPrep": [
     "Install Yuanbao plugin on the deployed OpenClaw device: openclaw plugins install openclaw-plugin-yuanbao@latest",
     "Open Yuanbao App  Party  My Bot  Link existing OpenClaw  Select 'Method 2: Channel Config'",
@@ -293,5 +283,15 @@
     "Plugin erforderlich"
   ],
   "voicecallPitfall": "⚠️ Sprachanrufe benötigen Drittanbieter mit Kosten",
-  "pluginInstallCmd": "Installationsbefehl"
+  "pluginInstallCmd": "Installationsbefehl",
+  "qqbotPrep": [
+    "QQ Bot-Plugin installieren: openclaw plugins install @openclaw/qqbot",
+    "QQ Open Platform q.qq.com besuchen → Entwicklerkonto registrieren und Prüfung abschließen",
+    "Eine Bot-Anwendung erstellen (kein Mini-Programm oder Spiel)",
+    "AppKey und AppSecret von der App-Detailseite holen",
+    "Berechtigungen aktivieren und Testmitglieder hinzufügen (optional Bot zur Testgruppe hinzufügen)",
+    "(Optional) Für Markdown-Rendering: Markdown-Vorlagenberechtigung separat beantragen (Prüfung dauert)"
+  ],
+  "qqbotPitfall": "⚠️ Häufige Fehler: 1) Berechtigungen aktivieren und Testmitglieder hinzufügen; 2) In Gruppen @Bot nötig; 3) Markdown braucht extra Berechtigung; 4) QQ Bot ist Beta",
+  "qqbotHelpUrl": "https://q.qq.com"
 }
