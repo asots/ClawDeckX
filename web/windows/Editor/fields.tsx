@@ -7,7 +7,9 @@ import { Language } from '../../types';
 // ============================================================================
 // 通用样式常量
 // ============================================================================
-const inputBase = 'h-9 md:h-8 bg-white dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-md px-3 text-[12px] md:text-xs font-mono text-slate-800 dark:text-slate-200 outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-colors placeholder:text-slate-400 dark:placeholder:text-slate-600';
+// Exported so call-sites that compose custom widgets (e.g. a Select + a button
+// on the same row) can apply the same input styling as SelectField.
+export const inputBase = 'h-9 md:h-8 bg-white dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-md px-3 text-[12px] md:text-xs font-mono text-slate-800 dark:text-slate-200 outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-colors placeholder:text-slate-400 dark:placeholder:text-slate-600';
 const labelBase = 'text-[11px] md:text-xs font-semibold text-slate-500 dark:text-slate-400 select-none';
 const descBase = 'text-[11px] md:text-[10px] text-slate-400 dark:text-slate-500 mt-0.5';
 

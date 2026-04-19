@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { SectionProps } from '../sectionTypes';
-import { ConfigSection, TextField, PasswordField, SelectField, SwitchField, ArrayField, NumberField, KeyValueField, EmptyState, DiscordGuildField } from '../fields';
+import { ConfigSection, ConfigField, TextField, PasswordField, SelectField, SwitchField, ArrayField, NumberField, KeyValueField, EmptyState, DiscordGuildField, inputBase } from '../fields';
 import { getTranslation } from '../../../locales';
 import { schemaTooltip } from '../schemaTooltip';
 import { gwApi, gatewayApi, pairingApi, pluginApi, weixinQRApi } from '../../../services/api';
@@ -935,22 +935,13 @@ export const ChannelsSection: React.FC<SectionProps> = ({ config, schema, setFie
         {ch === 'telegram' && (
           <>
             <PasswordField label={labelBotToken} value={g(['botToken']) || ''} onChange={v => s(['botToken'], v)} placeholder={es.phTelegramBotToken} tooltip={tip('botToken')} />
-            <div className="flex flex-col md:grid md:grid-cols-12 md:items-start gap-2 md:gap-3 py-2 md:py-1.5">
-              <div className="md:col-span-4 lg:col-span-5 flex flex-col">
-                <div className="flex items-center gap-1">
-                  <label className="text-[11px] md:text-xs font-semibold theme-text-secondary select-none">
-                    {es.dmPolicy}
-                  </label>
-                  <span className="material-symbols-outlined text-[13px] theme-text-muted cursor-help" title={tip('dmPolicy')}>info</span>
-                </div>
-              </div>
-              <div className="md:col-span-8 lg:col-span-7 flex flex-col gap-1.5 min-w-0">
-                <div className="flex items-center gap-2">
+            <ConfigField label={es.dmPolicy} tooltip={tip('dmPolicy')}>
+              <div className="flex items-center gap-2">
                   <CustomSelect
                     value={g(['dmPolicy']) || 'pairing'}
                     onChange={v => s(['dmPolicy'], v)}
                     options={dmPolicy(es)}
-                    className="h-8 theme-field rounded-md px-3 text-[12px] md:text-xs font-mono outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-colors placeholder:text-slate-400 dark:placeholder:text-slate-600 w-full md:w-64"
+                    className={`${inputBase} w-full md:w-64`}
                   />
                   {(g(['dmPolicy']) || 'pairing') === 'pairing' && (
                     <button
@@ -961,9 +952,8 @@ export const ChannelsSection: React.FC<SectionProps> = ({ config, schema, setFie
                       {showTelegramPairing ? '隐藏配对' : '手动配对'}
                     </button>
                   )}
-                </div>
               </div>
-            </div>
+            </ConfigField>
             {showTelegramPairing && (g(['dmPolicy']) || 'pairing') === 'pairing' && (
               <PairingSection channel="telegram" es={es} cw={cw} toast={toast} />
             )}
@@ -1186,22 +1176,13 @@ export const ChannelsSection: React.FC<SectionProps> = ({ config, schema, setFie
             <TextField label={es.httpHost || 'HTTP Host'} value={g(['httpHost']) || ''} onChange={v => s(['httpHost'], v)} placeholder="127.0.0.1" tooltip={es.tipSignalHttpHost} />
             <NumberField label={es.httpPort || 'HTTP Port'} value={g(['httpPort'])} onChange={v => s(['httpPort'], v)} placeholder="8080" tooltip={es.tipSignalHttpPort} />
             <TextField label={es.cliPath || 'CLI Path'} value={g(['cliPath']) || ''} onChange={v => s(['cliPath'], v)} tooltip={es.tipSignalCliPath} />
-            <div className="flex flex-col md:grid md:grid-cols-12 md:items-start gap-2 md:gap-3 py-2 md:py-1.5">
-              <div className="md:col-span-4 lg:col-span-5 flex flex-col">
-                <div className="flex items-center gap-1">
-                  <label className="text-[11px] md:text-xs font-semibold text-slate-500 dark:text-slate-400 select-none">
-                    {es.dmPolicy}
-                  </label>
-                  <span className="material-symbols-outlined text-[13px] text-slate-400 dark:text-slate-500 cursor-help" title={tip('dmPolicy')}>info</span>
-                </div>
-              </div>
-              <div className="md:col-span-8 lg:col-span-7 flex flex-col gap-1.5 min-w-0">
-                <div className="flex items-center gap-2">
+            <ConfigField label={es.dmPolicy} tooltip={tip('dmPolicy')}>
+              <div className="flex items-center gap-2">
                   <CustomSelect
                     value={g(['dmPolicy']) || 'pairing'}
                     onChange={v => s(['dmPolicy'], v)}
                     options={dmPolicy(es)}
-                    className="h-8 bg-white dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-md px-3 text-[12px] md:text-xs font-mono text-slate-800 dark:text-slate-200 outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-colors placeholder:text-slate-400 dark:placeholder:text-slate-600 w-full md:w-64"
+                    className={`${inputBase} w-full md:w-64`}
                   />
                   {(g(['dmPolicy']) || 'pairing') === 'pairing' && (
                     <button
@@ -1212,9 +1193,8 @@ export const ChannelsSection: React.FC<SectionProps> = ({ config, schema, setFie
                       {showSignalPairing ? '隐藏配对' : '手动配对'}
                     </button>
                   )}
-                </div>
               </div>
-            </div>
+            </ConfigField>
             {showSignalPairing && (g(['dmPolicy']) || 'pairing') === 'pairing' && (
               <PairingSection channel="signal" es={es} cw={cw} toast={toast} />
             )}
@@ -1246,22 +1226,13 @@ export const ChannelsSection: React.FC<SectionProps> = ({ config, schema, setFie
               { value: 'auto', label: es.optAuto },
             ]} allowEmpty tooltip={es.tipImsgService} />
             <TextField label={es.region || 'Region'} value={g(['region']) || ''} onChange={v => s(['region'], v)} tooltip={es.tipImsgRegion} />
-            <div className="flex flex-col md:grid md:grid-cols-12 md:items-start gap-2 md:gap-3 py-2 md:py-1.5">
-              <div className="md:col-span-4 lg:col-span-5 flex flex-col">
-                <div className="flex items-center gap-1">
-                  <label className="text-[11px] md:text-xs font-semibold theme-text-secondary select-none">
-                    {es.dmPolicy}
-                  </label>
-                  <span className="material-symbols-outlined text-[13px] theme-text-muted cursor-help" title={tip('dmPolicy')}>info</span>
-                </div>
-              </div>
-              <div className="md:col-span-8 lg:col-span-7 flex flex-col gap-1.5 min-w-0">
-                <div className="flex items-center gap-2">
+            <ConfigField label={es.dmPolicy} tooltip={tip('dmPolicy')}>
+              <div className="flex items-center gap-2">
                   <CustomSelect
                     value={g(['dmPolicy']) || 'pairing'}
                     onChange={v => s(['dmPolicy'], v)}
                     options={dmPolicy(es)}
-                    className="h-8 theme-field rounded-md px-3 text-[12px] md:text-xs font-mono outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-colors placeholder:text-slate-400 dark:placeholder:text-slate-600 w-full md:w-64"
+                    className={`${inputBase} w-full md:w-64`}
                   />
                   {(g(['dmPolicy']) || 'pairing') === 'pairing' && (
                     <button
@@ -1272,9 +1243,8 @@ export const ChannelsSection: React.FC<SectionProps> = ({ config, schema, setFie
                       {showImessagePairing ? '隐藏配对' : '手动配对'}
                     </button>
                   )}
-                </div>
               </div>
-            </div>
+            </ConfigField>
             {showImessagePairing && (g(['dmPolicy']) || 'pairing') === 'pairing' && (
               <PairingSection channel="imessage" es={es} cw={cw} toast={toast} />
             )}
@@ -1298,22 +1268,13 @@ export const ChannelsSection: React.FC<SectionProps> = ({ config, schema, setFie
             <TextField label={es.serverUrl} value={g(['serverUrl']) || ''} onChange={v => s(['serverUrl'], v)} placeholder={es.phLocalServerUrl} tooltip={es.tipBBServer} />
             <PasswordField label={es.chPassword} value={g(['password']) || ''} onChange={v => s(['password'], v)} tooltip={es.tipBBPassword} />
             <TextField label={es.webhookPath || 'Webhook Path'} value={g(['webhookPath']) || ''} onChange={v => s(['webhookPath'], v)} tooltip={es.tipBBWebhookPath} />
-            <div className="flex flex-col md:grid md:grid-cols-12 md:items-start gap-2 md:gap-3 py-2 md:py-1.5">
-              <div className="md:col-span-4 lg:col-span-5 flex flex-col">
-                <div className="flex items-center gap-1">
-                  <label className="text-[11px] md:text-xs font-semibold theme-text-secondary select-none">
-                    {es.dmPolicy}
-                  </label>
-                  <span className="material-symbols-outlined text-[13px] theme-text-muted cursor-help" title={tip('dmPolicy')}>info</span>
-                </div>
-              </div>
-              <div className="md:col-span-8 lg:col-span-7 flex flex-col gap-1.5 min-w-0">
-                <div className="flex items-center gap-2">
+            <ConfigField label={es.dmPolicy} tooltip={tip('dmPolicy')}>
+              <div className="flex items-center gap-2">
                   <CustomSelect
                     value={g(['dmPolicy']) || 'pairing'}
                     onChange={v => s(['dmPolicy'], v)}
                     options={dmPolicy(es)}
-                    className="h-8 theme-field rounded-md px-3 text-[12px] md:text-xs font-mono outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-colors placeholder:text-slate-400 dark:placeholder:text-slate-600 w-full md:w-64"
+                    className={`${inputBase} w-full md:w-64`}
                   />
                   {(g(['dmPolicy']) || 'pairing') === 'pairing' && (
                     <button
@@ -1324,9 +1285,8 @@ export const ChannelsSection: React.FC<SectionProps> = ({ config, schema, setFie
                       {showBluebubblesPairing ? '隐藏配对' : '手动配对'}
                     </button>
                   )}
-                </div>
               </div>
-            </div>
+            </ConfigField>
             {showBluebubblesPairing && (g(['dmPolicy']) || 'pairing') === 'pairing' && (
               <PairingSection channel="bluebubbles" es={es} cw={cw} toast={toast} />
             )}
@@ -1432,22 +1392,13 @@ export const ChannelsSection: React.FC<SectionProps> = ({ config, schema, setFie
             <TextField label={es.userId} value={g(['userId']) || ''} onChange={v => s(['userId'], v)} placeholder={es.phMatrixUserId} tooltip={es.tipMatrixUser} />
             <PasswordField label={labelAccessToken} value={g(['accessToken']) || ''} onChange={v => s(['accessToken'], v)} tooltip={es.tipMatrixToken} />
             <PasswordField label={es.matrixPassword || 'Password'} value={g(['password']) || ''} onChange={v => s(['password'], v)} tooltip={es.tipMatrixPassword} />
-            <div className="flex flex-col md:grid md:grid-cols-12 md:items-start gap-2 md:gap-3 py-2 md:py-1.5">
-              <div className="md:col-span-4 lg:col-span-5 flex flex-col">
-                <div className="flex items-center gap-1">
-                  <label className="text-[11px] md:text-xs font-semibold theme-text-secondary select-none">
-                    {es.dmPolicy}
-                  </label>
-                  <span className="material-symbols-outlined text-[13px] theme-text-muted cursor-help" title={tip('dmPolicy')}>info</span>
-                </div>
-              </div>
-              <div className="md:col-span-8 lg:col-span-7 flex flex-col gap-1.5 min-w-0">
-                <div className="flex items-center gap-2">
+            <ConfigField label={es.dmPolicy} tooltip={tip('dmPolicy')}>
+              <div className="flex items-center gap-2">
                   <CustomSelect
                     value={g(['dm', 'policy']) || 'pairing'}
                     onChange={v => s(['dm', 'policy'], v)}
                     options={dmPolicy(es)}
-                    className="h-8 theme-field rounded-md px-3 text-[12px] md:text-xs font-mono outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-colors placeholder:text-slate-400 dark:placeholder:text-slate-600 w-full md:w-64"
+                    className={`${inputBase} w-full md:w-64`}
                   />
                   {(g(['dm', 'policy']) || 'pairing') === 'pairing' && (
                     <button
@@ -1458,9 +1409,8 @@ export const ChannelsSection: React.FC<SectionProps> = ({ config, schema, setFie
                       {showMatrixPairing ? '隐藏配对' : '手动配对'}
                     </button>
                   )}
-                </div>
               </div>
-            </div>
+            </ConfigField>
             {showMatrixPairing && (g(['dm', 'policy']) || 'pairing') === 'pairing' && (
               <PairingSection channel="matrix" es={es} cw={cw} toast={toast} />
             )}
@@ -1506,22 +1456,13 @@ export const ChannelsSection: React.FC<SectionProps> = ({ config, schema, setFie
             )}
             <PasswordField label={es.encryptKey} value={g(['encryptKey']) || ''} onChange={v => s(['encryptKey'], v)} tooltip={es.tipFeishuEncrypt} />
             <PasswordField label={es.verificationToken} value={g(['verificationToken']) || ''} onChange={v => s(['verificationToken'], v)} tooltip={es.tipFeishuVerify} />
-            <div className="flex flex-col md:grid md:grid-cols-12 md:items-start gap-2 md:gap-3 py-2 md:py-1.5">
-              <div className="md:col-span-4 lg:col-span-5 flex flex-col">
-                <div className="flex items-center gap-1">
-                  <label className="text-[11px] md:text-xs font-semibold text-slate-500 dark:text-slate-400 select-none">
-                    {es.dmPolicy}
-                  </label>
-                  <span className="material-symbols-outlined text-[13px] text-slate-400 dark:text-slate-500 cursor-help" title={tip('dmPolicy')}>info</span>
-                </div>
-              </div>
-              <div className="md:col-span-8 lg:col-span-7 flex flex-col gap-1.5 min-w-0">
-                <div className="flex items-center gap-2">
+            <ConfigField label={es.dmPolicy} tooltip={tip('dmPolicy')}>
+              <div className="flex items-center gap-2">
                   <CustomSelect
                     value={g(['dmPolicy']) || 'pairing'}
                     onChange={v => s(['dmPolicy'], v)}
                     options={dmPolicy(es)}
-                    className="h-8 bg-white dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-md px-3 text-[12px] md:text-xs font-mono text-slate-800 dark:text-slate-200 outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-colors placeholder:text-slate-400 dark:placeholder:text-slate-600 w-full md:w-64"
+                    className={`${inputBase} w-full md:w-64`}
                   />
                   {(g(['dmPolicy']) || 'pairing') === 'pairing' && (
                     <button
@@ -1532,9 +1473,8 @@ export const ChannelsSection: React.FC<SectionProps> = ({ config, schema, setFie
                       {showFeishuPairing ? '隐藏配对' : '手动配对'}
                     </button>
                   )}
-                </div>
               </div>
-            </div>
+            </ConfigField>
             {showFeishuPairing && (g(['dmPolicy']) || 'pairing') === 'pairing' && (
               <PairingSection channel="feishu" es={es} cw={cw} toast={toast} />
             )}
@@ -1598,22 +1538,13 @@ export const ChannelsSection: React.FC<SectionProps> = ({ config, schema, setFie
                 <PasswordField label={labelEncodingAESKey} value={g(['encodingAESKey']) || ''} onChange={v => s(['encodingAESKey'], v)} tooltip={es.tipWecomAes} />
               </>
             )}
-            <div className="flex flex-col md:grid md:grid-cols-12 md:items-start gap-2 md:gap-3 py-2 md:py-1.5">
-              <div className="md:col-span-4 lg:col-span-5 flex flex-col">
-                <div className="flex items-center gap-1">
-                  <label className="text-[11px] md:text-xs font-semibold theme-text-secondary select-none">
-                    {es.dmPolicy}
-                  </label>
-                  <span className="material-symbols-outlined text-[13px] theme-text-muted cursor-help" title={tip('dmPolicy')}>info</span>
-                </div>
-              </div>
-              <div className="md:col-span-8 lg:col-span-7 flex flex-col gap-1.5 min-w-0">
-                <div className="flex items-center gap-2">
+            <ConfigField label={es.dmPolicy} tooltip={tip('dmPolicy')}>
+              <div className="flex items-center gap-2">
                   <CustomSelect
                     value={g(['dmPolicy']) || 'pairing'}
                     onChange={v => s(['dmPolicy'], v)}
                     options={dmPolicy(es)}
-                    className="h-8 theme-field rounded-md px-3 text-[12px] md:text-xs font-mono outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-colors placeholder:text-slate-400 dark:placeholder:text-slate-600 w-full md:w-64"
+                    className={`${inputBase} w-full md:w-64`}
                   />
                   {(g(['dmPolicy']) || 'pairing') === 'pairing' && (
                     <button
@@ -1624,9 +1555,8 @@ export const ChannelsSection: React.FC<SectionProps> = ({ config, schema, setFie
                       {showWecomPairing ? '隐藏配对' : '手动配对'}
                     </button>
                   )}
-                </div>
               </div>
-            </div>
+            </ConfigField>
             {showWecomPairing && (g(['dmPolicy']) || 'pairing') === 'pairing' && (
               <PairingSection channel="wecom" es={es} cw={cw} toast={toast} />
             )}
@@ -1763,22 +1693,13 @@ export const ChannelsSection: React.FC<SectionProps> = ({ config, schema, setFie
         {ch === 'zalo' && (
           <>
             <PasswordField label={es.chToken} value={g(['botToken']) || ''} onChange={v => s(['botToken'], v)} tooltip={es.tipZaloToken} />
-            <div className="flex flex-col md:grid md:grid-cols-12 md:items-start gap-2 md:gap-3 py-2 md:py-1.5">
-              <div className="md:col-span-4 lg:col-span-5 flex flex-col">
-                <div className="flex items-center gap-1">
-                  <label className="text-[11px] md:text-xs font-semibold text-slate-500 dark:text-slate-400 select-none">
-                    {es.dmPolicy}
-                  </label>
-                  <span className="material-symbols-outlined text-[13px] text-slate-400 dark:text-slate-500 cursor-help" title={tip('dmPolicy')}>info</span>
-                </div>
-              </div>
-              <div className="md:col-span-8 lg:col-span-7 flex flex-col gap-1.5 min-w-0">
-                <div className="flex items-center gap-2">
+            <ConfigField label={es.dmPolicy} tooltip={tip('dmPolicy')}>
+              <div className="flex items-center gap-2">
                   <CustomSelect
                     value={g(['dmPolicy']) || 'pairing'}
                     onChange={v => s(['dmPolicy'], v)}
                     options={dmPolicy(es)}
-                    className="h-8 bg-white dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-md px-3 text-[12px] md:text-xs font-mono text-slate-800 dark:text-slate-200 outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-colors placeholder:text-slate-400 dark:placeholder:text-slate-600 w-full md:w-64"
+                    className={`${inputBase} w-full md:w-64`}
                   />
                   {(g(['dmPolicy']) || 'pairing') === 'pairing' && (
                     <button
@@ -1789,9 +1710,8 @@ export const ChannelsSection: React.FC<SectionProps> = ({ config, schema, setFie
                       {showZaloPairing ? '隐藏配对' : '手动配对'}
                     </button>
                   )}
-                </div>
               </div>
-            </div>
+            </ConfigField>
             {showZaloPairing && (g(['dmPolicy']) || 'pairing') === 'pairing' && (
               <PairingSection channel="zalo" es={es} cw={cw} toast={toast} />
             )}
