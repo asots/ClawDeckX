@@ -67,6 +67,10 @@ type SkillHubConfig struct {
 	DataURL string `json:"data_url"`
 }
 
+type BackupConfig struct {
+	Directory string `json:"directory"`
+}
+
 type Config struct {
 	Server   ServerConfig    `json:"server"`
 	Auth     AuthConfig      `json:"auth"`
@@ -75,7 +79,20 @@ type Config struct {
 	OpenClaw OpenClawConfig  `json:"openclaw"`
 	Monitor  MonitorConfig   `json:"monitor"`
 	Alert    AlertConfig     `json:"alert"`
+	Backup   BackupConfig    `json:"backup"`
 	SkillHub *SkillHubConfig `json:"skillhub,omitempty"`
+}
+
+// DefaultBackupDirectory returns the default backup directory used when the user
+// has not configured an override. The directory MUST be outside the OpenClaw
+// state dir, because the OpenClaw CLI refuses to write backup archives inside
+// a source path.
+func DefaultBackupDirectory() string {
+	home, err := os.UserHomeDir()
+	if err != nil || home == "" {
+		return ""
+	}
+	return filepath.Join(home, "ClawDeckX", "backups")
 }
 
 // DataDir returns the default data directory for the application.
@@ -150,6 +167,9 @@ func Default() Config {
 		Alert: AlertConfig{
 			Enabled:  false,
 			Channels: []string{},
+		},
+		Backup: BackupConfig{
+			Directory: DefaultBackupDirectory(),
 		},
 	}
 }
@@ -326,6 +346,12 @@ func applyEnvOverrides(cfg *Config) {
 	}
 	if v := os.Getenv("OCD_ALERT_WEBHOOK_URL"); v != "" {
 		cfg.Alert.WebhookURL = v
+	}
+	if v := strings.TrimSpace(os.Getenv("OCD_BACKUP_DIR")); v != "" {
+		cfg.Backup.Directory = v
+	}
+	if strings.TrimSpace(cfg.Backup.Directory) == "" {
+		cfg.Backup.Directory = DefaultBackupDirectory()
 	}
 }
 

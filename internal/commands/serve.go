@@ -592,11 +592,15 @@ func RunServe(args []string) int {
 	router.POST("/api/v1/snapshots/", web.RequireAdmin(snapshotHandler.Action))
 	router.DELETE("/api/v1/snapshots/", web.RequireAdmin(snapshotHandler.Delete))
 
-	ocBackupHandler := handlers.NewOpenClawBackupHandler()
+	ocBackupHandler := handlers.NewOpenClawBackupHandler(&cfg)
 	router.POST("/api/v1/openclaw-backup/create", web.RequireAdmin(ocBackupHandler.Create))
 	router.GET("/api/v1/openclaw-backup/list", ocBackupHandler.List)
 	router.POST("/api/v1/openclaw-backup/download", ocBackupHandler.Download)
 	router.POST("/api/v1/openclaw-backup/delete", web.RequireAdmin(ocBackupHandler.Delete))
+
+	backupConfigHandler := handlers.NewBackupConfigHandler(&cfg)
+	router.GET("/api/v1/backup-config", backupConfigHandler.Get)
+	router.PUT("/api/v1/backup-config", web.RequireAdmin(backupConfigHandler.Update))
 
 	configBackupHandler := handlers.NewConfigBackupHandler()
 	router.GET("/api/v1/config-backups", configBackupHandler.List)

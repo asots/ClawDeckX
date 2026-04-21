@@ -606,6 +606,18 @@ export interface OcBackupCreateResult {
   verified: boolean;
   assets: { kind: string; sourcePath: string; displayPath: string }[];
 }
+export interface BackupConfigInfo {
+  directory: string;
+  effective: string;
+  default_directory: string;
+  is_docker: boolean;
+  env_locked: boolean;
+}
+export const backupConfigApi = {
+  get: () => get<BackupConfigInfo>('/api/v1/backup-config'),
+  update: (directory: string) => put<{ directory: string; effective: string }>('/api/v1/backup-config', { directory }),
+};
+
 export const ocBackupApi = {
   create: (data: { includeWorkspace?: boolean; onlyConfig?: boolean; verify?: boolean }) =>
     post<OcBackupCreateResult>('/api/v1/openclaw-backup/create', data),

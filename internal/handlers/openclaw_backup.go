@@ -11,12 +11,34 @@ import (
 
 	"ClawDeckX/internal/openclaw"
 	"ClawDeckX/internal/web"
+	"ClawDeckX/internal/webconfig"
 )
 
-type OpenClawBackupHandler struct{}
+type OpenClawBackupHandler struct {
+	cfg *webconfig.Config
+}
 
-func NewOpenClawBackupHandler() *OpenClawBackupHandler {
-	return &OpenClawBackupHandler{}
+func NewOpenClawBackupHandler(cfg *webconfig.Config) *OpenClawBackupHandler {
+	return &OpenClawBackupHandler{cfg: cfg}
+}
+
+// backupDir returns the effective backup directory, preferring the user-configured
+// override. The directory is created on demand with 0o700 permissions.
+func (h *OpenClawBackupHandler) backupDir() string {
+	dir := ""
+	if h.cfg != nil {
+		dir = strings.TrimSpace(h.cfg.Backup.Directory)
+	}
+	if dir == "" {
+		dir = webconfig.DefaultBackupDirectory()
+	}
+	if dir == "" {
+		dir = openclaw.DefaultBackupDir()
+	}
+	if dir != "" {
+		_ = os.MkdirAll(dir, 0o700)
+	}
+	return dir
 }
 
 // Create triggers `openclaw backup create` and returns the result.
@@ -36,7 +58,7 @@ func (h *OpenClawBackupHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	backupDir := openclaw.DefaultBackupDir()
+	backupDir := h.backupDir()
 	if backupDir == "" {
 		web.FailErr(w, r, web.ErrInvalidParam, "cannot determine backup directory")
 		return
@@ -58,7 +80,7 @@ func (h *OpenClawBackupHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 // List returns all .tar.gz backup archives in the default backup directory.
 func (h *OpenClawBackupHandler) List(w http.ResponseWriter, r *http.Request) {
-	backupDir := openclaw.DefaultBackupDir()
+	backupDir := h.backupDir()
 	if backupDir == "" {
 		web.OK(w, r, map[string]any{"backupDir": "", "archives": []any{}, "installed": openclaw.IsOpenClawInstalled()})
 		return
@@ -89,7 +111,7 @@ func (h *OpenClawBackupHandler) Download(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	backupDir := openclaw.DefaultBackupDir()
+	backupDir := h.backupDir()
 	if !h.isValidArchivePath(backupDir, req.Path) {
 		web.FailErr(w, r, web.ErrInvalidParam, "invalid archive path")
 		return
@@ -117,7 +139,7 @@ func (h *OpenClawBackupHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	backupDir := openclaw.DefaultBackupDir()
+	backupDir := h.backupDir()
 	if !h.isValidArchivePath(backupDir, req.Path) {
 		web.FailErr(w, r, web.ErrInvalidParam, "invalid archive path")
 		return
