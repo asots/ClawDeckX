@@ -624,6 +624,52 @@ const SnapshotTab: React.FC<SnapshotTabProps> = ({ s, inputCls, labelCls, rowCls
             </div>
           </div>
         )}
+        {backupConfig && (
+          <div className={`${rowCls} px-4 py-3 space-y-2`}>
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="material-symbols-outlined text-[16px] text-slate-400 dark:text-white/40">folder</span>
+                <p className="text-[12px] font-semibold text-slate-700 dark:text-white/80">{s.backupDirTitle || 'Backup save path'}</p>
+              </div>
+              {backupConfig.is_docker && <span className="text-[10px] text-slate-400 dark:text-white/40">{s.backupDirDockerLocked || 'Read-only in container'}</span>}
+              {!backupConfig.is_docker && backupConfig.env_locked && <span className="text-[10px] text-slate-400 dark:text-white/40">{s.backupDirEnvLocked || 'Locked by OCD_BACKUP_DIR'}</span>}
+            </div>
+            {(backupConfig.is_docker || backupConfig.env_locked) ? (
+              <p className="text-[11px] font-mono text-slate-500 dark:text-white/50 truncate" title={backupConfig.effective}>{backupConfig.effective}</p>
+            ) : (
+              <div className="flex gap-2 items-center">
+                <input
+                  type="text"
+                  value={backupDirInput}
+                  onChange={e => setBackupDirInput(e.target.value)}
+                  placeholder={backupConfig.default_directory || (s.backupDirPlaceholder || 'Absolute path (leave empty for default)')}
+                  disabled={backupDirSaving}
+                  className={`${inputCls} flex-1 font-mono text-[11px]`}
+                />
+                <button
+                  onClick={handleSaveBackupDir}
+                  disabled={backupDirSaving || backupDirInput.trim() === (backupConfig.directory || '').trim()}
+                  className="px-3 py-[7px] rounded-lg bg-primary text-white text-[12px] font-medium disabled:opacity-40 hover:opacity-90 shadow-sm transition-all"
+                >
+                  {backupDirSaving ? (s.saving || 'Saving...') : (s.save || 'Save')}
+                </button>
+                {(backupConfig.directory || '').trim() !== '' && (
+                  <button
+                    onClick={handleResetBackupDir}
+                    disabled={backupDirSaving}
+                    title={s.backupDirResetHint || 'Reset to default'}
+                    className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 text-slate-400 transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">restart_alt</span>
+                  </button>
+                )}
+              </div>
+            )}
+            <p className="text-[10px] text-slate-400 dark:text-white/30">
+              {s.backupDirEffective || 'Current storage location'}: <span className="font-mono">{backupConfig.effective}</span>
+            </p>
+          </div>
+        )}
         <div className="flex items-center gap-1 p-1 rounded-lg bg-slate-100 dark:bg-white/[0.05] w-fit">
           <button type="button" onClick={() => setSnapshotModeTab('manual')} className={`px-3 py-1.5 rounded-md text-[12px] font-medium transition-colors ${snapshotModeTab === 'manual' ? 'bg-white dark:bg-white/10 text-slate-800 dark:text-white shadow-sm' : 'text-slate-500 dark:text-white/60 hover:text-slate-700 dark:hover:text-white/80'}`}>{s.snapshotManualTab || s.snapshotCreate || 'Manual backup'}</button>
           <button type="button" onClick={() => setSnapshotModeTab('scheduled')} className={`px-3 py-1.5 rounded-md text-[12px] font-medium transition-colors ${snapshotModeTab === 'scheduled' ? 'bg-white dark:bg-white/10 text-slate-800 dark:text-white shadow-sm' : 'text-slate-500 dark:text-white/60 hover:text-slate-700 dark:hover:text-white/80'}`}>{s.snapshotScheduledTab || s.snapshotScheduleTitle || 'Scheduled backup'}</button>
@@ -739,52 +785,6 @@ const SnapshotTab: React.FC<SnapshotTabProps> = ({ s, inputCls, labelCls, rowCls
                 <p className="text-[12px] text-slate-400 dark:text-white/40">{s.ocBackupNotInstalled || 'OpenClaw CLI not installed'}</p>
               </div>
             ) : (<>
-              {backupConfig && (
-                <div className="rounded-xl border border-slate-200 dark:border-white/5 bg-slate-50/50 dark:bg-white/[0.02] px-3 py-2.5 space-y-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <span className="material-symbols-outlined text-[14px] text-slate-400 dark:text-white/40">folder</span>
-                      <p className="text-[11px] font-semibold text-slate-700 dark:text-white/70">{s.backupDirTitle || 'Backup save path'}</p>
-                    </div>
-                    {backupConfig.is_docker && <span className="text-[10px] text-slate-400 dark:text-white/40">{s.backupDirDockerLocked || 'Read-only in container'}</span>}
-                    {!backupConfig.is_docker && backupConfig.env_locked && <span className="text-[10px] text-slate-400 dark:text-white/40">{s.backupDirEnvLocked || 'Locked by OCD_BACKUP_DIR'}</span>}
-                  </div>
-                  {(backupConfig.is_docker || backupConfig.env_locked) ? (
-                    <p className="text-[11px] font-mono text-slate-500 dark:text-white/50 truncate" title={backupConfig.effective}>{backupConfig.effective}</p>
-                  ) : (
-                    <div className="flex gap-2 items-center">
-                      <input
-                        type="text"
-                        value={backupDirInput}
-                        onChange={e => setBackupDirInput(e.target.value)}
-                        placeholder={backupConfig.default_directory || (s.backupDirPlaceholder || 'Absolute path (leave empty for default)')}
-                        disabled={backupDirSaving}
-                        className={`${inputCls} flex-1 font-mono text-[11px]`}
-                      />
-                      <button
-                        onClick={handleSaveBackupDir}
-                        disabled={backupDirSaving || backupDirInput.trim() === (backupConfig.directory || '').trim()}
-                        className="px-3 py-[7px] rounded-lg bg-primary text-white text-[12px] font-medium disabled:opacity-40 hover:opacity-90 shadow-sm transition-all"
-                      >
-                        {backupDirSaving ? (s.saving || 'Saving...') : (s.save || 'Save')}
-                      </button>
-                      {(backupConfig.directory || '').trim() !== '' && (
-                        <button
-                          onClick={handleResetBackupDir}
-                          disabled={backupDirSaving}
-                          title={s.backupDirResetHint || 'Reset to default'}
-                          className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 text-slate-400 transition-colors"
-                        >
-                          <span className="material-symbols-outlined text-[16px]">restart_alt</span>
-                        </button>
-                      )}
-                    </div>
-                  )}
-                  <p className="text-[10px] text-slate-400 dark:text-white/30">
-                    {s.backupDirEffective || 'Current storage location'}: <span className="font-mono">{backupConfig.effective}</span>
-                  </p>
-                </div>
-              )}
               <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[11px]">
                 {(['full', 'workspace', 'config'] as const).map(scope => (
                   <label key={scope} className="flex items-center gap-1.5 cursor-pointer">
