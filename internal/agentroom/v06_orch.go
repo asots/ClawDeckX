@@ -308,7 +308,15 @@ func (o *Orchestrator) nonStreamComplete(ctx context.Context, m *database.AgentR
 	if o.bridge == nil || !o.bridge.IsAvailable() {
 		return nil, ErrGatewayUnavailable
 	}
-	tctx, cancel := context.WithTimeout(ctx, defaultV06Timeout)
+	// 若调用方已设 deadline（如 runDeadlineSummary 的 3min），尊重它；
+	// 否则退化到默认 60s，避免无限阻塞。
+	var tctx context.Context
+	var cancel context.CancelFunc
+	if _, ok := ctx.Deadline(); ok {
+		tctx, cancel = ctx, func() {}
+	} else {
+		tctx, cancel = context.WithTimeout(ctx, defaultV06Timeout)
+	}
 	defer cancel()
 
 	// fallback 链：房间 → 全局 → 成员主模型

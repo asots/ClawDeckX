@@ -2546,11 +2546,24 @@ func (o *Orchestrator) incrBudget(tokens int, costMilli int64) {
 
 // runDeadlineSummary —— deadlineAction="summarize" 时：自动生成会议纪要后暂停房间。
 // 在 goroutine 中运行（因为 SynthesizeMinutes 涉及 LLM 调用），完成后暂停。
+// 使用 3 分钟超时（长会议纪要 LLM 生成可能很慢），失败后重试一次。
 func (o *Orchestrator) runDeadlineSummary() {
-	ctx := context.Background()
-	_, _, err := o.SynthesizeMinutes(ctx, "minutes")
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
+	defer cancel()
+
+	var err error
+	for attempt := 0; attempt < 2; attempt++ {
+		_, _, err = o.SynthesizeMinutes(ctx, "minutes")
+		if err == nil {
+			break
+		}
+		logger.Log.Warn().Err(err).Int("attempt", attempt+1).Str("room", o.roomID).Msg("agentroom: deadline summary attempt failed")
+		if ctx.Err() != nil {
+			break // 总超时已到，不再重试
+		}
+	}
+
 	if err != nil {
-		logger.Log.Warn().Err(err).Str("room", o.roomID).Msg("agentroom: deadline summary failed, pausing anyway")
 		o.appendSystemMessage("⚠️ 自动总结失败（" + err.Error() + "），会议已暂停。")
 	} else {
 		o.appendSystemMessage("📋 会议总结已生成，会议已暂停。请查看纪要并决定是否继续讨论。")
