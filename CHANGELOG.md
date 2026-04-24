@@ -180,39 +180,23 @@ _2026-04-20_
 
 # v0.2.4
 
-_2026-04-20_
+_2026-04-24_
 
 ## What's Changed
 
 ### ✨ New Features / 新功能
 
-- AgentRoom v0.3: 幂等键、分页、审计流水、房间导出 (Markdown/JSON)
-- AgentRoom: Markdown 渲染 + 代码块高亮（agent 消息）+ 长消息折叠
-- AgentRoom: Composer 引用卡片 + @ 自动补全 + slash 命令面板 (`/pause` `/fact` `/task` `/fork` `/export` `/help`)
-- AgentRoom: 未读红点 (RoomsRail) + 快捷键 cheatsheet + 导出按钮
-- AgentRoom: 模型熔断器（连续 3 次失败 → 60s 跳过该模型）
-- AgentRoom: stream 级重试（首 token 前退避重试一次）
-- AgentRoom: 连续 agent 发言上限（默认 8，可配置）+ 预算硬刹车前置
+- multi-agent meeting room with deadline action, UX polish
+- allow custom backup directory outside container
 
 ### 🐛 Bug Fixes / 修复
 
-- agentroom: 级联删除房间时一并清理 members/messages/facts/tasks/interventions
-- agentroom: 消息 seq 改为 MAX(seq)+1 手动维护，修复 SQLite autoIncrement 不生效
-- agentroom: 投影入站通过 (roomId, externalMessageId) 去重，防 webhook 重投
-- agentroom: WS 重连后自动重拉房间状态，修复断网期间丢失事件
-
-### 🎨 UI & Styling / 界面优化
-
-- agentroom: 预算双级提醒（warnAt 琥珀 / hardStopAt 红色脉冲）
-- agentroom: 顶部断线横条 + 错误 toast 栈 + 重连成功轻提示
-- agentroom: 删除房间二次确认弹窗
-
-### 🔧 Refactor / 重构
-
-- agentroom: 成本表拆分 InputPerM / OutputPerM，贴近真实计费
+- surface backup path editor above all snapshot tabs
 
 ---
 **Full Changelog**: [v0.2.3...v0.2.4](https://github.com/ClawDeckX/ClawDeckX/compare/v0.2.3...v0.2.4)
+
+
 
 ---
 
@@ -1633,6 +1617,7 @@ _2026-03-15_
 
 
 ---
+
 
 
 
