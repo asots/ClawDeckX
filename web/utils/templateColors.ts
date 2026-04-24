@@ -50,10 +50,26 @@ const TW_COLORS: Record<string, string> = {
   'slate-600': '#475569',
   'red-600': '#dc2626',
   'orange-600': '#ea580c',
+  'amber-600': '#d97706',
+  'lime-600': '#65a30d',
+  'green-600': '#16a34a',
+  'emerald-600': '#059669',
+  'teal-600': '#0d9488',
+  'cyan-600': '#0891b2',
+  'sky-600': '#0284c7',
   'blue-600': '#2563eb',
   'indigo-600': '#4f46e5',
+  'violet-600': '#7c3aed',
   'purple-600': '#9333ea',
+  'fuchsia-600': '#c026d3',
   'pink-600': '#db2777',
+  'rose-600': '#e11d48',
+  // -700/-900 variants (dark accents used in war-room, adversarial)
+  'gray-700': '#374151',
+  'slate-700': '#334155',
+  'zinc-700': '#3f3f46',
+  'zinc-800': '#27272a',
+  'zinc-900': '#18181b',
 };
 
 const DEFAULT_GRADIENT = { from: '#a855f7', to: '#ec4899' }; // purple-500 → pink-500
@@ -63,9 +79,16 @@ const DEFAULT_SOLID = '#64748b'; // slate-500
  * Parse a template color string into an inline CSS `background` value.
  *
  * Supported formats:
- *   "from-cyan-500 to-blue-500"   → linear-gradient
- *   "bg-blue-500"                 → solid color
- *   "bg-gradient-to-br from-..."  → linear-gradient (strip prefix)
+ *   "from-cyan-500 to-blue-500"              → 2-stop linear-gradient
+ *   "from-cyan-400 via-blue-500 to-indigo-500" → 3-stop linear-gradient (v0.9)
+ *   "bg-blue-500"                            → solid color
+ *   "bg-gradient-to-br from-..."             → linear-gradient (strip prefix)
+ *
+ * v0.9 note: most of the built-in room templates use the three-stop
+ * `from-X via-Y to-Z` form. Tailwind 4.x JIT cannot see these classes
+ * because they live in runtime JSON returned from the Go backend —— the
+ * result was template cards rendering as dark surface fallback. Resolving
+ * to inline styles here is the fix.
  */
 export function resolveTemplateColor(colorClass: string | undefined): React.CSSProperties {
   if (!colorClass) {
@@ -75,12 +98,15 @@ export function resolveTemplateColor(colorClass: string | undefined): React.CSSP
   const tokens = colorClass.trim().split(/\s+/);
 
   let from: string | null = null;
+  let via: string | null = null;
   let to: string | null = null;
   let solid: string | null = null;
 
   for (const t of tokens) {
     if (t.startsWith('from-')) {
       from = TW_COLORS[t.slice(5)] ?? null;
+    } else if (t.startsWith('via-')) {
+      via = TW_COLORS[t.slice(4)] ?? null;
     } else if (t.startsWith('to-')) {
       to = TW_COLORS[t.slice(3)] ?? null;
     } else if (t.startsWith('bg-') && !t.startsWith('bg-gradient')) {
@@ -88,8 +114,15 @@ export function resolveTemplateColor(colorClass: string | undefined): React.CSSP
     }
   }
 
+  // 三色渐变优先：比两色更丰富的色彩层次，对应 Tailwind 的 `from-X via-Y to-Z`。
+  if (from && via && to) {
+    return { background: `linear-gradient(135deg, ${from}, ${via}, ${to})` };
+  }
   if (from && to) {
     return { background: `linear-gradient(135deg, ${from}, ${to})` };
+  }
+  if (from && via) {
+    return { background: `linear-gradient(135deg, ${from}, ${via})` };
   }
   if (from) {
     return { background: from };

@@ -232,7 +232,7 @@ const PluginCenter: React.FC<PluginCenterProps> = ({ language }) => {
     if (!canInstall) { toast('error', skRef.current.pluginLocalOnlyAction || skRef.current.pluginLocalOnly); return; }
     setInstallingSpec(plugin.spec); setInstallPhase('installing');
     try {
-      const res = await pluginApi.install(plugin.spec, force);
+      const res = await pluginApi.install(plugin.spec, { force });
       if (res.success) {
         setInstallPhase('restarting');
         // Gateway auto-restarts via config change detection after plugin install;

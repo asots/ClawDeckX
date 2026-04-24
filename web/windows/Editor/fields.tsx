@@ -270,6 +270,8 @@ export const ArrayField: React.FC<ArrayFieldProps> = ({ label, desc, tooltip, va
   const [hlIdx, setHlIdx] = useState(-1);
   const wrapRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  // v0.9.2：scrollIntoView 只在键盘导航时触发，hover 不参与，避免反馈循环让"点不中"。
+  const hlFromKbdRef = useRef(false);
   const ed = useEditorFieldsI18n();
   const items = Array.isArray(value) ? value : [];
 
@@ -299,17 +301,19 @@ export const ArrayField: React.FC<ArrayFieldProps> = ({ label, desc, tooltip, va
     return () => document.removeEventListener('mousedown', handler);
   }, [showSugg]);
 
-  // scroll highlighted item into view
+  // scroll highlighted item into view — keyboard only, hover 不滚动
   useEffect(() => {
     if (!showSugg || hlIdx < 0 || !listRef.current) return;
+    if (!hlFromKbdRef.current) return;
+    hlFromKbdRef.current = false;
     const el = listRef.current.children[hlIdx] as HTMLElement | undefined;
     el?.scrollIntoView({ block: 'nearest' });
   }, [hlIdx, showSugg]);
 
   const handleKey = useCallback((e: React.KeyboardEvent) => {
     if (showSugg && filtered.length > 0) {
-      if (e.key === 'ArrowDown') { e.preventDefault(); setHlIdx(h => Math.min(h + 1, filtered.length - 1)); return; }
-      if (e.key === 'ArrowUp') { e.preventDefault(); setHlIdx(h => Math.max(h - 1, 0)); return; }
+      if (e.key === 'ArrowDown') { e.preventDefault(); hlFromKbdRef.current = true; setHlIdx(h => Math.min(h + 1, filtered.length - 1)); return; }
+      if (e.key === 'ArrowUp') { e.preventDefault(); hlFromKbdRef.current = true; setHlIdx(h => Math.max(h - 1, 0)); return; }
       if (e.key === 'Enter' && hlIdx >= 0 && hlIdx < filtered.length) { e.preventDefault(); add(filtered[hlIdx]); return; }
       if (e.key === 'Escape') { e.preventDefault(); setShowSugg(false); return; }
     }

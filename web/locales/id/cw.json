@@ -149,16 +149,16 @@
   "whatsappPitfall": "⚠️ Kesalahan umum: 1) Gateway HARUS berjalan di Node.js — Baileys tidak stabil di Bun dengan sering terputus; 2) Protokol tidak resmi memiliki risiko ban — gunakan nomor khusus; 3) QR kedaluwarsa dalam ~20d, timeout memerlukan kode baru; 4) Sesi rusak? Hapus file ~/.openclaw/sessions/ dan scan ulang; 5) Maks 4 perangkat tertaut — tidak bisa terhubung jika batas tercapai",
   "signalPitfall": "⚠️ Kesalahan umum: 1) Java 21+ tidak ada adalah penyebab kegagalan #1; 2) ARM Linux mungkin perlu kompilasi manual pustaka native libsignal-client; 3) Gunakan signal-cli link (perangkat tertaut), BUKAN register (nomor baru); 4) QR di terminal memerlukan Unicode — mungkin rusak melalui SSH; 5) Batas kecepatan ketat — pengiriman massal memicu pembatasan",
   "feishuPrep": [
-    "Instal plugin Feishu: openclaw plugins install @openclaw/feishu",
-    "Masuk ke Feishu Open Platform open.feishu.cn → Buat aplikasi enterprise",
-    "Salin App Key dan App Secret dari halaman Kredensial",
-    "Tambahkan kemampuan Bot di App Capabilities, atur nama bot",
-    "Tambahkan izin yang diperlukan: im:message, im:message.p2p_msg:readonly, im:message.group_at_msg:readonly, im:message:send_as_bot, im:resource (gunakan \"Salin Permission JSON\" di bawah untuk impor batch)",
-    "Di Events & Callbacks, pilih \"Terima event melalui koneksi panjang\" (direkomendasikan, tidak perlu IP publik), tambahkan event: im.message.receive_v1, im.message.message_read_v1, im.chat.member.bot.added_v1, im.chat.member.bot.deleted_v1",
-    "Buat dan terbitkan versi di Version Management (diperlukan setelah setiap perubahan konfigurasi)",
-    "⚠️ Bot hanya bisa ditemukan di pencarian Feishu setelah diterbitkan"
+    "Install plugin: openclaw plugins install @openclaw/feishu (requires OpenClaw host >= 2026.4.10)",
+    "Open Feishu Open Platform open.feishu.cn/app → Create a self-built app",
+    "On the Credentials & Basic Info page, copy App ID and App Secret",
+    "In App Capabilities, add the Bot capability and set the bot name",
+    "On the Permissions page, add required scopes: im:message, im:message.p2p_msg:readonly, im:message.group_at_msg:readonly, im:message:send_as_bot, im:resource, contact:user.base:readonly (click \"Copy Permission JSON\" for bulk import)",
+    "In Events & Callbacks, choose \"Use long connection\" (WebSocket, recommended) and subscribe to: im.message.receive_v1, im.message.message_read_v1, im.chat.member.bot.added_v1, im.chat.member.bot.deleted_v1",
+    "In Version Management & Release, create a version and publish (required after every config/permission change)",
+    "⚠️ The bot only becomes searchable in Feishu after publishing"
   ],
-  "feishuPitfall": "⚠️ Kesalahan umum: 1) Harus tambahkan event im.message.receive_v1 di Events & Callbacks, atau bot bisa mengirim tapi tidak menerima pesan; 2) Metode subscription event harus cocok dengan connectionMode: Long Connection → websocket (direkomendasikan), Request URL → webhook; 3) Harus buat dan terbitkan versi baru setelah setiap perubahan izin/konfigurasi; 4) Bot tidak memiliki root penyimpanan cloud — Anda harus berbagi folder ke bot secara manual agar drive tools berfungsi; 5) Kegagalan instal Windows: unduh tgz manual dan instal secara lokal",
+  "feishuPitfall": "⚠️ Common pitfalls: 1) You must subscribe im.message.receive_v1 under Events & Callbacks — otherwise the bot sends but never receives messages; 2) Event subscription must match connectionMode — long connection → websocket (recommended), request URL → webhook; 3) After every permission/config change you must re-publish the version; 4) Bots have no Drive root folder — share a folder with the bot to use drive tools; 5) OpenClaw host must be >= 2026.4.10 (required by @openclaw/feishu >= 2026.4.19-beta.1); 6) If one-click install fails, run `openclaw plugins install @openclaw/feishu` in a terminal directly.",
   "feishuHelpUrl": "https://open.feishu.cn/app",
   "dingtalkPrep": [
     "Instal plugin DingTalk: openclaw plugins install @openclaw-china/dingtalk",
@@ -293,5 +293,9 @@
     "(Opsional) Untuk render Markdown, ajukan izin template Markdown secara terpisah (review memerlukan waktu)"
   ],
   "qqbotPitfall": "⚠️ Kesalahan umum: 1) Harus aktifkan izin dan tambahkan anggota tes, jika tidak tidak ada pesan diterima; 2) @mention wajib di chat grup; 3) Markdown memerlukan izin terpisah — atur markdownSupport: false jika tidak diaktifkan; 4) QQ Bot masih dalam beta, beberapa fitur mungkin terbatas",
-  "qqbotHelpUrl": "https://q.qq.com"
+  "qqbotHelpUrl": "https://q.qq.com",
+  "pluginForceReinstall": "Force reinstall (uninstall residue first)",
+  "pluginSecurityWarning": "⚠️ The upstream installer blocked this plugin due to dangerous code patterns (often a false-positive on test files shipped in the npm tarball). Only proceed if you trust this plugin source.",
+  "pluginForceUnsafeInstall": "Force install (skip security scan)",
+  "pluginForceUnsafeConfirm": "This will install the plugin WITHOUT the upstream security scan. Continue only if you trust the source. Proceed?"
 }

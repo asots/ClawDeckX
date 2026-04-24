@@ -12,6 +12,8 @@ export interface OpenClawUpdateEvent {
 interface RunOptions {
   mapStepMessage?: (event: OpenClawUpdateEvent) => string;
   maxLogLines?: number;
+  /** 可选 npm tag；空/省略 = @latest。支持降级。 */
+  tag?: string;
 }
 
 export function useOpenClawUpdate() {
@@ -35,6 +37,7 @@ export function useOpenClawUpdate() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
+        body: JSON.stringify({ tag: options?.tag || '' }),
       });
       if (!resp.ok) {
         throw new Error(`HTTP ${resp.status}`);

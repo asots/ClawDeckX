@@ -149,16 +149,16 @@
   "whatsappPitfall": "⚠️ よくある落とし穴：1) ゲートウェイはNode.jsで実行必須。WhatsApp (Baileys) はBunでは不安定で頻繁に切断されます；2) 非公式プロトコル使用によるアカウント停止のリスクがあります。専用番号の使用を強く推奨；3) QRコードの有効期限は約20秒。タイムアウト時は新しいコードの生成を待つ必要があります；4) Session破損時は~/.openclaw/sessions/の該当ファイルを削除して再スキャン；5) WhatsAppは最大4台のデバイスリンクが可能で、超過すると接続不可",
   "signalPitfall": "⚠️ よくある落とし穴：1) Java 21+未インストールが最も一般的な失敗原因；2) ARM Linuxではlibsignal-clientネイティブライブラリの手動コンパイルが必要な場合があります；3) signal-cli link（デバイスリンクモード）を使用。register（新番号登録）ではありません；4) ターミナルでのQRコード表示にはUnicodeサポートが必要。SSHリモート操作では表示が異常になる場合があります；5) Signalにはメッセージ頻度の厳しい制限があり、一斉送信でスロットリングが発生しやすい",
   "feishuPrep": [
-    "Feishuプラグインをインストール：openclaw plugins install @openclaw/feishu",
-    "Feishu Open Platform open.feishu.cnにログイン → エンタープライズアプリを作成",
-    "認証情報ページからApp KeyとApp Secretをコピー",
-    "App CapabilitiesでBot機能を追加、Bot名を設定",
-    "必要な権限を追加：im:message, im:message.p2p_msg:readonly, im:message.group_at_msg:readonly, im:message:send_as_bot, im:resource（下の\"権限JSONをコピー\"で一括インポート可能）",
-    "Events & Callbacksで\"長接続でイベントを受信\"を選択（推奨、パブリックIP不要）、イベントを追加：im.message.receive_v1, im.message.message_read_v1, im.chat.member.bot.added_v1, im.chat.member.bot.deleted_v1",
-    "バージョン管理でバージョンを作成・公開（設定変更後は毎回必要）",
-    "⚠️ Botは公開後にのみFeishu検索に表示されます"
+    "プラグインをインストール: openclaw plugins install @openclaw/feishu（OpenClaw ホスト ≥ 2026.4.10 が必要）",
+    "Feishu 開放プラットフォーム open.feishu.cn/app → カスタムアプリを作成",
+    "「認証情報と基本情報」ページで App ID と App Secret をコピー",
+    "「アプリ機能」で Bot 機能を追加し、Bot 名を設定",
+    "「権限管理」ページで必要な権限を追加: im:message, im:message.p2p_msg:readonly, im:message.group_at_msg:readonly, im:message:send_as_bot, im:resource, contact:user.base:readonly（「権限 JSON をコピー」で一括インポート可能）",
+    "「イベントとコールバック」で「長連接でイベントを受信」（WebSocket 推奨）を選択し、以下を購読: im.message.receive_v1, im.message.message_read_v1, im.chat.member.bot.added_v1, im.chat.member.bot.deleted_v1",
+    "「バージョン管理とリリース」でバージョンを作成して公開（権限/設定変更ごとに再公開が必要）",
+    "⚠️ 公開後にのみ Feishu 内で Bot を検索可能"
   ],
-  "feishuPitfall": "⚠️ よくある落とし穴：1) im.message.receive_v1イベントを追加しないとBotはメッセージを送信できても受信できません；2) イベント購読方式はconnectionModeと一致させる必要があります：長接続→websocket（推奨）、リクエストアドレス→webhook；3) 権限/設定変更後は毎回「バージョン作成して公開」が必要；4) Botには独自のクラウドスペースルートディレクトリがないため、フォルダを手動でBotに共有する必要があります",
+  "feishuPitfall": "⚠️ よくある落とし穴: 1) 「イベントとコールバック」で im.message.receive_v1 を購読しないと Bot は送信はできても受信できません; 2) イベント購読は connectionMode と一致させる必要があります (長連接 → websocket 推奨 / Request URL → webhook); 3) 権限/設定を変更するたびにバージョンを再公開する必要があります; 4) Bot には自分の Drive ルートフォルダがないため、フォルダを共有する必要があります; 5) OpenClaw ホストは >= 2026.4.10 が必要 (@openclaw/feishu >= 2026.4.19-beta.1 の要件); 6) ワンクリックインストールが失敗した場合は、ターミナルで直接 `openclaw plugins install @openclaw/feishu` を実行してください。",
   "feishuHelpUrl": "https://open.feishu.cn/app",
   "dingtalkPrep": [
     "DingTalkプラグインをインストール：openclaw plugins install @openclaw-china/dingtalk",
@@ -293,5 +293,9 @@
     "（オプション）MarkdownレンダリングにはMarkdownテンプレート権限を別途申請（審査に時間がかかります）"
   ],
   "qqbotPitfall": "⚠️ よくある落とし穴：1) 権限を有効にしてテストメンバーを追加しないとメッセージを受信できません；2) グループチャットでは@Botが必要；3) Markdownには別途権限申請が必要。未開通時はmarkdownSupport: falseに設定可能；4) QQ Botはまだベータ版で、一部機能が制限される場合があります",
-  "qqbotHelpUrl": "https://q.qq.com"
+  "qqbotHelpUrl": "https://q.qq.com",
+  "pluginForceReinstall": "強制再インストール（残存ファイルを先にクリア）",
+  "pluginSecurityWarning": "⚠️ 上流のインストーラが「危険なコードパターン」を検出してインストールをブロックしました（npm tgz 内のテストファイルへの誤検出が多いです）。ソースを信頼する場合のみ続行してください。",
+  "pluginForceUnsafeInstall": "強制インストール（セキュリティスキャンをスキップ）",
+  "pluginForceUnsafeConfirm": "この操作は上流のセキュリティスキャンを行わずにプラグインをインストールします。ソースを信頼する場合のみ続行しますか？"
 }

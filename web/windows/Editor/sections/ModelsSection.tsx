@@ -325,6 +325,9 @@ const ModelPathSearch: React.FC<ModelPathSearchProps> = ({ value, onChange, opti
   const [hl, setHl] = useState(-1);
   const [localInput, setLocalInput] = useState('');
   const ref = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  // v0.9.2：scrollIntoView 只在键盘导航时触发，hover 不参与，避免反馈循环让"点不中列表项"。
+  const hlFromKbdRef = useRef(false);
 
   const displayValue = clearOnSelect ? localInput : value;
 
@@ -347,6 +350,15 @@ const ModelPathSearch: React.FC<ModelPathSearchProps> = ({ value, onChange, opti
     setOpen(false); setHl(-1);
   };
 
+  // 只在键盘导航时把高亮项滚入视口；hover 不触发，避免滚动→鼠标下方元素变化→再次 hover 反馈循环。
+  useEffect(() => {
+    if (!open || hl < 0 || !listRef.current) return;
+    if (!hlFromKbdRef.current) return;
+    hlFromKbdRef.current = false;
+    const el = listRef.current.querySelector<HTMLElement>(`[data-hl-idx="${hl}"]`);
+    el?.scrollIntoView({ block: 'nearest' });
+  }, [hl, open]);
+
   return (
     <div ref={ref} className="relative">
       <div className="relative">
@@ -359,8 +371,8 @@ const ModelPathSearch: React.FC<ModelPathSearchProps> = ({ value, onChange, opti
           }}
           onFocus={() => { setOpen(true); setHl(-1); }}
           onKeyDown={e => {
-            if (e.key === 'ArrowDown' && open && filtered.length > 0) { e.preventDefault(); setHl(i => (i + 1) % filtered.length); }
-            else if (e.key === 'ArrowUp' && open && filtered.length > 0) { e.preventDefault(); setHl(i => (i <= 0 ? filtered.length - 1 : i - 1)); }
+            if (e.key === 'ArrowDown' && open && filtered.length > 0) { e.preventDefault(); hlFromKbdRef.current = true; setHl(i => (i + 1) % filtered.length); }
+            else if (e.key === 'ArrowUp' && open && filtered.length > 0) { e.preventDefault(); hlFromKbdRef.current = true; setHl(i => (i <= 0 ? filtered.length - 1 : i - 1)); }
             else if (e.key === 'Enter') {
               e.preventDefault();
               if (hl >= 0 && hl < filtered.length) handleSelect(filtered[hl].path);
@@ -371,12 +383,12 @@ const ModelPathSearch: React.FC<ModelPathSearchProps> = ({ value, onChange, opti
           className="w-full h-8 ps-8 pe-3 theme-field rounded-md text-xs font-mono outline-none focus:border-primary" />
       </div>
       {open && filtered.length > 0 && (
-        <div className="absolute start-0 end-0 mt-1 max-h-48 overflow-y-auto custom-scrollbar neon-scrollbar rounded-lg border border-slate-200 dark:border-white/10 bg-[var(--color-surface)] dark:bg-[var(--color-surface-overlay)] backdrop-blur-xl shadow-xl z-50">
+        <div ref={listRef} className="absolute start-0 end-0 mt-1 max-h-48 overflow-y-auto custom-scrollbar neon-scrollbar rounded-lg border border-slate-200 dark:border-white/10 bg-[var(--color-surface)] dark:bg-[var(--color-surface-overlay)] backdrop-blur-xl shadow-xl z-50">
           {filtered.map((o, idx) => (
             <button key={o.path}
+              data-hl-idx={idx}
               onMouseEnter={() => setHl(idx)}
               onClick={() => handleSelect(o.path)}
-              ref={el => { if (idx === hl && el) el.scrollIntoView({ block: 'nearest' }); }}
               className={`w-full text-start px-3 py-2 flex items-center gap-2 transition-colors border-b border-slate-100 dark:border-white/[0.06] last:border-b-0 ${idx === hl ? 'bg-primary/10 dark:bg-primary/20' : 'hover:bg-slate-50 dark:hover:bg-white/[0.06]'}`}>
               <div className="min-w-0 flex-1">
                 <div className="text-[11px] font-mono font-bold text-[var(--color-text)] truncate">{o.path}</div>
@@ -478,6 +490,11 @@ export const ModelsSection: React.FC<SectionProps> = ({ config, schema, setField
   const [addModelSearchOpen, setAddModelSearchOpen] = useState(false);
   const [addModelHighlight, setAddModelHighlight] = useState(-1);
   const addModelSearchRef = useRef<HTMLDivElement>(null);
+  const addModelListRef = useRef<HTMLDivElement>(null);
+  // v0.9.2：scrollIntoView 只在键盘导航时触发，否则 hover→setHighlight→scroll→鼠标下方元素变化→
+  // 再次 hover 形成反馈循环，导致"点不中列表项"。下同 addModelHlFromKbdRef。
+  const modelHlFromKbdRef = useRef(false);
+  const addModelHlFromKbdRef = useRef(false);
 
   useEffect(() => {
     if (!modelSearchOpen) return;
@@ -496,6 +513,23 @@ export const ModelsSection: React.FC<SectionProps> = ({ config, schema, setField
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [addModelSearchOpen]);
+
+  // 仅键盘导航时才把高亮项滚入视口；hover 不参与，避免反馈循环。
+  useEffect(() => {
+    if (!modelSearchOpen || modelHighlight < 0 || !modelListRef.current) return;
+    if (!modelHlFromKbdRef.current) return;
+    modelHlFromKbdRef.current = false;
+    const el = modelListRef.current.querySelector<HTMLElement>(`[data-mhl-idx="${modelHighlight}"]`);
+    el?.scrollIntoView({ block: 'nearest' });
+  }, [modelHighlight, modelSearchOpen]);
+
+  useEffect(() => {
+    if (!addModelSearchOpen || addModelHighlight < 0 || !addModelListRef.current) return;
+    if (!addModelHlFromKbdRef.current) return;
+    addModelHlFromKbdRef.current = false;
+    const el = addModelListRef.current.querySelector<HTMLElement>(`[data-amhl-idx="${addModelHighlight}"]`);
+    el?.scrollIntoView({ block: 'nearest' });
+  }, [addModelHighlight, addModelSearchOpen]);
 
   useEffect(() => {
     if (showAddModel) discoverModelsForProvider(showAddModel);
@@ -1106,8 +1140,8 @@ export const ModelsSection: React.FC<SectionProps> = ({ config, schema, setField
                           onChange={e => { setWizSearchInput(e.target.value); setModelSearchOpen(true); setModelHighlight(-1); }}
                           onFocus={() => { setModelSearchOpen(true); setModelHighlight(-1); }}
                           onKeyDown={e => {
-                            if (e.key === 'ArrowDown' && modelSearchOpen && filtered.length > 0) { e.preventDefault(); setModelHighlight(i => (i + 1) % filtered.length); }
-                            else if (e.key === 'ArrowUp' && modelSearchOpen && filtered.length > 0) { e.preventDefault(); setModelHighlight(i => (i <= 0 ? filtered.length - 1 : i - 1)); }
+                            if (e.key === 'ArrowDown' && modelSearchOpen && filtered.length > 0) { e.preventDefault(); modelHlFromKbdRef.current = true; setModelHighlight(i => (i + 1) % filtered.length); }
+                            else if (e.key === 'ArrowUp' && modelSearchOpen && filtered.length > 0) { e.preventDefault(); modelHlFromKbdRef.current = true; setModelHighlight(i => (i <= 0 ? filtered.length - 1 : i - 1)); }
                             else if (e.key === 'Enter') {
                               e.preventDefault();
                               if (modelHighlight >= 0 && modelHighlight < filtered.length) addModelToList(filtered[modelHighlight].id);
@@ -1127,9 +1161,9 @@ export const ModelsSection: React.FC<SectionProps> = ({ config, schema, setField
                       <div ref={modelListRef} className="mt-1 max-h-52 overflow-y-auto custom-scrollbar neon-scrollbar rounded-lg border border-slate-200 dark:border-white/10 theme-panel shadow-xl" style={{ position: 'relative', zIndex: 50 }}>
                         {filtered.map((m, idx) => (
                           <button key={m.id}
+                            data-mhl-idx={idx}
                             onMouseEnter={() => setModelHighlight(idx)}
                             onClick={() => addModelToList(m.id)}
-                            ref={el => { if (idx === modelHighlight && el) el.scrollIntoView({ block: 'nearest' }); }}
                             className={`w-full text-start px-3 py-2.5 flex items-center justify-between gap-2 transition-colors border-b border-slate-100 dark:border-white/[0.04] last:border-b-0 ${idx === modelHighlight ? 'bg-primary/10 dark:bg-primary/20' : 'hover:bg-slate-50 dark:hover:bg-white/[0.04]'}`}>
                             <div className="min-w-0">
                               <div className="text-[11px] font-bold text-[var(--color-text)] dark:text-white/80 truncate">{m.name}</div>
@@ -1518,8 +1552,8 @@ export const ModelsSection: React.FC<SectionProps> = ({ config, schema, setField
                       if (addModelSearchOpen && addModelDiscovered.length > 0) {
                         const q = newModel.id.toLowerCase();
                         const filtered = addModelDiscovered.filter(m => !q || m.id.toLowerCase().includes(q) || (m.name && m.name.toLowerCase().includes(q)));
-                        if (e.key === 'ArrowDown') { e.preventDefault(); setAddModelHighlight(i => (i + 1) % filtered.length); }
-                        else if (e.key === 'ArrowUp') { e.preventDefault(); setAddModelHighlight(i => (i <= 0 ? filtered.length - 1 : i - 1)); }
+                        if (e.key === 'ArrowDown') { e.preventDefault(); addModelHlFromKbdRef.current = true; setAddModelHighlight(i => (i + 1) % filtered.length); }
+                        else if (e.key === 'ArrowUp') { e.preventDefault(); addModelHlFromKbdRef.current = true; setAddModelHighlight(i => (i <= 0 ? filtered.length - 1 : i - 1)); }
                         else if (e.key === 'Enter' && addModelHighlight >= 0 && addModelHighlight < filtered.length) {
                           e.preventDefault();
                           setNewModel({ ...newModel, id: filtered[addModelHighlight].id, name: filtered[addModelHighlight].name || '' });
@@ -1540,15 +1574,15 @@ export const ModelsSection: React.FC<SectionProps> = ({ config, schema, setField
                     !existingModels.includes(m.id)
                   );
                   return filtered.length > 0 ? (
-                    <div className="mt-1 max-h-48 overflow-y-auto custom-scrollbar neon-scrollbar rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-[#2a2a2e] shadow-xl z-50 relative">
+                    <div ref={addModelListRef} className="mt-1 max-h-48 overflow-y-auto custom-scrollbar neon-scrollbar rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-[#2a2a2e] shadow-xl z-50 relative">
                       {filtered.map((m, idx) => (
                         <button key={m.id}
+                          data-amhl-idx={idx}
                           onMouseEnter={() => setAddModelHighlight(idx)}
                           onClick={() => {
                             setNewModel({ ...newModel, id: m.id, name: m.name || '' });
                             setAddModelSearchOpen(false); setAddModelHighlight(-1);
                           }}
-                          ref={el => { if (idx === addModelHighlight && el) el.scrollIntoView({ block: 'nearest' }); }}
                           className={`w-full text-start px-3 py-2 flex items-center gap-2 transition-colors border-b border-slate-100 dark:border-white/[0.04] last:border-b-0 ${idx === addModelHighlight ? 'bg-primary/10 dark:bg-primary/20' : 'hover:bg-slate-50 dark:hover:bg-white/[0.04]'}`}>
                           <div className="min-w-0 flex-1">
                             <div className="text-[11px] font-mono font-bold text-[var(--color-text)] dark:text-white/80 truncate">{m.id}</div>

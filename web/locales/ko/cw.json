@@ -149,16 +149,16 @@
   "whatsappPitfall": "⚠️ 주의: 1) 게이트웨이는 Node.js에서 실행 필수, WhatsApp (Baileys)은 Bun에서 불안정하여 자주 끊김; 2) 비공식 프로토콜 사용으로 계정 정지 위험, 전용 번호 사용 강력 권장; 3) QR 코드 유효 시간 약 20초, 만료 시 새 코드 생성 대기; 4) Session 손상 시 ~/.openclaw/sessions/ 파일 삭제 후 재스캔; 5) WhatsApp 최대 4대 기기 연결, 초과 시 연결 불가",
   "signalPitfall": "⚠️ 주의: 1) Java 21+ 미설치가 가장 흔한 실패 원인; 2) ARM Linux에서 libsignal-client 네이티브 라이브러리 수동 컴파일 필요 가능; 3) signal-cli link (기기 연결 모드) 사용, register (신규 번호 등록)가 아님; 4) 터미널 QR 코드 표시에 Unicode 지원 필요, SSH에서 표시 이상 가능; 5) Signal은 메시지 빈도 제한이 엄격하여 대량 전송 시 스로틀링 발생",
   "feishuPrep": [
-    "Feishu 플러그인 설치: openclaw plugins install @openclaw/feishu",
-    "Feishu 오픈 플랫폼 open.feishu.cn에 로그인 → 기업 앱을 생성하세요",
-    "인증 정보 페이지에서 App Key와 App Secret을 복사하세요",
-    "앱 기능에서 Bot 기능을 추가하고 Bot 이름을 설정하세요",
-    "필수 권한 추가: im:message, im:message.p2p_msg:readonly, im:message.group_at_msg:readonly, im:message:send_as_bot, im:resource (아래 '권한 JSON 복사'로 일괄 가져오기 가능)",
-    "이벤트 및 콜백에서 '장기 연결로 이벤트 수신' 선택 (권장, 공인 IP 불필요), 이벤트 추가: im.message.receive_v1, im.message.message_read_v1, im.chat.member.bot.added_v1, im.chat.member.bot.deleted_v1",
-    "버전 관리에서 버전을 생성하고 게시하세요 (설정 변경 후 매번 필요)",
-    "⚠️ 버전 게시 후에만 Feishu 검색에서 Bot을 찾을 수 있습니다"
+    "플러그인 설치: openclaw plugins install @openclaw/feishu (OpenClaw 호스트 ≥ 2026.4.10 필요)",
+    "Feishu 오픈 플랫폼 open.feishu.cn/app → 기업 자체 개발 앱 생성",
+    "\"자격 증명 및 기본 정보\" 페이지에서 App ID 및 App Secret 복사",
+    "\"앱 기능\"에서 Bot 기능 추가 및 Bot 이름 설정",
+    "\"권한 관리\" 페이지에서 필수 권한 추가: im:message, im:message.p2p_msg:readonly, im:message.group_at_msg:readonly, im:message:send_as_bot, im:resource, contact:user.base:readonly",
+    "\"이벤트 및 콜백\"에서 \"장기 연결로 이벤트 수신\" (WebSocket 권장) 선택 후 구독: im.message.receive_v1, im.message.message_read_v1, im.chat.member.bot.added_v1, im.chat.member.bot.deleted_v1",
+    "\"버전 관리 및 배포\"에서 버전 생성 후 배포 (권한/설정 변경 시 매번 재배포 필요)",
+    "⚠️ 배포 후에만 Feishu 에서 Bot 검색 가능"
   ],
-  "feishuPitfall": "⚠️ 주의: 1) im.message.receive_v1 이벤트를 추가하지 않으면 Bot이 메시지를 보낼 수 있지만 받을 수 없음; 2) 이벤트 구독 방식은 connectionMode와 일치 필요: 장기 연결→websocket(권장), 요청 주소→webhook; 3) 권한/설정 변경 후 매번 '버전 생성 및 게시' 필요; 4) Bot에는 자체 클라우드 스페이스 루트 디렉터리가 없어 폴더를 수동 공유 필요",
+  "feishuPitfall": "⚠️ 일반적인 함정: 1) \"이벤트 및 콜백\"에서 im.message.receive_v1 를 구독해야 하며, 그렇지 않으면 봇이 메시지를 보낼 수는 있지만 받을 수 없습니다; 2) 이벤트 구독은 connectionMode 와 일치해야 합니다 (장기 연결 → websocket 권장, 요청 URL → webhook); 3) 권한/설정을 변경할 때마다 버전을 재배포해야 적용됩니다; 4) 봇은 자체 Drive 루트 폴더가 없으므로 수동으로 폴더를 공유해야 합니다; 5) OpenClaw 호스트는 >= 2026.4.10 이어야 합니다 (@openclaw/feishu >= 2026.4.19-beta.1 요구사항); 6) 원클릭 설치가 실패하면 터미널에서 직접 `openclaw plugins install @openclaw/feishu` 을 실행하세요.",
   "feishuHelpUrl": "https://open.feishu.cn/app",
   "dingtalkPrep": [
     "DingTalk 플러그인 설치: openclaw plugins install @openclaw-china/dingtalk",
@@ -293,5 +293,9 @@
     "(선택) Markdown 렌더링이 필요하면 Markdown 템플릿 권한을 별도로 신청하세요 (심사에 시간이 소요됩니다)"
   ],
   "qqbotPitfall": "⚠️ 주의: 1) 권한 활성화 및 테스트 멤버 추가 필수, 아니면 메시지 수신 불가; 2) 그룹 채팅에서 @Bot 필요; 3) Markdown은 별도 권한 신청 필요; 4) QQ Bot은 아직 베타, 일부 기능 제한 가능",
-  "qqbotHelpUrl": "https://q.qq.com"
+  "qqbotHelpUrl": "https://q.qq.com",
+  "pluginForceReinstall": "강제 재설치 (잔여 파일 먼저 정리)",
+  "pluginSecurityWarning": "⚠️ 상위 설치기가 \"위험한 코드 패턴\"을 감지해 플러그인 설치를 차단했습니다 (npm tgz 의 테스트 파일에 대한 오탐인 경우가 많음). 소스를 신뢰하는 경우에만 진행하세요.",
+  "pluginForceUnsafeInstall": "강제 설치 (보안 스캔 건너뛰기)",
+  "pluginForceUnsafeConfirm": "이 작업은 상위 보안 스캔을 건너뛰고 플러그인을 설치합니다. 소스를 신뢰하는 경우에만 계속하시겠습니까?"
 }

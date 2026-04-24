@@ -259,6 +259,9 @@ const TerminalPage: React.FC<Props> = ({ language }) => {
   const [showTemplatesDropdown, setShowTemplatesDropdown] = useState(false);
   const [templateSearch, setTemplateSearch] = useState('');
   const [templateHoverIndex, setTemplateHoverIndex] = useState(0);
+  // v0.9.2：scrollIntoView 只在键盘导航/首次打开时触发，否则 hover→setHl→scroll→漂移→
+  // 再次 hover 会形成反馈循环导致点不中列表项。
+  const templateHoverFromKbdRef = useRef(false);
   const templatesDropdownRef = useRef<HTMLDivElement>(null);
   const templatesButtonRef = useRef<HTMLButtonElement>(null);
   const templateSearchInputRef = useRef<HTMLInputElement>(null);
@@ -1385,6 +1388,8 @@ const TerminalPage: React.FC<Props> = ({ language }) => {
 
   useEffect(() => {
     if (!showTemplatesDropdown || !templateListRef.current) return;
+    if (!templateHoverFromKbdRef.current) return;
+    templateHoverFromKbdRef.current = false;
     const el = templateListRef.current.querySelector<HTMLButtonElement>(`[data-tpl-index="${templateHoverIndex}"]`);
     if (el) el.scrollIntoView({ block: 'nearest' });
   }, [templateHoverIndex, showTemplatesDropdown]);
@@ -1418,9 +1423,11 @@ const TerminalPage: React.FC<Props> = ({ language }) => {
   const handleTemplateSearchKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'ArrowDown') {
       e.preventDefault();
+      templateHoverFromKbdRef.current = true;
       setTemplateHoverIndex((i) => Math.min(i + 1, Math.max(filteredTemplates.length - 1, 0)));
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
+      templateHoverFromKbdRef.current = true;
       setTemplateHoverIndex((i) => Math.max(i - 1, 0));
     } else if (e.key === 'Enter') {
       e.preventDefault();

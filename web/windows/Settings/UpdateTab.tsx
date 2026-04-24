@@ -2,16 +2,34 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { Language, dispatchOpenWindow } from '../../types';
 import { getTranslation } from '../../locales';
 import { selfUpdateApi, hostInfoApi, serviceApi, gatewayApi, runtimeApi } from '../../services/api';
-import type { SelfUpdateInfo, UpdateCheckResult, UpdateHistoryEntry, RuntimeStatus } from '../../services/api';
+import type { SelfUpdateInfo, UpdateCheckResult, UpdateHistoryEntry, RuntimeStatus, ReleaseSummary } from '../../services/api';
 import { useToast } from '../../components/Toast';
 import { useConfirm } from '../../components/ConfirmDialog';
 import CustomSelect from '../../components/CustomSelect';
+import VersionPicker, { VersionPickerLabels } from '../../components/VersionPicker';
 import TranslateModelPicker from '../../components/TranslateModelPicker';
 import { SmartLink } from '../../components/SmartLink';
 import { useOpenClawUpdate } from '../../hooks/useOpenClawUpdate';
 
 declare const __APP_VERSION__: string;
 declare const __BUILD_NUMBER__: string;
+
+/**
+ * 宽松语义比较：仅看前 3 段 numeric，忽略 prerelease 后缀；用于 UI 层降级判断。
+ * 返回正数表示 a > b，0 相等，负数 a < b。
+ * 后端已有精确比较；前端这里只需"老/新/相同"三态即可。
+ */
+function compareSemverLoose(a: string, b: string): number {
+  const parse = (s: string): number[] => s.replace(/^v/, '').split(/[^\d]/).filter(Boolean).slice(0, 3).map(n => parseInt(n, 10) || 0);
+  const pa = parse(a);
+  const pb = parse(b);
+  for (let i = 0; i < 3; i++) {
+    const x = pa[i] ?? 0;
+    const y = pb[i] ?? 0;
+    if (x !== y) return x - y;
+  }
+  return 0;
+}
 
 export interface UpdateTabProps {
   s: any;
@@ -46,6 +64,26 @@ const UpdateTab: React.FC<UpdateTabProps> = ({ s, language, inputCls, rowCls }) 
   const [selfUpdateProgress, setSelfUpdateProgress] = useState<{ stage: string; percent: number; error?: string; done?: boolean } | null>(null);
   const [selfUpdateVersion, setSelfUpdateVersion] = useState<SelfUpdateInfo | null>(null);
   const [updateChannel, setUpdateChannel] = useState<'stable' | 'beta'>('stable');
+  // v0.9.2 指定版本升级：后端按需返回最近 N 个 release；picker 改变后重新拉取该 tag 的 check
+  //   以覆盖 selfUpdateInfo，复用原有的 downloadUrl → apply 流水线，天然支持降级。
+  const [releaseList, setReleaseList] = useState<ReleaseSummary[]>([]);
+  const [selectedTag, setSelectedTag] = useState<string>('');        // '' = 最新 stable（默认行为）
+  const [loadingReleases, setLoadingReleases] = useState(false);
+  // OpenClaw 指定版本升级：npm 包走 tag 直装；后端由 hostInfoApi.releases 返回 GitHub 列表。
+  const [ocReleaseList, setOcReleaseList] = useState<ReleaseSummary[]>([]);
+  const [ocSelectedTag, setOcSelectedTag] = useState<string>('');
+  const [ocLoadingReleases, setOcLoadingReleases] = useState(false);
+
+  // 共用版本选择器的 i18n 标签——避免 ClawDeckX / OpenClaw 两处重复构造。
+  const versionPickerLabels: VersionPickerLabels = useMemo(() => ({
+    title: s.selfUpdatePickVersion || 'Pick version',
+    latest: s.selfUpdateLatestStable || 'Latest stable',
+    current: s.selfUpdateTagCurrent || 'current',
+    older: s.selfUpdateTagOlder || 'older',
+    beta: s.selfUpdateTagBeta || 'beta',
+    noAsset: s.selfUpdateTagNoAsset || 'no asset',
+    refresh: s.selfUpdateRefreshReleases || 'Refresh version list',
+  }), [s]);
   const [updateHistory, setUpdateHistory] = useState<UpdateHistoryEntry[]>([]);
   const lastAutoCheckRef = useRef<number>(0);
   const [lastCheckTime, setLastCheckTime] = useState<number | null>(null);
@@ -123,8 +161,77 @@ const UpdateTab: React.FC<UpdateTabProps> = ({ s, language, inputCls, rowCls }) 
     setSelfUpdateChecking(false);
   }, [updateChannel]);
 
+  // 加载 release 列表（用于"指定版本"下拉）。失败静默：下拉会空，不影响主流程。
+  const loadReleaseList = useCallback(async () => {
+    setLoadingReleases(true);
+    try {
+      const list = await selfUpdateApi.releases(20);
+      setReleaseList(Array.isArray(list) ? list : []);
+    } catch { /* ignore */ }
+    setLoadingReleases(false);
+  }, []);
+
+  // 加载 OpenClaw release 列表。与 ClawDeckX 对称；后端会按本地已装版本标记 current/older。
+  // 失败不影响主流程，但通过 console 打点便于定位（例如 GitHub rate limit / 网络）。
+  const loadOcReleaseList = useCallback(async () => {
+    setOcLoadingReleases(true);
+    try {
+      const list = await hostInfoApi.openclawReleases(20);
+      const arr = Array.isArray(list) ? list : [];
+      setOcReleaseList(arr);
+      if (arr.length === 0) {
+        console.warn('[UpdateTab] openclaw releases returned empty list');
+      }
+    } catch (err) {
+      console.error('[UpdateTab] openclaw releases fetch failed:', err);
+    }
+    setOcLoadingReleases(false);
+  }, []);
+
+  // OpenClaw 选择某个 tag 后只记录到本地 state；真正的安装发生在点击"执行更新"时
+  // （hook 会把 tag 带上去 POST body）。这里不需要像 ClawDeckX 那样重新 check，
+  // 因为 OpenClaw 的安装不依赖 downloadUrl，任意合法 npm tag 都能装。
+  const handleSelectOcTag = useCallback((tag: string) => {
+    setOcSelectedTag(tag);
+  }, []);
+
+  // 选择某个 tag 后：拉取该 release 的 check 结果，覆盖 selfUpdateInfo 以启用 apply。
+  const handleSelectTag = useCallback(async (tag: string) => {
+    setSelectedTag(tag);
+    setSelfUpdateProgress(null);
+    setTranslatedNotes(null);
+    setShowTranslated(false);
+    setNotesExpanded(false);
+    setSelfUpdateChecking(true);
+    try {
+      // tag 为空 = 最新 stable；否则精确 tag；beta 通道由 check-channel 处理。
+      const res = tag
+        ? await selfUpdateApi.check(tag)
+        : (updateChannel === 'beta' ? await selfUpdateApi.checkChannel('beta') : await selfUpdateApi.check());
+      setSelfUpdateInfo(res);
+    } catch {
+      setSelfUpdateInfo({ available: false, currentVersion: '', latestVersion: '', error: sRef.current.networkError });
+    }
+    setSelfUpdateChecking(false);
+  }, [updateChannel]);
+
   const handleSelfUpdateApply = useCallback(async () => {
     if (!selfUpdateInfo?.downloadUrl) return;
+    // v0.9.2 降级保护：仿 openclaw 的 --tag 行为，降级必须二次确认。
+    const cur = selfUpdateInfo.currentVersion || '';
+    const tgt = selfUpdateInfo.latestVersion || '';
+    const picked = releaseList.find(r => (r.tagName === selectedTag || r.tagName === `v${selectedTag}` || r.tagName.replace(/^v/, '') === selectedTag));
+    const isDowngrade = !!picked?.isOlder || (!!cur && !!tgt && compareSemverLoose(tgt, cur) < 0);
+    if (isDowngrade) {
+      const ok = await confirm({
+        title: sRef.current.selfUpdateDowngradeTitle || 'Downgrade version?',
+        message: (sRef.current.selfUpdateDowngradeMsg || 'Target {tgt} is older than current {cur}. Downgrading may drop newer data/features. Continue?').replace('{cur}', `v${cur}`).replace('{tgt}', `v${tgt}`),
+        confirmText: sRef.current.selfUpdateDowngradeConfirm || 'Downgrade',
+        cancelText: sRef.current.cancel || 'Cancel',
+        danger: true,
+      });
+      if (!ok) return;
+    }
     // Prompt user to backup before updating
     const wantBackup = await confirm({
       title: sRef.current.updateBackupTitle || 'Backup Recommended',
@@ -251,13 +358,30 @@ const UpdateTab: React.FC<UpdateTabProps> = ({ s, language, inputCls, rowCls }) 
       dispatchOpenWindow({ id: 'settings', tab: 'snapshot' });
       return;
     }
+    // 目标版本：picker 选中的 tag 优先；否则走默认 latest（沿用 ocUpdateInfo.latestVersion 文案）。
+    const tgtVersion = ocSelectedTag || ocUpdateInfo?.latestVersion || '?';
+    const curVersion = ocUpdateInfo?.currentVersion || '?';
     const ok = await confirm({
       title: sRef.current.openclawUpdateRun || 'Update OpenClaw',
-      message: `${sRef.current.openclawUpdateConfirm || 'Update OpenClaw from'} v${ocUpdateInfo?.currentVersion || '?'} → v${ocUpdateInfo?.latestVersion || '?'}`,
+      message: `${sRef.current.openclawUpdateConfirm || 'Update OpenClaw from'} v${curVersion} → v${tgtVersion}`,
       confirmText: sRef.current.openclawUpdateRun || 'Update',
       danger: false,
     });
     if (!ok) return;
+
+    // 降级保护：与 ClawDeckX 一致。选中的 tag 被后端标记为 older，或本地宽松比较低于 current。
+    const picked = ocReleaseList.find(r => r.tagName === ocSelectedTag || r.tagName === `v${ocSelectedTag}` || r.tagName.replace(/^v/, '') === ocSelectedTag);
+    const isDowngrade = !!picked?.isOlder || (!!ocSelectedTag && !!ocUpdateInfo?.currentVersion && compareSemverLoose(ocSelectedTag, ocUpdateInfo.currentVersion) < 0);
+    if (isDowngrade) {
+      const confirmDown = await confirm({
+        title: sRef.current.selfUpdateDowngradeTitle || 'Downgrade version?',
+        message: (sRef.current.selfUpdateDowngradeMsg || 'You are about to install an older version. Continue?')
+          + `\n\nv${curVersion} → v${ocSelectedTag}`,
+        confirmText: sRef.current.selfUpdateDowngradeConfirm || 'Downgrade anyway',
+        danger: true,
+      });
+      if (!confirmDown) return;
+    }
     try {
       if (isDockerRuntime) {
         setRuntimeOcUpdating(true);
@@ -301,11 +425,13 @@ const UpdateTab: React.FC<UpdateTabProps> = ({ s, language, inputCls, rowCls }) 
         }
         setRuntimeOcProgress(100);
       } else {
-        await runOcUpdate();
+        await runOcUpdate({ tag: ocSelectedTag || '' });
         toast('success', sRef.current.openclawUpdateOk);
         await new Promise(r => setTimeout(r, 1500));
         const res = await hostInfoApi.checkUpdate();
         setOcUpdateInfo({ ...res, available: false });
+        // 装完新版本后重新拉 release 列表（current/older 标记需要刷新）。
+        loadOcReleaseList();
       }
     } catch {
       toast('error', isDockerRuntime ? (sRef.current.runtimeUpdateFailed || sRef.current.openclawUpdateFailed) : sRef.current.openclawUpdateFailed);
@@ -314,7 +440,7 @@ const UpdateTab: React.FC<UpdateTabProps> = ({ s, language, inputCls, rowCls }) 
         setRuntimeOcUpdating(false);
       }
     }
-  }, [runOcUpdate, toast, confirm, ocUpdateInfo, isDockerRuntime, loadRuntimeStatus]);
+  }, [runOcUpdate, toast, confirm, ocUpdateInfo, ocSelectedTag, ocReleaseList, isDockerRuntime, loadRuntimeStatus, loadOcReleaseList]);
 
   // OpenClaw 升级日志自动滚动
   useEffect(() => {
@@ -447,6 +573,8 @@ const UpdateTab: React.FC<UpdateTabProps> = ({ s, language, inputCls, rowCls }) 
       }).catch(() => { });
       loadServiceStatus();
       loadRuntimeStatus();
+      loadReleaseList();
+      loadOcReleaseList();
       // Auto-check with 1-hour cache — skip if checked recently
       const now = Date.now();
       if (now - lastAutoCheckRef.current > UPDATE_CHECK_CACHE_MS) {
@@ -535,6 +663,18 @@ const UpdateTab: React.FC<UpdateTabProps> = ({ s, language, inputCls, rowCls }) 
               v{__APP_VERSION__} <span className="font-normal text-slate-400 dark:text-white/30">(build {__BUILD_NUMBER__})</span>
             </span>
           </div>
+
+          {/* v0.9.2 指定版本升级：对齐 openclaw update --tag 体验；列出最近 20 个 release
+              （含 prerelease），支持降级。留空 = 最新 stable，保持原有默认行为。
+              样式对齐上方 TranslateModelPicker：label + h-9 CustomSelect + h-9 refresh 按钮。 */}
+          <VersionPicker
+            value={selectedTag}
+            onChange={(v) => void handleSelectTag(v)}
+            releases={releaseList}
+            loading={loadingReleases}
+            onRefresh={() => void loadReleaseList()}
+            labels={versionPickerLabels}
+          />
 
           {/* 状态 */}
           {!selfUpdateInfo && !selfUpdateChecking && (
@@ -747,7 +887,11 @@ const UpdateTab: React.FC<UpdateTabProps> = ({ s, language, inputCls, rowCls }) 
                   <button onClick={handleSelfUpdateApply} disabled={!selfUpdateInfo.downloadUrl}
                     className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-primary text-white text-[12px] font-bold disabled:opacity-40 hover:opacity-90 shadow-sm transition-all">
                     <span className="material-symbols-outlined text-[16px]">download</span>
-                    {selfUpdateInfo.downloadUrl ? (isDockerRuntime ? (s.runtimeOverlay || s.selfUpdateDownload) : s.selfUpdateDownload) : s.selfUpdateNoAsset}
+                    {selfUpdateInfo.downloadUrl
+                      ? (selectedTag
+                        ? `${isDockerRuntime ? (s.runtimeOverlay || s.selfUpdateDownload) : s.selfUpdateDownload} → v${selfUpdateInfo.latestVersion || selectedTag}`
+                        : (isDockerRuntime ? (s.runtimeOverlay || s.selfUpdateDownload) : s.selfUpdateDownload))
+                      : s.selfUpdateNoAsset}
                   </button>
                   {dismissedClawdeckx !== selfUpdateInfo.latestVersion && (
                     <button onClick={() => handleDismiss('clawdeckx', selfUpdateInfo.latestVersion!)} disabled={dismissing === 'clawdeckx'}
@@ -991,15 +1135,29 @@ const UpdateTab: React.FC<UpdateTabProps> = ({ s, language, inputCls, rowCls }) 
                   </button>
                 </div>
               )}
-              <div className="flex gap-2">
+              {/* v0.9.2 OpenClaw 一行布局：picker + 执行更新 + 忽略 + 查看更新。
+                  picker 宽度自适应（min 140 / max 240）；执行更新按钮 flex-1 吞剩余空间；
+                  Docker runtime 不渲染 picker，此时按钮行仍保留。picker 空值 = @latest。 */}
+              <div className="flex items-center gap-2 flex-wrap">
+                {!isDockerRuntime && (
+                  <VersionPicker
+                    inline
+                    value={ocSelectedTag}
+                    onChange={handleSelectOcTag}
+                    releases={ocReleaseList}
+                    loading={ocLoadingReleases}
+                    onRefresh={() => void loadOcReleaseList()}
+                    labels={versionPickerLabels}
+                  />
+                )}
                 <button onClick={handleOcUpdateRun} disabled={effectiveOcUpdating}
-                  className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-emerald-500 text-white text-[12px] font-bold disabled:opacity-40 hover:opacity-90 shadow-sm transition-all">
+                  className="flex-1 min-w-[140px] flex items-center justify-center gap-1.5 px-4 h-9 rounded-lg bg-emerald-500 text-white text-[12px] font-bold disabled:opacity-40 hover:opacity-90 shadow-sm transition-all">
                   <span className={`material-symbols-outlined text-[16px] ${effectiveOcUpdating ? 'animate-spin' : ''}`}>{effectiveOcUpdating ? 'progress_activity' : 'download'}</span>
-                  {effectiveOcUpdating ? s.openclawUpdateRunning : s.openclawUpdateRun}
+                  {effectiveOcUpdating ? s.openclawUpdateRunning : (ocSelectedTag ? `${s.openclawUpdateRun} → v${ocSelectedTag}` : s.openclawUpdateRun)}
                 </button>
                 {dismissedOpenclaw !== ocUpdateInfo.latestVersion && (
                   <button onClick={() => handleDismiss('openclaw', ocUpdateInfo.latestVersion!)} disabled={dismissing === 'openclaw'}
-                    className="flex items-center justify-center gap-1 px-4 py-2.5 rounded-lg border border-slate-200 dark:border-white/10 text-slate-500 dark:text-white/40 text-[12px] font-bold hover:bg-slate-50 dark:hover:bg-white/5 transition-all disabled:opacity-40"
+                    className="shrink-0 flex items-center justify-center gap-1 px-3 h-9 rounded-lg border border-slate-200 dark:border-white/10 text-slate-500 dark:text-white/40 text-[12px] font-bold hover:bg-slate-50 dark:hover:bg-white/5 transition-all disabled:opacity-40"
                     title={s.dismissTooltip || 'Ignore this version, no more reminders until a newer version is released'}>
                     <span className={`material-symbols-outlined text-[14px] ${dismissing === 'openclaw' ? 'animate-spin' : ''}`}>
                       {dismissing === 'openclaw' ? 'progress_activity' : 'notifications_off'}
@@ -1008,13 +1166,42 @@ const UpdateTab: React.FC<UpdateTabProps> = ({ s, language, inputCls, rowCls }) 
                   </button>
                 )}
                 <SmartLink href="https://github.com/openclaw/openclaw/releases"
-                  className="flex items-center justify-center gap-1 px-4 py-2.5 rounded-lg border border-slate-200 dark:border-white/10 text-slate-600 dark:text-white/60 text-[12px] font-bold hover:bg-slate-50 dark:hover:bg-white/5 transition-all">
+                  className="shrink-0 flex items-center justify-center gap-1 px-3 h-9 rounded-lg border border-slate-200 dark:border-white/10 text-slate-600 dark:text-white/60 text-[12px] font-bold hover:bg-slate-50 dark:hover:bg-white/5 transition-all">
                   <span className="material-symbols-outlined text-[14px]">open_in_new</span>
                   {s.viewReleases}
                 </SmartLink>
               </div>
             </div>
           )}
+          {/* 已是最新 / 未安装 / 出错状态下，available 分支不渲染主按钮，此处补齐 picker + 按钮同一行。
+              picker 总是渲染；"执行更新"按钮仅在选中 tag 时出现，防止误触"重装最新"。 */}
+          {!isDockerRuntime && ocReleaseList.length > 0 && !ocUpdateInfo?.available && (
+            <div className="mt-3 flex items-center gap-2">
+              <VersionPicker
+                inline
+                value={ocSelectedTag}
+                onChange={handleSelectOcTag}
+                releases={ocReleaseList}
+                loading={ocLoadingReleases}
+                onRefresh={() => void loadOcReleaseList()}
+                labels={versionPickerLabels}
+              />
+              {ocSelectedTag && (
+                <button
+                  onClick={handleOcUpdateRun}
+                  disabled={effectiveOcUpdating}
+                  className="shrink-0 flex items-center justify-center gap-1.5 px-4 h-9 rounded-lg bg-emerald-500 text-white text-[12px] font-bold disabled:opacity-40 hover:opacity-90 shadow-sm transition-all">
+                  <span className={`material-symbols-outlined text-[16px] ${effectiveOcUpdating ? 'animate-spin' : ''}`}>
+                    {effectiveOcUpdating ? 'progress_activity' : 'download'}
+                  </span>
+                  {effectiveOcUpdating
+                    ? s.openclawUpdateRunning
+                    : `${s.openclawUpdateRun || 'Update'} → v${ocSelectedTag}`}
+                </button>
+              )}
+            </div>
+          )}
+
           {/* 升级日志面板 */}
           {(effectiveOcUpdating || effectiveOcLogs.length > 0) && (
             <div className="mt-3 bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/10 rounded-lg overflow-hidden">

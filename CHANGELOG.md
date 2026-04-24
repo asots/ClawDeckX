@@ -1,4 +1,222 @@
-﻿# v0.2.3
+﻿# v0.4.0
+
+_2026-04-20_
+
+## What's Changed — AgentRoom 接入 OpenClaw Gateway Bridge（破坏性重构）
+
+### 🔥 Breaking Changes
+
+- **agentroom/bridge**: AgentRoom 推理后端从 `llmdirect` 切换为 **OpenClaw Gateway RPC**
+  所有 agent 发言、竞价裁判、会议纪要、todo 抽取统一走 `internal/agentroom/ocbridge.go` 上的
+  `agents.run` / `agents.result` / `sessions.history` / `sessions.ensure` / `sessions.delete` RPC。
+  ClawDeckX 不再直接持有 provider 凭证，工具调用与审批由 OpenClaw 原生 `exec.approval` 流处理。
+- **agentroom/api**: 移除 `POST /api/v1/agentroom/tool-approval/:id`（审批流已改由 OpenClaw UI 接管）
+- **agentroom/db**: `AgentRoomMember` 新增 `agent_id` / `session_key` / `thinking` 列；
+  创建房间时每个 agent 成员自动 `sessions.ensure`，删除房间时 best-effort `sessions.delete`
+- **agentroom/ws**: 移除 `tool.approval` 事件；`tool.result` 语义保留（OpenClaw 回推工具调用汇总）
+
+### ✨ New Features / 新功能
+
+- **agentroom/gateway-proxy**: 新增 `GET /api/v1/agentroom/gateway/agents` 与 `/gateway/status`，
+  Member 编辑器据此动态拉取 OpenClaw 已注册 agent 目录
+- **agentroom/wizard**: 「自定义房间」向导 Step 2 增加 *OpenClaw Agent* + *Thinking* 级别选择，
+  并在 Gateway 离线时给出提示横幅
+- **agentroom/tool-card**: OpenClaw 每轮汇报的工具调用以 `MsgKindTool` 消息 + `tool.result` 事件
+  双通道同步到时间线，ClawDeckX 前端不再维护本地审批状态
+
+### 🗑️ Removed
+
+- `internal/agentroom/toolbridge.go`（本地工具代理）
+- `web/windows/AgentRoom/components/ToolApprovalBanner.tsx` 与相关 `pendingApprovals` state
+- `internal/llmdirect` 在 AgentRoom 下的所有引用（仍保留用于 Multi-Agent 生成向导 `multiagent.go`）
+
+### 🛠️ Migration Notes
+
+- 旧房间中已创建的 agent 成员会随首次发言自动 `sessions.ensure`；无需迁移脚本
+- 原本以 `tool.approval` 暴露给第三方脚本的 WS 订阅请移除，改监听 OpenClaw 的 `exec.approval`
+
+---
+
+# v0.3.0
+
+_2026-04-20_
+
+## What's Changed — AgentRoom v0.6 协作质量 · 决策 · 长期记忆
+
+### ✨ New Features / 新功能
+
+- **agentroom/quality**: 软标签协议 (`#confidence` / `#stance` / `#human-needed`)
+  每轮 agent 输出经 `ParseSoftTags` 抽取并剥离；消息气泡上显示置信度/立场/需人介入等徽章，低置信被高亮
+- **agentroom/decision**: 决策锚 —— `POST/DELETE /messages/{mid}/promote-decision`
+  右侧 `DecisionsPanel` 按时间线展示所有已锚定的决策，点号跳转定位原消息
+- **agentroom/artifact**: 房间级交付物一等公民
+  `Artifact` 表 + `/rooms/:id/artifacts` CRUD + `/artifacts/:id` 更新/删除，前端 `ArtifactsPanel` 支持
+  新建/编辑/下载（md/code/json/text）
+- **agentroom/close**: `/close` 生成会议纪要 `POST /rooms/:id/close/synthesize`
+  可选模板（minutes/prd/adr/review），生成后作为 Artifact 落盘 + minutes 消息注入
+- **agentroom/todo**: `POST /rooms/:id/extract-todo` 从讨论中抽取任务入 Tasks 表
+- **agentroom/rerun**: `POST /messages/{mid}/rerun` 换模型重跑同一条消息
+- **agentroom/ask-all**: `POST /rooms/:id/ask-all` 向所有 agent 广播同一问题（并发收集独立答案）
+- **agentroom/constitution**: 房间宪法（红线列表）字段 `constitution`，每轮注入 system prompt 最高优先级
+- **agentroom/goal + roundBudget**: 房间目标 + 预期轮次预算 + `rounds_used` 轮次计数器 + 达阈值系统提示 + 顶栏 `TimeboxMeter`
+- **agentroom/self-critique**: 开关 `selfCritique` 打开后 agent 发言落盘前跑轻量 rubric（+15% tokens，低胡说八道率）
+- **agentroom/persona-memory**: 长期画像记忆跨房间复用 `PersonaMemory` 表 + `/persona-memory[/:key]` CRUD
+- **agentroom/playbook**: 经验库 `Playbook` 表 + `/playbooks[/:id]` CRUD
+- **agentroom/quality-panel**: 右侧 `QualityPanel` 统一编辑 goal / roundBudget / selfCritique / constitution，带进度条
+- **agentroom/human-needed-banner**: 讨论区顶部 `HumanNeededBanner` 汇聚 agent 明确请求人类介入的消息，"查看/已读" 动作
+- **agentroom/injection-sentinel**: `DetectInjection` 扫常见提示注入/越狱片段，外部内容注入时自动 `<untrusted>` 包裹
+- **agentroom/pii-redact**: `RedactPII` 对出站投影做 email/手机/身份证/AWS/OpenAI/GitHub token/PEM 脱敏，徽章展示命中数
+- **agentroom/composer-slash**: `/close` `/extract-todo` `/ask-all <q>` `/decision [摘要]` 加入 palette
+- **agentroom/playbook-library**: TopBar 📚 入口，`PlaybookLibraryModal` 跨房间浏览/搜索/删除 Playbook；新建时可勾选"从当前房间生成"让后端填充 problem/approach/conclusion
+- **agentroom/persona-memory-ui**: MemberRail 展开态新增"长期记忆"按钮，`PersonaMemoryModal` 以 `user:<uid>:<role>` 为 key 加载/覆盖/追加/清空跨房间画像；8 KB 字节预算条 + 过量警告
+- **agentroom/playbook-apply**: `POST /rooms/:id/playbooks/:pid/apply` 把 Playbook 4 段（标题/问题/方法/结论）渲染为 markdown，作为 `kind=summary` 消息注入当前房间（few-shot 贴群风格）；`PlaybookLibraryModal` 每条右侧悬浮"应用"按钮
+- **agentroom/away-summary**: `AwaySummaryBanner` —— 用户离开 >10 分钟回到房间时，顶部快报新增消息数、决策数、需人介入数、工具调用数、产出数以及最活跃 agent；一键跳到第一条未读或标记已读。纯前端实现（localStorage lastSeen 追踪，切房/标签 blur/unload 自动刷新），零后端压力
+- **agentroom/message-menu**: `MessageBubble` 下拉菜单新增"推为决策 / 撤销决策 / 换模型重跑"；`/decision` `/rerun` 不再只能作用于最近一条消息，任何可见消息都能直接操作
+- **agentroom/quality-metrics**: 右侧新增 `QualityMetricsPanel`（标准/高级模式可见）—— 总发言数、置信度均值、决策数总览；置信度 4 档分布、立场 5 档分布条形图；需人介入/untrusted/PII 脱敏/自我批判率告警卡。纯前端聚合，零后端开销
+
+### 🔧 Schema
+
+- `agentroom_rooms` += `goal / round_budget / rounds_used / self_critique / constitution`
+- `agentroom_messages` += `confidence / stance / human_needed / untrusted / pii_redacted_count / is_decision / decision_summary`
+- 新增表 `agentroom_artifacts / agentroom_playbooks / agentroom_persona_memories`
+- WS 广播：`message.update` 的 patch 可携 `isDecision/decisionSummary`
+
+### 🧪 Tests / 测试
+
+- 12 个 Go 单测覆盖 `ParseSoftTags` / `DetectInjection` / `RedactPII` / `BuildConstitutionBlock` / `WrapUntrusted`，全量通过
+
+---
+**Full Changelog**: [v0.2.7...v0.3.0](https://github.com/ClawDeckX/ClawDeckX/compare/v0.2.7...v0.3.0)
+
+---
+
+# v0.2.7
+
+_2026-04-20_
+
+## What's Changed
+
+### ✨ New Features / 新功能
+
+- agentroom: Planned 策略（discussion → executing → review 三阶段 + 执行队列 + `@` 交棒），新 REST/WS + `PlanningPanel` UI
+- agentroom: 房间级安全开关 `readonly` / `mutationDryRun`，`readonly` 由 `scheduler.Pick` 兜底静音，两者在 prompt 同步注入
+- agentroom: 房间 `collaborationStyle` 自由文本每轮注入 system prompt，`PUT /rooms/{id}` 同步接受
+- agentroom: 成员卡新增"上下文压力"进度条（`lastPromptTokens / contextLimit`），内建主流模型窗口查表
+- agentroom: `UI_TIMEZONE` 偏好（localStorage）驱动 `formatTime` / `relativeTime`，Settings → 偏好新增时区卡片
+
+### 🔧 Refactor / 重构
+
+- agentroom: `buildContextPrompt` 收敛协作风格 / 安全开关 / 执行棒注入，对其它成员隐藏 owner 指令
+- agentroom: `CreateRoomWizard` Step4 策略列表含 `planned`，`POLICY_META` 与描述同步
+
+### 🧪 Tests / 测试
+
+- 新增 21 个 Go 单测（planning 10 + model_catalog 16，其中重叠），全量通过
+
+### 🗄 Schema
+
+- `agentroom_rooms` += `execution_phase / execution_queue_json / execution_owner_idx / collaboration_style / readonly / mutation_dry_run`
+- `agentroom_members` += `last_prompt_tokens`
+- 新增 WS 事件 `planning.update`
+
+---
+**Full Changelog**: [v0.2.6...v0.2.7](https://github.com/ClawDeckX/ClawDeckX/compare/v0.2.6...v0.2.7)
+
+---
+
+# v0.2.6
+
+_2026-04-20_
+
+## What's Changed
+
+### ✨ New Features / 新功能
+
+- agentroom: Prometheus `/admin/metrics` 端点（零依赖 exposition 格式），覆盖 LLM 调用/tokens/成本/熔断/消息/限速
+- agentroom: RAG Room Memory 一期 —— 支持 `.md` / `.txt` 上传、BM25 检索（复用 FTS5）、context 注入 top-3 chunks
+- agentroom: 右栏新增"资料 (RAG)"面板，支持拖拽上传 / 列表 / 删除
+- agentroom: 移动端 safe-area 支持（iOS 刘海 / 动态岛）+ 窄屏 tap target 优化
+
+### 🔧 Refactor / 重构
+
+- agentroom: `buildContextPrompt` 标注 RAG 引用来源，防 prompt injection
+- agentroom: Orchestrator 在 LLM 调用 / 熔断 / 消息 append / 限速点全面埋点
+
+### 🧪 Tests / 测试
+
+- 新增 16 个 Go 单测（ChunkMarkdown 8 + observability 8），全量 59 用例通过
+
+---
+**Full Changelog**: [v0.2.5...v0.2.6](https://github.com/ClawDeckX/ClawDeckX/compare/v0.2.5...v0.2.6)
+
+---
+
+# v0.2.5
+
+_2026-04-20_
+
+## What's Changed
+
+### 🔒 Security / 安全
+
+- agentroom: whisper 消息走 user-scoped WS 投递 (BroadcastToUsers)，不再向同房间其它订阅者泄漏
+- agentroom: ListMessages 对非房主的 whisper 内容 defense-in-depth 遥蔽
+
+### ✨ New Features / 新功能
+
+- agentroom: FTS5 全文检索 (`Cmd+F`)，支持关键词/短语/AND/OR/NEAR
+- agentroom: `GET /rooms/{id}/search?q=` 端点 + 前端 SearchPanel 带高亮
+- agentroom: WSHub.BroadcastToUsers 用户定向广播 + Broker.EmitToUsers
+- agentroom: Playwright 冒烟套件 (web/e2e/agentroom.spec.ts)
+
+### 🧪 Tests / 测试
+
+- 新增 9 个 Go 单测 (breaker/fts/broker)，全量 37 用例通过
+
+---
+**Full Changelog**: [v0.2.4...v0.2.5](https://github.com/ClawDeckX/ClawDeckX/compare/v0.2.4...v0.2.5)
+
+---
+
+# v0.2.4
+
+_2026-04-20_
+
+## What's Changed
+
+### ✨ New Features / 新功能
+
+- AgentRoom v0.3: 幂等键、分页、审计流水、房间导出 (Markdown/JSON)
+- AgentRoom: Markdown 渲染 + 代码块高亮（agent 消息）+ 长消息折叠
+- AgentRoom: Composer 引用卡片 + @ 自动补全 + slash 命令面板 (`/pause` `/fact` `/task` `/fork` `/export` `/help`)
+- AgentRoom: 未读红点 (RoomsRail) + 快捷键 cheatsheet + 导出按钮
+- AgentRoom: 模型熔断器（连续 3 次失败 → 60s 跳过该模型）
+- AgentRoom: stream 级重试（首 token 前退避重试一次）
+- AgentRoom: 连续 agent 发言上限（默认 8，可配置）+ 预算硬刹车前置
+
+### 🐛 Bug Fixes / 修复
+
+- agentroom: 级联删除房间时一并清理 members/messages/facts/tasks/interventions
+- agentroom: 消息 seq 改为 MAX(seq)+1 手动维护，修复 SQLite autoIncrement 不生效
+- agentroom: 投影入站通过 (roomId, externalMessageId) 去重，防 webhook 重投
+- agentroom: WS 重连后自动重拉房间状态，修复断网期间丢失事件
+
+### 🎨 UI & Styling / 界面优化
+
+- agentroom: 预算双级提醒（warnAt 琥珀 / hardStopAt 红色脉冲）
+- agentroom: 顶部断线横条 + 错误 toast 栈 + 重连成功轻提示
+- agentroom: 删除房间二次确认弹窗
+
+### 🔧 Refactor / 重构
+
+- agentroom: 成本表拆分 InputPerM / OutputPerM，贴近真实计费
+
+---
+**Full Changelog**: [v0.2.3...v0.2.4](https://github.com/ClawDeckX/ClawDeckX/compare/v0.2.3...v0.2.4)
+
+---
+
+# v0.2.3
 
 _2026-04-19_
 

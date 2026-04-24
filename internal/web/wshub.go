@@ -43,6 +43,7 @@ type WSClient struct {
 	conn        *websocket.Conn
 	send        chan []byte
 	channels    map[string]bool
+	userID      uint // 从 JWT 解出的用户 ID；用于 user-scoped 定向广播（whisper 等）
 	mu          sync.RWMutex
 	dropped     int // count of messages dropped due to backpressure
 	connectedAt time.Time
@@ -61,6 +62,9 @@ type WSMessage struct {
 	Type    string      `json:"type"`
 	Data    interface{} `json:"data"`
 	Channel string      `json:"-"`
+	// UserIDs 非空时：仅向 UserID 在白名单内的 client 发送。用于 whisper 等私密事件。
+	// 空切片 / nil：走 channel 订阅的全量广播（默认行为）。
+	UserIDs []uint `json:"-"`
 }
 
 func NewWSHub(allowedOrigins ...[]string) *WSHub {
@@ -100,13 +104,27 @@ func (h *WSHub) Run() {
 			if err != nil {
 				continue
 			}
+			// 预处理 UserIDs 白名单，O(N) 查表；空则跳过
+			var userAllow map[uint]struct{}
+			if len(msg.UserIDs) > 0 {
+				userAllow = make(map[uint]struct{}, len(msg.UserIDs))
+				for _, u := range msg.UserIDs {
+					userAllow[u] = struct{}{}
+				}
+			}
 			// Collect stale clients under RLock, then clean up under Lock
 			var stale []*WSClient
 			h.mu.RLock()
 			for client := range h.clients {
 				client.mu.RLock()
 				subscribed := msg.Channel == "" || client.channels[msg.Channel]
+				clientUID := client.userID
 				client.mu.RUnlock()
+				if userAllow != nil {
+					if _, ok := userAllow[clientUID]; !ok {
+						continue
+					}
+				}
 				if subscribed {
 					select {
 					case client.send <- data:
@@ -153,6 +171,21 @@ func (h *WSHub) Broadcast(channel string, msgType string, data interface{}) {
 	}
 }
 
+// BroadcastToUsers 仅向 userIDs 名单内的已订阅 channel 的 client 发送。
+// 当 userIDs 为空时退化为全量广播（避免静默丢包），调用方应保证非空才对。
+func (h *WSHub) BroadcastToUsers(channel string, userIDs []uint, msgType string, data interface{}) {
+	msg := WSMessage{Type: msgType, Data: data, Channel: channel, UserIDs: userIDs}
+	select {
+	case h.broadcast <- msg:
+	default:
+		logger.WS.Warn().
+			Str("type", msgType).
+			Str("channel", channel).
+			Int("users", len(userIDs)).
+			Msg("broadcast channel full, dropping user-scoped message")
+	}
+}
+
 func (h *WSHub) ClientCount() int {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
@@ -173,7 +206,8 @@ func (h *WSHub) HandleWS(jwtSecret string) http.HandlerFunc {
 			Fail(w, r, ErrUnauthorized.Code, ErrUnauthorized.Message, ErrUnauthorized.HTTPStatus)
 			return
 		}
-		if _, err := ValidateJWT(tokenStr, jwtSecret); err != nil {
+		claims, err := ValidateJWT(tokenStr, jwtSecret)
+		if err != nil {
 			Fail(w, r, ErrTokenExpired.Code, ErrTokenExpired.Message, ErrTokenExpired.HTTPStatus)
 			return
 		}
@@ -189,6 +223,7 @@ func (h *WSHub) HandleWS(jwtSecret string) http.HandlerFunc {
 			conn:        conn,
 			send:        make(chan []byte, 512),
 			channels:    make(map[string]bool),
+			userID:      claims.UserID,
 			connectedAt: time.Now(),
 		}
 		h.register <- client

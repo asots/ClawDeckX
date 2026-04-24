@@ -59,17 +59,42 @@ func (h *SelfUpdateHandler) SetGWClient(client *openclaw.GWClient) {
 }
 
 // Check queries GitHub for a newer release.
+// 可选 ?tag=v2026.3.2 指定具体 tag；缺省则取最新 stable。
 func (h *SelfUpdateHandler) Check(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
 	defer cancel()
 
-	result, err := updater.CheckForUpdate(ctx)
+	var (
+		result *updater.CheckResult
+		err    error
+	)
+	if tag := strings.TrimSpace(r.URL.Query().Get("tag")); tag != "" {
+		result, err = updater.CheckTag(ctx, tag)
+	} else {
+		result, err = updater.CheckForUpdate(ctx)
+	}
 	if err != nil {
 		web.Fail(w, r, "UPDATE_CHECK_FAILED", err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	web.OK(w, r, result)
+}
+
+// ListReleases returns the most recent GitHub releases for the version picker.
+func (h *SelfUpdateHandler) ListReleases(w http.ResponseWriter, r *http.Request) {
+	limit := 20
+	if v := strings.TrimSpace(r.URL.Query().Get("limit")); v != "" {
+		fmt.Sscanf(v, "%d", &limit)
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
+	defer cancel()
+	items, err := updater.ListReleases(ctx, limit)
+	if err != nil {
+		web.Fail(w, r, "UPDATE_RELEASES_FAILED", err.Error(), http.StatusInternalServerError)
+		return
+	}
+	web.OK(w, r, items)
 }
 
 // Apply downloads and applies the update, streaming progress via SSE.

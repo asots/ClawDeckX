@@ -123,10 +123,24 @@ const Activity: React.FC<ActivityProps> = ({ language, onNavigateToSession }) =>
     return { totalTok, totalIn, totalOut, active24h, abortedCount, avgTok, channels: channelSet.size };
   }, [sessions]);
 
+  // v0.9.1：AgentRoom 房间派生的 AI 会话在 `sessions` 接口里以 `agent:<id>:agentroom:...` /
+  // `agent:<id>:agentroom-aux:...` 形式出现，`kind` 字段由后端从其他维度推断（通常为
+  // `direct`/`unknown`），没有独立分类。这里纯前端额外识别一个伪分类 `agentroom`，
+  // 方便用户一键筛出"AI 会话"相关的卡片。
+  const isAgentRoomKey = useCallback((key?: string): boolean => {
+    if (!key) return false;
+    const parts = key.trim().toLowerCase().split(':').filter(Boolean);
+    if (parts.length < 4 || parts[0] !== 'agent') return false;
+    return parts[2] === 'agentroom' || parts[2] === 'agentroom-aux';
+  }, []);
+
   // Filter + sort
   const filtered = useMemo(() => {
     let list = sessions;
-    if (kindFilter) list = list.filter((s: any) => s.kind === kindFilter);
+    if (kindFilter) {
+      if (kindFilter === 'agentroom') list = list.filter((s: any) => isAgentRoomKey(s.key));
+      else list = list.filter((s: any) => s.kind === kindFilter && !isAgentRoomKey(s.key));
+    }
     if (searchKeyword) {
       const q = searchKeyword;
       list = list.filter((s: any) =>
@@ -144,7 +158,7 @@ const Activity: React.FC<ActivityProps> = ({ language, onNavigateToSession }) =>
       return ((b2.updatedAt || 0) - (a2.updatedAt || 0));
     });
     return list;
-  }, [sessions, kindFilter, searchKeyword, sortField]);
+  }, [sessions, kindFilter, searchKeyword, sortField, isAgentRoomKey]);
 
   // Time-grouped sessions
   const groupedSessions = useMemo(() => {
@@ -290,9 +304,16 @@ const Activity: React.FC<ActivityProps> = ({ language, onNavigateToSession }) =>
 
   const kindCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    sessions.forEach((s: any) => { counts[s.kind] = (counts[s.kind] || 0) + 1; });
+    sessions.forEach((s: any) => {
+      // AgentRoom 派生会话——独立一桶，并从原生 kind 桶里扣掉，避免重复计数。
+      if (isAgentRoomKey(s.key)) {
+        counts.agentroom = (counts.agentroom || 0) + 1;
+      } else {
+        counts[s.kind] = (counts[s.kind] || 0) + 1;
+      }
+    });
     return counts;
-  }, [sessions]);
+  }, [sessions, isAgentRoomKey]);
 
 
   return (
@@ -352,7 +373,11 @@ const Activity: React.FC<ActivityProps> = ({ language, onNavigateToSession }) =>
               className="w-full h-7 ps-7 pe-2 rounded-lg theme-field text-[10px] focus:outline-none focus:ring-1 focus:ring-primary/30 sci-input" />
           </div>
           <CustomSelect value={kindFilter} onChange={v => setKindFilter(v)}
-            options={[{ value: '', label: `${a.all} (${sessions.length})` }, ...['direct', 'group', 'global', 'unknown'].filter(k => kindCounts[k]).map(k => ({ value: k, label: `${(a as any)[k] || k} (${kindCounts[k]})` }))]}
+            options={[
+              { value: '', label: `${a.all} (${sessions.length})` },
+              ...['direct', 'group', 'global', 'unknown'].filter(k => kindCounts[k]).map(k => ({ value: k, label: `${(a as any)[k] || k} (${kindCounts[k]})` })),
+              ...(kindCounts.agentroom ? [{ value: 'agentroom', label: `${(a as any).agentroom || 'AI 会话'} (${kindCounts.agentroom})` }] : []),
+            ]}
             className="h-7 px-1.5 rounded-lg theme-field text-[10px] theme-text-secondary" />
           <CustomSelect value={sortField} onChange={v => setSortField(v as SortField)}
             options={[{ value: 'updated', label: a.sortUpdated || 'Updated' }, { value: 'tokens', label: a.sortTokens || 'Tokens' }, { value: 'name', label: a.sortName || 'Name' }]}

@@ -4,6 +4,7 @@ import type { Preferences, WindowControlsPosition, WallpaperSource, StartupWindo
 import { updatePreferences, resolveWallpaperData, applyResolvedWallpaper, getCachedWallpaper, selectWallpaperHistoryEntry, setCachedWallpaper } from '../../utils/preferences';
 import { useToast } from '../../components/Toast';
 import MirrorSettings from './MirrorSettings';
+import TimezoneCard from './TimezoneCard';
 
 interface PreferencesTabProps {
   s: Record<string, any>;
@@ -157,6 +158,32 @@ const PreferencesTab: React.FC<PreferencesTabProps> = ({ s, pref, prefs, onPrefs
             </div>
           </div>
         )}
+      </div>
+
+      {/* Dock 自动隐藏 —— 默认开启，任意窗口打开即收起 Dock，鼠标移到屏幕底部边缘再浮出。 */}
+      <div className={rowCls}>
+        <div className="flex items-center gap-3 px-4 py-3">
+          <span className="material-symbols-outlined text-[18px] text-violet-500">vertical_align_bottom</span>
+          <div className="flex-1">
+            <p className="text-[13px] font-semibold text-slate-700 dark:text-white/80">{pref?.dockAutoHide || 'Auto-hide Dock'}</p>
+            <p className="text-[11px] text-slate-400 dark:text-white/30">{pref?.dockAutoHideDesc || 'Hide the bottom Dock whenever a window is open. Move the cursor to the bottom edge to reveal it.'}</p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={prefs.dockAutoHide}
+            onClick={() => {
+              const next = updatePreferences({ dockAutoHide: !prefs.dockAutoHide });
+              onPrefsChange(next);
+            }}
+            className={`shrink-0 relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${prefs.dockAutoHide ? 'bg-primary' : 'bg-slate-300 dark:bg-white/15'}`}
+          >
+            <span
+              aria-hidden
+              className={`inline-block w-5 h-5 rounded-full bg-white shadow transform transition-transform ${prefs.dockAutoHide ? 'translate-x-[22px] rtl:-translate-x-[22px]' : 'translate-x-0.5 rtl:-translate-x-0.5'}`}
+            />
+          </button>
+        </div>
       </div>
 
       {/* Startup Window */}
@@ -541,6 +568,9 @@ const PreferencesTab: React.FC<PreferencesTabProps> = ({ s, pref, prefs, onPrefs
 
       {/* Mirror Acceleration Settings */}
       <MirrorSettings s={s} m={(pref as any).mirror ?? {}} />
+
+      {/* UI 显示时区（影响 AgentRoom 时间戳等） */}
+      <TimezoneCard s={s} pref={pref} />
 
     </div>
   );

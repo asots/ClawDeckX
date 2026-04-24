@@ -181,6 +181,14 @@ type GWClient struct {
 	notifyLastAt    time.Time // last time a notification was dispatched
 	notifyLastEvent string    // last notification event type
 	notifySending   bool      // true while a notification send is in progress
+
+	// v0.4：命名事件 fan-out —— 允许多个子系统并行订阅 gateway 事件流，
+	// 不占用 onEvent 单 owner 语义（gwcollector 仍然作为主消费方持有 onEvent）。
+	// 使用命名 map + RWMutex，子系统 Add 时用唯一 name，Remove 幂等。
+	// 注意：listener 回调与主 onEvent 同在 readLoop 调用路径上串行执行，
+	// 任何实现 MUST 自行快返回 / 启 goroutine，避免卡阻事件流。
+	listenersMu sync.RWMutex
+	listeners   map[string]GWEventHandler
 }
 
 func NewGWClient(cfg GWClientConfig) *GWClient {
@@ -199,6 +207,58 @@ func NewGWClient(cfg GWClientConfig) *GWClient {
 
 func (c *GWClient) SetEventHandler(h GWEventHandler) {
 	c.onEvent = h
+}
+
+// AddEventListener 注册一个命名副听众，允许 gwcollector 之外的子系统
+// （如 agentroom.Manager）并行接收所有 gateway 事件。同名重复 Add 覆盖旧值。
+// 传入 nil 等价于 RemoveEventListener。
+//
+// 契约：回调 MUST 快速返回（推荐 go func(){...}()），否则会拖慢整条事件流。
+func (c *GWClient) AddEventListener(name string, fn GWEventHandler) {
+	if name == "" {
+		return
+	}
+	c.listenersMu.Lock()
+	defer c.listenersMu.Unlock()
+	if fn == nil {
+		delete(c.listeners, name)
+		return
+	}
+	if c.listeners == nil {
+		c.listeners = make(map[string]GWEventHandler)
+	}
+	c.listeners[name] = fn
+}
+
+// RemoveEventListener 撤销指定命名副听众。幂等：未注册时 no-op。
+func (c *GWClient) RemoveEventListener(name string) {
+	if name == "" {
+		return
+	}
+	c.listenersMu.Lock()
+	defer c.listenersMu.Unlock()
+	delete(c.listeners, name)
+}
+
+// dispatchEvent 在 readLoop 内调用：先调主 onEvent，再串行广播所有副听众。
+// 为降低锁持有时间，先拷贝 listener 快照再调用。
+func (c *GWClient) dispatchEvent(event string, payload json.RawMessage) {
+	if c.onEvent != nil {
+		c.onEvent(event, payload)
+	}
+	c.listenersMu.RLock()
+	if len(c.listeners) == 0 {
+		c.listenersMu.RUnlock()
+		return
+	}
+	snapshot := make([]GWEventHandler, 0, len(c.listeners))
+	for _, fn := range c.listeners {
+		snapshot = append(snapshot, fn)
+	}
+	c.listenersMu.RUnlock()
+	for _, fn := range snapshot {
+		fn(event, payload)
+	}
 }
 
 func (c *GWClient) SetRestartCallback(fn func() error) {
@@ -1079,9 +1139,7 @@ func (c *GWClient) readLoop(conn *websocket.Conn) error {
 				continue
 			}
 
-			if c.onEvent != nil {
-				c.onEvent(evt.Event, evt.Payload)
-			}
+			c.dispatchEvent(evt.Event, evt.Payload)
 			continue
 		}
 

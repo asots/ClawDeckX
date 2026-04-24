@@ -423,7 +423,15 @@ export const ChannelsSection: React.FC<SectionProps> = ({ config, schema, setFie
   // reinstall an already-installed plugin.
   const [pluginCheckInProgress, setPluginCheckInProgress] = useState(false);
   const [pluginInstalling, setPluginInstalling] = useState(false);
-  const [pluginInstallResult, setPluginInstallResult] = useState<{ ok: boolean; msg: string; phase?: 'installed' | 'restarting' | 'ready'; canForceRetry?: boolean; pendingSpec?: string; pendingChannelId?: string } | null>(null);
+  const [pluginInstallResult, setPluginInstallResult] = useState<{
+    ok: boolean;
+    msg: string;
+    phase?: 'installed' | 'restarting' | 'ready';
+    canForceRetry?: boolean;
+    retryKind?: 'exists' | 'security';
+    pendingSpec?: string;
+    pendingChannelId?: string;
+  } | null>(null);
 
   const handleWizardTest = useCallback(async (chId: string, acctKey?: string) => {
     setWizTestStatus('testing');
@@ -587,12 +595,21 @@ export const ChannelsSection: React.FC<SectionProps> = ({ config, schema, setFie
     setPluginCheckInProgress(false);
   }, []);
 
-  // Install plugin with gateway restart detection
-  const handleInstallPlugin = useCallback(async (spec: string, channelId: string, force: boolean = false) => {
+  // Install plugin with gateway restart detection.
+  // `opts.dangerouslyForce` bypasses the upstream install-time security scanner
+  // (used after user confirms a SECURITY_BLOCKED retry).
+  const handleInstallPlugin = useCallback(async (
+    spec: string,
+    channelId: string,
+    opts?: { force?: boolean; dangerouslyForce?: boolean },
+  ) => {
     setPluginInstalling(true);
     setPluginInstallResult(null);
     try {
-      const res = await pluginApi.install(spec, force);
+      const res = await pluginApi.install(spec, {
+        force: !!opts?.force,
+        dangerouslyForce: !!opts?.dangerouslyForce,
+      });
       if (res.success) {
         // Phase 1: Plugin installed — gateway auto-restarts via config change detection
         // (no need to call gatewayApi.restart() — that caused a redundant double restart)
@@ -652,13 +669,20 @@ export const ChannelsSection: React.FC<SectionProps> = ({ config, schema, setFie
         setPluginInstalling(false);
       }
     } catch (err: any) {
-      // PLUGIN_EXISTS: residue directory from a prior failed install.
-      // Offer the user a force-reinstall option (which will uninstall + reinstall).
-      const isExistsErr = err?.code === 'PLUGIN_EXISTS';
+      // PLUGIN_EXISTS: residue directory from a prior failed install → offer
+      // force-reinstall (uninstall residue, then reinstall).
+      // SECURITY_BLOCKED: upstream install-time scanner flagged dangerous code
+      // patterns (often false-positive on plugin test files). Offer explicit
+      // force-unsafe retry with a clear warning.
+      const code: string | undefined = err?.code;
+      const isExistsErr = code === 'PLUGIN_EXISTS';
+      const isSecurityErr = code === 'SECURITY_BLOCKED';
+      const canRetry = !opts?.force && !opts?.dangerouslyForce && (isExistsErr || isSecurityErr);
       setPluginInstallResult({
         ok: false,
         msg: err?.message || es.failed,
-        canForceRetry: isExistsErr && !force,
+        canForceRetry: canRetry,
+        retryKind: isSecurityErr ? 'security' : isExistsErr ? 'exists' : undefined,
         pendingSpec: spec,
         pendingChannelId: channelId,
       });
@@ -1439,10 +1463,17 @@ export const ChannelsSection: React.FC<SectionProps> = ({ config, schema, setFie
           <>
             <TextField label={labelAppId} value={g(['appId']) || ''} onChange={v => s(['appId'], v)} tooltip={es.tipFeishuAppId} />
             <PasswordField label={labelAppSecret} value={g(['appSecret']) || ''} onChange={v => s(['appSecret'], v)} tooltip={es.tipFeishuSecret} />
-            <SelectField label={es.chDomain} value={g(['domain']) || 'feishu'} onChange={v => s(['domain'], v)} options={[
-              { value: 'feishu', label: es.optFeishu },
-              { value: 'lark', label: es.optLark },
-            ]} tooltip={tip('feishuDomain')} />
+            <SelectField label={es.chDomain}
+              value={(() => { const d = g(['domain']) || 'feishu'; return (d === 'feishu' || d === 'lark') ? d : 'custom'; })()}
+              onChange={v => s(['domain'], v === 'custom' ? 'https://' : v)}
+              options={[
+                { value: 'feishu', label: es.optFeishu },
+                { value: 'lark', label: es.optLark },
+                { value: 'custom', label: es.optDomainCustom || 'Custom URL' },
+              ]} tooltip={tip('feishuDomain')} />
+            {(() => { const d = g(['domain']) || 'feishu'; return d !== 'feishu' && d !== 'lark' ? (
+              <TextField label={es.feishuDomainCustom || 'Custom Domain URL'} value={d} onChange={v => s(['domain'], v)} placeholder="https://open.larksuite.com" tooltip={es.tipFeishuDomainCustom} />
+            ) : null; })()}
             <SelectField label={es.connModeLabel} value={g(['connectionMode']) || 'websocket'} onChange={v => s(['connectionMode'], v)} options={[
               { value: 'websocket', label: es.optWebSocket },
               { value: 'webhook', label: es.optWebhook },
@@ -1481,6 +1512,7 @@ export const ChannelsSection: React.FC<SectionProps> = ({ config, schema, setFie
             <ArrayField label={es.allowFrom || 'Allow From'} value={g(['allowFrom']) || []} onChange={v => s(['allowFrom'], v)} placeholder={es.feishuAllowFromPh || 'ou_xxx'} tooltip={es.tipFeishuAllowFrom} />
             <SelectField label={es.groupPolicy} value={g(['groupPolicy']) || 'allowlist'} onChange={v => s(['groupPolicy'], v)} options={groupPolicy(es)} tooltip={tip('groupPolicy')} />
             <ArrayField label={es.feishuGroupAllowFrom || 'Group Allow From'} value={g(['groupAllowFrom']) || []} onChange={v => s(['groupAllowFrom'], v)} placeholder={es.feishuGroupAllowFromPh || 'oc_xxx'} tooltip={es.tipFeishuGroupAllowFrom} />
+            <ArrayField label={es.feishuGroupSenderAllowFrom || 'Group Sender Allow From'} value={g(['groupSenderAllowFrom']) || []} onChange={v => s(['groupSenderAllowFrom'], v)} placeholder={es.feishuGroupSenderAllowFromPh || 'ou_xxx'} tooltip={es.tipFeishuGroupSenderAllowFrom} />
             <SwitchField label={es.feishuRequireMention || 'Require @Mention'} value={g(['requireMention']) !== false} onChange={v => s(['requireMention'], v)} tooltip={es.tipFeishuRequireMention} />
             <SwitchField label={es.feishuStreaming || 'Streaming'} value={g(['streaming']) !== false} onChange={v => s(['streaming'], v)} tooltip={es.tipFeishuStreaming} />
             <SelectField label={es.feishuRenderMode || 'Render Mode'} value={g(['renderMode']) || 'auto'} onChange={v => s(['renderMode'], v)} options={[
@@ -1517,6 +1549,66 @@ export const ChannelsSection: React.FC<SectionProps> = ({ config, schema, setFie
             <SwitchField label={es.feishuToolDrive || 'Drive'} value={g(['tools', 'drive']) !== false} onChange={v => s(['tools', 'drive'], v)} tooltip={es.tipFeishuToolDrive} />
             <SwitchField label={es.feishuToolPerm || 'Permissions'} value={g(['tools', 'perm']) === true} onChange={v => s(['tools', 'perm'], v)} tooltip={es.tipFeishuToolPerm} />
             <SwitchField label={es.feishuToolScopes || 'Scopes Diagnostic'} value={g(['tools', 'scopes']) !== false} onChange={v => s(['tools', 'scopes'], v)} tooltip={es.tipFeishuToolScopes} />
+
+            {/* History & Chunking */}
+            <div className="pt-2 pb-1">
+              <span className="text-[11px] font-bold theme-text-muted">{es.feishuHistoryTitle || 'History & Chunking'}</span>
+            </div>
+            <NumberField label={es.feishuHistoryLimit || 'History Limit'} value={g(['historyLimit'])} onChange={v => s(['historyLimit'], v)} placeholder="0" tooltip={es.tipFeishuHistoryLimit} />
+            <NumberField label={es.feishuDmHistoryLimit || 'DM History Limit'} value={g(['dmHistoryLimit'])} onChange={v => s(['dmHistoryLimit'], v)} placeholder="0" tooltip={es.tipFeishuDmHistoryLimit} />
+            <SelectField label={es.feishuChunkMode || 'Chunk Mode'} value={g(['chunkMode']) || 'length'} onChange={v => s(['chunkMode'], v)} options={[
+              { value: 'length', label: es.optChunkLength || 'By Length' },
+              { value: 'newline', label: es.optChunkNewline || 'By Newline' },
+            ]} tooltip={es.tipFeishuChunkMode} />
+            <NumberField label={es.feishuHttpTimeoutMs || 'HTTP Timeout (ms)'} value={g(['httpTimeoutMs'])} onChange={v => s(['httpTimeoutMs'], v)} placeholder="30000" tooltip={es.tipFeishuHttpTimeout} />
+
+            {/* Heartbeat */}
+            <div className="pt-2 pb-1">
+              <span className="text-[11px] font-bold theme-text-muted">{es.feishuHeartbeatTitle || 'Heartbeat'}</span>
+            </div>
+            <SelectField label={es.feishuHeartbeatVisibility || 'Visibility'} value={g(['heartbeat', 'visibility']) || 'visible'} onChange={v => s(['heartbeat', 'visibility'], v)} options={[
+              { value: 'visible', label: es.optHeartbeatVisible || 'Visible' },
+              { value: 'hidden', label: es.optHeartbeatHidden || 'Hidden' },
+            ]} tooltip={es.tipFeishuHeartbeat} />
+            <NumberField label={es.feishuHeartbeatInterval || 'Interval (ms)'} value={g(['heartbeat', 'intervalMs'])} onChange={v => s(['heartbeat', 'intervalMs'], v)} placeholder="5000" tooltip={es.tipFeishuHeartbeat} />
+
+            {/* Streaming Coalesce */}
+            <div className="pt-2 pb-1">
+              <span className="text-[11px] font-bold theme-text-muted">{es.feishuCoalesceTitle || 'Streaming Coalesce'}</span>
+            </div>
+            <SwitchField label={es.feishuCoalesceEnabled || 'Enabled'} value={g(['blockStreamingCoalesce', 'enabled']) === true} onChange={v => s(['blockStreamingCoalesce', 'enabled'], v)} tooltip={es.tipFeishuCoalesce} />
+            <NumberField label={es.feishuCoalesceMin || 'Min Delay (ms)'} value={g(['blockStreamingCoalesce', 'minDelayMs'])} onChange={v => s(['blockStreamingCoalesce', 'minDelayMs'], v)} placeholder="300" tooltip={es.tipFeishuCoalesce} />
+            <NumberField label={es.feishuCoalesceMax || 'Max Delay (ms)'} value={g(['blockStreamingCoalesce', 'maxDelayMs'])} onChange={v => s(['blockStreamingCoalesce', 'maxDelayMs'], v)} placeholder="1500" tooltip={es.tipFeishuCoalesce} />
+
+            {/* Markdown Rendering */}
+            <div className="pt-2 pb-1">
+              <span className="text-[11px] font-bold theme-text-muted">{es.feishuMarkdownTitle || 'Markdown Rendering'}</span>
+            </div>
+            <SelectField label={es.feishuMarkdownMode || 'Mode'} value={g(['markdown', 'mode']) || 'native'} onChange={v => s(['markdown', 'mode'], v)} options={[
+              { value: 'native', label: es.optMdNative || 'Native' },
+              { value: 'escape', label: es.optMdEscape || 'Escape' },
+              { value: 'strip', label: es.optMdStrip || 'Strip' },
+            ]} tooltip={es.tipFeishuMarkdown} />
+            <SelectField label={es.feishuMarkdownTableMode || 'Table Mode'} value={g(['markdown', 'tableMode']) || 'native'} onChange={v => s(['markdown', 'tableMode'], v)} options={[
+              { value: 'native', label: es.optMdNative || 'Native' },
+              { value: 'ascii', label: es.optMdTableAscii || 'ASCII' },
+              { value: 'simple', label: es.optMdTableSimple || 'Simple' },
+            ]} tooltip={es.tipFeishuMarkdown} />
+
+            {/* Advanced */}
+            <div className="pt-2 pb-1">
+              <span className="text-[11px] font-bold theme-text-muted">{es.feishuAdvancedTitle || 'Advanced'}</span>
+            </div>
+            <SwitchField label={es.feishuConfigWrites || 'Allow Config Writes'} value={g(['configWrites']) === true} onChange={v => s(['configWrites'], v)} tooltip={es.tipFeishuConfigWrites} />
+            <SwitchField label={es.feishuActionsReactions || 'Reaction Actions'} value={g(['actions', 'reactions']) === true} onChange={v => s(['actions', 'reactions'], v)} tooltip={es.tipFeishuActionsReactions} />
+
+            {/* Dynamic Agent Creation */}
+            <div className="pt-2 pb-1">
+              <span className="text-[11px] font-bold theme-text-muted">{es.feishuDynamicAgent || 'Dynamic Agent'}</span>
+            </div>
+            <SwitchField label={es.feishuDynamicAgentEnabled || 'Enabled'} value={g(['dynamicAgentCreation', 'enabled']) === true} onChange={v => s(['dynamicAgentCreation', 'enabled'], v)} tooltip={es.tipFeishuDynamicAgent} />
+            <NumberField label={es.feishuDynamicAgentMax || 'Max Agents'} value={g(['dynamicAgentCreation', 'maxAgents'])} onChange={v => s(['dynamicAgentCreation', 'maxAgents'], v)} placeholder="100" tooltip={es.tipFeishuDynamicAgent} />
+
             {/* Feishu Multi-Account */}
             <FeishuAccountsSection g={g} s={s} deleteField={deleteField} es={es} ch={ch} />
           </>
@@ -2105,14 +2197,35 @@ export const ChannelsSection: React.FC<SectionProps> = ({ config, schema, setFie
                                         ) : pluginInstallResult.msg}
                                       </div>
                                       {pluginInstallResult.canForceRetry && pluginInstallResult.pendingSpec && pluginInstallResult.pendingChannelId && (
-                                        <button
-                                          onClick={() => handleInstallPlugin(pluginInstallResult.pendingSpec!, pluginInstallResult.pendingChannelId!, true)}
-                                          disabled={pluginInstalling}
-                                          className="flex items-center justify-center gap-1 px-2 py-1 rounded bg-red-500 hover:bg-red-600 text-white text-[10px] font-bold transition-all disabled:opacity-50 self-start"
-                                        >
-                                          <span className="material-symbols-outlined text-[12px]">restart_alt</span>
-                                          {cw.pluginForceReinstall || 'Force reinstall (uninstall residue first)'}
-                                        </button>
+                                        pluginInstallResult.retryKind === 'security' ? (
+                                          <div className="flex flex-col gap-1">
+                                            <p className="text-[10px] text-red-600 dark:text-red-400 leading-snug">
+                                              {cw.pluginSecurityWarning || '⚠️ The upstream installer blocked this plugin due to dangerous code patterns (often false-positive on plugin test files). Only proceed if you trust this plugin source.'}
+                                            </p>
+                                            <button
+                                              onClick={() => {
+                                                const confirmMsg = cw.pluginForceUnsafeConfirm || 'This will install the plugin WITHOUT security scanning. Continue only if you trust the source. Proceed?';
+                                                if (window.confirm(confirmMsg)) {
+                                                  handleInstallPlugin(pluginInstallResult.pendingSpec!, pluginInstallResult.pendingChannelId!, { dangerouslyForce: true });
+                                                }
+                                              }}
+                                              disabled={pluginInstalling}
+                                              className="flex items-center justify-center gap-1 px-2 py-1 rounded bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold transition-all disabled:opacity-50 self-start"
+                                            >
+                                              <span className="material-symbols-outlined text-[12px]">warning</span>
+                                              {cw.pluginForceUnsafeInstall || 'Force install (skip security scan)'}
+                                            </button>
+                                          </div>
+                                        ) : (
+                                          <button
+                                            onClick={() => handleInstallPlugin(pluginInstallResult.pendingSpec!, pluginInstallResult.pendingChannelId!, { force: true })}
+                                            disabled={pluginInstalling}
+                                            className="flex items-center justify-center gap-1 px-2 py-1 rounded bg-red-500 hover:bg-red-600 text-white text-[10px] font-bold transition-all disabled:opacity-50 self-start"
+                                          >
+                                            <span className="material-symbols-outlined text-[12px]">restart_alt</span>
+                                            {cw.pluginForceReinstall || 'Force reinstall (uninstall residue first)'}
+                                          </button>
+                                        )
                                       )}
                                     </div>
                                   )}

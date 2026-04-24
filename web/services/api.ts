@@ -31,6 +31,8 @@ export const hostInfoApi = {
   get: () => get<any>('/api/v1/host-info'),
   checkUpdate: () => get<any>('/api/v1/host-info/check-update'),
   deviceId: () => get<{ deviceId: string }>('/api/v1/host-info/device-id'),
+  // 与 selfUpdateApi.releases 对称；返回 GitHub openclaw/openclaw 最近 release 列表。
+  openclawReleases: (limit = 20) => get<ReleaseSummary[]>(`/api/v1/host-info/openclaw-releases?limit=${limit}`),
 };
 
 // ==================== 自更新 ====================
@@ -66,11 +68,23 @@ export interface UpdateHistoryEntry {
   id: number; user_id: number; username: string; action: string;
   result: string; detail: string; ip: string; created_at: string;
 }
+export interface ReleaseSummary {
+  tagName: string;
+  name: string;
+  prerelease: boolean;
+  publishedAt: string;
+  hasAsset: boolean;
+  isCurrent?: boolean;
+  isOlder?: boolean;
+}
 export const selfUpdateApi = {
   info: () => get<SelfUpdateInfo>('/api/v1/self-update/info'),
   overview: (force = false) => get<UpdateOverview>(`/api/v1/self-update/overview${force ? '?force=1' : ''}`),
-  check: () => get<UpdateCheckResult>('/api/v1/self-update/check'),
+  /** 无 tag = 最新 stable；传 tag 则精确拉取该版本的 release（支持降级）。 */
+  check: (tag?: string) => get<UpdateCheckResult>(`/api/v1/self-update/check${tag ? `?tag=${encodeURIComponent(tag)}` : ''}`),
   checkChannel: (channel: string) => get<UpdateCheckResult>(`/api/v1/self-update/check-channel?channel=${channel}`),
+  /** 列出最近 N 个 release（含 prerelease），用于"指定版本升级"下拉。 */
+  releases: (limit = 20) => get<ReleaseSummary[]>(`/api/v1/self-update/releases?limit=${limit}`),
   history: () => get<UpdateHistoryEntry[]>('/api/v1/self-update/history'),
   translateNotes: (text: string, lang: string, product?: string, version?: string) => post<{ translated: string; status: string }>('/api/v1/self-update/translate-notes', { text, lang, product, version }),
   dismissUpdate: async (product: 'clawdeckx' | 'openclaw', version: string) => {
@@ -963,7 +977,11 @@ export const pluginApi = {
   status: () => get<PluginStatusResponse>('/api/v1/plugins/status'),
   canInstall: () => get<{ can_install: boolean; is_remote: boolean }>('/api/v1/plugins/can-install'),
   checkInstalled: (spec: string) => get<{ installed: boolean; spec: string }>(`/api/v1/plugins/check?spec=${encodeURIComponent(spec)}`),
-  install: (spec: string, force?: boolean) => post<{ success: boolean; spec: string; output: string }>('/api/v1/plugins/install', { spec, force: !!force }),
+  install: (spec: string, opts?: { force?: boolean; dangerouslyForce?: boolean }) => post<{ success: boolean; spec: string; output: string }>('/api/v1/plugins/install', {
+    spec,
+    force: !!opts?.force,
+    dangerouslyForce: !!opts?.dangerouslyForce,
+  }),
   uninstall: (id: string) => post<{ success: boolean; id: string; output: string }>('/api/v1/plugins/uninstall', { id }),
   update: (id?: string, all?: boolean) => post<{ success: boolean; id: string; all: boolean; output: string }>('/api/v1/plugins/update', { id, all }),
 };

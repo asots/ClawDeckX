@@ -228,11 +228,6 @@ const Scheduler: React.FC<SchedulerProps> = ({ language }) => {
   const [bgExpandedDetail, setBgExpandedDetail] = useState<any>(null);
   const [bgCancelBusy, setBgCancelBusy] = useState<Set<string>>(new Set());
 
-  // Audit detail state
-  const [auditFindings, setAuditFindings] = useState<any[] | null>(null);
-  const [auditSummary, setAuditSummary] = useState<any>(null);
-  const [auditLoading, setAuditLoading] = useState(false);
-  const [auditExpanded, setAuditExpanded] = useState(false);
 
   const na = s?.na || '-';
 
@@ -300,18 +295,6 @@ const Scheduler: React.FC<SchedulerProps> = ({ language }) => {
     setBgTasksLoading(false);
   }, [bgRuntimeFilter, bgStatusFilter]);
 
-  // Load audit detail
-  const loadAuditDetail = useCallback(async () => {
-    setAuditLoading(true);
-    try {
-      const res = await doctorApi.tasksAudit();
-      if (res) {
-        setAuditFindings(Array.isArray(res.findings) ? res.findings : []);
-        setAuditSummary(res.summary ?? null);
-      }
-    } catch { /* ignore */ }
-    setAuditLoading(false);
-  }, []);
 
   // Cancel a background task
   const cancelBgTask = useCallback(async (taskId: string) => {
@@ -1192,50 +1175,6 @@ const Scheduler: React.FC<SchedulerProps> = ({ language }) => {
           </div>
         )}
 
-        {/* Audit Detail Section */}
-        {taskAudit && taskAudit.total > 0 && (
-          <div className="rounded-2xl border border-amber-200/60 dark:border-amber-500/20 bg-amber-50/30 dark:bg-amber-500/[0.03] p-4">
-            <div className="flex items-center justify-between mb-2">
-              <button onClick={() => { if (!auditExpanded) { setAuditExpanded(true); loadAuditDetail(); } else { setAuditExpanded(false); } }}
-                className="flex items-center gap-2 text-[11px] font-bold text-slate-600 dark:text-white/60 uppercase hover:text-primary transition-colors">
-                <span className="material-symbols-outlined text-[14px] text-amber-500">health_and_safety</span>
-                {s.bgAuditTitle || 'Task Audit Detail'}
-                <span className={`text-[10px] font-bold ${taskAudit.errors > 0 ? 'text-red-500' : 'text-amber-500'}`}>
-                  {(s.taskAuditFindings || '{{total}} finding(s)').replace('{{total}}', String(taskAudit.total))}
-                </span>
-                <span className={`material-symbols-outlined text-[14px] text-slate-300 transition-transform ${auditExpanded ? 'rotate-180' : ''}`}>expand_more</span>
-              </button>
-            </div>
-            {auditExpanded && (
-              <div className="mt-2">
-                {auditLoading ? (
-                  <div className="flex items-center gap-2 py-3 text-[10px] text-slate-400"><span className="material-symbols-outlined text-[14px] animate-spin">progress_activity</span>{s.loading || 'Loading...'}</div>
-                ) : auditFindings && auditFindings.length > 0 ? (
-                  <div className="space-y-1.5">
-                    {auditFindings.map((f: any, i: number) => (
-                      <div key={i} className="flex items-start gap-2 px-3 py-2 rounded-lg bg-white/60 dark:bg-white/[0.02] border border-slate-100 dark:border-white/5 text-[10px]">
-                        <span className={`material-symbols-outlined text-[12px] mt-0.5 ${f.severity === 'error' ? 'text-mac-red' : 'text-amber-500'}`}>
-                          {f.severity === 'error' ? 'error' : 'warning'}
-                        </span>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-slate-600 dark:text-white/60">{f.code}</span>
-                            <span className={`font-bold uppercase ${f.severity === 'error' ? 'text-mac-red' : 'text-amber-500'}`}>{f.severity}</span>
-                            {f.kind && <span className="text-slate-400">{f.kind}</span>}
-                          </div>
-                          <p className="text-slate-500 dark:text-white/40 mt-0.5">{f.detail}</p>
-                        </div>
-                        {f.ageMs != null && <span className="text-slate-400 shrink-0">{f.ageMs < 60000 ? `${Math.round(f.ageMs / 1000)}s` : f.ageMs < 3600000 ? `${Math.round(f.ageMs / 60000)}m` : `${Math.round(f.ageMs / 3600000)}h`}</span>}
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-[10px] text-slate-400 py-2">{s.bgNoAuditFindings || 'No audit findings'}</p>
-                )}
-              </div>
-            )}
-          </div>
-        )}
       </div>}
     </main>
   );

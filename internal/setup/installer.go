@@ -362,9 +362,20 @@ func (i *Installer) installViaNpm(ctx context.Context) error {
 	return i.installViaNpmWithOptions(ctx, "openclaw", "")
 }
 
+// installViaNpmWithOptions 等价于 installViaNpmWithTag(..., "")，即始终安装 @latest。
 func (i *Installer) installViaNpmWithOptions(ctx context.Context, version string, registry string) error {
-	pkgName := version + "@latest"
-	i.emitter.EmitLog(i18n.T(i18n.MsgInstallerInstallingPackage, map[string]interface{}{"Package": version}))
+	return i.installViaNpmWithTag(ctx, version, registry, "")
+}
+
+// installViaNpmWithTag 支持 npm install -g <pkg>@<tag>；tag 为空时退化到 @latest。
+// 外部传入的 tag 兼容带 v 前缀（例如 "v2026.3.2"），内部会剥离。
+func (i *Installer) installViaNpmWithTag(ctx context.Context, version string, registry string, tag string) error {
+	tagSpec := "latest"
+	if t := strings.TrimPrefix(strings.TrimSpace(tag), "v"); t != "" {
+		tagSpec = t
+	}
+	pkgName := version + "@" + tagSpec
+	i.emitter.EmitLog(i18n.T(i18n.MsgInstallerInstallingPackage, map[string]interface{}{"Package": pkgName}))
 
 	// Build ordered list of registries to try: user-selected first, then fallbacks
 	registries := buildRegistryFallbackList(registry)
@@ -887,14 +898,18 @@ func (i *Installer) InstallVPNTool(ctx context.Context, tool string) error {
 	}
 }
 
-// UpdateOpenClaw updates OpenClaw to the latest version via npm.
-func (i *Installer) UpdateOpenClaw(ctx context.Context) error {
+// UpdateOpenClaw updates OpenClaw via npm. tag 为空时安装 @latest，否则 @tag（支持降级）。
+func (i *Installer) UpdateOpenClaw(ctx context.Context, tag string) error {
 	if !i.env.Tools["npm"].Installed {
 		return fmt.Errorf("npm is not available, cannot update")
 	}
 
-	i.emitter.EmitLog("Updating OpenClaw via npm global install...")
-	if err := i.installViaNpmWithOptions(ctx, "openclaw", ""); err != nil {
+	if tag == "" {
+		i.emitter.EmitLog("Updating OpenClaw via npm global install (latest)...")
+	} else {
+		i.emitter.EmitLog("Updating OpenClaw via npm global install (tag " + tag + ")...")
+	}
+	if err := i.installViaNpmWithTag(ctx, "openclaw", "", tag); err != nil {
 		return fmt.Errorf("npm update failed: %w", err)
 	}
 

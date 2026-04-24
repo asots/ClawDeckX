@@ -339,8 +339,19 @@ func (h *SetupWizardHandler) syncGatewayToken() {
 }
 
 // UpdateOpenClaw updates OpenClaw to the latest version (SSE streaming).
-// POST /api/v1/setup/update-openclaw
+// POST /api/v1/setup/update-openclaw  {"tag": "v2026.3.2"}  — tag 可选；空/缺省 = @latest。
 func (h *SetupWizardHandler) UpdateOpenClaw(w http.ResponseWriter, r *http.Request) {
+	// 读取可选 tag。容忍空 body / 非 JSON：失败则按 @latest 处理。
+	tag := ""
+	if r.Body != nil {
+		var body struct {
+			Tag string `json:"tag"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err == nil {
+			tag = strings.TrimSpace(body.Tag)
+		}
+	}
+
 	emitter, err := setup.NewEventEmitter(w)
 	if err != nil {
 		web.Fail(w, r, "SSE_ERROR", err.Error(), http.StatusInternalServerError)
@@ -389,7 +400,7 @@ func (h *SetupWizardHandler) UpdateOpenClaw(w http.ResponseWriter, r *http.Reque
 	}
 
 	emitter.EmitPhase("update", "Updating OpenClaw...", 20)
-	if err := installer.UpdateOpenClaw(ctx); err != nil {
+	if err := installer.UpdateOpenClaw(ctx, tag); err != nil {
 		// Try to restart gateway even if update failed
 		if gwWasRunning && h.svc != nil {
 			_ = h.svc.Start()

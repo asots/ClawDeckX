@@ -27,6 +27,7 @@ interface CommandPaletteProps {
 
 const WINDOW_META: Record<WindowID, { icon: string; gradient: string }> = {
   dashboard:    { icon: 'dashboard',         gradient: 'from-[#2DA9FF] to-[#007AFF]' },
+  agentroom:    { icon: 'groups_3',          gradient: 'from-[#00D4FF] to-[#8B5CF6]' },
   editor:       { icon: 'code_blocks',       gradient: 'from-[#14B8A6] to-[#0D9488]' },
   gateway:      { icon: 'router',            gradient: 'from-[#34C759] to-[#248A3D]' },
   sessions:     { icon: 'forum',             gradient: 'from-[#818CF8] to-[#4F46E5]' },
@@ -46,7 +47,7 @@ const WINDOW_META: Record<WindowID, { icon: string; gradient: string }> = {
 };
 
 const ALL_WINDOW_IDS: WindowID[] = [
-  'dashboard', 'editor', 'gateway', 'sessions', 'activity', 'skills',
+  'dashboard', 'agentroom', 'editor', 'gateway', 'sessions', 'activity', 'skills',
   'knowledge', 'usage', 'alerts', 'agents', 'scheduler',
   'maintenance', 'terminal', 'setup_wizard', 'usage_wizard', 'settings', 'nodes',
 ];

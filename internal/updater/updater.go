@@ -148,6 +148,161 @@ func CheckForUpdate(ctx context.Context) (*CheckResult, error) {
 	return result, nil
 }
 
+// ReleaseSummary is a condensed release listing entry for the version picker UI.
+// 用于 UpdateTab 的"指定版本升级"下拉，只保留 UI 需要的字段。
+type ReleaseSummary struct {
+	TagName     string `json:"tagName"`
+	Name        string `json:"name"`
+	Prerelease  bool   `json:"prerelease"`
+	PublishedAt string `json:"publishedAt"`
+	HasAsset    bool   `json:"hasAsset"`            // 当前平台是否有匹配资产；没有则不可升级。
+	IsCurrent   bool   `json:"isCurrent,omitempty"` // 与当前运行版本一致（语义比较）。
+	IsOlder     bool   `json:"isOlder,omitempty"`   // 比当前版本旧（= 降级）。
+}
+
+// ListReleases fetches the most recent GitHub releases, including prereleases, for the version picker.
+// limit 被 clamp 到 [1, 30]；不标记降级/当前的场景下 IsCurrent/IsOlder 会留空。
+func ListReleases(ctx context.Context, limit int) ([]ReleaseSummary, error) {
+	if limit <= 0 {
+		limit = 20
+	}
+	if limit > 30 {
+		limit = 30
+	}
+
+	apiBase := netutil.GetGitHubAPIURL(ctx)
+	url := fmt.Sprintf("%s/repos/%s/%s/releases?per_page=%d", apiBase, GitHubOwner, GitHubRepo, limit)
+
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Accept", "application/vnd.github+json")
+	req.Header.Set("User-Agent", "ClawDeckX/"+version.Version)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("GITHUB_API_ERROR:%d", resp.StatusCode)
+	}
+	if !strings.Contains(resp.Header.Get("Content-Type"), "application/json") {
+		return nil, fmt.Errorf("invalid response type from GitHub")
+	}
+
+	var releases []ReleaseInfo
+	if err := json.NewDecoder(resp.Body).Decode(&releases); err != nil {
+		return nil, err
+	}
+
+	assetName := expectedAssetName()
+	currentVersion := version.Version
+	out := make([]ReleaseSummary, 0, len(releases))
+	for _, rel := range releases {
+		hasAsset := false
+		for _, a := range rel.Assets {
+			if strings.EqualFold(a.Name, assetName) {
+				hasAsset = true
+				break
+			}
+		}
+		ver := strings.TrimPrefix(rel.TagName, "v")
+		cmp := compareSemver(ver, currentVersion)
+		out = append(out, ReleaseSummary{
+			TagName:     rel.TagName,
+			Name:        rel.Name,
+			Prerelease:  rel.Prerelease,
+			PublishedAt: rel.PublishedAt.Format(time.RFC3339),
+			HasAsset:    hasAsset,
+			IsCurrent:   cmp == 0,
+			IsOlder:     cmp < 0,
+		})
+	}
+	return out, nil
+}
+
+// CheckTag fetches a specific release by tag name and builds a CheckResult
+// suitable for the existing Apply flow. "available" here is informational only —
+// the apply endpoint does not gate on it, so downgrades are supported with confirmation.
+func CheckTag(ctx context.Context, tag string) (*CheckResult, error) {
+	currentVersion := version.Version
+	if tag == "" {
+		return &CheckResult{Available: false, CurrentVersion: currentVersion, Error: "tag required"}, nil
+	}
+
+	apiBase := netutil.GetGitHubAPIURL(ctx)
+	// GitHub accepts tag as-is (e.g. "v2026.3.2"); user may pass with or without leading "v".
+	tagParam := tag
+	url := fmt.Sprintf("%s/repos/%s/%s/releases/tags/%s", apiBase, GitHubOwner, GitHubRepo, tagParam)
+
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return &CheckResult{Available: false, CurrentVersion: currentVersion, Error: err.Error()}, nil
+	}
+	req.Header.Set("Accept", "application/vnd.github+json")
+	req.Header.Set("User-Agent", "ClawDeckX/"+currentVersion)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return &CheckResult{Available: false, CurrentVersion: currentVersion, Error: err.Error()}, nil
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == 404 {
+		// Try the "v" prefix variant once if the user-provided tag didn't include it.
+		if !strings.HasPrefix(tagParam, "v") {
+			retryURL := fmt.Sprintf("%s/repos/%s/%s/releases/tags/v%s", apiBase, GitHubOwner, GitHubRepo, tagParam)
+			req2, _ := http.NewRequestWithContext(ctx, "GET", retryURL, nil)
+			req2.Header.Set("Accept", "application/vnd.github+json")
+			req2.Header.Set("User-Agent", "ClawDeckX/"+currentVersion)
+			resp2, err2 := http.DefaultClient.Do(req2)
+			if err2 == nil {
+				defer resp2.Body.Close()
+				if resp2.StatusCode == 200 {
+					resp = resp2
+				}
+			}
+		}
+	}
+	if resp.StatusCode != 200 {
+		return &CheckResult{Available: false, CurrentVersion: currentVersion, Error: fmt.Sprintf("GITHUB_API_ERROR:%d", resp.StatusCode)}, nil
+	}
+	if !strings.Contains(resp.Header.Get("Content-Type"), "application/json") {
+		return &CheckResult{Available: false, CurrentVersion: currentVersion, Error: "invalid response type from GitHub"}, nil
+	}
+
+	var release ReleaseInfo
+	if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
+		return &CheckResult{Available: false, CurrentVersion: currentVersion, Error: err.Error()}, nil
+	}
+
+	latestVersion := strings.TrimPrefix(release.TagName, "v")
+	result := &CheckResult{
+		Available:      compareSemver(latestVersion, currentVersion) != 0, // 任何差异都允许操作（升/降）。
+		CurrentVersion: currentVersion,
+		LatestVersion:  latestVersion,
+		ReleaseNotes:   release.Body,
+		PublishedAt:    release.PublishedAt.Format(time.RFC3339),
+	}
+
+	assetName := expectedAssetName()
+	for _, a := range release.Assets {
+		if strings.EqualFold(a.Name, assetName) {
+			result.AssetName = a.Name
+			result.AssetSize = a.Size
+			result.DownloadURL = netutil.GetGitHubReleaseURL(ctx, a.BrowserDownloadURL)
+			break
+		}
+	}
+	if result.DownloadURL == "" {
+		result.Error = fmt.Sprintf("no asset found for %s/%s (expected %s)", runtime.GOOS, runtime.GOARCH, assetName)
+	}
+	return result, nil
+}
+
 // CheckForPreRelease queries GitHub Releases for the latest pre-release (beta channel).
 func CheckForPreRelease(ctx context.Context) (*CheckResult, error) {
 	currentVersion := version.Version

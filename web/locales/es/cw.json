@@ -149,16 +149,16 @@
   "whatsappPitfall": "⚠️ Errores comunes: 1) Gateway DEBE ejecutarse en Node.js; 2) Riesgo de ban con protocolo no oficial, use número dedicado; 3) QR válido ~20s; 4) Si la sesión se corrompe, borre archivos en ~/.openclaw/sessions/; 5) Máximo 4 dispositivos vinculados",
   "signalPitfall": "⚠️ Errores comunes: 1) Java 21+ no instalado es la causa #1; 2) ARM Linux puede requerir compilar libsignal-client; 3) Use signal-cli link, no register; 4) QR en terminal necesita Unicode; 5) Signal limita frecuencia de mensajes",
   "feishuPrep": [
-    "Instale el plugin de Feishu: openclaw plugins install @openclaw/feishu",
-    "Inicie sesión en Feishu Open Platform open.feishu.cn → Cree una app empresarial",
-    "Copie App Key y App Secret de la página de credenciales",
-    "Añada la capacidad Bot en App Capabilities, establezca el nombre del bot",
-    "Añada los permisos requeridos: im:message, im:message.p2p_msg:readonly, im:message.group_at_msg:readonly, im:message:send_as_bot, im:resource (use \"Copiar JSON de permisos\" abajo para importar en lote)",
-    "En Events & Callbacks, seleccione \"Recibir eventos vía conexión larga\" (recomendado, sin IP pública), añada eventos: im.message.receive_v1, im.message.message_read_v1, im.chat.member.bot.added_v1, im.chat.member.bot.deleted_v1",
-    "Cree y publique una versión en Gestión de versiones (obligatorio tras cada cambio de configuración)",
-    "⚠️ El Bot solo aparece en la búsqueda de Feishu tras publicar"
+    "Install plugin: openclaw plugins install @openclaw/feishu (requires OpenClaw host >= 2026.4.10)",
+    "Open Feishu Open Platform open.feishu.cn/app → Create a self-built app",
+    "On the Credentials & Basic Info page, copy App ID and App Secret",
+    "In App Capabilities, add the Bot capability and set the bot name",
+    "On the Permissions page, add required scopes: im:message, im:message.p2p_msg:readonly, im:message.group_at_msg:readonly, im:message:send_as_bot, im:resource, contact:user.base:readonly (click \"Copy Permission JSON\" for bulk import)",
+    "In Events & Callbacks, choose \"Use long connection\" (WebSocket, recommended) and subscribe to: im.message.receive_v1, im.message.message_read_v1, im.chat.member.bot.added_v1, im.chat.member.bot.deleted_v1",
+    "In Version Management & Release, create a version and publish (required after every config/permission change)",
+    "⚠️ The bot only becomes searchable in Feishu after publishing"
   ],
-  "feishuPitfall": "⚠️ Errores comunes: 1) Sin evento im.message.receive_v1 el Bot envía pero no recibe; 2) Modo evento debe coincidir con connectionMode; 3) Publicar nueva versión tras cada cambio; 4) Bot no tiene directorio raíz propio en la nube",
+  "feishuPitfall": "⚠️ Common pitfalls: 1) You must subscribe im.message.receive_v1 under Events & Callbacks — otherwise the bot sends but never receives messages; 2) Event subscription must match connectionMode — long connection → websocket (recommended), request URL → webhook; 3) After every permission/config change you must re-publish the version; 4) Bots have no Drive root folder — share a folder with the bot to use drive tools; 5) OpenClaw host must be >= 2026.4.10 (required by @openclaw/feishu >= 2026.4.19-beta.1); 6) If one-click install fails, run `openclaw plugins install @openclaw/feishu` in a terminal directly.",
   "feishuHelpUrl": "https://open.feishu.cn/app",
   "dingtalkPrep": [
     "Instale el plugin de DingTalk: openclaw plugins install @openclaw-china/dingtalk",
@@ -293,5 +293,9 @@
     "(Opcional) Para renderizado Markdown, solicite el permiso de plantilla Markdown por separado (la revisión toma tiempo)"
   ],
   "qqbotPitfall": "⚠️ Errores comunes: 1) Active permisos y añada miembros de prueba; 2) En grupo necesita @Bot; 3) Markdown requiere permiso adicional; 4) QQ Bot está en beta",
-  "qqbotHelpUrl": "https://q.qq.com"
+  "qqbotHelpUrl": "https://q.qq.com",
+  "pluginForceReinstall": "Force reinstall (uninstall residue first)",
+  "pluginSecurityWarning": "⚠️ The upstream installer blocked this plugin due to dangerous code patterns (often a false-positive on test files shipped in the npm tarball). Only proceed if you trust this plugin source.",
+  "pluginForceUnsafeInstall": "Force install (skip security scan)",
+  "pluginForceUnsafeConfirm": "This will install the plugin WITHOUT the upstream security scan. Continue only if you trust the source. Proceed?"
 }

@@ -60,6 +60,7 @@ interface AppGroup {
 const ALL_DESKTOP_APPS: AppInfo[] = [
   // — High frequency —
   { id: 'dashboard', titleKey: 'dashboard', icon: 'dashboard', gradient: 'from-[#2DA9FF] to-[#007AFF]' },
+  { id: 'agentroom', titleKey: 'agentroom', icon: 'groups_3', gradient: 'from-[#00D4FF] to-[#8B5CF6]' },
   { id: 'editor', titleKey: 'editor', icon: 'code_blocks', gradient: 'from-[#14B8A6] to-[#0D9488]' },
   { id: 'gateway', titleKey: 'gateway', icon: 'router', gradient: 'from-[#34C759] to-[#248A3D]' },
   { id: 'sessions', titleKey: 'sessions', icon: 'forum', gradient: 'from-[#818CF8] to-[#4F46E5]' },
@@ -100,6 +101,7 @@ const DOCK_GROUPS: AppGroup[] = [
     apps: [
       { id: 'gateway', icon: 'router', color: 'bg-emerald-500' },
       { id: 'sessions', icon: 'forum', color: 'bg-teal-500' },
+      { id: 'agentroom', icon: 'groups_3', color: 'bg-cyan-500' },
       { id: 'agents', icon: 'robot_2', color: 'bg-green-600' },
       { id: 'scheduler', icon: 'event_repeat', color: 'bg-cyan-600' },
     ]

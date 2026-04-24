@@ -481,6 +481,40 @@ body {
   animation: glow-pulse-green 2s ease-in-out infinite;
 }
 
+/* ── Pause button "处理中" 脉冲 ──
+   v0.9：Composer 的暂停按钮发起 emergencyStop 后到回推 paused:true 有一两秒延迟。
+   此期间按钮加一层 amber 外发光 + 轻微 scale 呼吸，让用户清楚"点击已生效，后台处理中"。 */
+@keyframes pause-busy-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.55);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(245, 158, 11, 0);
+    transform: scale(1.04);
+  }
+}
+.pause-busy-pulse {
+  animation: pause-busy-pulse 0.9s ease-in-out infinite;
+}
+
+/* ── Time-travel jump highlight (AgentRoom TimelineOverlay) ── */
+@keyframes msg-jump-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(0, 210, 255, 0);     background-color: rgba(0, 210, 255, 0); }
+  15%  { box-shadow: 0 0 0 3px rgba(0, 210, 255, 0.55); background-color: rgba(0, 210, 255, 0.12); }
+  45%  { box-shadow: 0 0 16px 3px rgba(0, 210, 255, 0.35); background-color: rgba(0, 210, 255, 0.06); }
+  100% { box-shadow: 0 0 0 0 rgba(0, 210, 255, 0);     background-color: rgba(0, 210, 255, 0); }
+}
+.msg-jump-target {
+  border-radius: 8px;
+  transition: background-color 300ms ease;
+  scroll-margin-top: 24px;
+  scroll-margin-bottom: 24px;
+}
+.msg-jump-highlight {
+  animation: msg-jump-pulse 2.5s ease-out 1;
+}
+
 /* ── Neon underline sweep ── */
 @keyframes neon-sweep {
   0% { background-position: -200% 0; }
@@ -621,6 +655,28 @@ body {
 }
 .dark .stream-dot {
   animation: stream-dot-glow 1.2s ease-in-out infinite;
+}
+
+/* ── Safe-area utilities (iOS notch / Android navigation bar) ── */
+.pb-safe {
+  padding-bottom: max(8px, env(safe-area-inset-bottom));
+}
+.pt-safe {
+  padding-top: max(8px, env(safe-area-inset-top));
+}
+.pe-safe {
+  padding-inline-end: max(0px, env(safe-area-inset-right));
+}
+.ps-safe {
+  padding-inline-start: max(0px, env(safe-area-inset-left));
+}
+
+/* ── Mobile tap target：保证按钮 min 36×36（接近 WCAG 44px，平衡密度） ── */
+@media (max-width: 640px) {
+  .agentroom-composer button,
+  .agentroom-composer [role="button"] {
+    min-height: 36px;
+  }
 }
 
 /* ── Header divider neon line ── */

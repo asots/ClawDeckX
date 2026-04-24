@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"ClawDeckX/internal/executil"
+	"ClawDeckX/internal/netutil"
 	"ClawDeckX/internal/openclaw"
 	"ClawDeckX/internal/web"
 )
@@ -197,6 +198,99 @@ func (h *HostInfoHandler) CheckUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	web.OK(w, r, result)
+}
+
+// OpenClawReleaseSummary is the lightweight release list entry for the OpenClaw
+// version picker UI. 与 updater.ReleaseSummary 形状兼容，前端共用 ReleaseSummary 接口。
+// HasAsset 恒为 true：OpenClaw 通过 npm tag 直装，不需要匹配平台资产。
+type OpenClawReleaseSummary struct {
+	TagName     string `json:"tagName"`
+	Name        string `json:"name"`
+	Prerelease  bool   `json:"prerelease"`
+	PublishedAt string `json:"publishedAt"`
+	HasAsset    bool   `json:"hasAsset"`
+	IsCurrent   bool   `json:"isCurrent,omitempty"`
+	IsOlder     bool   `json:"isOlder,omitempty"`
+}
+
+// ListOpenClawReleases returns the most recent GitHub releases for the openclaw/openclaw
+// repo, annotated with current/older flags relative to the locally installed OpenClaw.
+// GET /api/v1/host-info/openclaw-releases?limit=20
+func (h *HostInfoHandler) ListOpenClawReleases(w http.ResponseWriter, r *http.Request) {
+	limit := 20
+	if v := strings.TrimSpace(r.URL.Query().Get("limit")); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			limit = n
+		}
+	}
+	if limit > 30 {
+		limit = 30
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
+	defer cancel()
+
+	// 走 netutil 的最佳 GitHub API mirror（CN 网络下 api.github.com 常被拦）。
+	apiBase := netutil.GetGitHubAPIURL(ctx)
+	url := fmt.Sprintf("%s/repos/openclaw/openclaw/releases?per_page=%d", apiBase, limit)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		web.Fail(w, r, "OPENCLAW_RELEASES_FAILED", err.Error(), http.StatusInternalServerError)
+		return
+	}
+	req.Header.Set("Accept", "application/vnd.github+json")
+	req.Header.Set("User-Agent", "ClawDeckX")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		web.Fail(w, r, "OPENCLAW_RELEASES_FAILED", err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		web.Fail(w, r, "OPENCLAW_RELEASES_FAILED", fmt.Sprintf("GITHUB_API_ERROR:%d", resp.StatusCode), http.StatusInternalServerError)
+		return
+	}
+	if !strings.Contains(resp.Header.Get("Content-Type"), "application/json") {
+		web.Fail(w, r, "OPENCLAW_RELEASES_FAILED", "invalid response type from GitHub", http.StatusInternalServerError)
+		return
+	}
+
+	var releases []struct {
+		TagName     string    `json:"tag_name"`
+		Name        string    `json:"name"`
+		Prerelease  bool      `json:"prerelease"`
+		PublishedAt time.Time `json:"published_at"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&releases); err != nil {
+		web.Fail(w, r, "OPENCLAW_RELEASES_FAILED", err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// 本地安装的 OpenClaw 版本（可能拿不到；此时不做 current/older 标记）。
+	currentVersion := ""
+	if _, ver, ok := openclaw.DetectOpenClawBinary(); ok {
+		currentVersion = extractSemver(ver)
+	}
+
+	out := make([]OpenClawReleaseSummary, 0, len(releases))
+	for _, rel := range releases {
+		ver := strings.TrimPrefix(rel.TagName, "v")
+		item := OpenClawReleaseSummary{
+			TagName:     rel.TagName,
+			Name:        rel.Name,
+			Prerelease:  rel.Prerelease,
+			PublishedAt: rel.PublishedAt.Format(time.RFC3339),
+			HasAsset:    true, // npm tag 直装
+		}
+		if currentVersion != "" {
+			cmp := compareSemver(ver, currentVersion)
+			item.IsCurrent = cmp == 0
+			item.IsOlder = cmp < 0
+		}
+		out = append(out, item)
+	}
+	web.OK(w, r, out)
 }
 
 // compareSemver compares two semver strings; returns positive if a > b.

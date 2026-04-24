@@ -136,34 +136,53 @@ func ResolveProvider(configPath, modelRef string) (*ProviderConfig, error) {
 	return nil, fmt.Errorf("llmdirect: model %q not found in any provider", modelID)
 }
 
+// ToolCall represents a single tool/function call from the LLM.
+type ToolCall struct {
+	ID       string `json:"id"`
+	Type     string `json:"type"` // "function"
+	Function struct {
+		Name      string `json:"name"`
+		Arguments string `json:"arguments"`
+	} `json:"function"`
+}
+
 // Message is a single chat message.
 type Message struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
+	Role       string     `json:"role"`
+	Content    string     `json:"content"`
+	ToolCalls  []ToolCall `json:"tool_calls,omitempty"`   // assistant messages with tool calls
+	ToolCallID string     `json:"tool_call_id,omitempty"` // tool role messages referencing a call
+	Name       string     `json:"name,omitempty"`         // tool name for tool role messages
 }
 
 // StreamChunk is a delta token received from the SSE stream.
 type StreamChunk struct {
-	Token string
-	Done  bool
-	Error error
+	Token     string
+	ToolCalls []ToolCall // populated on Done when finish_reason=tool_calls
+	Done      bool
+	Error     error
 }
 
 // StreamCompletion sends a streaming chat completion request and yields chunks
 // on the returned channel. The channel is closed when the stream ends or ctx is cancelled.
 // Uses OpenAI-compatible /chat/completions with stream=true.
-func StreamCompletion(ctx context.Context, cfg *ProviderConfig, messages []Message, maxTokens int) <-chan StreamChunk {
+// Optional tools parameter: pass a []ToolDef as the first variadic arg to enable tool calling.
+func StreamCompletion(ctx context.Context, cfg *ProviderConfig, messages []Message, maxTokens int, optTools ...[]ToolDef) <-chan StreamChunk {
+	var tools []ToolDef
+	if len(optTools) > 0 {
+		tools = optTools[0]
+	}
 	ch := make(chan StreamChunk, 64)
 	go func() {
 		defer close(ch)
-		if err := doStream(ctx, cfg, messages, maxTokens, ch); err != nil {
+		if err := doStream(ctx, cfg, messages, maxTokens, tools, ch); err != nil {
 			ch <- StreamChunk{Error: err}
 		}
 	}()
 	return ch
 }
 
-func doStream(ctx context.Context, cfg *ProviderConfig, messages []Message, maxTokens int, ch chan<- StreamChunk) error {
+func doStream(ctx context.Context, cfg *ProviderConfig, messages []Message, maxTokens int, tools []ToolDef, ch chan<- StreamChunk) error {
 	// Use model's configured maxTokens when caller passes 0 or a smaller value.
 	if cfg.MaxTokens > 0 && (maxTokens <= 0 || maxTokens < cfg.MaxTokens) {
 		maxTokens = cfg.MaxTokens
@@ -177,6 +196,9 @@ func doStream(ctx context.Context, cfg *ProviderConfig, messages []Message, maxT
 		"messages":   messages,
 		"stream":     true,
 		"max_tokens": maxTokens,
+	}
+	if len(tools) > 0 {
+		body["tools"] = tools
 	}
 	bodyBytes, err := json.Marshal(body)
 	if err != nil {
@@ -204,6 +226,9 @@ func doStream(ctx context.Context, cfg *ProviderConfig, messages []Message, maxT
 	}
 
 	// Parse SSE stream: "data: {...}\n\n"
+	// tool_calls are accumulated across delta chunks and emitted on Done.
+	tcMap := map[int]*tcAccum{}
+
 	scanner := bufio.NewScanner(resp.Body)
 	scanner.Buffer(make([]byte, 1024*512), 1024*512)
 	for scanner.Scan() {
@@ -213,13 +238,22 @@ func doStream(ctx context.Context, cfg *ProviderConfig, messages []Message, maxT
 		}
 		payload := strings.TrimPrefix(line, "data: ")
 		if payload == "[DONE]" {
-			ch <- StreamChunk{Done: true}
+			ch <- StreamChunk{Done: true, ToolCalls: buildToolCalls(tcMap)}
 			return nil
 		}
 		var event struct {
 			Choices []struct {
 				Delta struct {
-					Content string `json:"content"`
+					Content   string `json:"content"`
+					ToolCalls []struct {
+						Index    int    `json:"index"`
+						ID       string `json:"id,omitempty"`
+						Type     string `json:"type,omitempty"`
+						Function struct {
+							Name      string `json:"name,omitempty"`
+							Arguments string `json:"arguments,omitempty"`
+						} `json:"function,omitempty"`
+					} `json:"tool_calls,omitempty"`
 				} `json:"delta"`
 				FinishReason *string `json:"finish_reason"`
 			} `json:"choices"`
@@ -235,8 +269,28 @@ func doStream(ctx context.Context, cfg *ProviderConfig, messages []Message, maxT
 					return ctx.Err()
 				}
 			}
+			// Accumulate tool_call deltas
+			for _, tc := range choice.Delta.ToolCalls {
+				acc, ok := tcMap[tc.Index]
+				if !ok {
+					acc = &tcAccum{}
+					tcMap[tc.Index] = acc
+				}
+				if tc.ID != "" {
+					acc.ID = tc.ID
+				}
+				if tc.Type != "" {
+					acc.Type = tc.Type
+				}
+				if tc.Function.Name != "" {
+					acc.Name = tc.Function.Name
+				}
+				if tc.Function.Arguments != "" {
+					acc.Args.WriteString(tc.Function.Arguments)
+				}
+			}
 			if choice.FinishReason != nil && *choice.FinishReason != "" {
-				ch <- StreamChunk{Done: true}
+				ch <- StreamChunk{Done: true, ToolCalls: buildToolCalls(tcMap)}
 				return nil
 			}
 		}
@@ -245,6 +299,35 @@ func doStream(ctx context.Context, cfg *ProviderConfig, messages []Message, maxT
 		return fmt.Errorf("llmdirect: reading stream: %w", err)
 	}
 	return nil
+}
+
+// buildToolCalls converts the accumulated tool_call deltas into a slice of ToolCall.
+func buildToolCalls(m map[int]*tcAccum) []ToolCall {
+	if len(m) == 0 {
+		return nil
+	}
+	// Find max index
+	maxIdx := 0
+	for idx := range m {
+		if idx > maxIdx {
+			maxIdx = idx
+		}
+	}
+	result := make([]ToolCall, 0, len(m))
+	for i := 0; i <= maxIdx; i++ {
+		acc, ok := m[i]
+		if !ok {
+			continue
+		}
+		tc := ToolCall{
+			ID:   acc.ID,
+			Type: acc.Type,
+		}
+		tc.Function.Name = acc.Name
+		tc.Function.Arguments = acc.Args.String()
+		result = append(result, tc)
+	}
+	return result
 }
 
 // Complete performs a non-streaming chat completion and returns the full response text.
@@ -313,7 +396,8 @@ func CompleteNonStream(ctx context.Context, cfg *ProviderConfig, messages []Mess
 	var result struct {
 		Choices []struct {
 			Message struct {
-				Content string `json:"content"`
+				Content   string     `json:"content"`
+				ToolCalls []ToolCall `json:"tool_calls,omitempty"`
 			} `json:"message"`
 		} `json:"choices"`
 	}
@@ -324,4 +408,87 @@ func CompleteNonStream(ctx context.Context, cfg *ProviderConfig, messages []Mess
 		return "", fmt.Errorf("llmdirect: no choices in response")
 	}
 	return result.Choices[0].Message.Content, nil
+}
+
+// CompleteWithTools performs a non-streaming chat completion that may return tool_calls.
+// Returns content text and any tool_calls the model wants to invoke.
+func CompleteWithTools(ctx context.Context, cfg *ProviderConfig, messages []Message, tools []ToolDef, maxTokens int) (string, []ToolCall, error) {
+	if maxTokens <= 0 {
+		if cfg.MaxTokens > 0 {
+			maxTokens = cfg.MaxTokens
+		} else {
+			maxTokens = 4096
+		}
+	}
+
+	body := map[string]interface{}{
+		"model":      cfg.ModelID,
+		"messages":   messages,
+		"stream":     false,
+		"max_tokens": maxTokens,
+	}
+	if len(tools) > 0 {
+		body["tools"] = tools
+	}
+	bodyBytes, err := json.Marshal(body)
+	if err != nil {
+		return "", nil, fmt.Errorf("llmdirect: marshal request: %w", err)
+	}
+
+	url := cfg.BaseURL + "/chat/completions"
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(bodyBytes))
+	if err != nil {
+		return "", nil, fmt.Errorf("llmdirect: build request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+cfg.APIKey)
+
+	client := &http.Client{Timeout: 0}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", nil, fmt.Errorf("llmdirect: http request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		limitedBody, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
+		return "", nil, fmt.Errorf("llmdirect: LLM returned HTTP %d: %s", resp.StatusCode, string(limitedBody))
+	}
+
+	var res struct {
+		Choices []struct {
+			Message struct {
+				Content   string     `json:"content"`
+				ToolCalls []ToolCall `json:"tool_calls,omitempty"`
+			} `json:"message"`
+		} `json:"choices"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+		return "", nil, fmt.Errorf("llmdirect: decode response: %w", err)
+	}
+	if len(res.Choices) == 0 {
+		return "", nil, fmt.Errorf("llmdirect: no choices in response")
+	}
+	return res.Choices[0].Message.Content, res.Choices[0].Message.ToolCalls, nil
+}
+
+// tcAccum accumulates streamed tool_call deltas for a single call index.
+type tcAccum struct {
+	ID   string
+	Type string
+	Name string
+	Args strings.Builder
+}
+
+// ToolDef defines a tool schema to pass to the LLM.
+type ToolDef struct {
+	Type     string      `json:"type"` // "function"
+	Function ToolDefFunc `json:"function"`
+}
+
+// ToolDefFunc defines the function schema within a ToolDef.
+type ToolDefFunc struct {
+	Name        string      `json:"name"`
+	Description string      `json:"description,omitempty"`
+	Parameters  interface{} `json:"parameters,omitempty"` // JSON Schema object
 }

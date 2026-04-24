@@ -39,6 +39,7 @@ const loadSetupWizard = () => import('./windows/SetupWizard');
 const loadUsageWizard = () => import('./windows/UsageWizard');
 const loadKnowledge = () => import('./windows/Knowledge');
 const loadTerminal = () => import('./windows/Terminal');
+const loadAgentRoom = () => import('./windows/AgentRoom');
 
 const WINDOW_LOADERS: Record<WindowID, () => Promise<unknown>> = {
   dashboard: loadDashboard,
@@ -58,6 +59,7 @@ const WINDOW_LOADERS: Record<WindowID, () => Promise<unknown>> = {
   usage_wizard: loadUsageWizard,
   knowledge: loadKnowledge,
   terminal: loadTerminal,
+  agentroom: loadAgentRoom,
 };
 
 const PRIORITY_WARMUP_LOADERS: Array<() => Promise<unknown>> = [
@@ -97,6 +99,7 @@ const SetupWizard = React.lazy(loadSetupWizard);
 const UsageWizard = React.lazy(loadUsageWizard);
 const Knowledge = React.lazy(loadKnowledge);
 const TerminalPage = React.lazy(loadTerminal);
+const AgentRoom = React.lazy(loadAgentRoom);
 
 const WINDOW_IDS: { id: WindowID; openByDefault?: boolean }[] = [
   { id: 'dashboard', openByDefault: true },
@@ -114,6 +117,7 @@ const WINDOW_IDS: { id: WindowID; openByDefault?: boolean }[] = [
   { id: 'nodes' },
   { id: 'knowledge' },
   { id: 'terminal' },
+  { id: 'agentroom' },
   { id: 'setup_wizard' },
   { id: 'usage_wizard' },
 ];
@@ -465,7 +469,9 @@ const App: React.FC = () => {
             language={language}
             onChangeLanguage={changeLanguage}
             badges={badges}
-            dockAutoHide={windows.some(w => w.isOpen && w.isMaximized && !w.isMinimized)}
+            dockAutoHide={prefs.dockAutoHide
+              ? windows.some(w => w.isOpen && !w.isMinimized)
+              : windows.some(w => w.isOpen && w.isMaximized && !w.isMinimized)}
             wallpaper={prefs.wallpaper}
           />
           {windows.filter(w => w.isOpen).map(w => {
@@ -476,7 +482,9 @@ const App: React.FC = () => {
                 window={w}
                 language={language}
                 isFocused={w.zIndex === topZ}
-                dockHidden={windows.some(o => o.isOpen && o.isMaximized && !o.isMinimized)}
+                dockHidden={prefs.dockAutoHide
+                  ? windows.some(o => o.isOpen && !o.isMinimized)
+                  : windows.some(o => o.isOpen && o.isMaximized && !o.isMinimized)}
                 controlsPosition={prefs.windowControlsPosition}
                 onClose={() => closeWindow(w.id)}
                 onMinimize={() => minimizeWindow(w.id)}
@@ -501,6 +509,7 @@ const App: React.FC = () => {
                     {w.id === 'nodes' && <Nodes language={language} />}
                     {w.id === 'knowledge' && <Knowledge language={language} pendingExpandItem={detailFor('knowledge')?.expandItem ?? null} onExpandItemConsumed={consumeDetail} />}
                     {w.id === 'terminal' && <TerminalPage language={language} />}
+                    {w.id === 'agentroom' && <AgentRoom language={language} />}
                     {w.id === 'setup_wizard' && (
                       <SetupWizard
                         language={language}

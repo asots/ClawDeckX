@@ -303,6 +303,19 @@ func (h *PluginInstallHandler) CheckInstalled(w http.ResponseWriter, r *http.Req
 type pluginInstallRequest struct {
 	Spec  string `json:"spec"`  // npm spec like "@openclaw/feishu"
 	Force bool   `json:"force"` // if true, uninstall any pre-existing plugin first (cleans up residue from a prior failed install)
+	// DangerouslyForce bypasses the upstream install-time security scanner
+	// (critical code-pattern rules). Used only after the user explicitly
+	// approves a retry when the first attempt is blocked by security_scan_blocked.
+	DangerouslyForce bool `json:"dangerouslyForce"`
+}
+
+// isSecurityScanBlockedError returns true when the upstream openclaw CLI blocked
+// the install via its install-time security scanner (see upstream
+// src/plugins/install-security-scan.runtime.ts → buildCriticalBlockReason).
+func isSecurityScanBlockedError(msg string) bool {
+	lower := strings.ToLower(msg)
+	return strings.Contains(lower, "security_scan_blocked") ||
+		strings.Contains(lower, "dangerous code patterns detected")
 }
 
 // Install installs an OpenClaw plugin via CLI.
@@ -344,16 +357,23 @@ func (h *PluginInstallHandler) Install(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	logger.Log.Info().Str("spec", spec).Bool("force", req.Force).Msg("installing plugin")
+	logger.Log.Info().Str("spec", spec).Bool("force", req.Force).Bool("dangerouslyForce", req.DangerouslyForce).Msg("installing plugin")
 
-	// Run openclaw plugins install <spec>
+	// Run openclaw plugins install <spec> [--dangerously-force-unsafe-install]
+	// The upstream install-time security scanner may raise false-positives on
+	// plugin test files shipped in npm tarballs. The flag is only appended when
+	// the caller explicitly opts in after a security_scan_blocked failure.
+	cliArgs := []string{"plugins", "install", spec}
+	if req.DangerouslyForce {
+		cliArgs = append(cliArgs, "--dangerously-force-unsafe-install")
+	}
 	var cmd *exec.Cmd
 	if runtime.GOOS == "windows" {
 		// On Windows, use cmd.exe /c to run the openclaw command
 		// This handles .cmd/.bat files and PATH resolution correctly
-		cmd = exec.Command("cmd.exe", "/c", "openclaw", "plugins", "install", spec)
+		cmd = exec.Command("cmd.exe", append([]string{"/c", "openclaw"}, cliArgs...)...)
 	} else {
-		cmd = exec.Command("openclaw", "plugins", "install", spec)
+		cmd = exec.Command("openclaw", cliArgs...)
 	}
 	executil.HideWindow(cmd)
 	var stdout, stderr bytes.Buffer
@@ -383,6 +403,12 @@ func (h *PluginInstallHandler) Install(w http.ResponseWriter, r *http.Request) {
 				web.Fail(w, r, "PLUGIN_EXISTS", errMsg, http.StatusConflict)
 				return
 			}
+			// Detect upstream install-time security scanner block so the UI can
+			// offer an explicit force-unsafe retry with a warning.
+			if !req.DangerouslyForce && isSecurityScanBlockedError(errMsg) {
+				web.Fail(w, r, "SECURITY_BLOCKED", errMsg, http.StatusUnprocessableEntity)
+				return
+			}
 			web.Fail(w, r, "INSTALL_FAILED", errMsg, http.StatusInternalServerError)
 			return
 		}
@@ -403,6 +429,10 @@ func (h *PluginInstallHandler) Install(w http.ResponseWriter, r *http.Request) {
 		logger.Log.Warn().Str("spec", spec).Str("output", output).Msg("plugin install command exited 0 but output indicates failure")
 		if isPluginAlreadyExistsError(combined) {
 			web.Fail(w, r, "PLUGIN_EXISTS", combined, http.StatusConflict)
+			return
+		}
+		if !req.DangerouslyForce && isSecurityScanBlockedError(combined) {
+			web.Fail(w, r, "SECURITY_BLOCKED", combined, http.StatusUnprocessableEntity)
 			return
 		}
 		web.OK(w, r, map[string]interface{}{

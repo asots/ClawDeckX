@@ -19,6 +19,7 @@ import (
 	"time"
 	"unicode"
 
+	"ClawDeckX/internal/agentroom"
 	"ClawDeckX/internal/constants"
 	"ClawDeckX/internal/database"
 	"ClawDeckX/internal/handlers"
@@ -508,12 +509,14 @@ func RunServe(args []string) int {
 	router.GET("/api/v1/dashboard", dashboardHandler.Get)
 	router.GET("/api/v1/host-info", hostInfoHandler.Get)
 	router.GET("/api/v1/host-info/check-update", hostInfoHandler.CheckUpdate)
+	router.GET("/api/v1/host-info/openclaw-releases", hostInfoHandler.ListOpenClawReleases)
 	router.GET("/api/v1/host-info/device-id", hostInfoHandler.DeviceID)
 
 	router.GET("/api/v1/self-update/info", selfUpdateHandler.Info)
 	router.GET("/api/v1/self-update/overview", selfUpdateHandler.Overview)
 	router.GET("/api/v1/self-update/check", selfUpdateHandler.Check)
 	router.GET("/api/v1/self-update/check-channel", selfUpdateHandler.CheckChannel)
+	router.GET("/api/v1/self-update/releases", selfUpdateHandler.ListReleases)
 	router.GET("/api/v1/self-update/history", selfUpdateHandler.History)
 	router.POST("/api/v1/self-update/translate-notes", selfUpdateHandler.TranslateNotes)
 	router.POST("/api/v1/self-update/apply", web.RequireAdmin(selfUpdateHandler.Apply))
@@ -814,6 +817,57 @@ func RunServe(args []string) int {
 	router.POST("/api/v1/multi-agent/preview", web.RequireAdmin(multiAgentHandler.Preview))
 	router.GET("/api/v1/multi-agent/status", multiAgentHandler.Status)
 	router.POST("/api/v1/multi-agent/delete", web.RequireAdmin(multiAgentHandler.Delete))
+
+	// ── AgentRoom ──
+	agentRoomRepo := agentroom.NewRepo()
+	agentRoomBroker := agentroom.NewBroker(func(channel, msgType string, payload any) {
+		wsHub.Broadcast(channel, msgType, payload)
+	})
+	agentRoomBroker.SetUserBroadcaster(func(channel string, userIDs []uint, msgType string, payload any) {
+		wsHub.BroadcastToUsers(channel, userIDs, msgType, payload)
+	})
+	// v0.4：Manager 持有 gwClient（OpenClaw Gateway RPC 桥接）。
+	// 所有 agent 推理走 bridge；本地 tool-approval 已移除，审批由 OpenClaw 原生流处理。
+	agentRoomMgr := agentroom.NewManager(agentRoomRepo, agentRoomBroker, gwClient)
+	// 启动恢复：清理崩溃残留 + warm-up 所有 state=active 的房间，保证重启后 orchestrator 依然在线。
+	agentRoomMgr.Bootstrap()
+	defer agentRoomMgr.Shutdown()
+	agentRoomHandler := handlers.NewAgentRoomHandler(agentRoomRepo, agentRoomMgr)
+	router.GET("/api/v1/agentroom/templates", agentRoomHandler.ListTemplates)
+	router.Handle("*", "/api/v1/agentroom/role-profiles", agentRoomHandler.RoleProfilesRouter)
+	router.Handle("*", "/api/v1/agentroom/role-profiles/", agentRoomHandler.RoleProfilesRouter)
+	// v0.7+ 可配置调参：preset 列表 + 默认 PromptPack（供 RoomTuningModal 使用）
+	router.GET("/api/v1/agentroom/presets", agentRoomHandler.ListPresets)
+	router.GET("/api/v1/agentroom/prompt-defaults", agentRoomHandler.GetPromptDefaults)
+	router.GET("/api/v1/agentroom/admin/metrics", web.RequireAdmin(agentRoomHandler.AdminMetrics))
+	// v0.7+ FTS5 岛治端点：当 "database disk image is malformed (267)" 重复出现、
+	// 自动自愈也失败时，管理员可 POST 此端点手动 drop+rebuild FTS 虚表。
+	router.POST("/api/v1/agentroom/admin/fts/rebuild", web.RequireAdmin(agentRoomHandler.AdminRebuildFTS))
+	// v0.4：AgentRoom 全局设置（目前只含 aux_model —— 辅助 LLM 默认模型）
+	router.GET("/api/v1/agentroom/settings", agentRoomHandler.GetSettings)
+	router.PUT("/api/v1/agentroom/settings", agentRoomHandler.UpdateSettings)
+	router.POST("/api/v1/agentroom/projection/inbound", agentRoomHandler.ProjectionInbound)
+	router.Handle("*", "/api/v1/agentroom/rooms", agentRoomHandler.RoomsRouter)
+	router.Handle("*", "/api/v1/agentroom/rooms/", agentRoomHandler.RoomsRouter)
+	router.Handle("*", "/api/v1/agentroom/messages/", agentRoomHandler.MessagesRouter)
+	router.Handle("*", "/api/v1/agentroom/members/", agentRoomHandler.MembersRouter)
+	router.Handle("*", "/api/v1/agentroom/tasks/", agentRoomHandler.TasksRouter)
+	// v0.6
+	router.Handle("*", "/api/v1/agentroom/artifacts/", agentRoomHandler.ArtifactsRouter)
+	router.Handle("*", "/api/v1/agentroom/playbooks", agentRoomHandler.PlaybooksRouter)
+	router.Handle("*", "/api/v1/agentroom/playbooks/", agentRoomHandler.PlaybooksRouter)
+	router.Handle("*", "/api/v1/agentroom/persona-memory", agentRoomHandler.PersonaMemoryRouter)
+	router.Handle("*", "/api/v1/agentroom/persona-memory/", agentRoomHandler.PersonaMemoryRouter)
+	// v0.7 真实会议环节
+	router.Handle("*", "/api/v1/agentroom/agenda-items/", agentRoomHandler.AgendaItemsRouter)
+	router.Handle("*", "/api/v1/agentroom/questions/", agentRoomHandler.QuestionsRouter)
+	router.Handle("*", "/api/v1/agentroom/parking/", agentRoomHandler.ParkingRouter)
+	router.Handle("*", "/api/v1/agentroom/risks/", agentRoomHandler.RisksRouter)
+	router.Handle("*", "/api/v1/agentroom/votes/", agentRoomHandler.VotesRouter)
+	router.Handle("*", "/api/v1/agentroom/retros", agentRoomHandler.RetrosRouter)
+	// v0.4：OpenClaw Gateway 代理（Member 编辑器从这里拉 agents.list；房间向导探测桥接就绪）
+	router.GET("/api/v1/agentroom/gateway/agents", agentRoomHandler.GatewayListAgents)
+	router.GET("/api/v1/agentroom/gateway/status", agentRoomHandler.GatewayStatus)
 
 	workflowHandler := handlers.NewWorkflowHandler(gwClient)
 	router.POST("/api/v1/workflow/start", web.RequireAdmin(workflowHandler.Start))

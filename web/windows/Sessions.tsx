@@ -123,6 +123,18 @@ function parseSessionKeyPeer(sessionKey: string): { channel: string; peerKind: s
   return { channel, peerKind, peerId: cleanPeerId, accountId: 'default' };
 }
 
+/** 判断一个 session key 是否属于 AgentRoom（包含主会话 key 与 aux key）。
+ *  约定：
+ *    - agent:<agentId>:agentroom:<roomId>:<memberId>
+ *    - agent:<agentId>:agentroom-aux:<roomId>
+ */
+function isAgentRoomSessionKey(sessionKey: string | null | undefined): boolean {
+  if (!sessionKey) return false;
+  const parts = sessionKey.trim().toLowerCase().split(':').filter(Boolean);
+  if (parts.length < 4 || parts[0] !== 'agent') return false;
+  return parts[2] === 'agentroom' || parts[2] === 'agentroom-aux';
+}
+
 function isProtectedMainSessionKey(sessionKey: string | null | undefined): boolean {
   if (!sessionKey) return false;
   const trimmed = sessionKey.trim().toLowerCase();
@@ -605,6 +617,14 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
   const [agentsList, setAgentsList] = useState<Array<{ id: string; label?: string }>>([]);
   const [bindAgentsList, setBindAgentsList] = useState<Array<{ id: string; label?: string }>>([]);
   const [agentFilter, setAgentFilter] = useState('');
+  // v0.9.1：默认隐藏 AgentRoom 派生会话，减少主会话列表的干扰；用户可在 sidebar 顶部开关。
+  // 持久化到 localStorage，避免每次打开都要重开。
+  const [showAgentRoomSessions, setShowAgentRoomSessions] = useState<boolean>(() => {
+    try { return localStorage.getItem('clawdeck:sessions-show-agentroom') === '1'; } catch { return false; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem('clawdeck:sessions-show-agentroom', showAgentRoomSessions ? '1' : '0'); } catch { /* ignore */ }
+  }, [showAgentRoomSessions]);
   const [deleteConfirmKey, setDeleteConfirmKey] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   // Recently-deleted session keys: prevents loadSessions / ensureSessionPresent from
@@ -1862,8 +1882,17 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
   }, [messages]);
 
   // Sidebar: filtered + grouped sessions
+  const agentRoomSessionCount = useMemo(
+    () => sessions.reduce((n, s) => n + (isAgentRoomSessionKey(s.key) ? 1 : 0), 0),
+    [sessions]
+  );
   const filteredSessions = useMemo(() => {
     let list = sessions;
+    if (showAgentRoomSessions) {
+      list = list.filter(s => isAgentRoomSessionKey(s.key));
+    } else {
+      list = list.filter(s => !isAgentRoomSessionKey(s.key));
+    }
     if (agentFilter) {
       list = list.filter(s => {
         const parts = (s.key || '').split(':');
@@ -1877,7 +1906,7 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
       (s.key || '').toLowerCase().includes(q) ||
       (s.lastMessagePreview || '').toLowerCase().includes(q)
     );
-  }, [sessions, sidebarSearch, agentFilter]);
+  }, [sessions, sidebarSearch, agentFilter, showAgentRoomSessions]);
   const showSidebarRefreshHint = false; // Suppress flashing refresh hint — background polls are silent
   const showSidebarSkeleton = sessionsLoading && sessions.length === 0 && !wsConnecting && !initialDetecting;
   const showSidebarEmpty = sessions.length === 0 && !sessionsLoading && !wsConnecting && !initialDetecting;
@@ -2772,6 +2801,21 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
               className="w-full h-8 ps-7 pe-3 bg-white dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-lg text-[12px] text-slate-700 dark:text-white/70 focus:ring-1 focus:ring-primary/50 outline-none sci-input"
               placeholder={c.searchSessions || 'Search...'} />
           </div>
+          {agentRoomSessionCount > 0 && (
+            <label
+              className="flex items-center justify-between gap-2 text-[11px] text-slate-500 dark:text-white/50 cursor-pointer select-none"
+              title="AgentRoom 房间派生的 AI 会话（主会话 + aux 会话）——默认隐藏，避免污染常规会话列表"
+            >
+              <span className="inline-flex items-center gap-1.5 min-w-0">
+                <span className="material-symbols-outlined text-[13px] text-primary/70">groups</span>
+                <span className="truncate">显示 AgentRoom 会话</span>
+                <span className="text-slate-400 dark:text-white/30">({agentRoomSessionCount})</span>
+              </span>
+              <input type="checkbox" checked={showAgentRoomSessions}
+                onChange={e => setShowAgentRoomSessions(e.target.checked)}
+                className="accent-primary" />
+            </label>
+          )}
         </div>
 
         {/* Sessions List — grouped by time */}

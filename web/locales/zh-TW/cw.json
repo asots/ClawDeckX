@@ -149,16 +149,16 @@
   "whatsappPitfall": "⚠️ 常见踩坑：1) 必须使用 Node.js 執行閘道，WhatsApp (Baileys) 在 Bun 下不稳定会频繁断连；2) 使用非官方协议存在封号风险，强烈建议使用独立号码；3) QR 码有效期约 20 秒，逾時需等待新码生成；4) Session 损坏时刪除 ~/.openclaw/sessions/ 下对应文件重新扫码；5) WhatsApp 最多关联 4 個裝置，超出无法連線",
   "signalPitfall": "⚠️ 常见踩坑：1) 未安装 Java 21+ 是最常见的失敗原因；2) ARM Linux 可能需要手动编译 libsignal-client native library；3) 使用 signal-cli link（关联裝置模式），不是 register（注册新号码）；4) QR 码在终端顯示需要 Unicode 支持，SSH 遠端操作可能顯示異常；5) Signal 对消息频率有严格限制，批次发送容易触发限流",
   "feishuPrep": [
-    "安装飞书插件：openclaw plugins install @openclaw/feishu",
-    "登录飞书开放平台 open.feishu.cn → 创建企业自建应用",
-    "在「凭证与基础信息」页复制 App Key 和 App Secret",
-    "在「应用能力」中添加「机器人」能力，设置机器人名称",
-    "在「权限管理」页添加必需权限：im:message、im:message.p2p_msg:readonly、im:message.group_at_msg:readonly、im:message:send_as_bot、im:resource（可点击下方「复制权限 JSON」批量导入）",
-    "在「事件与回调」中选择「使用长连接接收事件」（推荐，无需公网 IP），添加事件：im.message.receive_v1、im.message.message_read_v1、im.chat.member.bot.added_v1、im.chat.member.bot.deleted_v1",
-    "在「版本管理与发布」中创建版本并发布（每次改配置后都需重新发布）",
-    "⚠️ 发布后才能在飞书中搜索到机器人"
+    "安裝飛書外掛：openclaw plugins install @openclaw/feishu（需 OpenClaw 主機 ≥ 2026.4.10）",
+    "登入飛書開放平台 open.feishu.cn/app → 建立企業自建應用",
+    "在「憑證與基礎資訊」頁複製 App ID 和 App Secret",
+    "在「應用能力」中加入「機器人」能力，設定機器人名稱",
+    "在「權限管理」頁加入必要權限：im:message、im:message.p2p_msg:readonly、im:message.group_at_msg:readonly、im:message:send_as_bot、im:resource、contact:user.base:readonly（可點擊「複製權限 JSON」批次匯入）",
+    "在「事件與回呼」中選擇「使用長連線接收事件」（推薦 WebSocket），訂閱：im.message.receive_v1、im.message.message_read_v1、im.chat.member.bot.added_v1、im.chat.member.bot.deleted_v1",
+    "在「版本管理與發布」中建立版本並發布（每次修改權限/設定後都需重新發布）",
+    "⚠️ 發布後才能在飛書中搜尋到機器人"
   ],
-  "feishuPitfall": "⚠️ 常见踩坑：1) 必须在「事件与回调」添加 im.message.receive_v1 事件，否则机器人能发消息但收不到消息；2) 事件订阅方式必须与 connectionMode 匹配：长連線 → websocket（推荐），請求位址 → webhook；3) 每次修改權限/設定后必须重新「创建版本并发布」才能生效；4) 机器人没有自己的云空间根目录，需手动分享文件夹给机器人才能使用云空间工具；5) Windows 安装失敗可手动下载 tgz：飞书插件已內建於 openclaw，直接運行 openclaw plugins install @openclaw/feishu 即可",
+  "feishuPitfall": "⚠️ 常見踩坑：1) 必須在「事件與回呼」訂閱 im.message.receive_v1，否則機器人能發訊息但收不到；2) 事件訂閱方式必須與 connectionMode 一致：長連線 → websocket（推薦），請求網址 → webhook；3) 每次修改權限/設定後必須重新「建立版本並發布」才會生效；4) 機器人沒有自己的雲空間根目錄，需手動分享資料夾給機器人才能使用雲空間工具；5) OpenClaw 主機需 ≥ 2026.4.10（@openclaw/feishu ≥ 2026.4.19-beta.1 的硬性要求）；6) 若一鍵安裝失敗，可在終端直接執行 `openclaw plugins install @openclaw/feishu`。",
   "feishuHelpUrl": "https://open.feishu.cn/app",
   "dingtalkPrep": [
     "安装钉钉插件：openclaw plugins install @openclaw-china/dingtalk",
@@ -294,5 +294,9 @@
     "（可选）如需 Markdown 渲染，需单独申请 Markdown 模板权限（有一定审核时间）"
   ],
   "qqbotPitfall": "⚠️ 常见踩坑：1) 必须开通權限并添加測試成员，否则收不到消息；2) 群聊中需要 @机器人 才会响应；3) Markdown 需单独申请權限，未开通时可设置 markdownSupport: false；4) QQ Bot 目前仍在内测，部分功能可能受限",
-  "qqbotHelpUrl": "https://q.qq.com"
+  "qqbotHelpUrl": "https://q.qq.com",
+  "pluginForceReinstall": "強制重裝（先清理殘留目錄）",
+  "pluginSecurityWarning": "⚠️ 上游安裝器因偵測到「危險程式碼模式」而攔截了外掛安裝（通常是 npm tgz 中測試檔的誤判）。僅在你信任此外掛來源時才繼續。",
+  "pluginForceUnsafeInstall": "強制安裝（略過安全掃描）",
+  "pluginForceUnsafeConfirm": "此操作將略過上游安全掃描安裝外掛。僅在你信任來源時才繼續，是否確認？"
 }

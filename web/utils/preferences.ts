@@ -49,6 +49,9 @@ export interface Preferences {
   windowControlsPosition: WindowControlsPosition;
   wallpaper: WallpaperConfig;
   startupWindow: StartupWindowMode;
+  /** 任意窗口打开时自动隐藏底部 Dock，鼠标移到屏幕最下端再浮出。
+   *  默认 true —— 避免固定 Dock 遮挡模态对话框（如 Playbook 编辑、房间收尾）。 */
+  dockAutoHide: boolean;
 }
 
 const PREFS_KEY = 'clawdeck-preferences';
@@ -89,6 +92,7 @@ const DEFAULT_PREFS: Preferences = {
   windowControlsPosition: 'left',
   wallpaper: { ...DEFAULT_WALLPAPER, categories: { ...DEFAULT_WALLPAPER.categories } },
   startupWindow: 'none',
+  dockAutoHide: true,
 };
 
 export function loadPreferences(): Preferences {
@@ -160,6 +164,7 @@ export function loadPreferences(): Preferences {
     windowControlsPosition: raw.windowControlsPosition || DEFAULT_PREFS.windowControlsPosition,
     wallpaper: migratedWallpaper,
     startupWindow: raw.startupWindow ?? DEFAULT_PREFS.startupWindow,
+    dockAutoHide: raw.dockAutoHide ?? DEFAULT_PREFS.dockAutoHide,
   };
 }
 
