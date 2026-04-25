@@ -1540,6 +1540,8 @@
   "experimental": "实验性",
   "localModelLean": "本地模型精简模式",
   "localModelLeanDesc": "丢弃 browser / cron / message 等重量级默认工具，减小 prompt 体积，适合弱本地模型。",
+  "gpt5Personality": "GPT-5 友好型人格",
+  "gpt5PersonalityDesc": "全局启用 GPT-5 友好风格的 prompt overlay。未设置时回退到 OpenAI 插件设置。",
   "unknownToolThreshold": "未知工具阈值",
   "unknownToolThresholdDesc": "N 次未知工具流式尝试后终止幻觉循环（默认 10；流保护默认启用）。",
   "optDomainCustom": "自定义 URL",

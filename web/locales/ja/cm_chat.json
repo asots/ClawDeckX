@@ -80,6 +80,8 @@
     "cmdDreaming": "メモリードリーミング",
     "cmdVoice": "音声設定",
     "cmdExportSession": "セッションをHTMLにエクスポート",
+    "cmdModelsAdd": "チャットからモデルを登録",
+    "cmdExportTrajectory": "トラジェクトリバンドルをエクスポート",
     "catSession": "セッション",
     "catOptions": "オプション",
     "catStatus": "ステータス",

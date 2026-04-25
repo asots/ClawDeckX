@@ -1540,6 +1540,8 @@
   "experimental": "Experimental",
   "localModelLean": "Local Model Lean Mode",
   "localModelLeanDesc": "Drop heavyweight default tools (browser, cron, message) to reduce prompt size for weaker local models.",
+  "gpt5Personality": "GPT-5 Friendly Personality",
+  "gpt5PersonalityDesc": "Enable the GPT-5 friendly-style prompt overlay globally. Falls back to the OpenAI plugin setting when unset.",
   "unknownToolThreshold": "Unknown-tool Threshold",
   "unknownToolThresholdDesc": "Stop hallucinated tool loops after N unknown-tool stream attempts (default 10; stream guard is on by default).",
   "optDomainCustom": "Custom URL",

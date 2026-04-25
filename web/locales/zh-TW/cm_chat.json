@@ -80,6 +80,8 @@
     "cmdDreaming": "記憶夢境",
     "cmdVoice": "語音設定",
     "cmdExportSession": "匯出對話為 HTML",
+    "cmdModelsAdd": "從聊天中註冊模型",
+    "cmdExportTrajectory": "匯出軌跡包",
     "catSession": "會話",
     "catOptions": "選項",
     "catStatus": "狀態",

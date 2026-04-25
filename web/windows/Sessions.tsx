@@ -56,6 +56,7 @@ interface GwSession {
   runtimeMs?: number;
   abortedLastRun?: boolean;
   estimatedCostUsd?: number;
+  runner?: string;
 }
 
 interface ChatMsg {
@@ -617,6 +618,8 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
   const [agentsList, setAgentsList] = useState<Array<{ id: string; label?: string }>>([]);
   const [bindAgentsList, setBindAgentsList] = useState<Array<{ id: string; label?: string }>>([]);
   const [agentFilter, setAgentFilter] = useState('');
+  const agentFilterRef = useRef(agentFilter);
+  agentFilterRef.current = agentFilter;
   // v0.9.1：默认隐藏 AgentRoom 派生会话，减少主会话列表的干扰；用户可在 sidebar 顶部开关。
   // 持久化到 localStorage，避免每次打开都要重开。
   const [showAgentRoomSessions, setShowAgentRoomSessions] = useState<boolean>(() => {
@@ -672,9 +675,11 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
     { cmd: '/whoami', desc: c.catStatus, icon: 'badge', cat: 'status' },
     { cmd: '/export', desc: c.cmdExport, icon: 'download', cat: 'status' },
     { cmd: '/export-session', desc: c.cmdExportSession, icon: 'file_download', cat: 'status' },
+    { cmd: '/export-trajectory', desc: c.cmdExportTrajectory || 'Export trajectory bundle', icon: 'folder_zip', cat: 'status' },
     // — Options —
     { cmd: '/model', desc: c.quickModel, icon: 'smart_toy', cat: 'options' },
     { cmd: '/models', desc: c.cmdModels, icon: 'list', cat: 'options' },
+    { cmd: '/models add', desc: c.cmdModelsAdd || 'Register a model from chat', icon: 'add_circle', cat: 'options' },
     { cmd: '/think', desc: c.quickThink, icon: 'psychology', cat: 'options' },
     { cmd: '/verbose', desc: c.catOptions, icon: 'visibility', cat: 'options' },
     { cmd: '/reasoning', desc: c.catOptions, icon: 'neurology', cat: 'options' },
@@ -1257,6 +1262,7 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
         limit: 50,
         includeDerivedTitles: true,
         includeLastMessage: true,
+        ...(agentFilterRef.current ? { agentId: agentFilterRef.current } : {}),
       }) as any;
       if (sessionsRequestSeqRef.current !== requestSeq) {
         return;
@@ -1291,6 +1297,7 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
         runtimeMs: s.runtimeMs ?? undefined,
         abortedLastRun: s.abortedLastRun ?? undefined,
         estimatedCostUsd: s.estimatedCostUsd ?? undefined,
+        runner: s.runner || s.harnessId || '',
       }));
       // Clean up expired patch grace entries and deleted-key entries
       const nowMs = Date.now();
@@ -2915,6 +2922,9 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
                       )}
                       {s.model && (
                         <span className="text-[10px] text-slate-300 dark:text-white/15 font-mono truncate">{s.model}</span>
+                      )}
+                      {s.runner && (
+                        <span className="text-[9px] font-bold px-1 py-px rounded bg-indigo-500/10 text-indigo-500 dark:text-indigo-400 truncate max-w-[60px]" title={s.runner}>{s.runner}</span>
                       )}
                       {s.estimatedCostUsd != null && s.estimatedCostUsd > 0 && (
                         <span className="text-[9px] text-slate-400 dark:text-white/20 font-mono">${s.estimatedCostUsd < 0.01 ? s.estimatedCostUsd.toFixed(4) : s.estimatedCostUsd.toFixed(2)}</span>

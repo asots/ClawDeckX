@@ -104,6 +104,7 @@ export const AgentsSection: React.FC<SectionProps> = ({ config, schema, setField
 
       <ConfigSection title={es.experimental || 'Experimental'} icon="science" iconColor="text-fuchsia-500" defaultOpen={false}>
         <SwitchField label={es.localModelLean || 'Local Model Lean Mode'} desc={es.localModelLeanDesc || 'Drop heavyweight default tools (browser, cron, message) to reduce prompt size for weaker local models.'} tooltip={tip('agents.defaults.experimental.localModelLean')} value={d(['experimental', 'localModelLean']) === true} onChange={v => sd(['experimental', 'localModelLean'], v)} />
+        <SwitchField label={es.gpt5Personality || 'GPT-5 Friendly Personality'} desc={es.gpt5PersonalityDesc || 'Enable the GPT-5 friendly-style prompt overlay globally. Falls back to the OpenAI plugin setting when unset.'} tooltip={tip('agents.defaults.promptOverlays.gpt5.personality')} value={d(['promptOverlays', 'gpt5', 'personality']) === true} onChange={v => sd(['promptOverlays', 'gpt5', 'personality'], v)} />
       </ConfigSection>
 
       <ConfigSection title={es.contextPruning} icon="content_cut" iconColor="text-orange-500" defaultOpen={false}>
@@ -198,7 +199,7 @@ export const AgentsSection: React.FC<SectionProps> = ({ config, schema, setField
           'thinkingDefault', 'verboseDefault', 'elevatedDefault', 'typingMode',
           'compaction', 'bootstrapTruncationWarning', 'contextInjection', 'params', 'systemPromptOverride',
           'humanDelay', 'heartbeat', 'contextPruning', 'memorySearch', 'sandbox',
-          'contextLimits', 'skillsLimits', 'experimental',
+          'contextLimits', 'skillsLimits', 'experimental', 'promptOverlays',
         ]}
         config={config}
         setField={setField}

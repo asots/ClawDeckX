@@ -80,6 +80,8 @@
     "cmdDreaming": "메모리 드리밍",
     "cmdVoice": "음성 설정",
     "cmdExportSession": "세션을 HTML로 내보내기",
+    "cmdModelsAdd": "채팅에서 모델 등록",
+    "cmdExportTrajectory": "궤적 번들 내보내기",
     "catSession": "세션",
     "catOptions": "옵션",
     "catStatus": "상태",

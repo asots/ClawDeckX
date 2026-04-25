@@ -80,6 +80,8 @@
     "cmdDreaming": "Memory dreaming",
     "cmdVoice": "Voice settings",
     "cmdExportSession": "Export session to HTML",
+    "cmdModelsAdd": "Register a model from chat",
+    "cmdExportTrajectory": "Export trajectory bundle",
     "catSession": "Session",
     "catOptions": "Options",
     "catStatus": "Status",

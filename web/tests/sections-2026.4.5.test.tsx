@@ -257,26 +257,30 @@ describe('MemorySection — Dreaming (2026.4.5)', () => {
 
   it('displays existing dreaming config values', () => {
     const { props } = makeSectionProps({
-      memory: {
-        dreaming: {
-          enabled: true,
-          frequency: 'daily',
-          recencyHalfLifeDays: 14,
-          maxAgeDays: 90,
+      plugins: {
+        entries: {
+          'memory-core': {
+            config: {
+              dreaming: {
+                enabled: true,
+                frequency: '0 3 * * *',
+              },
+            },
+          },
         },
       },
     });
     render(<Wrap><MemorySection {...props} /></Wrap>);
 
     fireEvent.click(screen.getByRole('button', { name: 'Dreaming' }));
-    expect(screen.getByDisplayValue('daily')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('0 3 * * *')).toBeInTheDocument();
   });
 
-  it('frequency field has daily placeholder', () => {
+  it('frequency field has cron placeholder', () => {
     const { props } = makeSectionProps({});
     render(<Wrap><MemorySection {...props} /></Wrap>);
 
     fireEvent.click(screen.getByRole('button', { name: 'Dreaming' }));
-    expect(screen.getByPlaceholderText('daily')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('0 3 * * *')).toBeInTheDocument();
   });
 });
