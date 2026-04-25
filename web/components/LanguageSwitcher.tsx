@@ -19,14 +19,6 @@ const LANGUAGES: LanguageOption[] = [
   { code: 'zh-TW', label: '繁體中文', country: 'TW' },
   { code: 'ja', label: '日本語', country: 'JP' },
   { code: 'ko', label: '한국어', country: 'KR' },
-  { code: 'es', label: 'Espa\u00f1ol', country: 'ES' },  
-  { code: 'fr', label: 'Fran\u00e7ais', country: 'FR' },
-  { code: 'de', label: 'Deutsch', country: 'DE' },
-  { code: 'ru', label: 'Русский', country: 'RU' },  
-  { code: 'pt-BR', label: 'Portugu\u00eas', country: 'BR' },
-  { code: 'id', label: 'Bahasa Indonesia', country: 'ID' },
-  { code: 'ar', label: 'العربية', country: 'SA' },
-  { code: 'hi', label: 'हिन्दी', country: 'IN' },
 ];
 
 

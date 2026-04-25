@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 
-const LOCALES = ['en', 'zh', 'zh-TW', 'ja', 'ko', 'ar', 'de', 'es', 'fr', 'hi', 'id', 'pt-BR', 'ru'];
+const LOCALES = ['en', 'zh', 'zh-TW', 'ja', 'ko'];
 const LOCALE_DIR = path.resolve(__dirname, '../locales');
 const JSON_FILES = ['es.json', 'tooltips.json', 'cm_chat.json'];
 

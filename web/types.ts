@@ -5,10 +5,10 @@ export type WindowID =
   | 'scheduler' | 'settings' | 'nodes' | 'setup_wizard' | 'usage_wizard'
   | 'knowledge' | 'terminal' | 'agentroom';
 
-export type Language = 'zh' | 'en' | 'ja' | 'ko' | 'es' | 'pt-BR' | 'de' | 'fr' | 'ru' | 'zh-TW' | 'ar' | 'hi' | 'id';
+export type Language = 'en' | 'zh' | 'zh-TW' | 'ja' | 'ko';
 
 /** Languages that use right-to-left text direction */
-export const RTL_LANGUAGES: ReadonlySet<Language> = new Set(['ar']);
+export const RTL_LANGUAGES: ReadonlySet<Language> = new Set<Language>();
 
 export function isRtl(lang: Language): boolean {
   return RTL_LANGUAGES.has(lang);

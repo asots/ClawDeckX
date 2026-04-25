@@ -89,7 +89,7 @@ Fully responsive layout that adapts seamlessly from large desktop monitors to ta
 
 ### Multilingual Support
 
-Full i18n architecture with 13 built-in languages. Adding a new language requires only a translated JSON folder and a two-line code change.
+Full i18n architecture with 5 built-in languages (English, Simplified Chinese, Traditional Chinese, Japanese, Korean). Adding a new language requires only a translated JSON folder and a two-line code change.
 
 ### Local & Remote Gateway
 
@@ -304,7 +304,7 @@ The default `docker-compose.yml` sets memory limit to 2 GB and CPU limit to 2 co
 | 🧩 | **Template Center** | Deploy new agent personas in seconds with built-in templates |
 | 📊 | **Live Dashboard** | Real-time metrics, session tracking, and activity monitoring |
 | 🛡️ | **Security Built-in** | JWT auth, HttpOnly cookies, and alert system from day one |
-| 🌍 | **i18n Ready** | 13 built-in languages, easily extensible |
+| 🌍 | **i18n Ready** | 5 built-in languages (en/zh/zh-TW/ja/ko), easily extensible |
 | 📱 | **Responsive Design** | Works seamlessly on desktop and mobile |
 
 <br>

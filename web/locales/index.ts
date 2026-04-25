@@ -112,14 +112,6 @@ const loaders: Record<string, LocaleLoader> = {
   'zh-TW': makePartialLocaleLoader('zh-TW'),
   ja: makePartialLocaleLoader('ja'),
   ko: makePartialLocaleLoader('ko'),
-  es: makePartialLocaleLoader('es'),
-  'pt-BR': makePartialLocaleLoader('pt-BR'),
-  de: makePartialLocaleLoader('de'),
-  fr: makePartialLocaleLoader('fr'),
-  ru: makePartialLocaleLoader('ru'),
-  ar: makePartialLocaleLoader('ar'),
-  hi: makePartialLocaleLoader('hi'),
-  id: makePartialLocaleLoader('id'),
 };
 
 /**

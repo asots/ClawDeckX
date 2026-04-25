@@ -1,35 +1,19 @@
 // Error code → localized message mapping.
-// Backend returns `error_code`; translations are loaded from locales/*/errors.json (13 languages).
+// Backend returns `error_code`; translations are loaded from locales/*/errors.json (5 languages).
 // If a code is not found for the current language, falls back to English, then to the raw code.
 
-import arErrors from '../locales/ar/errors.json';
-import deErrors from '../locales/de/errors.json';
 import enErrors from '../locales/en/errors.json';
-import esErrors from '../locales/es/errors.json';
-import frErrors from '../locales/fr/errors.json';
-import hiErrors from '../locales/hi/errors.json';
-import idErrors from '../locales/id/errors.json';
 import jaErrors from '../locales/ja/errors.json';
 import koErrors from '../locales/ko/errors.json';
-import ptBrErrors from '../locales/pt-BR/errors.json';
-import ruErrors from '../locales/ru/errors.json';
 import zhErrors from '../locales/zh/errors.json';
 import zhTwErrors from '../locales/zh-TW/errors.json';
 
 type ErrorMap = Record<string, string>;
 
 const errorMaps: Record<string, ErrorMap> = {
-  ar: arErrors,
-  de: deErrors,
   en: enErrors,
-  es: esErrors,
-  fr: frErrors,
-  hi: hiErrors,
-  id: idErrors,
   ja: jaErrors,
   ko: koErrors,
-  'pt-BR': ptBrErrors,
-  ru: ruErrors,
   zh: zhErrors,
   'zh-TW': zhTwErrors,
 };

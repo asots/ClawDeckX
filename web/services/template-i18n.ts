@@ -12,7 +12,7 @@ export interface I18nOverride {
 }
 
 // All supported languages
-const ALL_LANGS: Language[] = ['en', 'zh', 'zh-TW', 'ja', 'ko', 'es', 'pt-BR', 'de', 'fr', 'ru', 'ar', 'hi', 'id'];
+const ALL_LANGS: Language[] = ['en', 'zh', 'zh-TW', 'ja', 'ko'];
 
 // Knowledge item type → directory name mapping (mirrors templates/official/knowledge/ structure)
 const KNOWLEDGE_TYPE_DIR: Record<string, string> = {
