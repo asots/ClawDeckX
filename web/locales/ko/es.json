@@ -1530,6 +1530,8 @@
   "dreamingFrequency": "빈도",
   "dreamingRecencyHalfLife": "최신성 반감기 (일)",
   "dreamingMaxAge": "최대 보존 일수",
+  "contextTokens": "컨텍스트 토큰 제한",
+  "contextTokensDesc": "에이전트의 컨텍스트 윈도우 토큰 상한. 대화 기록이 이 한도를 초과하면 자동으로 압축됩니다. 비워두면 모델의 기본 컨텍스트 윈도우를 사용합니다.",
   "contextLimits": "컨텍스트 제한",
   "memoryGetDefaultLines": "memory_get 기본 줄 수",
   "memoryGetMaxChars": "memory_get 최대 문자 수",
@@ -1589,5 +1591,106 @@
   "feishuDynamicAgent": "동적 Agent",
   "feishuDynamicAgentEnabled": "활성화",
   "feishuDynamicAgentMax": "최대 Agent 수",
-  "tipFeishuDynamicAgent": "DM 사용자별 전용 Agent 워크스페이스 자동 생성"
+  "tipFeishuDynamicAgent": "DM 사용자별 전용 Agent 워크스페이스 자동 생성",
+  "schemaAdditional": "기타 설정",
+  "schemaLabels": {
+    "agents.defaults.embeddedHarness": "임베디드 Harness 런타임",
+    "agents.defaults.embeddedHarness.runtime": "런타임",
+    "agents.defaults.embeddedHarness.fallback": "폴백",
+    "agents.defaults.model": "기본 모델",
+    "agents.defaults.model.primary": "주 모델",
+    "agents.defaults.imageModel": "이미지 모델",
+    "agents.defaults.mediaGenerationAutoProviderFallback": "미디어 생성 자동 폴백",
+    "agents.defaults.models": "모델 재정의",
+    "agents.defaults.silentReply": "무응답 정책",
+    "agents.defaults.silentReply.direct": "다이렉트",
+    "agents.defaults.silentReply.group": "그룹",
+    "agents.defaults.silentReply.internal": "내부",
+    "agents.defaults.silentReplyRewrite": "무응답 재작성",
+    "agents.defaults.silentReplyRewrite.direct": "다이렉트",
+    "agents.defaults.silentReplyRewrite.group": "그룹",
+    "agents.defaults.silentReplyRewrite.internal": "내부",
+    "agents.defaults.repoRoot": "저장소 루트",
+    "agents.defaults.skipBootstrap": "부트스트랩 건너뛰기",
+    "agents.defaults.bootstrapMaxChars": {
+      "label": "부트스트랩 최대 글자 수",
+      "placeholder": "12000"
+    },
+    "agents.defaults.bootstrapTotalMaxChars": {
+      "label": "부트스트랩 전체 최대 글자 수",
+      "placeholder": "150000"
+    },
+    "agents.defaults.bootstrapPromptTruncationWarning": "부트스트랩 잘림 경고",
+    "agents.defaults.userTimezone": "사용자 시간대",
+    "agents.defaults.startupContext": "시작 컨텍스트",
+    "agents.defaults.startupContext.enabled": "활성화",
+    "agents.defaults.startupContext.applyOn": "적용 시점",
+    "agents.defaults.startupContext.dailyMemoryDays": {
+      "label": "일별 메모리 일수",
+      "placeholder": "2"
+    },
+    "agents.defaults.startupContext.maxFileBytes": {
+      "label": "파일 최대 바이트",
+      "placeholder": "200000"
+    },
+    "agents.defaults.startupContext.maxFileChars": {
+      "label": "파일 최대 글자 수",
+      "placeholder": "20000"
+    },
+    "agents.defaults.startupContext.maxTotalChars": {
+      "label": "전체 최대 글자 수",
+      "placeholder": "50000"
+    },
+    "agents.defaults.timeFormat": "시간 형식",
+    "agents.defaults.envelopeTimezone": "봉투 시간대",
+    "agents.defaults.envelopeTimestamp": "봉투 타임스탬프",
+    "agents.defaults.envelopeElapsed": "봉투 경과 시간",
+    "agents.defaults.cliBackends": "CLI 백엔드",
+    "agents.defaults.llm": "LLM 설정",
+    "agents.defaults.llm.idleTimeoutSeconds": {
+      "label": "유휴 타임아웃(초)",
+      "placeholder": "120"
+    },
+    "agents.defaults.embeddedPi": "임베디드 Pi 설정",
+    "agents.defaults.embeddedPi.projectSettingsPolicy": "프로젝트 설정 정책",
+    "agents.defaults.embeddedPi.executionContract": "실행 계약",
+    "agents.defaults.blockStreamingDefault": "블록 스트리밍",
+    "agents.defaults.blockStreamingBreak": "블록 스트리밍 분할",
+    "agents.defaults.blockStreamingChunk": "블록 스트리밍 청크",
+    "agents.defaults.blockStreamingCoalesce": "블록 스트리밍 병합",
+    "agents.defaults.imageMaxDimensionPx": {
+      "label": "이미지 최대 크기(px)",
+      "placeholder": "1200"
+    },
+    "agents.defaults.typingIntervalSeconds": {
+      "label": "타이핑 간격(초)",
+      "placeholder": "3"
+    },
+    "agents.defaults.skillsLimits": "스킬 제한",
+    "agents.defaults.skillsLimits.maxSkillsPromptChars": "스킬 프롬프트 최대 글자 수",
+    "agents.defaults.blockStreamingChunk.minChars": {
+      "label": "최소 문자 수",
+      "placeholder": "800"
+    },
+    "agents.defaults.blockStreamingChunk.maxChars": {
+      "label": "최대 문자 수",
+      "placeholder": "1200"
+    },
+    "agents.defaults.blockStreamingChunk.breakPreference": {
+      "label": "줄바꿈 기본 설정",
+      "placeholder": "paragraph"
+    },
+    "agents.defaults.blockStreamingCoalesce.minChars": {
+      "label": "최소 문자 수",
+      "placeholder": "800"
+    },
+    "agents.defaults.blockStreamingCoalesce.maxChars": {
+      "label": "최대 문자 수",
+      "placeholder": "1200"
+    },
+    "agents.defaults.blockStreamingCoalesce.idleMs": {
+      "label": "유휴 (ms)",
+      "placeholder": "1000"
+    }
+  }
 }

@@ -2,7 +2,7 @@ import React, { useMemo, useState, useCallback } from 'react';
 import { SectionProps } from '../sectionTypes';
 import { ConfigSection, TextField, SwitchField, NumberField, ArrayField, SelectField } from '../fields';
 import { getTranslation } from '../../../locales';
-import { schemaTooltip } from '../schemaTooltip';
+import { schemaTooltip, schemaDefault } from '../schemaTooltip';
 import { gwApi } from '../../../services/api';
 import CustomSelect from '../../../components/CustomSelect';
 import SchemaRemainder from '../SchemaRemainder';
@@ -10,6 +10,7 @@ import SchemaRemainder from '../SchemaRemainder';
 export const BrowserSection: React.FC<SectionProps> = ({ config, schema, setField, getField, language }) => {
   const es = useMemo(() => (getTranslation(language) as any).es || {}, [language]);
   const tip = (key: string) => schemaTooltip(key, language, schema);
+  const def = (key: string) => schemaDefault(key, schema);
   const g = (p: string[]) => getField(['browser', ...p]);
   const s = (p: string[], v: any) => setField(['browser', ...p], v);
   const wg = (p: string[]) => getField(['tools', 'web', ...p]);
@@ -47,15 +48,15 @@ export const BrowserSection: React.FC<SectionProps> = ({ config, schema, setFiel
         <SwitchField label={es.enabled} tooltip={tip('browser.enabled')} value={g(['enabled']) === true} onChange={v => s(['enabled'], v)} />
         <SwitchField label={es.brEvaluateEnabled} tooltip={tip('browser.evaluateEnabled')} value={g(['evaluateEnabled']) === true} onChange={v => s(['evaluateEnabled'], v)} />
         <TextField label={es.cdpUrl} tooltip={tip('browser.cdpUrl')} value={g(['cdpUrl']) || ''} onChange={v => s(['cdpUrl'], v)} placeholder={es.phBrowserCdpUrl} />
-        <NumberField label={es.brRemoteCdpTimeout} tooltip={tip('browser.remoteCdpTimeoutMs')} value={g(['remoteCdpTimeoutMs'])} onChange={v => s(['remoteCdpTimeoutMs'], v)} min={0} step={1000} />
-        <NumberField label={es.brRemoteCdpHandshakeTimeout} tooltip={tip('browser.remoteCdpHandshakeTimeoutMs')} value={g(['remoteCdpHandshakeTimeoutMs'])} onChange={v => s(['remoteCdpHandshakeTimeoutMs'], v)} min={0} step={1000} />
+        <NumberField label={es.brRemoteCdpTimeout} tooltip={tip('browser.remoteCdpTimeoutMs')} value={g(['remoteCdpTimeoutMs'])} onChange={v => s(['remoteCdpTimeoutMs'], v)} min={0} step={1000} placeholder={def('browser.remoteCdpTimeoutMs')} />
+        <NumberField label={es.brRemoteCdpHandshakeTimeout} tooltip={tip('browser.remoteCdpHandshakeTimeoutMs')} value={g(['remoteCdpHandshakeTimeoutMs'])} onChange={v => s(['remoteCdpHandshakeTimeoutMs'], v)} min={0} step={1000} placeholder={def('browser.remoteCdpHandshakeTimeoutMs')} />
         <TextField label={es.executablePath} tooltip={tip('browser.executablePath')} value={g(['executablePath']) || ''} onChange={v => s(['executablePath'], v)} placeholder={es.phBrowserExecPath} />
         <TextField label={es.brColor} tooltip={tip('browser.color')} value={g(['color']) || ''} onChange={v => s(['color'], v)} placeholder="#4285f4" />
         <SwitchField label={es.headless} tooltip={tip('browser.headless')} value={g(['headless']) !== false} onChange={v => s(['headless'], v)} />
         <SwitchField label={es.brNoSandbox} tooltip={tip('browser.noSandbox')} value={g(['noSandbox']) === true} onChange={v => s(['noSandbox'], v)} />
         <SwitchField label={es.brAttachOnly} tooltip={tip('browser.attachOnly')} value={g(['attachOnly']) === true} onChange={v => s(['attachOnly'], v)} />
         <TextField label={es.brDefaultProfile} tooltip={tip('browser.defaultProfile')} value={g(['defaultProfile']) || ''} onChange={v => s(['defaultProfile'], v)} />
-        <NumberField label={es.brCdpPortRangeStart || 'CDP Port Range Start'} tooltip={tip('browser.cdpPortRangeStart')} value={g(['cdpPortRangeStart'])} onChange={v => s(['cdpPortRangeStart'], v)} min={1} max={65535} />
+        <NumberField label={es.brCdpPortRangeStart || 'CDP Port Range Start'} tooltip={tip('browser.cdpPortRangeStart')} value={g(['cdpPortRangeStart'])} onChange={v => s(['cdpPortRangeStart'], v)} min={1} max={65535} placeholder={def('browser.cdpPortRangeStart')} />
         <ArrayField label={es.brExtraArgs || 'Extra Chrome Args'} tooltip={tip('browser.extraArgs')} value={g(['extraArgs']) || []} onChange={v => s(['extraArgs'], v)} placeholder="--window-size=1920,1080" />
       </ConfigSection>
 

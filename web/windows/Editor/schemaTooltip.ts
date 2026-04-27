@@ -1,5 +1,6 @@
 import { Language } from '../../types';
 import { getTooltip } from '../../locales/tooltips';
+import defaultsMap from '../../defaults-map.json';
 
 /**
  * Resolve a schema node by dotted config path.
@@ -93,12 +94,35 @@ export function schemaTooltip(
 }
 
 /**
- * Schema-aware label resolver for auto-generated fields.
+ * Extract the schema default value for a config key as a string suitable for placeholder display.
  *
  * Priority:
- * 1. Schema title (human-readable label from OpenClaw schema)
- * 2. Humanized key name (camelCase → "Camel Case")
+ * 1. Explicit JSON Schema `default` field (rare in OpenClaw schema)
+ * 2. Parsed from description text patterns like "(default: 1200)" or "default: true"
+ *
+ * Returns empty string when no default can be determined.
  */
+export function schemaDefault(
+  key: string,
+  schema?: Record<string, any> | null,
+): string {
+  const node = resolveSchemaNode(schema, key);
+  if (!node) return '';
+  // 1. Explicit schema default
+  if (node.default != null) {
+    if (typeof node.default === 'object') return JSON.stringify(node.default);
+    return String(node.default);
+  }
+  // 2. Parse from description: "(default: X)", "default: X", "(default X)"
+  const desc = node.description;
+  if (typeof desc === 'string') {
+    const m = desc.match(/\(?default[:\s]\s*([^).]+)\)?/i);
+    if (m) return m[1].trim();
+  }
+  // 3. Fallback to pre-scanned defaults map (generated from OpenClaw source)
+  return (defaultsMap as Record<string, string>)[key] || '';
+}
+
 export function schemaLabel(
   key: string,
   schema?: Record<string, any> | null,

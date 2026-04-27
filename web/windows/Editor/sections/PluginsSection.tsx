@@ -2,11 +2,12 @@ import React, { useState, useMemo } from 'react';
 import { SectionProps } from '../sectionTypes';
 import { ConfigSection, ConfigCard, TextField, SwitchField, NumberField, ArrayField, KeyValueField, AddButton, EmptyState } from '../fields';
 import { getTranslation } from '../../../locales';
-import { schemaTooltip } from '../schemaTooltip';
+import { schemaTooltip, schemaDefault } from '../schemaTooltip';
 
 export const PluginsSection: React.FC<SectionProps> = ({ schema, setField, getField, deleteField, language }) => {
   const es = useMemo(() => (getTranslation(language) as any).es || {}, [language]);
   const tip = (key: string) => schemaTooltip(key, language, schema);
+  const def = (key: string) => schemaDefault(key, schema);
   const g = (p: string[]) => getField(['plugins', ...p]);
   const s = (p: string[], v: any) => setField(['plugins', ...p], v);
   const entries = g(['entries']) || {};

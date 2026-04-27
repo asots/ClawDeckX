@@ -1530,6 +1530,8 @@
   "dreamingFrequency": "頻度",
   "dreamingRecencyHalfLife": "直近半減期（日）",
   "dreamingMaxAge": "最大保持日数",
+  "contextTokens": "コンテキストトークン上限",
+  "contextTokensDesc": "エージェントのコンテキストウィンドウトークン上限。会話履歴がこの制限を超えると、自動的に圧縮されます。空の場合はモデルのネイティブコンテキストウィンドウを使用します。",
   "contextLimits": "コンテキスト制限",
   "memoryGetDefaultLines": "memory_get デフォルト行数",
   "memoryGetMaxChars": "memory_get 最大文字数",
@@ -1589,5 +1591,106 @@
   "feishuDynamicAgent": "動的 Agent",
   "feishuDynamicAgentEnabled": "有効",
   "feishuDynamicAgentMax": "最大 Agent 数",
-  "tipFeishuDynamicAgent": "DM ユーザーごとに専用 Agent ワークスペースを自動作成"
+  "tipFeishuDynamicAgent": "DM ユーザーごとに専用 Agent ワークスペースを自動作成",
+  "schemaAdditional": "その他の設定",
+  "schemaLabels": {
+    "agents.defaults.embeddedHarness": "組み込みHarnessランタイム",
+    "agents.defaults.embeddedHarness.runtime": "ランタイム",
+    "agents.defaults.embeddedHarness.fallback": "フォールバック",
+    "agents.defaults.model": "デフォルトモデル",
+    "agents.defaults.model.primary": "プライマリモデル",
+    "agents.defaults.imageModel": "画像モデル",
+    "agents.defaults.mediaGenerationAutoProviderFallback": "メディア生成自動フォールバック",
+    "agents.defaults.models": "モデルオーバーライド",
+    "agents.defaults.silentReply": "サイレントリプライポリシー",
+    "agents.defaults.silentReply.direct": "ダイレクト",
+    "agents.defaults.silentReply.group": "グループ",
+    "agents.defaults.silentReply.internal": "内部",
+    "agents.defaults.silentReplyRewrite": "サイレントリプライ書き換え",
+    "agents.defaults.silentReplyRewrite.direct": "ダイレクト",
+    "agents.defaults.silentReplyRewrite.group": "グループ",
+    "agents.defaults.silentReplyRewrite.internal": "内部",
+    "agents.defaults.repoRoot": "リポジトリルート",
+    "agents.defaults.skipBootstrap": "ブートストラップをスキップ",
+    "agents.defaults.bootstrapMaxChars": {
+      "label": "ブートストラップ最大文字数",
+      "placeholder": "12000"
+    },
+    "agents.defaults.bootstrapTotalMaxChars": {
+      "label": "ブートストラップ合計最大文字数",
+      "placeholder": "150000"
+    },
+    "agents.defaults.bootstrapPromptTruncationWarning": "ブートストラップ切り詰め警告",
+    "agents.defaults.userTimezone": "ユーザータイムゾーン",
+    "agents.defaults.startupContext": "スタートアップコンテキスト",
+    "agents.defaults.startupContext.enabled": "有効",
+    "agents.defaults.startupContext.applyOn": "適用タイミング",
+    "agents.defaults.startupContext.dailyMemoryDays": {
+      "label": "デイリーメモリ日数",
+      "placeholder": "2"
+    },
+    "agents.defaults.startupContext.maxFileBytes": {
+      "label": "ファイル最大バイト",
+      "placeholder": "200000"
+    },
+    "agents.defaults.startupContext.maxFileChars": {
+      "label": "ファイル最大文字数",
+      "placeholder": "20000"
+    },
+    "agents.defaults.startupContext.maxTotalChars": {
+      "label": "合計最大文字数",
+      "placeholder": "50000"
+    },
+    "agents.defaults.timeFormat": "時刻形式",
+    "agents.defaults.envelopeTimezone": "エンベロープタイムゾーン",
+    "agents.defaults.envelopeTimestamp": "エンベロープタイムスタンプ",
+    "agents.defaults.envelopeElapsed": "エンベロープ経過時間",
+    "agents.defaults.cliBackends": "CLIバックエンド",
+    "agents.defaults.llm": "LLM設定",
+    "agents.defaults.llm.idleTimeoutSeconds": {
+      "label": "アイドルタイムアウト（秒）",
+      "placeholder": "120"
+    },
+    "agents.defaults.embeddedPi": "組み込みPi設定",
+    "agents.defaults.embeddedPi.projectSettingsPolicy": "プロジェクト設定ポリシー",
+    "agents.defaults.embeddedPi.executionContract": "実行コントラクト",
+    "agents.defaults.blockStreamingDefault": "ブロックストリーミング",
+    "agents.defaults.blockStreamingBreak": "ブロックストリーミング分割",
+    "agents.defaults.blockStreamingChunk": "ブロックストリーミングチャンク",
+    "agents.defaults.blockStreamingCoalesce": "ブロックストリーミング結合",
+    "agents.defaults.imageMaxDimensionPx": {
+      "label": "画像最大サイズ（px）",
+      "placeholder": "1200"
+    },
+    "agents.defaults.typingIntervalSeconds": {
+      "label": "入力インターバル（秒）",
+      "placeholder": "3"
+    },
+    "agents.defaults.skillsLimits": "スキル制限",
+    "agents.defaults.skillsLimits.maxSkillsPromptChars": "スキルプロンプト最大文字数",
+    "agents.defaults.blockStreamingChunk.minChars": {
+      "label": "最小文字数",
+      "placeholder": "800"
+    },
+    "agents.defaults.blockStreamingChunk.maxChars": {
+      "label": "最大文字数",
+      "placeholder": "1200"
+    },
+    "agents.defaults.blockStreamingChunk.breakPreference": {
+      "label": "改行優先",
+      "placeholder": "paragraph"
+    },
+    "agents.defaults.blockStreamingCoalesce.minChars": {
+      "label": "最小文字数",
+      "placeholder": "800"
+    },
+    "agents.defaults.blockStreamingCoalesce.maxChars": {
+      "label": "最大文字数",
+      "placeholder": "1200"
+    },
+    "agents.defaults.blockStreamingCoalesce.idleMs": {
+      "label": "アイドル (ms)",
+      "placeholder": "1000"
+    }
+  }
 }

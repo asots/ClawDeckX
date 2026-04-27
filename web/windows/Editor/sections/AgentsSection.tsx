@@ -1,8 +1,8 @@
 import React, { useMemo } from 'react';
 import { SectionProps } from '../sectionTypes';
-import { ConfigSection, ConfigCard, TextField, NumberField, SelectField, SwitchField, ArrayField, KeyValueField, AddButton, EmptyState } from '../fields';
+import { ConfigSection, ConfigCard, TextField, NumberField, SelectField, SwitchField, ArrayField, KeyValueField, AddButton, EmptyState, ModelField } from '../fields';
 import { getTranslation } from '../../../locales';
-import { schemaTooltip } from '../schemaTooltip';
+import { schemaTooltip, schemaDefault } from '../schemaTooltip';
 import SchemaRemainder from '../SchemaRemainder';
 
 // Options moved inside component
@@ -10,6 +10,7 @@ import SchemaRemainder from '../SchemaRemainder';
 export const AgentsSection: React.FC<SectionProps> = ({ config, schema, setField, getField, deleteField, language }) => {
   const es = useMemo(() => (getTranslation(language) as any).es || {}, [language]);
   const tip = (key: string) => schemaTooltip(key, language, schema);
+  const def = (key: string) => schemaDefault(key, schema);
   const d = (p: string[]) => getField(['agents', 'defaults', ...p]);
   const sd = (p: string[], v: any) => setField(['agents', 'defaults', ...p], v);
 
@@ -36,20 +37,22 @@ export const AgentsSection: React.FC<SectionProps> = ({ config, schema, setField
   return (
     <div className="space-y-4">
       <ConfigSection title={es.defaults} icon="tune" iconColor="text-purple-500">
-        <NumberField label={es.maxConcurrent} desc={es.maxConcurrentDesc} tooltip={tip('agents.defaults.maxConcurrent')} value={d(['maxConcurrent'])} onChange={v => sd(['maxConcurrent'], v)} min={1} max={64} />
-        <NumberField label={es.subagentConcurrent} tooltip={tip('agents.defaults.subagents.maxConcurrent')} value={d(['subagents', 'maxConcurrent'])} onChange={v => sd(['subagents', 'maxConcurrent'], v)} min={1} max={32} />
-        <NumberField label={es.subagentMaxSpawnDepth || 'Max Spawn Depth'} tooltip={tip('agents.defaults.subagents.maxSpawnDepth')} value={d(['subagents', 'maxSpawnDepth'])} onChange={v => sd(['subagents', 'maxSpawnDepth'], v)} min={1} max={10} />
-        <NumberField label={es.subagentMaxChildren || 'Max Children/Agent'} tooltip={tip('agents.defaults.subagents.maxChildrenPerAgent')} value={d(['subagents', 'maxChildrenPerAgent'])} onChange={v => sd(['subagents', 'maxChildrenPerAgent'], v)} min={1} max={50} />
-        <NumberField label={es.subagentArchiveMin || 'Archive After (min)'} tooltip={tip('agents.defaults.subagents.archiveAfterMinutes')} value={d(['subagents', 'archiveAfterMinutes'])} onChange={v => sd(['subagents', 'archiveAfterMinutes'], v)} min={0} />
+        <NumberField label={es.maxConcurrent} desc={es.maxConcurrentDesc} tooltip={tip('agents.defaults.maxConcurrent')} value={d(['maxConcurrent'])} onChange={v => sd(['maxConcurrent'], v)} min={1} max={64} placeholder={def('agents.defaults.maxConcurrent')} />
+        <NumberField label={es.subagentConcurrent} tooltip={tip('agents.defaults.subagents.maxConcurrent')} value={d(['subagents', 'maxConcurrent'])} onChange={v => sd(['subagents', 'maxConcurrent'], v)} min={1} max={32} placeholder={def('agents.defaults.subagents.maxConcurrent')} />
+        <NumberField label={es.subagentMaxSpawnDepth || 'Max Spawn Depth'} tooltip={tip('agents.defaults.subagents.maxSpawnDepth')} value={d(['subagents', 'maxSpawnDepth'])} onChange={v => sd(['subagents', 'maxSpawnDepth'], v)} min={1} max={10} placeholder={def('agents.defaults.subagents.maxSpawnDepth')} />
+        <NumberField label={es.subagentMaxChildren || 'Max Children/Agent'} tooltip={tip('agents.defaults.subagents.maxChildrenPerAgent')} value={d(['subagents', 'maxChildrenPerAgent'])} onChange={v => sd(['subagents', 'maxChildrenPerAgent'], v)} min={1} max={50} placeholder={def('agents.defaults.subagents.maxChildrenPerAgent')} />
+        <NumberField label={es.subagentArchiveMin || 'Archive After (min)'} tooltip={tip('agents.defaults.subagents.archiveAfterMinutes')} value={d(['subagents', 'archiveAfterMinutes'])} onChange={v => sd(['subagents', 'archiveAfterMinutes'], v)} min={0} placeholder={def('agents.defaults.subagents.archiveAfterMinutes')} />
         <TextField label={es.workspace} tooltip={tip('agents.defaults.workspace')} value={d(['workspace']) || ''} onChange={v => sd(['workspace'], v)} placeholder={es.phWorkspacePath} />
-        <TextField label={es.imageGenerationModel || 'Image Generation Model'} tooltip={tip('agents.defaults.imageGenerationModel')} value={typeof d(['imageGenerationModel']) === 'string' ? d(['imageGenerationModel']) : d(['imageGenerationModel'])?.primary || ''} onChange={v => sd(['imageGenerationModel'], v)} placeholder={es.phProviderModelId} />
-        <TextField label={es.videoGenerationModel || 'Video Generation Model'} tooltip={tip('agents.defaults.videoGenerationModel.primary')} value={typeof d(['videoGenerationModel']) === 'string' ? d(['videoGenerationModel']) : d(['videoGenerationModel'])?.primary || ''} onChange={v => sd(['videoGenerationModel', 'primary'], v)} placeholder={es.phProviderModelId} />
-        <TextField label={es.musicGenerationModel || 'Music Generation Model'} tooltip={tip('agents.defaults.musicGenerationModel')} value={typeof d(['musicGenerationModel']) === 'string' ? d(['musicGenerationModel']) : d(['musicGenerationModel'])?.primary || ''} onChange={v => sd(['musicGenerationModel'], v)} placeholder={es.phProviderModelId} />
-        <TextField label={es.pdfModel || 'PDF Model'} tooltip={tip('agents.defaults.pdfModel')} value={typeof d(['pdfModel']) === 'string' ? d(['pdfModel']) : d(['pdfModel'])?.primary || ''} onChange={v => sd(['pdfModel'], v)} placeholder={es.phProviderModelId} />
-        <NumberField label={es.pdfMaxBytesMb || 'PDF Max Size (MB)'} tooltip={tip('agents.defaults.pdfMaxBytesMb')} value={d(['pdfMaxBytesMb'])} onChange={v => sd(['pdfMaxBytesMb'], v)} min={1} />
-        <NumberField label={es.pdfMaxPages || 'PDF Max Pages'} tooltip={tip('agents.defaults.pdfMaxPages')} value={d(['pdfMaxPages'])} onChange={v => sd(['pdfMaxPages'], v)} min={1} />
-        <NumberField label={es.timeoutS} tooltip={tip('agents.defaults.timeoutSeconds')} value={d(['timeoutSeconds'])} onChange={v => sd(['timeoutSeconds'], v)} min={0} />
-        <NumberField label={es.mediaMaxMb} tooltip={tip('agents.defaults.mediaMaxMb')} value={d(['mediaMaxMb'])} onChange={v => sd(['mediaMaxMb'], v)} min={0} />
+        <ModelField label={es.defaultModel || 'Default Model'} tooltip={tip('agents.defaults.model')} value={d(['model'])} onChange={v => sd(['model'], v)} placeholder={es.phProviderModelId} />
+        <ModelField label={es.imageModel || 'Image Model'} tooltip={tip('agents.defaults.imageModel')} value={d(['imageModel'])} onChange={v => sd(['imageModel'], v)} placeholder={es.phProviderModelId} />
+        <ModelField label={es.imageGenerationModel || 'Image Generation Model'} tooltip={tip('agents.defaults.imageGenerationModel')} value={d(['imageGenerationModel'])} onChange={v => sd(['imageGenerationModel'], v)} placeholder={es.phProviderModelId} />
+        <ModelField label={es.videoGenerationModel || 'Video Generation Model'} tooltip={tip('agents.defaults.videoGenerationModel')} value={d(['videoGenerationModel'])} onChange={v => sd(['videoGenerationModel'], v)} placeholder={es.phProviderModelId} />
+        <ModelField label={es.musicGenerationModel || 'Music Generation Model'} tooltip={tip('agents.defaults.musicGenerationModel')} value={d(['musicGenerationModel'])} onChange={v => sd(['musicGenerationModel'], v)} placeholder={es.phProviderModelId} />
+        <ModelField label={es.pdfModel || 'PDF Model'} tooltip={tip('agents.defaults.pdfModel')} value={d(['pdfModel'])} onChange={v => sd(['pdfModel'], v)} placeholder={es.phProviderModelId} />
+        <NumberField label={es.pdfMaxBytesMb || 'PDF Max Size (MB)'} tooltip={tip('agents.defaults.pdfMaxBytesMb')} value={d(['pdfMaxBytesMb'])} onChange={v => sd(['pdfMaxBytesMb'], v)} min={1} placeholder={def('agents.defaults.pdfMaxBytesMb')} />
+        <NumberField label={es.pdfMaxPages || 'PDF Max Pages'} tooltip={tip('agents.defaults.pdfMaxPages')} value={d(['pdfMaxPages'])} onChange={v => sd(['pdfMaxPages'], v)} min={1} placeholder={def('agents.defaults.pdfMaxPages')} />
+        <NumberField label={es.timeoutS} tooltip={tip('agents.defaults.timeoutSeconds')} value={d(['timeoutSeconds'])} onChange={v => sd(['timeoutSeconds'], v)} min={0} placeholder={def('agents.defaults.timeoutSeconds')} />
+        <NumberField label={es.mediaMaxMb} tooltip={tip('agents.defaults.mediaMaxMb')} value={d(['mediaMaxMb'])} onChange={v => sd(['mediaMaxMb'], v)} min={0} placeholder={def('agents.defaults.mediaMaxMb')} />
         <ArrayField label={es.skills || 'Skills'} tooltip={tip('agents.defaults.skills')} value={d(['skills']) || []} onChange={v => sd(['skills'], v)} placeholder={es.phSkillName || 'skill-name'} />
       </ConfigSection>
 
@@ -79,27 +82,28 @@ export const AgentsSection: React.FC<SectionProps> = ({ config, schema, setField
         <SelectField label={es.mode} tooltip={tip('agents.defaults.humanDelay.mode')} value={d(['humanDelay', 'mode']) || 'off'} onChange={v => sd(['humanDelay', 'mode'], v)} options={HUMAN_DELAY_OPTIONS} />
         {d(['humanDelay', 'mode']) !== 'off' && (
           <>
-            <NumberField label={es.lblMinMs} tooltip={tip('agents.defaults.humanDelay.minMs')} value={d(['humanDelay', 'minMs'])} onChange={v => sd(['humanDelay', 'minMs'], v)} min={0} />
-            <NumberField label={es.lblMaxMs} tooltip={tip('agents.defaults.humanDelay.maxMs')} value={d(['humanDelay', 'maxMs'])} onChange={v => sd(['humanDelay', 'maxMs'], v)} min={0} />
+            <NumberField label={es.lblMinMs} tooltip={tip('agents.defaults.humanDelay.minMs')} value={d(['humanDelay', 'minMs'])} onChange={v => sd(['humanDelay', 'minMs'], v)} min={0} placeholder={def('agents.defaults.humanDelay.minMs')} />
+            <NumberField label={es.lblMaxMs} tooltip={tip('agents.defaults.humanDelay.maxMs')} value={d(['humanDelay', 'maxMs'])} onChange={v => sd(['humanDelay', 'maxMs'], v)} min={0} placeholder={def('agents.defaults.humanDelay.maxMs')} />
           </>
         )}
       </ConfigSection>
 
       <ConfigSection title={es.heartbeat} icon="favorite" iconColor="text-red-500" defaultOpen={false}>
         <SwitchField label={es.enabled} tooltip={tip('agents.defaults.heartbeat.enabled')} value={d(['heartbeat', 'enabled']) !== false} onChange={v => sd(['heartbeat', 'enabled'], v)} />
-        <NumberField label={es.intervalS} tooltip={tip('agents.defaults.heartbeat.intervalSeconds')} value={d(['heartbeat', 'intervalSeconds'])} onChange={v => sd(['heartbeat', 'intervalSeconds'], v)} min={10} />
+        <NumberField label={es.intervalS} tooltip={tip('agents.defaults.heartbeat.intervalSeconds')} value={d(['heartbeat', 'intervalSeconds'])} onChange={v => sd(['heartbeat', 'intervalSeconds'], v)} min={10} placeholder={def('agents.defaults.heartbeat.intervalSeconds')} />
         <TextField label={es.message} tooltip={tip('agents.defaults.heartbeat.message')} value={d(['heartbeat', 'message']) || ''} onChange={v => sd(['heartbeat', 'message'], v)} mono={false} />
       </ConfigSection>
 
       <ConfigSection title={es.contextLimits || 'Context Limits'} icon="data_usage" iconColor="text-amber-500" defaultOpen={false}>
-        <NumberField label={es.memoryGetDefaultLines || 'memory_get Default Lines'} tooltip={tip('agents.defaults.contextLimits.memoryGetDefaultLines')} value={d(['contextLimits', 'memoryGetDefaultLines'])} onChange={v => sd(['contextLimits', 'memoryGetDefaultLines'], v)} min={0} />
-        <NumberField label={es.memoryGetMaxChars || 'memory_get Max Chars'} tooltip={tip('agents.defaults.contextLimits.memoryGetMaxChars')} value={d(['contextLimits', 'memoryGetMaxChars'])} onChange={v => sd(['contextLimits', 'memoryGetMaxChars'], v)} min={0} />
-        <NumberField label={es.postCompactionMaxChars || 'Post-compaction Max Chars'} tooltip={tip('agents.defaults.contextLimits.postCompactionMaxChars')} value={d(['contextLimits', 'postCompactionMaxChars'])} onChange={v => sd(['contextLimits', 'postCompactionMaxChars'], v)} min={0} />
-        <NumberField label={es.toolResultMaxChars || 'Tool Result Max Chars'} tooltip={tip('agents.defaults.contextLimits.toolResultMaxChars')} value={d(['contextLimits', 'toolResultMaxChars'])} onChange={v => sd(['contextLimits', 'toolResultMaxChars'], v)} min={0} />
+        <NumberField label={es.contextTokens || 'Context Tokens'} tooltip={es.contextTokensDesc || 'Optional context window cap (used for runtime estimates + status %). Leave empty to use model native context window.'} value={d(['contextTokens'])} onChange={v => sd(['contextTokens'], v)} min={1} placeholder={es.phModelContextWindow || 'model context window'} />
+        <NumberField label={es.memoryGetDefaultLines || 'memory_get Default Lines'} tooltip={tip('agents.defaults.contextLimits.memoryGetDefaultLines')} value={d(['contextLimits', 'memoryGetDefaultLines'])} onChange={v => sd(['contextLimits', 'memoryGetDefaultLines'], v)} min={0} placeholder={def('agents.defaults.contextLimits.memoryGetDefaultLines')} />
+        <NumberField label={es.memoryGetMaxChars || 'memory_get Max Chars'} tooltip={tip('agents.defaults.contextLimits.memoryGetMaxChars')} value={d(['contextLimits', 'memoryGetMaxChars'])} onChange={v => sd(['contextLimits', 'memoryGetMaxChars'], v)} min={0} placeholder={def('agents.defaults.contextLimits.memoryGetMaxChars')} />
+        <NumberField label={es.postCompactionMaxChars || 'Post-compaction Max Chars'} tooltip={tip('agents.defaults.contextLimits.postCompactionMaxChars')} value={d(['contextLimits', 'postCompactionMaxChars'])} onChange={v => sd(['contextLimits', 'postCompactionMaxChars'], v)} min={0} placeholder={def('agents.defaults.contextLimits.postCompactionMaxChars')} />
+        <NumberField label={es.toolResultMaxChars || 'Tool Result Max Chars'} tooltip={tip('agents.defaults.contextLimits.toolResultMaxChars')} value={d(['contextLimits', 'toolResultMaxChars'])} onChange={v => sd(['contextLimits', 'toolResultMaxChars'], v)} min={0} placeholder={def('agents.defaults.contextLimits.toolResultMaxChars')} />
       </ConfigSection>
 
       <ConfigSection title={es.skillsLimits || 'Skills Limits'} icon="construction" iconColor="text-lime-500" defaultOpen={false}>
-        <NumberField label={es.maxSkillsPromptChars || 'Max Skills Prompt Chars'} tooltip={tip('agents.defaults.skillsLimits.maxSkillsPromptChars')} value={d(['skillsLimits', 'maxSkillsPromptChars'])} onChange={v => sd(['skillsLimits', 'maxSkillsPromptChars'], v)} min={0} />
+        <NumberField label={es.maxSkillsPromptChars || 'Max Skills Prompt Chars'} tooltip={tip('agents.defaults.skillsLimits.maxSkillsPromptChars')} value={d(['skillsLimits', 'maxSkillsPromptChars'])} onChange={v => sd(['skillsLimits', 'maxSkillsPromptChars'], v)} min={0} placeholder={def('agents.defaults.skillsLimits.maxSkillsPromptChars')} />
       </ConfigSection>
 
       <ConfigSection title={es.experimental || 'Experimental'} icon="science" iconColor="text-fuchsia-500" defaultOpen={false}>
@@ -114,7 +118,7 @@ export const AgentsSection: React.FC<SectionProps> = ({ config, schema, setField
 
       <ConfigSection title={es.memorySearch} icon="search" iconColor="text-sky-500" defaultOpen={false}>
         <SwitchField label={es.enabled} tooltip={tip('agents.defaults.memorySearch.enabled')} value={d(['memorySearch', 'enabled']) !== false} onChange={v => sd(['memorySearch', 'enabled'], v)} />
-        <NumberField label={es.maxResults} tooltip={tip('agents.defaults.memorySearch.maxResults')} value={d(['memorySearch', 'maxResults'])} onChange={v => sd(['memorySearch', 'maxResults'], v)} min={1} />
+        <NumberField label={es.maxResults} tooltip={tip('agents.defaults.memorySearch.maxResults')} value={d(['memorySearch', 'maxResults'])} onChange={v => sd(['memorySearch', 'maxResults'], v)} min={1} placeholder={def('agents.defaults.memorySearch.maxResults')} />
       </ConfigSection>
 
       <ConfigSection title={es.sandbox} icon="shield" iconColor="text-emerald-500" defaultOpen={false}>
@@ -193,13 +197,14 @@ export const AgentsSection: React.FC<SectionProps> = ({ config, schema, setField
       <SchemaRemainder
         sectionPath="agents.defaults"
         handledKeys={[
-          'maxConcurrent', 'workspace', 'imageGenerationModel', 'videoGenerationModel',
+          'maxConcurrent', 'workspace', 'model', 'imageModel', 'imageGenerationModel', 'videoGenerationModel',
           'musicGenerationModel', 'pdfModel', 'pdfMaxBytesMb', 'pdfMaxPages',
           'timeoutSeconds', 'mediaMaxMb', 'skills', 'subagents',
           'thinkingDefault', 'verboseDefault', 'elevatedDefault', 'typingMode',
           'compaction', 'bootstrapTruncationWarning', 'contextInjection', 'params', 'systemPromptOverride',
           'humanDelay', 'heartbeat', 'contextPruning', 'memorySearch', 'sandbox',
-          'contextLimits', 'skillsLimits', 'experimental', 'promptOverlays',
+          'contextTokens', 'contextLimits', 'skillsLimits', 'experimental', 'promptOverlays',
+          'models', 'imageModel', 'mediaGenerationAutoProviderFallback',
         ]}
         config={config}
         setField={setField}

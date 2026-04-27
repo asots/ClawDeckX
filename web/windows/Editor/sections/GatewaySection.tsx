@@ -2,12 +2,13 @@ import React, { useMemo } from 'react';
 import { SectionProps } from '../sectionTypes';
 import { ConfigSection, TextField, PasswordField, NumberField, SelectField, SwitchField, ArrayField } from '../fields';
 import { getTranslation } from '../../../locales';
-import { schemaTooltip } from '../schemaTooltip';
+import { schemaTooltip, schemaDefault } from '../schemaTooltip';
 import SchemaRemainder from '../SchemaRemainder';
 
 const GatewaySection: React.FC<SectionProps> = ({ config, schema, setField, getField, language }) => {
   const es = useMemo(() => (getTranslation(language) as any).es || {}, [language]);
   const tip = (key: string) => schemaTooltip(key, language, schema);
+  const def = (key: string) => schemaDefault(key, schema);
   const g = (p: string[]) => getField(['gateway', ...p]);
   const s = (p: string[], v: any) => setField(['gateway', ...p], v);
 
@@ -64,15 +65,15 @@ const GatewaySection: React.FC<SectionProps> = ({ config, schema, setField, getF
   return (
     <div className="space-y-4">
       <ConfigSection title={es.basicSettings} icon="settings" iconColor="text-teal-500">
-        <NumberField label={es.port} tooltip={tip('gateway.port')} value={g(['port'])} onChange={v => s(['port'], v)} min={1} max={65535} />
+        <NumberField label={es.port} tooltip={tip('gateway.port')} value={g(['port'])} onChange={v => s(['port'], v)} min={1} max={65535} placeholder={def('gateway.port')} />
         <SelectField label={es.runMode} tooltip={tip('gateway.mode')} value={g(['mode']) || 'local'} onChange={v => s(['mode'], v)} options={modeOptions} />
         <SelectField label={es.bind} tooltip={tip('gateway.bind')} value={g(['bind']) || 'auto'} onChange={v => s(['bind'], v)} options={bindOptions} />
         {g(['bind']) === 'custom' && (
           <TextField label={es.customBindHost} tooltip={tip('gateway.customBindHost')} value={g(['customBindHost']) || ''} onChange={v => s(['customBindHost'], v)} placeholder="0.0.0.0" />
         )}
-        <NumberField label={es.channelHealthCheckMin} tooltip={tip('gateway.channelHealthCheckMinutes')} value={g(['channelHealthCheckMinutes'])} onChange={v => s(['channelHealthCheckMinutes'], v)} min={0} />
-        <NumberField label={es.channelStaleThreshold || 'Stale Event Threshold (min)'} tooltip={tip('gateway.channelStaleEventThresholdMinutes')} value={g(['channelStaleEventThresholdMinutes'])} onChange={v => s(['channelStaleEventThresholdMinutes'], v)} min={0} />
-        <NumberField label={es.channelMaxRestarts || 'Max Restarts/Hour'} tooltip={tip('gateway.channelMaxRestartsPerHour')} value={g(['channelMaxRestartsPerHour'])} onChange={v => s(['channelMaxRestartsPerHour'], v)} min={0} />
+        <NumberField label={es.channelHealthCheckMin} tooltip={tip('gateway.channelHealthCheckMinutes')} value={g(['channelHealthCheckMinutes'])} onChange={v => s(['channelHealthCheckMinutes'], v)} min={0} placeholder={def('gateway.channelHealthCheckMinutes')} />
+        <NumberField label={es.channelStaleThreshold || 'Stale Event Threshold (min)'} tooltip={tip('gateway.channelStaleEventThresholdMinutes')} value={g(['channelStaleEventThresholdMinutes'])} onChange={v => s(['channelStaleEventThresholdMinutes'], v)} min={0} placeholder={def('gateway.channelStaleEventThresholdMinutes')} />
+        <NumberField label={es.channelMaxRestarts || 'Max Restarts/Hour'} tooltip={tip('gateway.channelMaxRestartsPerHour')} value={g(['channelMaxRestartsPerHour'])} onChange={v => s(['channelMaxRestartsPerHour'], v)} min={0} placeholder={def('gateway.channelMaxRestartsPerHour')} />
         <SwitchField label={es.controlUiEnabled || 'Control UI'} tooltip={tip('gateway.controlUi.enabled')} value={g(['controlUi', 'enabled']) !== false} onChange={v => s(['controlUi', 'enabled'], v)} />
       </ConfigSection>
 
@@ -113,9 +114,9 @@ const GatewaySection: React.FC<SectionProps> = ({ config, schema, setField, getF
       </ConfigSection>
 
       <ConfigSection title={es.authRateLimit} icon="speed" iconColor="text-orange-500" defaultOpen={false}>
-        <NumberField label={es.rlMaxAttempts} tooltip={tip('gateway.auth.rateLimit.maxAttempts')} value={g(['auth', 'rateLimit', 'maxAttempts'])} onChange={v => s(['auth', 'rateLimit', 'maxAttempts'], v)} min={1} />
-        <NumberField label={es.rlWindowMs} tooltip={tip('gateway.auth.rateLimit.windowMs')} value={g(['auth', 'rateLimit', 'windowMs'])} onChange={v => s(['auth', 'rateLimit', 'windowMs'], v)} min={0} step={1000} />
-        <NumberField label={es.rlLockoutMs} tooltip={tip('gateway.auth.rateLimit.lockoutMs')} value={g(['auth', 'rateLimit', 'lockoutMs'])} onChange={v => s(['auth', 'rateLimit', 'lockoutMs'], v)} min={0} step={1000} />
+        <NumberField label={es.rlMaxAttempts} tooltip={tip('gateway.auth.rateLimit.maxAttempts')} value={g(['auth', 'rateLimit', 'maxAttempts'])} onChange={v => s(['auth', 'rateLimit', 'maxAttempts'], v)} min={1} placeholder={def('gateway.auth.rateLimit.maxAttempts')} />
+        <NumberField label={es.rlWindowMs} tooltip={tip('gateway.auth.rateLimit.windowMs')} value={g(['auth', 'rateLimit', 'windowMs'])} onChange={v => s(['auth', 'rateLimit', 'windowMs'], v)} min={0} step={1000} placeholder={def('gateway.auth.rateLimit.windowMs')} />
+        <NumberField label={es.rlLockoutMs} tooltip={tip('gateway.auth.rateLimit.lockoutMs')} value={g(['auth', 'rateLimit', 'lockoutMs'])} onChange={v => s(['auth', 'rateLimit', 'lockoutMs'], v)} min={0} step={1000} placeholder={def('gateway.auth.rateLimit.lockoutMs')} />
         <SwitchField label={es.rlExemptLoopback} tooltip={tip('gateway.auth.rateLimit.exemptLoopback')} value={g(['auth', 'rateLimit', 'exemptLoopback']) === true} onChange={v => s(['auth', 'rateLimit', 'exemptLoopback'], v)} />
       </ConfigSection>
 
@@ -145,8 +146,8 @@ const GatewaySection: React.FC<SectionProps> = ({ config, schema, setField, getF
 
       <ConfigSection title={es.reload} icon="refresh" iconColor="text-amber-500" defaultOpen={false}>
         <SelectField label={es.reloadMode} tooltip={tip('gateway.reload.mode')} value={g(['reload', 'mode']) || 'hybrid'} onChange={v => s(['reload', 'mode'], v)} options={reloadModeOptions} />
-        <NumberField label={es.debounceMs} tooltip={tip('gateway.reload.debounceMs')} value={g(['reload', 'debounceMs'])} onChange={v => s(['reload', 'debounceMs'], v)} min={0} step={100} />
-        <NumberField label={es.deferralTimeoutMs || 'Deferral Timeout (ms)'} tooltip={tip('gateway.reload.deferralTimeoutMs')} value={g(['reload', 'deferralTimeoutMs'])} onChange={v => s(['reload', 'deferralTimeoutMs'], v)} min={0} step={1000} />
+        <NumberField label={es.debounceMs} tooltip={tip('gateway.reload.debounceMs')} value={g(['reload', 'debounceMs'])} onChange={v => s(['reload', 'debounceMs'], v)} min={0} step={100} placeholder={def('gateway.reload.debounceMs')} />
+        <NumberField label={es.deferralTimeoutMs || 'Deferral Timeout (ms)'} tooltip={tip('gateway.reload.deferralTimeoutMs')} value={g(['reload', 'deferralTimeoutMs'])} onChange={v => s(['reload', 'deferralTimeoutMs'], v)} min={0} step={1000} placeholder={def('gateway.reload.deferralTimeoutMs')} />
       </ConfigSection>
 
       <ConfigSection title={es.httpConfig} icon="http" iconColor="text-sky-500" defaultOpen={false}>
@@ -174,12 +175,12 @@ const GatewaySection: React.FC<SectionProps> = ({ config, schema, setField, getF
 
       <ConfigSection title={es.webConfig} icon="public" iconColor="text-cyan-500" defaultOpen={false}>
         <SwitchField label={es.enabled} tooltip={tip('web.enabled')} value={getField(['web', 'enabled']) !== false} onChange={v => setField(['web', 'enabled'], v)} />
-        <NumberField label={es.heartbeatS} tooltip={tip('web.heartbeatSeconds')} value={getField(['web', 'heartbeatSeconds'])} onChange={v => setField(['web', 'heartbeatSeconds'], v)} min={1} />
-        <NumberField label={es.webReconnectInitialMs} tooltip={tip('web.reconnect.initialMs')} value={getField(['web', 'reconnect', 'initialMs'])} onChange={v => setField(['web', 'reconnect', 'initialMs'], v)} min={0} step={100} />
-        <NumberField label={es.webReconnectMaxMs} tooltip={tip('web.reconnect.maxMs')} value={getField(['web', 'reconnect', 'maxMs'])} onChange={v => setField(['web', 'reconnect', 'maxMs'], v)} min={0} step={1000} />
-        <NumberField label={es.webReconnectMaxAttempts} tooltip={tip('web.reconnect.maxAttempts')} value={getField(['web', 'reconnect', 'maxAttempts'])} onChange={v => setField(['web', 'reconnect', 'maxAttempts'], v)} min={0} />
-        <NumberField label={es.webReconnectFactor || 'Backoff Factor'} tooltip={tip('web.reconnect.factor')} value={getField(['web', 'reconnect', 'factor'])} onChange={v => setField(['web', 'reconnect', 'factor'], v)} min={1} step={0.1} />
-        <NumberField label={es.webReconnectJitter || 'Jitter (0-1)'} tooltip={tip('web.reconnect.jitter')} value={getField(['web', 'reconnect', 'jitter'])} onChange={v => setField(['web', 'reconnect', 'jitter'], v)} min={0} max={1} step={0.05} />
+        <NumberField label={es.heartbeatS} tooltip={tip('web.heartbeatSeconds')} value={getField(['web', 'heartbeatSeconds'])} onChange={v => setField(['web', 'heartbeatSeconds'], v)} min={1} placeholder={def('web.heartbeatSeconds')} />
+        <NumberField label={es.webReconnectInitialMs} tooltip={tip('web.reconnect.initialMs')} value={getField(['web', 'reconnect', 'initialMs'])} onChange={v => setField(['web', 'reconnect', 'initialMs'], v)} min={0} step={100} placeholder={def('web.reconnect.initialMs')} />
+        <NumberField label={es.webReconnectMaxMs} tooltip={tip('web.reconnect.maxMs')} value={getField(['web', 'reconnect', 'maxMs'])} onChange={v => setField(['web', 'reconnect', 'maxMs'], v)} min={0} step={1000} placeholder={def('web.reconnect.maxMs')} />
+        <NumberField label={es.webReconnectMaxAttempts} tooltip={tip('web.reconnect.maxAttempts')} value={getField(['web', 'reconnect', 'maxAttempts'])} onChange={v => setField(['web', 'reconnect', 'maxAttempts'], v)} min={0} placeholder={def('web.reconnect.maxAttempts')} />
+        <NumberField label={es.webReconnectFactor || 'Backoff Factor'} tooltip={tip('web.reconnect.factor')} value={getField(['web', 'reconnect', 'factor'])} onChange={v => setField(['web', 'reconnect', 'factor'], v)} min={1} step={0.1} placeholder={def('web.reconnect.factor')} />
+        <NumberField label={es.webReconnectJitter || 'Jitter (0-1)'} tooltip={tip('web.reconnect.jitter')} value={getField(['web', 'reconnect', 'jitter'])} onChange={v => setField(['web', 'reconnect', 'jitter'], v)} min={0} max={1} step={0.05} placeholder={def('web.reconnect.jitter')} />
       </ConfigSection>
 
       <ConfigSection title={es.gwNodes} icon="hub" iconColor="text-slate-500" defaultOpen={false}>
@@ -188,12 +189,12 @@ const GatewaySection: React.FC<SectionProps> = ({ config, schema, setField, getF
       </ConfigSection>
 
       <ConfigSection title={es.webchat || 'WebChat'} icon="chat" iconColor="text-indigo-500" defaultOpen={false}>
-        <NumberField label={es.chatHistoryMaxChars || 'History Max Chars'} tooltip={tip('gateway.webchat.chatHistoryMaxChars')} value={g(['webchat', 'chatHistoryMaxChars'])} onChange={v => s(['webchat', 'chatHistoryMaxChars'], v)} min={1} max={500000} />
+        <NumberField label={es.chatHistoryMaxChars || 'History Max Chars'} tooltip={tip('gateway.webchat.chatHistoryMaxChars')} value={g(['webchat', 'chatHistoryMaxChars'])} onChange={v => s(['webchat', 'chatHistoryMaxChars'], v)} min={1} max={500000} placeholder={def('gateway.webchat.chatHistoryMaxChars')} />
       </ConfigSection>
 
       <ConfigSection title={es.apnsRelay || 'APNs Relay'} icon="phonelink_ring" iconColor="text-blue-500" defaultOpen={false}>
         <TextField label={es.apnsRelayBaseUrl || 'Base URL'} tooltip={tip('gateway.push.apns.relay.baseUrl')} value={g(['push', 'apns', 'relay', 'baseUrl']) || ''} onChange={v => s(['push', 'apns', 'relay', 'baseUrl'], v)} placeholder="https://relay.example.com" />
-        <NumberField label={es.apnsRelayTimeoutMs || 'Timeout (ms)'} tooltip={tip('gateway.push.apns.relay.timeoutMs')} value={g(['push', 'apns', 'relay', 'timeoutMs'])} onChange={v => s(['push', 'apns', 'relay', 'timeoutMs'], v)} min={0} step={1000} />
+        <NumberField label={es.apnsRelayTimeoutMs || 'Timeout (ms)'} tooltip={tip('gateway.push.apns.relay.timeoutMs')} value={g(['push', 'apns', 'relay', 'timeoutMs'])} onChange={v => s(['push', 'apns', 'relay', 'timeoutMs'], v)} min={0} step={1000} placeholder={def('gateway.push.apns.relay.timeoutMs')} />
       </ConfigSection>
 
       <SchemaRemainder

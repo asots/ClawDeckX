@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { SectionProps } from '../sectionTypes';
 import { ConfigSection, TextField, NumberField, SelectField, SwitchField, ArrayField, KeyValueField } from '../fields';
 import { getTranslation } from '../../../locales';
-import { schemaTooltip } from '../schemaTooltip';
+import { schemaTooltip, schemaDefault } from '../schemaTooltip';
 import { RequestOverridePanel } from './RequestOverridePanel';
 import SchemaRemainder from '../SchemaRemainder';
 
@@ -11,6 +11,7 @@ import SchemaRemainder from '../SchemaRemainder';
 export const ToolsSection: React.FC<SectionProps> = ({ config, schema, setField, getField, language }) => {
   const es = useMemo(() => (getTranslation(language) as any).es || {}, [language]);
   const tip = (key: string) => schemaTooltip(key, language, schema);
+  const def = (key: string) => schemaDefault(key, schema);
   const g = (p: string[]) => getField(['tools', ...p]);
   const s = (p: string[], v: any) => setField(['tools', ...p], v);
 
@@ -54,7 +55,7 @@ export const ToolsSection: React.FC<SectionProps> = ({ config, schema, setField,
         <SelectField label={es.security} tooltip={tip('tools.exec.security')} value={g(['exec', 'security']) || 'full'} onChange={v => s(['exec', 'security'], v)} options={EXEC_SECURITY_OPTIONS} />
         <SelectField label={es.askBeforeExec} tooltip={tip('tools.exec.ask')} value={g(['exec', 'ask']) || 'off'} onChange={v => s(['exec', 'ask'], v)} options={EXEC_ASK_OPTIONS} />
         <SelectField label={es.askFallback || 'Ask Fallback'} desc={es.askFallbackDesc} tooltip={tip('tools.exec.askFallback')} value={g(['exec', 'askFallback']) || 'deny'} onChange={v => s(['exec', 'askFallback'], v)} options={EXEC_ASK_FALLBACK_OPTIONS} />
-        <NumberField label={es.timeoutS} tooltip={tip('tools.exec.timeout')} value={g(['exec', 'timeout'])} onChange={v => s(['exec', 'timeout'], v)} min={0} />
+        <NumberField label={es.timeoutS} tooltip={tip('tools.exec.timeout')} value={g(['exec', 'timeout'])} onChange={v => s(['exec', 'timeout'], v)} min={0} placeholder={def('tools.exec.timeout')} />
         <SwitchField label={es.strictInlineEval || 'Strict Inline Eval'} desc={es.strictInlineEvalDesc} tooltip={tip('tools.exec.strictInlineEval')} value={g(['exec', 'strictInlineEval']) === true} onChange={v => s(['exec', 'strictInlineEval'], v)} />
         <ArrayField label={es.safeBins} desc={es.safeBinsDesc} tooltip={tip('tools.exec.safeBins')} value={g(['exec', 'safeBins']) || []} onChange={v => s(['exec', 'safeBins'], v)} placeholder={es.phSafeBins} />
         <ArrayField label={es.safeBinTrustedDirs || 'Trusted Directories'} desc={es.safeBinTrustedDirsDesc} tooltip={tip('tools.exec.safeBinTrustedDirs')} value={g(['exec', 'safeBinTrustedDirs']) || []} onChange={v => s(['exec', 'safeBinTrustedDirs'], v)} placeholder={es.phSafeBinTrustedDirs || '/usr/local/bin, ~/bin'} />
@@ -63,7 +64,7 @@ export const ToolsSection: React.FC<SectionProps> = ({ config, schema, setField,
         <TextField label={es.execNode || 'Node Binding'} tooltip={tip('tools.exec.node')} value={g(['exec', 'node']) || ''} onChange={v => s(['exec', 'node'], v)} placeholder="auto" />
         <SwitchField label={es.execNotifyOnExit || 'Notify on Exit'} tooltip={tip('tools.exec.notifyOnExit')} value={g(['exec', 'notifyOnExit']) === true} onChange={v => s(['exec', 'notifyOnExit'], v)} />
         <SwitchField label={es.execNotifyOnExitEmptySuccess || 'Notify on Empty Success'} tooltip={tip('tools.exec.notifyOnExitEmptySuccess')} value={g(['exec', 'notifyOnExitEmptySuccess']) === true} onChange={v => s(['exec', 'notifyOnExitEmptySuccess'], v)} />
-        <NumberField label={es.execApprovalRunningNoticeMs || 'Approval Running Notice (ms)'} tooltip={tip('tools.exec.approvalRunningNoticeMs')} value={g(['exec', 'approvalRunningNoticeMs'])} onChange={v => s(['exec', 'approvalRunningNoticeMs'], v)} min={0} />
+        <NumberField label={es.execApprovalRunningNoticeMs || 'Approval Running Notice (ms)'} tooltip={tip('tools.exec.approvalRunningNoticeMs')} value={g(['exec', 'approvalRunningNoticeMs'])} onChange={v => s(['exec', 'approvalRunningNoticeMs'], v)} min={0} placeholder={def('tools.exec.approvalRunningNoticeMs')} />
         <SwitchField label={es.execApplyPatchEnabled || 'Enable apply_patch'} tooltip={tip('tools.exec.applyPatch.enabled')} value={g(['exec', 'applyPatch', 'enabled']) !== false} onChange={v => s(['exec', 'applyPatch', 'enabled'], v)} />
         <SwitchField label={es.execApplyPatchWorkspaceOnly || 'apply_patch Workspace-Only'} tooltip={tip('tools.exec.applyPatch.workspaceOnly')} value={g(['exec', 'applyPatch', 'workspaceOnly']) === true} onChange={v => s(['exec', 'applyPatch', 'workspaceOnly'], v)} />
         <ArrayField label={es.execApplyPatchAllowModels || 'apply_patch Model Allowlist'} tooltip={tip('tools.exec.applyPatch.allowModels')} value={g(['exec', 'applyPatch', 'allowModels']) || []} onChange={v => s(['exec', 'applyPatch', 'allowModels'], v)} placeholder="gpt-4o" />
@@ -75,11 +76,11 @@ export const ToolsSection: React.FC<SectionProps> = ({ config, schema, setField,
 
       <ConfigSection title={es.loopDetection || 'Loop Detection'} icon="all_inclusive" iconColor="text-rose-500" defaultOpen={false}>
         <SwitchField label={es.enabled} tooltip={tip('tools.loopDetection.enabled')} value={g(['loopDetection', 'enabled']) === true} onChange={v => s(['loopDetection', 'enabled'], v)} />
-        <NumberField label={es.loopHistorySize || 'History Size'} tooltip={tip('tools.loopDetection.historySize')} value={g(['loopDetection', 'historySize'])} onChange={v => s(['loopDetection', 'historySize'], v)} min={1} />
-        <NumberField label={es.warningThreshold || 'Warning Threshold'} tooltip={tip('tools.loopDetection.warningThreshold')} value={g(['loopDetection', 'warningThreshold'])} onChange={v => s(['loopDetection', 'warningThreshold'], v)} min={1} />
-        <NumberField label={es.criticalThreshold || 'Critical Threshold'} tooltip={tip('tools.loopDetection.criticalThreshold')} value={g(['loopDetection', 'criticalThreshold'])} onChange={v => s(['loopDetection', 'criticalThreshold'], v)} min={1} />
-        <NumberField label={es.unknownToolThreshold || 'Unknown-tool Threshold'} desc={es.unknownToolThresholdDesc || 'Stop hallucinated tool loops after N unknown-tool stream attempts (default 10; stream guard is on by default).'} tooltip={tip('tools.loopDetection.unknownToolThreshold')} value={g(['loopDetection', 'unknownToolThreshold'])} onChange={v => s(['loopDetection', 'unknownToolThreshold'], v)} min={1} />
-        <NumberField label={es.loopGlobalCircuitBreaker || 'Global Circuit Breaker'} tooltip={tip('tools.loopDetection.globalCircuitBreakerThreshold')} value={g(['loopDetection', 'globalCircuitBreakerThreshold'])} onChange={v => s(['loopDetection', 'globalCircuitBreakerThreshold'], v)} min={0} />
+        <NumberField label={es.loopHistorySize || 'History Size'} tooltip={tip('tools.loopDetection.historySize')} value={g(['loopDetection', 'historySize'])} onChange={v => s(['loopDetection', 'historySize'], v)} min={1} placeholder={def('tools.loopDetection.historySize')} />
+        <NumberField label={es.warningThreshold || 'Warning Threshold'} tooltip={tip('tools.loopDetection.warningThreshold')} value={g(['loopDetection', 'warningThreshold'])} onChange={v => s(['loopDetection', 'warningThreshold'], v)} min={1} placeholder={def('tools.loopDetection.warningThreshold')} />
+        <NumberField label={es.criticalThreshold || 'Critical Threshold'} tooltip={tip('tools.loopDetection.criticalThreshold')} value={g(['loopDetection', 'criticalThreshold'])} onChange={v => s(['loopDetection', 'criticalThreshold'], v)} min={1} placeholder={def('tools.loopDetection.criticalThreshold')} />
+        <NumberField label={es.unknownToolThreshold || 'Unknown-tool Threshold'} desc={es.unknownToolThresholdDesc || 'Stop hallucinated tool loops after N unknown-tool stream attempts (default 10; stream guard is on by default).'} tooltip={tip('tools.loopDetection.unknownToolThreshold')} value={g(['loopDetection', 'unknownToolThreshold'])} onChange={v => s(['loopDetection', 'unknownToolThreshold'], v)} min={1} placeholder={def('tools.loopDetection.unknownToolThreshold')} />
+        <NumberField label={es.loopGlobalCircuitBreaker || 'Global Circuit Breaker'} tooltip={tip('tools.loopDetection.globalCircuitBreakerThreshold')} value={g(['loopDetection', 'globalCircuitBreakerThreshold'])} onChange={v => s(['loopDetection', 'globalCircuitBreakerThreshold'], v)} min={0} placeholder={def('tools.loopDetection.globalCircuitBreakerThreshold')} />
         <SwitchField label={es.loopDetectorGenericRepeat || 'Generic Repeat Detection'} tooltip={tip('tools.loopDetection.detectors.genericRepeat')} value={g(['loopDetection', 'detectors', 'genericRepeat']) !== false} onChange={v => s(['loopDetection', 'detectors', 'genericRepeat'], v)} />
         <SwitchField label={es.loopDetectorPollNoProgress || 'Poll No-Progress Detection'} tooltip={tip('tools.loopDetection.detectors.knownPollNoProgress')} value={g(['loopDetection', 'detectors', 'knownPollNoProgress']) !== false} onChange={v => s(['loopDetection', 'detectors', 'knownPollNoProgress'], v)} />
         <SwitchField label={es.loopDetectorPingPong || 'Ping-Pong Detection'} tooltip={tip('tools.loopDetection.detectors.pingPong')} value={g(['loopDetection', 'detectors', 'pingPong']) !== false} onChange={v => s(['loopDetection', 'detectors', 'pingPong'], v)} />
@@ -91,20 +92,20 @@ export const ToolsSection: React.FC<SectionProps> = ({ config, schema, setField,
 
       <ConfigSection title={es.linkTools || 'Link Understanding'} icon="link" iconColor="text-indigo-500" defaultOpen={false}>
         <SwitchField label={es.enabled} tooltip={tip('tools.links.enabled')} value={g(['links', 'enabled']) !== false} onChange={v => s(['links', 'enabled'], v)} />
-        <NumberField label={es.linksMaxLinks || 'Max Links'} tooltip={tip('tools.links.maxLinks')} value={g(['links', 'maxLinks'])} onChange={v => s(['links', 'maxLinks'], v)} min={0} />
-        <NumberField label={es.linksTimeoutS || 'Timeout (sec)'} tooltip={tip('tools.links.timeoutSeconds')} value={g(['links', 'timeoutSeconds'])} onChange={v => s(['links', 'timeoutSeconds'], v)} min={0} />
+        <NumberField label={es.linksMaxLinks || 'Max Links'} tooltip={tip('tools.links.maxLinks')} value={g(['links', 'maxLinks'])} onChange={v => s(['links', 'maxLinks'], v)} min={0} placeholder={def('tools.links.maxLinks')} />
+        <NumberField label={es.linksTimeoutS || 'Timeout (sec)'} tooltip={tip('tools.links.timeoutSeconds')} value={g(['links', 'timeoutSeconds'])} onChange={v => s(['links', 'timeoutSeconds'], v)} min={0} placeholder={def('tools.links.timeoutSeconds')} />
         <TextField label={es.linksModels || 'Models'} tooltip={tip('tools.links.models')} value={g(['links', 'models']) || ''} onChange={v => s(['links', 'models'], v)} />
         <TextField label={es.linksScope || 'Scope'} tooltip={tip('tools.links.scope')} value={g(['links', 'scope']) || ''} onChange={v => s(['links', 'scope'], v)} />
       </ConfigSection>
 
       <ConfigSection title={es.media} icon="image" iconColor="text-pink-500" defaultOpen={false}>
         <TextField label={es.mediaSharedModels || 'Shared Models'} tooltip={tip('tools.media.models')} value={g(['media', 'models']) || ''} onChange={v => s(['media', 'models'], v)} />
-        <NumberField label={es.mediaConcurrency || 'Concurrency'} tooltip={tip('tools.media.concurrency')} value={g(['media', 'concurrency'])} onChange={v => s(['media', 'concurrency'], v)} min={1} />
+        <NumberField label={es.mediaConcurrency || 'Concurrency'} tooltip={tip('tools.media.concurrency')} value={g(['media', 'concurrency'])} onChange={v => s(['media', 'concurrency'], v)} min={1} placeholder={def('tools.media.concurrency')} />
         <SwitchField label={es.imageUnderstanding} tooltip={tip('tools.media.image.enabled')} value={g(['media', 'image', 'enabled']) !== false} onChange={v => s(['media', 'image', 'enabled'], v)} />
-        <NumberField label={es.imageMaxBytes || 'Image Max Bytes'} tooltip={tip('tools.media.image.maxBytes')} value={g(['media', 'image', 'maxBytes'])} onChange={v => s(['media', 'image', 'maxBytes'], v)} min={0} />
-        <NumberField label={es.imageMaxChars || 'Image Max Chars'} tooltip={tip('tools.media.image.maxChars')} value={g(['media', 'image', 'maxChars'])} onChange={v => s(['media', 'image', 'maxChars'], v)} min={0} />
+        <NumberField label={es.imageMaxBytes || 'Image Max Bytes'} tooltip={tip('tools.media.image.maxBytes')} value={g(['media', 'image', 'maxBytes'])} onChange={v => s(['media', 'image', 'maxBytes'], v)} min={0} placeholder={def('tools.media.image.maxBytes')} />
+        <NumberField label={es.imageMaxChars || 'Image Max Chars'} tooltip={tip('tools.media.image.maxChars')} value={g(['media', 'image', 'maxChars'])} onChange={v => s(['media', 'image', 'maxChars'], v)} min={0} placeholder={def('tools.media.image.maxChars')} />
         <TextField label={es.imagePrompt || 'Image Prompt'} tooltip={tip('tools.media.image.prompt')} value={g(['media', 'image', 'prompt']) || ''} onChange={v => s(['media', 'image', 'prompt'], v)} />
-        <NumberField label={es.imageTimeoutS || 'Image Timeout (sec)'} tooltip={tip('tools.media.image.timeoutSeconds')} value={g(['media', 'image', 'timeoutSeconds'])} onChange={v => s(['media', 'image', 'timeoutSeconds'], v)} min={0} />
+        <NumberField label={es.imageTimeoutS || 'Image Timeout (sec)'} tooltip={tip('tools.media.image.timeoutSeconds')} value={g(['media', 'image', 'timeoutSeconds'])} onChange={v => s(['media', 'image', 'timeoutSeconds'], v)} min={0} placeholder={def('tools.media.image.timeoutSeconds')} />
         <TextField label={es.imageAttachments || 'Image Attachments'} tooltip={tip('tools.media.image.attachments')} value={g(['media', 'image', 'attachments']) || ''} onChange={v => s(['media', 'image', 'attachments'], v)} />
         <TextField label={es.imageModels || 'Image Models'} tooltip={tip('tools.media.image.models')} value={g(['media', 'image', 'models']) || ''} onChange={v => s(['media', 'image', 'models'], v)} />
         <TextField label={es.imageScope || 'Image Scope'} tooltip={tip('tools.media.image.scope')} value={g(['media', 'image', 'scope']) || ''} onChange={v => s(['media', 'image', 'scope'], v)} />
@@ -118,10 +119,10 @@ export const ToolsSection: React.FC<SectionProps> = ({ config, schema, setField,
           es={es}
         />
         <SwitchField label={es.videoUnderstanding} tooltip={tip('tools.media.video.enabled')} value={g(['media', 'video', 'enabled']) !== false} onChange={v => s(['media', 'video', 'enabled'], v)} />
-        <NumberField label={es.videoMaxBytes || 'Video Max Bytes'} tooltip={tip('tools.media.video.maxBytes')} value={g(['media', 'video', 'maxBytes'])} onChange={v => s(['media', 'video', 'maxBytes'], v)} min={0} />
-        <NumberField label={es.videoMaxChars || 'Video Max Chars'} tooltip={tip('tools.media.video.maxChars')} value={g(['media', 'video', 'maxChars'])} onChange={v => s(['media', 'video', 'maxChars'], v)} min={0} />
+        <NumberField label={es.videoMaxBytes || 'Video Max Bytes'} tooltip={tip('tools.media.video.maxBytes')} value={g(['media', 'video', 'maxBytes'])} onChange={v => s(['media', 'video', 'maxBytes'], v)} min={0} placeholder={def('tools.media.video.maxBytes')} />
+        <NumberField label={es.videoMaxChars || 'Video Max Chars'} tooltip={tip('tools.media.video.maxChars')} value={g(['media', 'video', 'maxChars'])} onChange={v => s(['media', 'video', 'maxChars'], v)} min={0} placeholder={def('tools.media.video.maxChars')} />
         <TextField label={es.videoPrompt || 'Video Prompt'} tooltip={tip('tools.media.video.prompt')} value={g(['media', 'video', 'prompt']) || ''} onChange={v => s(['media', 'video', 'prompt'], v)} />
-        <NumberField label={es.videoTimeoutS || 'Video Timeout (sec)'} tooltip={tip('tools.media.video.timeoutSeconds')} value={g(['media', 'video', 'timeoutSeconds'])} onChange={v => s(['media', 'video', 'timeoutSeconds'], v)} min={0} />
+        <NumberField label={es.videoTimeoutS || 'Video Timeout (sec)'} tooltip={tip('tools.media.video.timeoutSeconds')} value={g(['media', 'video', 'timeoutSeconds'])} onChange={v => s(['media', 'video', 'timeoutSeconds'], v)} min={0} placeholder={def('tools.media.video.timeoutSeconds')} />
         <TextField label={es.videoAttachments || 'Video Attachments'} tooltip={tip('tools.media.video.attachments')} value={g(['media', 'video', 'attachments']) || ''} onChange={v => s(['media', 'video', 'attachments'], v)} />
         <TextField label={es.videoModels || 'Video Models'} tooltip={tip('tools.media.video.models')} value={g(['media', 'video', 'models']) || ''} onChange={v => s(['media', 'video', 'models'], v)} />
         <TextField label={es.videoScope || 'Video Scope'} tooltip={tip('tools.media.video.scope')} value={g(['media', 'video', 'scope']) || ''} onChange={v => s(['media', 'video', 'scope'], v)} />
@@ -162,13 +163,13 @@ export const ToolsSection: React.FC<SectionProps> = ({ config, schema, setField,
       <ConfigSection title={es.canvasHost} icon="draw" iconColor="text-purple-500" defaultOpen={false}>
         <SwitchField label={es.enabled} tooltip={tip('canvasHost.enabled')} value={getField(['canvasHost', 'enabled']) === true} onChange={v => setField(['canvasHost', 'enabled'], v)} />
         <TextField label={es.root} tooltip={tip('canvasHost.root')} value={getField(['canvasHost', 'root']) || ''} onChange={v => setField(['canvasHost', 'root'], v)} />
-        <NumberField label={es.port} tooltip={tip('canvasHost.port')} value={getField(['canvasHost', 'port'])} onChange={v => setField(['canvasHost', 'port'], v)} min={1} max={65535} />
+        <NumberField label={es.port} tooltip={tip('canvasHost.port')} value={getField(['canvasHost', 'port'])} onChange={v => setField(['canvasHost', 'port'], v)} min={1} max={65535} placeholder={def('canvasHost.port')} />
         <SwitchField label={es.liveReload} tooltip={tip('canvasHost.liveReload')} value={getField(['canvasHost', 'liveReload']) !== false} onChange={v => setField(['canvasHost', 'liveReload'], v)} />
       </ConfigSection>
 
       <ConfigSection title={es.mediaFiles} icon="perm_media" iconColor="text-orange-500" defaultOpen={false}>
         <SwitchField label={es.preserveFilenames} tooltip={tip('media.preserveFilenames')} value={getField(['media', 'preserveFilenames']) === true} onChange={v => setField(['media', 'preserveFilenames'], v)} />
-        <NumberField label={es.mediaRetentionTTL || 'Retention TTL (hours)'} tooltip={tip('media.ttlHours')} value={getField(['media', 'ttlHours'])} onChange={v => setField(['media', 'ttlHours'], v)} min={0} step={1} />
+        <NumberField label={es.mediaRetentionTTL || 'Retention TTL (hours)'} tooltip={tip('media.ttlHours')} value={getField(['media', 'ttlHours'])} onChange={v => setField(['media', 'ttlHours'], v)} min={0} step={1} placeholder={def('media.ttlHours')} />
       </ConfigSection>
 
       <SchemaRemainder

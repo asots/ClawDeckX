@@ -666,3 +666,100 @@ export const EmptyState: React.FC<EmptyStateProps> = ({ message, icon = 'inbox' 
     <span className="text-[11px]">{message}</span>
   </div>
 );
+
+// ============================================================================
+// ModelField — handles AgentModelSchema: string | {primary?, fallbacks?, timeoutMs?}
+// ============================================================================
+
+interface ModelFieldProps {
+  label: string;
+  desc?: string;
+  tooltip?: string;
+  value: any; // string | {primary?, fallbacks?, timeoutMs?} | undefined
+  onChange: (v: any) => void;
+  placeholder?: string;
+}
+
+function normalizeModelValue(raw: any): { primary: string; fallbacks: string[]; timeoutMs?: number } {
+  if (!raw) return { primary: '', fallbacks: [] };
+  if (typeof raw === 'string') return { primary: raw, fallbacks: [] };
+  return {
+    primary: raw.primary || '',
+    fallbacks: Array.isArray(raw.fallbacks) ? raw.fallbacks : [],
+    ...(raw.timeoutMs != null ? { timeoutMs: raw.timeoutMs } : {}),
+  };
+}
+
+function serializeModelValue(m: { primary: string; fallbacks: string[]; timeoutMs?: number }): any {
+  const hasFallbacks = m.fallbacks.length > 0;
+  const hasTimeout = m.timeoutMs != null && m.timeoutMs > 0;
+  if (!hasFallbacks && !hasTimeout) {
+    return m.primary || undefined;
+  }
+  const obj: any = {};
+  if (m.primary) obj.primary = m.primary;
+  if (hasFallbacks) obj.fallbacks = m.fallbacks;
+  if (hasTimeout) obj.timeoutMs = m.timeoutMs;
+  return obj;
+}
+
+export const ModelField: React.FC<ModelFieldProps> = ({ label, desc, tooltip, value, onChange, placeholder }) => {
+  const ed = useEditorFieldsI18n();
+  const m = normalizeModelValue(value);
+  const [fbInput, setFbInput] = useState('');
+
+  const updatePrimary = (v: string) => {
+    onChange(serializeModelValue({ ...m, primary: v }));
+  };
+  const addFallback = () => {
+    const trimmed = fbInput.trim();
+    if (!trimmed) return;
+    onChange(serializeModelValue({ ...m, fallbacks: [...m.fallbacks, trimmed] }));
+    setFbInput('');
+  };
+  const removeFallback = (i: number) => {
+    onChange(serializeModelValue({ ...m, fallbacks: m.fallbacks.filter((_, j) => j !== i) }));
+  };
+
+  return (
+    <ConfigField label={label} desc={desc} tooltip={tooltip}>
+      <div className="space-y-2">
+        <input
+          value={m.primary}
+          onChange={e => updatePrimary(e.target.value)}
+          placeholder={placeholder || 'provider/model-id'}
+          className={inputBase + ' w-full'}
+        />
+        {m.fallbacks.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {m.fallbacks.map((fb, i) => (
+              <span key={i} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 dark:bg-white/5 text-[11px] font-mono text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-white/10">
+                {fb}
+                <button type="button" onClick={() => removeFallback(i)} className="text-slate-400 hover:text-danger transition-colors">
+                  <span className="material-symbols-outlined text-[12px]">close</span>
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+        <div className="flex gap-1.5">
+          <input
+            value={fbInput}
+            onChange={e => setFbInput(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addFallback(); } }}
+            placeholder={ed.addFallbackModel || 'Add fallback model...'}
+            className={inputBase + ' flex-1'}
+          />
+          <button
+            type="button"
+            onClick={addFallback}
+            disabled={!fbInput.trim()}
+            className="h-9 md:h-8 px-2.5 rounded-md border border-slate-200 dark:border-white/10 text-[11px] font-bold text-slate-500 dark:text-slate-400 hover:text-primary hover:border-primary disabled:opacity-40 disabled:pointer-events-none transition-colors"
+          >
+            <span className="material-symbols-outlined text-[14px]">add</span>
+          </button>
+        </div>
+      </div>
+    </ConfigField>
+  );
+};

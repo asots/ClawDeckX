@@ -2,7 +2,7 @@ import React, { useMemo, useState, useCallback } from 'react';
 import { SectionProps } from '../sectionTypes';
 import { ConfigSection, TextField, PasswordField, NumberField, SelectField, SwitchField, ArrayField } from '../fields';
 import { getTranslation } from '../../../locales';
-import { schemaTooltip } from '../schemaTooltip';
+import { schemaTooltip, schemaDefault } from '../schemaTooltip';
 import { RequestOverridePanel } from './RequestOverridePanel';
 import { gwApi } from '../../../services/api';
 import { useToast } from '../../../components/Toast';
@@ -30,6 +30,7 @@ interface TtsProviderInfo {
 export const AudioSection: React.FC<SectionProps> = ({ config, schema, setField, getField, language }) => {
   const es = useMemo(() => (getTranslation(language) as any).es || {}, [language]);
   const tip = (key: string) => schemaTooltip(key, language, schema);
+  const def = (key: string) => schemaDefault(key, schema);
   const { toast } = useToast();
 
   // TTS live status
@@ -301,12 +302,12 @@ export const AudioSection: React.FC<SectionProps> = ({ config, schema, setField,
         })()}
         <TextField label={es.ttsOpenaiBaseUrl || 'OpenAI Base URL'} tooltip={tip('talk.openai.baseUrl')} value={getField(['talk', 'openai', 'baseUrl']) || ''} onChange={v => setField(['talk', 'openai', 'baseUrl'], v)} placeholder="https://api.openai.com/v1" />
         <SwitchField label={es.audioInterrupt} tooltip={tip('talk.interruptOnSpeech')} value={getField(['talk', 'interruptOnSpeech']) === true} onChange={v => setField(['talk', 'interruptOnSpeech'], v)} />
-        <NumberField label={es.talkSilenceTimeoutMs || 'Silence Timeout (ms)'} tooltip={tip('talk.silenceTimeoutMs')} value={getField(['talk', 'silenceTimeoutMs'])} onChange={v => setField(['talk', 'silenceTimeoutMs'], v)} min={0} step={100} />
+        <NumberField label={es.talkSilenceTimeoutMs || 'Silence Timeout (ms)'} tooltip={tip('talk.silenceTimeoutMs')} value={getField(['talk', 'silenceTimeoutMs'])} onChange={v => setField(['talk', 'silenceTimeoutMs'], v)} min={0} step={100} placeholder={def('talk.silenceTimeoutMs')} />
       </ConfigSection>
 
       <ConfigSection title={es.audioTranscription} icon="hearing" iconColor="text-fuchsia-500" defaultOpen={false}>
         <ArrayField label={es.audioCommand} tooltip={tip('audio.transcription.command')} value={getField(['audio', 'transcription', 'command']) || []} onChange={v => setField(['audio', 'transcription', 'command'], v)} placeholder={es.phWhisperCommand} />
-        <NumberField label={es.timeoutS} tooltip={tip('audio.transcription.timeoutSeconds')} value={getField(['audio', 'transcription', 'timeoutSeconds'])} onChange={v => setField(['audio', 'transcription', 'timeoutSeconds'], v)} min={1} />
+        <NumberField label={es.timeoutS} tooltip={tip('audio.transcription.timeoutSeconds')} value={getField(['audio', 'transcription', 'timeoutSeconds'])} onChange={v => setField(['audio', 'transcription', 'timeoutSeconds'], v)} min={1} placeholder={def('audio.transcription.timeoutSeconds')} />
         <SwitchField label={es.echoTranscript || 'Echo Transcript'} tooltip={tip('audio.transcription.echoTranscript')} value={getField(['audio', 'transcription', 'echoTranscript']) === true} onChange={v => setField(['audio', 'transcription', 'echoTranscript'], v)} />
         <TextField label={es.echoFormat || 'Echo Format'} tooltip={tip('audio.transcription.echoFormat')} value={getField(['audio', 'transcription', 'echoFormat']) || ''} onChange={v => setField(['audio', 'transcription', 'echoFormat'], v)} placeholder="🎤 {text}" />
       </ConfigSection>

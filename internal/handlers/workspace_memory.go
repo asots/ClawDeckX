@@ -38,9 +38,10 @@ type memoryFileEntry struct {
 }
 
 // validMemoryFilename allows date-based .md files with optional suffix (e.g. 2026-04-10.md,
-// 2026-04-10-strategy-review.md) and uppercase named files (e.g. MEMORY.md), while preventing
-// path traversal (no slashes, backslashes, or ".." sequences).
-var validMemoryFilename = regexp.MustCompile(`^[A-Za-z0-9][\w.-]*\.md$`)
+// 2026-04-10-strategy-review.md), uppercase named files (e.g. MEMORY.md), and filenames
+// containing Unicode characters (e.g. 2026-04-25-陈陈.md), while preventing path traversal
+// (no slashes, backslashes, or ".." sequences).
+var validMemoryFilename = regexp.MustCompile(`^[A-Za-z0-9\p{L}][\w\p{L}.-]*\.md$`)
 
 // resolveAgentWorkspace fetches the agent's workspace path from the gateway.
 func (h *WorkspaceMemoryHandler) resolveAgentWorkspace(agentID string) (string, error) {

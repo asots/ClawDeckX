@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import CustomSelect from './CustomSelect';
 import NumberStepper from './NumberStepper';
+import defaultsMap from '../defaults-map.json';
 
 /**
  * SchemaField — Renders a form field automatically based on JSON Schema + uiHints
@@ -77,7 +78,16 @@ const SchemaField: React.FC<SchemaFieldProps> = ({ path, schema, uiHints, value,
   const hint = uiHints[path] || {};
   const label = hint.label || path.split('.').pop() || path;
   const help = hint.help || schema.description;
-  const placeholder = hint.placeholder || '';
+  const placeholder = hint.placeholder || (schema.default != null ? String(schema.default) : (() => {
+    // OpenClaw schema rarely uses JSON Schema `default`; parse from description instead
+    const desc = schema.description;
+    if (typeof desc === 'string') {
+      const m = desc.match(/\(?default[:\s]\s*([^).]+)\)?/i);
+      if (m) return m[1].trim();
+    }
+    // Fallback to pre-scanned defaults map
+    return (defaultsMap as Record<string, string>)[path] || '';
+  })());
   const isSensitive = hint.sensitive === true;
   const isAdvanced = hint.advanced === true;
   const error = errors?.[path];
@@ -222,6 +232,13 @@ const SchemaFieldInner: React.FC<SchemaFieldInnerProps> = ({
     );
   }
 
+  // Object/array value fallback: JSON textarea for record types (additionalProperties),
+  // union types where the value is an object, or any other case where value is non-primitive.
+  if (value !== null && value !== undefined && typeof value === 'object') {
+    return <JsonTextareaField label={label} help={help} hintBadges={hintBadges} error={error}
+      value={value} onChange={v => onChange(pathArr, v)} />;
+  }
+
   // Enum: select dropdown
   if (fieldType === 'enum' && schema.enum) {
     const options = schema.enum.map(v => ({ value: String(v), label: String(v) }));
@@ -344,6 +361,53 @@ const SchemaFieldInner: React.FC<SchemaFieldInnerProps> = ({
           placeholder={placeholder}
           className={`${inputBase} w-full ${error ? 'border-red-400 dark:border-red-500' : ''}`}
         />
+        {error && <span className="text-[11px] text-red-500">{error}</span>}
+      </div>
+    </div>
+  );
+};
+
+const JsonTextareaField: React.FC<{
+  label: string; help?: string; hintBadges: React.ReactNode; error?: string;
+  value: any; onChange: (v: any) => void;
+}> = ({ label, help, hintBadges, error, value, onChange }) => {
+  const [text, setText] = useState(() => JSON.stringify(value, null, 2));
+  const [parseError, setParseError] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    setText(JSON.stringify(value, null, 2));
+  }, [value]);
+
+  const handleBlur = () => {
+    const trimmed = text.trim();
+    if (trimmed === '') { onChange(undefined); setParseError(null); return; }
+    try {
+      const parsed = JSON.parse(trimmed);
+      onChange(parsed);
+      setParseError(null);
+    } catch (e: any) {
+      setParseError(e.message || 'Invalid JSON');
+    }
+  };
+
+  return (
+    <div className="flex flex-col md:grid md:grid-cols-12 md:items-start gap-2 md:gap-3 py-1.5">
+      <div className="md:col-span-4 lg:col-span-5 flex flex-col">
+        <label className={labelBase}>{label}</label>
+        {help && <span className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">{help}</span>}
+        {hintBadges}
+      </div>
+      <div className="md:col-span-8 lg:col-span-7 flex flex-col gap-1">
+        <textarea
+          value={text}
+          onChange={e => setText(e.target.value)}
+          onBlur={handleBlur}
+          rows={Math.min(Math.max(text.split('\n').length, 2), 10)}
+          className={`${inputBase} w-full font-mono text-[11px] leading-relaxed resize-y min-h-[3rem] py-1.5 ${
+            parseError ? 'border-red-400 dark:border-red-500' : ''
+          }`}
+        />
+        {parseError && <span className="text-[11px] text-red-500">{parseError}</span>}
         {error && <span className="text-[11px] text-red-500">{error}</span>}
       </div>
     </div>

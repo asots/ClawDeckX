@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { SectionProps } from '../sectionTypes';
 import { ConfigSection, ConfigCard, TextField, PasswordField, NumberField, SelectField, SwitchField, ArrayField, KeyValueField, AddButton, EmptyState } from '../fields';
 import { getTranslation } from '../../../locales';
-import { schemaTooltip } from '../schemaTooltip';
+import { schemaTooltip, schemaDefault } from '../schemaTooltip';
 
 const NODE_MANAGER_OPTIONS = [
   { value: 'npm', label: 'npm' }, { value: 'pnpm', label: 'pnpm' },
@@ -12,6 +12,7 @@ const NODE_MANAGER_OPTIONS = [
 export const ExtensionsSection: React.FC<SectionProps> = ({ schema, setField, getField, deleteField, language }) => {
   const es = useMemo(() => (getTranslation(language) as any).es || {}, [language]);
   const tip = (key: string) => schemaTooltip(key, language, schema);
+  const def = (key: string) => schemaDefault(key, schema);
 
   // Skills
   const gs = (p: string[]) => getField(['skills', ...p]);
@@ -53,7 +54,7 @@ export const ExtensionsSection: React.FC<SectionProps> = ({ schema, setField, ge
             <ArrayField label={es.allowBundled} tooltip={tip('skills.allowBundled')} value={gs(['allowBundled']) || []} onChange={v => ss(['allowBundled'], v)} placeholder={es.phSkillName} />
             <ArrayField label={es.extraDirs} tooltip={tip('skills.load.extraDirs')} value={gs(['load', 'extraDirs']) || []} onChange={v => ss(['load', 'extraDirs'], v)} placeholder={es.phSkillsPath} />
             <SwitchField label={es.watch} tooltip={tip('skills.load.watch')} value={gs(['load', 'watch']) !== false} onChange={v => ss(['load', 'watch'], v)} />
-            <NumberField label={es.watchDebounceMs} tooltip={tip('skills.load.watchDebounceMs')} value={gs(['load', 'watchDebounceMs'])} onChange={v => ss(['load', 'watchDebounceMs'], v)} min={0} />
+            <NumberField label={es.watchDebounceMs} tooltip={tip('skills.load.watchDebounceMs')} value={gs(['load', 'watchDebounceMs'])} onChange={v => ss(['load', 'watchDebounceMs'], v)} min={0} placeholder={def('skills.load.watchDebounceMs')} />
           </ConfigSection>
 
           <ConfigSection title={es.installConfig} icon="install_desktop" iconColor="text-violet-500" defaultOpen={false}>

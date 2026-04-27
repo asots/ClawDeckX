@@ -2,7 +2,7 @@ import React, { useMemo, useState, useCallback } from 'react';
 import { SectionProps } from '../sectionTypes';
 import { ConfigSection, TextField, SelectField, SwitchField, KeyValueField, NumberField, ArrayField } from '../fields';
 import { getTranslation } from '../../../locales';
-import { schemaTooltip } from '../schemaTooltip';
+import { schemaTooltip, schemaDefault } from '../schemaTooltip';
 import SchemaRemainder from '../SchemaRemainder';
 
 // Options moved inside component
@@ -10,6 +10,7 @@ import SchemaRemainder from '../SchemaRemainder';
 export const MiscSection: React.FC<SectionProps> = ({ config, schema, setField, getField, deleteField, language }) => {
   const es = useMemo(() => (getTranslation(language) as any).es || {}, [language]);
   const tip = (key: string) => schemaTooltip(key, language, schema);
+  const def = (key: string) => schemaDefault(key, schema);
   const gg = (p: string[]) => getField(['gateway', ...p]);
   const gs = (p: string[], v: any) => setField(['gateway', ...p], v);
 
@@ -49,9 +50,9 @@ export const MiscSection: React.FC<SectionProps> = ({ config, schema, setField, 
         <SelectField label={es.updateChannel} tooltip={tip('update.channel')} value={getField(['update', 'channel']) || 'stable'} onChange={v => setField(['update', 'channel'], v)} options={UPDATE_CHANNEL_OPTIONS} />
         <SwitchField label={es.checkOnStart} tooltip={tip('update.checkOnStart')} value={getField(['update', 'checkOnStart']) !== false} onChange={v => setField(['update', 'checkOnStart'], v)} />
         <SwitchField label={es.autoUpdateEnabled} tooltip={tip('update.auto.enabled')} value={getField(['update', 'auto', 'enabled']) === true} onChange={v => setField(['update', 'auto', 'enabled'], v)} />
-        <NumberField label={es.autoStableDelayH} tooltip={tip('update.auto.stableDelayHours')} value={getField(['update', 'auto', 'stableDelayHours'])} onChange={v => setField(['update', 'auto', 'stableDelayHours'], v)} min={0} max={168} />
-        <NumberField label={es.autoStableJitterH} tooltip={tip('update.auto.stableJitterHours')} value={getField(['update', 'auto', 'stableJitterHours'])} onChange={v => setField(['update', 'auto', 'stableJitterHours'], v)} min={0} max={168} />
-        <NumberField label={es.autoBetaCheckH} tooltip={tip('update.auto.betaCheckIntervalHours')} value={getField(['update', 'auto', 'betaCheckIntervalHours'])} onChange={v => setField(['update', 'auto', 'betaCheckIntervalHours'], v)} min={1} max={24} />
+        <NumberField label={es.autoStableDelayH} tooltip={tip('update.auto.stableDelayHours')} value={getField(['update', 'auto', 'stableDelayHours'])} onChange={v => setField(['update', 'auto', 'stableDelayHours'], v)} min={0} max={168} placeholder={def('update.auto.stableDelayHours')} />
+        <NumberField label={es.autoStableJitterH} tooltip={tip('update.auto.stableJitterHours')} value={getField(['update', 'auto', 'stableJitterHours'])} onChange={v => setField(['update', 'auto', 'stableJitterHours'], v)} min={0} max={168} placeholder={def('update.auto.stableJitterHours')} />
+        <NumberField label={es.autoBetaCheckH} tooltip={tip('update.auto.betaCheckIntervalHours')} value={getField(['update', 'auto', 'betaCheckIntervalHours'])} onChange={v => setField(['update', 'auto', 'betaCheckIntervalHours'], v)} min={1} max={24} placeholder={def('update.auto.betaCheckIntervalHours')} />
       </ConfigSection>
 
       {/* UI */}
@@ -96,7 +97,7 @@ export const MiscSection: React.FC<SectionProps> = ({ config, schema, setField, 
       {/* Env */}
       <ConfigSection title={es.envVars} icon="settings_system_daydream" iconColor="text-slate-500" defaultOpen={false}>
         <SwitchField label={es.shellEnvEnabled} tooltip={tip('env.shellEnv.enabled')} value={getField(['env', 'shellEnv', 'enabled']) === true} onChange={v => setField(['env', 'shellEnv', 'enabled'], v)} />
-        <NumberField label={es.shellEnvTimeoutMs} tooltip={tip('env.shellEnv.timeoutMs')} value={getField(['env', 'shellEnv', 'timeoutMs'])} onChange={v => setField(['env', 'shellEnv', 'timeoutMs'], v)} min={0} step={1000} />
+        <NumberField label={es.shellEnvTimeoutMs} tooltip={tip('env.shellEnv.timeoutMs')} value={getField(['env', 'shellEnv', 'timeoutMs'])} onChange={v => setField(['env', 'shellEnv', 'timeoutMs'], v)} min={0} step={1000} placeholder={def('env.shellEnv.timeoutMs')} />
         <KeyValueField label={es.variables} tooltip={tip('env.vars')} value={getField(['env', 'vars']) || {}} onChange={v => setField(['env', 'vars'], v)} />
       </ConfigSection>
 

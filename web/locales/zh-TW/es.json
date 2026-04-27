@@ -1530,6 +1530,8 @@
   "dreamingFrequency": "頻率",
   "dreamingRecencyHalfLife": "近期衰減半衰期（天）",
   "dreamingMaxAge": "最大保留天數",
+  "contextTokens": "上下文 Token 上限",
+  "contextTokensDesc": "代理的上下文視窗 token 上限。當對話歷史超過此限制時，自動觸發對話壓縮。留空則使用模型原生上下文視窗。",
   "contextLimits": "上下文限制",
   "memoryGetDefaultLines": "memory_get 預設行數",
   "memoryGetMaxChars": "memory_get 最大字元數",
@@ -1589,5 +1591,106 @@
   "feishuDynamicAgent": "動態 Agent",
   "feishuDynamicAgentEnabled": "啟用動態建立",
   "feishuDynamicAgentMax": "最大 Agent 數",
-  "tipFeishuDynamicAgent": "為每個私聊使用者自動建立專屬 Agent 工作區"
+  "tipFeishuDynamicAgent": "為每個私聊使用者自動建立專屬 Agent 工作區",
+  "schemaAdditional": "其它設定",
+  "schemaLabels": {
+    "agents.defaults.embeddedHarness": "嵌入式 Harness 執行環境",
+    "agents.defaults.embeddedHarness.runtime": "執行環境引擎",
+    "agents.defaults.embeddedHarness.fallback": "回退引擎",
+    "agents.defaults.model": "預設模型",
+    "agents.defaults.model.primary": "主要模型",
+    "agents.defaults.imageModel": "圖片模型",
+    "agents.defaults.mediaGenerationAutoProviderFallback": "媒體生成自動回退",
+    "agents.defaults.models": "模型覆蓋設定",
+    "agents.defaults.silentReply": "靜默回覆策略",
+    "agents.defaults.silentReply.direct": "私訊",
+    "agents.defaults.silentReply.group": "群組",
+    "agents.defaults.silentReply.internal": "內部",
+    "agents.defaults.silentReplyRewrite": "靜默回覆重寫",
+    "agents.defaults.silentReplyRewrite.direct": "私訊",
+    "agents.defaults.silentReplyRewrite.group": "群組",
+    "agents.defaults.silentReplyRewrite.internal": "內部",
+    "agents.defaults.repoRoot": "倉庫根目錄",
+    "agents.defaults.skipBootstrap": "跳過引導",
+    "agents.defaults.bootstrapMaxChars": {
+      "label": "引導檔案最大字元數",
+      "placeholder": "12000"
+    },
+    "agents.defaults.bootstrapTotalMaxChars": {
+      "label": "引導檔案總最大字元數",
+      "placeholder": "150000"
+    },
+    "agents.defaults.bootstrapPromptTruncationWarning": "引導截斷警告",
+    "agents.defaults.userTimezone": "使用者時區",
+    "agents.defaults.startupContext": "啟動上下文",
+    "agents.defaults.startupContext.enabled": "啟用",
+    "agents.defaults.startupContext.applyOn": "套用時機",
+    "agents.defaults.startupContext.dailyMemoryDays": {
+      "label": "每日記憶天數",
+      "placeholder": "2"
+    },
+    "agents.defaults.startupContext.maxFileBytes": {
+      "label": "單檔最大位元組",
+      "placeholder": "200000"
+    },
+    "agents.defaults.startupContext.maxFileChars": {
+      "label": "單檔最大字元",
+      "placeholder": "20000"
+    },
+    "agents.defaults.startupContext.maxTotalChars": {
+      "label": "總最大字元數",
+      "placeholder": "50000"
+    },
+    "agents.defaults.timeFormat": "時間格式",
+    "agents.defaults.envelopeTimezone": "信封時區",
+    "agents.defaults.envelopeTimestamp": "信封時間戳",
+    "agents.defaults.envelopeElapsed": "信封耗時顯示",
+    "agents.defaults.cliBackends": "CLI 後端",
+    "agents.defaults.llm": "LLM 設定",
+    "agents.defaults.llm.idleTimeoutSeconds": {
+      "label": "閒置逾時（秒）",
+      "placeholder": "120"
+    },
+    "agents.defaults.embeddedPi": "嵌入式 Pi 設定",
+    "agents.defaults.embeddedPi.projectSettingsPolicy": "專案設定策略",
+    "agents.defaults.embeddedPi.executionContract": "執行契約",
+    "agents.defaults.blockStreamingDefault": "塊流式輸出",
+    "agents.defaults.blockStreamingBreak": "塊流式分割",
+    "agents.defaults.blockStreamingChunk": "塊流式分塊",
+    "agents.defaults.blockStreamingCoalesce": "塊流式合併",
+    "agents.defaults.imageMaxDimensionPx": {
+      "label": "圖片最大尺寸（px）",
+      "placeholder": "1200"
+    },
+    "agents.defaults.typingIntervalSeconds": {
+      "label": "打字間隔（秒）",
+      "placeholder": "3"
+    },
+    "agents.defaults.skillsLimits": "技能限制",
+    "agents.defaults.skillsLimits.maxSkillsPromptChars": "技能 Prompt 最大字元數",
+    "agents.defaults.blockStreamingChunk.minChars": {
+      "label": "最小字元數",
+      "placeholder": "800"
+    },
+    "agents.defaults.blockStreamingChunk.maxChars": {
+      "label": "最大字元數",
+      "placeholder": "1200"
+    },
+    "agents.defaults.blockStreamingChunk.breakPreference": {
+      "label": "斷行偏好",
+      "placeholder": "paragraph"
+    },
+    "agents.defaults.blockStreamingCoalesce.minChars": {
+      "label": "最小字元數",
+      "placeholder": "800"
+    },
+    "agents.defaults.blockStreamingCoalesce.maxChars": {
+      "label": "最大字元數",
+      "placeholder": "1200"
+    },
+    "agents.defaults.blockStreamingCoalesce.idleMs": {
+      "label": "閒置時間 (ms)",
+      "placeholder": "1000"
+    }
+  }
 }

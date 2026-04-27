@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { SectionProps } from '../sectionTypes';
 import { ConfigSection, TextField, NumberField, SelectField, SwitchField } from '../fields';
 import { getTranslation } from '../../../locales';
-import { schemaTooltip } from '../schemaTooltip';
+import { schemaTooltip, schemaDefault } from '../schemaTooltip';
 import SchemaRemainder from '../SchemaRemainder';
 
 // Options moved inside component
@@ -10,6 +10,7 @@ import SchemaRemainder from '../SchemaRemainder';
 export const MemorySection: React.FC<SectionProps> = ({ config, schema, setField, getField, language }) => {
   const es = useMemo(() => (getTranslation(language) as any).es || {}, [language]);
   const tip = (key: string) => schemaTooltip(key, language, schema);
+  const def = (key: string) => schemaDefault(key, schema);
   const g = (p: string[]) => getField(['memory', ...p]);
   const s = (p: string[], v: any) => setField(['memory', ...p], v);
   // Search config lives under agents.defaults.memorySearch.* (top-level memory schema rejects unknown keys).
@@ -35,15 +36,15 @@ export const MemorySection: React.FC<SectionProps> = ({ config, schema, setField
       <ConfigSection title={es.dreaming || 'Dreaming'} icon="bedtime" iconColor="text-indigo-500" defaultOpen={false}>
         <SwitchField label={es.dreamingEnabled || 'Enabled'} tooltip={tip('plugins.entries.memory-core.config.dreaming.enabled')} value={gDream(['enabled']) === true} onChange={v => sDream(['enabled'], v)} />
         <TextField label={es.dreamingFrequency || 'Frequency'} tooltip={tip('plugins.entries.memory-core.config.dreaming.frequency')} value={gDream(['frequency']) || ''} onChange={v => sDream(['frequency'], v)} placeholder="0 3 * * *" />
-        <NumberField label={es.dreamingRecencyHalfLife || 'Recency Half-Life (days)'} tooltip={tip('plugins.entries.memory-core.config.dreaming.phases.deep.recencyHalfLifeDays')} value={gDream(['phases', 'deep', 'recencyHalfLifeDays'])} onChange={v => sDream(['phases', 'deep', 'recencyHalfLifeDays'], v)} min={0} />
-        <NumberField label={es.dreamingMaxAge || 'Max Age (days)'} tooltip={tip('plugins.entries.memory-core.config.dreaming.phases.deep.maxAgeDays')} value={gDream(['phases', 'deep', 'maxAgeDays'])} onChange={v => sDream(['phases', 'deep', 'maxAgeDays'], v)} min={1} />
+        <NumberField label={es.dreamingRecencyHalfLife || 'Recency Half-Life (days)'} tooltip={tip('plugins.entries.memory-core.config.dreaming.phases.deep.recencyHalfLifeDays')} value={gDream(['phases', 'deep', 'recencyHalfLifeDays'])} onChange={v => sDream(['phases', 'deep', 'recencyHalfLifeDays'], v)} min={0} placeholder={def('plugins.entries.memory-core.config.dreaming.phases.deep.recencyHalfLifeDays')} />
+        <NumberField label={es.dreamingMaxAge || 'Max Age (days)'} tooltip={tip('plugins.entries.memory-core.config.dreaming.phases.deep.maxAgeDays')} value={gDream(['phases', 'deep', 'maxAgeDays'])} onChange={v => sDream(['phases', 'deep', 'maxAgeDays'], v)} min={1} placeholder={def('plugins.entries.memory-core.config.dreaming.phases.deep.maxAgeDays')} />
       </ConfigSection>
 
       {g(['backend']) === 'qmd' && (
         <ConfigSection title={es.optQmd} icon="database" iconColor="text-sky-500" defaultOpen={false}>
           <TextField label={es.qmdCommand} tooltip={tip('memory.qmd.command')} value={g(['qmd', 'command']) || ''} onChange={v => s(['qmd', 'command'], v)} placeholder={es.phQmdCommand} />
           <TextField label={es.qmdDataPath} tooltip={tip('memory.qmd.paths.data')} value={g(['qmd', 'paths', 'data']) || ''} onChange={v => s(['qmd', 'paths', 'data'], v)} />
-          <NumberField label={es.maxMemories} tooltip={tip('memory.qmd.limits.maxEntries')} value={g(['qmd', 'limits', 'maxEntries'])} onChange={v => s(['qmd', 'limits', 'maxEntries'], v)} min={1} />
+          <NumberField label={es.maxMemories} tooltip={tip('memory.qmd.limits.maxEntries')} value={g(['qmd', 'limits', 'maxEntries'])} onChange={v => s(['qmd', 'limits', 'maxEntries'], v)} min={1} placeholder={def('memory.qmd.limits.maxEntries')} />
           <TextField label={es.scope} tooltip={tip('memory.qmd.scope')} value={g(['qmd', 'scope']) || ''} onChange={v => s(['qmd', 'scope'], v)} placeholder={es.phMemoryScope} />
           <TextField label={es.qmdSearchMode || 'Search Mode'} tooltip={tip('memory.qmd.searchMode')} value={g(['qmd', 'searchMode']) || ''} onChange={v => s(['qmd', 'searchMode'], v)} placeholder="hybrid" />
           <TextField label={es.qmdSearchTool || 'Search Tool'} tooltip={tip('memory.qmd.searchTool')} value={g(['qmd', 'searchTool']) || ''} onChange={v => s(['qmd', 'searchTool'], v)} placeholder="auto" />

@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { SectionProps } from '../sectionTypes';
 import { ConfigSection, TextField, PasswordField, NumberField, SelectField, SwitchField, ArrayField, KeyValueField } from '../fields';
 import { getTranslation } from '../../../locales';
-import { schemaTooltip } from '../schemaTooltip';
+import { schemaTooltip, schemaDefault } from '../schemaTooltip';
 import SchemaRemainder from '../SchemaRemainder';
 
 // Options moved inside component
@@ -10,6 +10,7 @@ import SchemaRemainder from '../SchemaRemainder';
 export const CommandsSection: React.FC<SectionProps> = ({ config, schema, setField, getField, language }) => {
   const es = useMemo(() => (getTranslation(language) as any).es || {}, [language]);
   const tip = (key: string) => schemaTooltip(key, language, schema);
+  const def = (key: string) => schemaDefault(key, schema);
   const g = (p: string[]) => getField(['commands', ...p]);
   const s = (p: string[], v: any) => setField(['commands', ...p], v);
 
@@ -28,7 +29,7 @@ export const CommandsSection: React.FC<SectionProps> = ({ config, schema, setFie
       </ConfigSection>
 
       <ConfigSection title={es.bashConfig} icon="terminal" iconColor="text-green-500" defaultOpen={false}>
-        <NumberField label={es.foregroundMs} desc="0-30000ms" tooltip={tip('commands.bashForegroundMs')} value={g(['bashForegroundMs'])} onChange={v => s(['bashForegroundMs'], v)} min={0} max={30000} step={500} />
+        <NumberField label={es.foregroundMs} desc="0-30000ms" tooltip={tip('commands.bashForegroundMs')} value={g(['bashForegroundMs'])} onChange={v => s(['bashForegroundMs'], v)} min={0} max={30000} step={500} placeholder={def('commands.bashForegroundMs')} />
       </ConfigSection>
 
       <ConfigSection title={es.accessControl} icon="admin_panel_settings" iconColor="text-red-500" defaultOpen={false}>

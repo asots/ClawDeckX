@@ -2,7 +2,7 @@ import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { SectionProps } from '../sectionTypes';
 import { ConfigSection, ConfigField, TextField, PasswordField, SelectField, SwitchField, ArrayField, NumberField, KeyValueField, EmptyState, DiscordGuildField, inputBase } from '../fields';
 import { getTranslation } from '../../../locales';
-import { schemaTooltip } from '../schemaTooltip';
+import { schemaTooltip, schemaDefault } from '../schemaTooltip';
 import { gwApi, gatewayApi, pairingApi, pluginApi, weixinQRApi } from '../../../services/api';
 import { post } from '../../../services/request';
 import CustomSelect from '../../../components/CustomSelect';

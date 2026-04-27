@@ -2,11 +2,12 @@ import React, { useMemo } from 'react';
 import { SectionProps } from '../sectionTypes';
 import { ConfigSection, ConfigCard, TextField, PasswordField, NumberField, SwitchField, ArrayField, AddButton, EmptyState } from '../fields';
 import { getTranslation } from '../../../locales';
-import { schemaTooltip } from '../schemaTooltip';
+import { schemaTooltip, schemaDefault } from '../schemaTooltip';
 
 export const HooksSection: React.FC<SectionProps> = ({ schema, setField, getField, deleteField, language }) => {
   const es = useMemo(() => (getTranslation(language) as any).es || {}, [language]);
   const tip = (key: string) => schemaTooltip(key, language, schema);
+  const def = (key: string) => schemaDefault(key, schema);
   const g = (p: string[]) => getField(['hooks', ...p]);
   const s = (p: string[], v: any) => setField(['hooks', ...p], v);
   const mappings: any[] = g(['mappings']) || [];
@@ -17,7 +18,7 @@ export const HooksSection: React.FC<SectionProps> = ({ schema, setField, getFiel
         <SwitchField label={es.enableHooks} tooltip={tip('hooks.enabled')} value={g(['enabled']) === true} onChange={v => s(['enabled'], v)} />
         <TextField label={es.webhookPath} tooltip={tip('hooks.path')} value={g(['path']) || ''} onChange={v => s(['path'], v)} placeholder={es.phHooksPath} />
         <PasswordField label={es.webhookToken} tooltip={tip('hooks.token')} value={g(['token']) || ''} onChange={v => s(['token'], v)} />
-        <NumberField label={es.maxBodyBytes} tooltip={tip('hooks.maxBodyBytes')} value={g(['maxBodyBytes'])} onChange={v => s(['maxBodyBytes'], v)} min={0} />
+        <NumberField label={es.maxBodyBytes} tooltip={tip('hooks.maxBodyBytes')} value={g(['maxBodyBytes'])} onChange={v => s(['maxBodyBytes'], v)} min={0} placeholder={def('hooks.maxBodyBytes')} />
         <ArrayField label={es.presets} tooltip={tip('hooks.presets')} value={g(['presets']) || []} onChange={v => s(['presets'], v)} placeholder={es.phPresetName} />
         <TextField label={es.hooksDefaultSessionKey || 'Default Session Key'} tooltip={tip('hooks.defaultSessionKey')} value={g(['defaultSessionKey']) || ''} onChange={v => s(['defaultSessionKey'], v)} placeholder="hook" />
         <SwitchField label={es.hooksAllowRequestSessionKey || 'Allow Request Session Key'} tooltip={tip('hooks.allowRequestSessionKey')} value={g(['allowRequestSessionKey']) === true} onChange={v => s(['allowRequestSessionKey'], v)} />

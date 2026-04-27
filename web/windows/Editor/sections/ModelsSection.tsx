@@ -6,7 +6,7 @@ import { post } from '../../../services/request';
 import { getTranslation } from '../../../locales';
 import { useToast } from '../../../components/Toast';
 import { RequestOverridePanel } from './RequestOverridePanel';
-import { schemaTooltip } from '../schemaTooltip';
+import { schemaTooltip, schemaDefault } from '../schemaTooltip';
 
 // ============================================================================
 // 服务商预设
@@ -409,6 +409,7 @@ const ModelPathSearch: React.FC<ModelPathSearchProps> = ({ value, onChange, opti
 export const ModelsSection: React.FC<SectionProps> = ({ config, schema, setField, getField, deleteField, language }) => {
   const es = useMemo(() => (getTranslation(language) as any).es || {}, [language]);
   const tip = (key: string) => schemaTooltip(key, language, schema);
+  const def = (key: string) => schemaDefault(key, schema);
   const { toast } = useToast();
 
   const API_OPTIONS = useMemo(() => [

@@ -1530,6 +1530,8 @@
   "dreamingFrequency": "Frequency",
   "dreamingRecencyHalfLife": "Recency Half-Life (days)",
   "dreamingMaxAge": "Max Age (days)",
+  "contextTokens": "Context Tokens",
+  "contextTokensDesc": "Maximum context window token cap for this agent. When conversation history exceeds this limit, compaction is triggered automatically. Leave empty to use the model's native context window.",
   "contextLimits": "Context Limits",
   "memoryGetDefaultLines": "memory_get Default Lines",
   "memoryGetMaxChars": "memory_get Max Chars",
@@ -1589,5 +1591,106 @@
   "feishuDynamicAgent": "Dynamic Agent",
   "feishuDynamicAgentEnabled": "Enabled",
   "feishuDynamicAgentMax": "Max Agents",
-  "tipFeishuDynamicAgent": "Automatically create a dedicated agent workspace per DM user"
+  "tipFeishuDynamicAgent": "Automatically create a dedicated agent workspace per DM user",
+  "schemaAdditional": "Other Settings",
+  "schemaLabels": {
+    "agents.defaults.embeddedHarness": "Embedded Harness Runtime",
+    "agents.defaults.embeddedHarness.runtime": "Runtime",
+    "agents.defaults.embeddedHarness.fallback": "Fallback",
+    "agents.defaults.model": "Default Model",
+    "agents.defaults.model.primary": "Primary Model",
+    "agents.defaults.imageModel": "Image Model",
+    "agents.defaults.mediaGenerationAutoProviderFallback": "Media Gen Auto-Fallback",
+    "agents.defaults.models": "Model Overrides",
+    "agents.defaults.silentReply": "Silent Reply Policy",
+    "agents.defaults.silentReply.direct": "Direct",
+    "agents.defaults.silentReply.group": "Group",
+    "agents.defaults.silentReply.internal": "Internal",
+    "agents.defaults.silentReplyRewrite": "Silent Reply Rewrite",
+    "agents.defaults.silentReplyRewrite.direct": "Direct",
+    "agents.defaults.silentReplyRewrite.group": "Group",
+    "agents.defaults.silentReplyRewrite.internal": "Internal",
+    "agents.defaults.repoRoot": "Repository Root",
+    "agents.defaults.skipBootstrap": "Skip Bootstrap",
+    "agents.defaults.bootstrapMaxChars": {
+      "label": "Bootstrap Max Chars",
+      "placeholder": "12000"
+    },
+    "agents.defaults.bootstrapTotalMaxChars": {
+      "label": "Bootstrap Total Max Chars",
+      "placeholder": "150000"
+    },
+    "agents.defaults.bootstrapPromptTruncationWarning": "Bootstrap Truncation Warning",
+    "agents.defaults.userTimezone": "User Timezone",
+    "agents.defaults.startupContext": "Startup Context",
+    "agents.defaults.startupContext.enabled": "Enabled",
+    "agents.defaults.startupContext.applyOn": "Apply On",
+    "agents.defaults.startupContext.dailyMemoryDays": {
+      "label": "Daily Memory Days",
+      "placeholder": "2"
+    },
+    "agents.defaults.startupContext.maxFileBytes": {
+      "label": "Max File Bytes",
+      "placeholder": "200000"
+    },
+    "agents.defaults.startupContext.maxFileChars": {
+      "label": "Max File Chars",
+      "placeholder": "20000"
+    },
+    "agents.defaults.startupContext.maxTotalChars": {
+      "label": "Max Total Chars",
+      "placeholder": "50000"
+    },
+    "agents.defaults.timeFormat": "Time Format",
+    "agents.defaults.envelopeTimezone": "Envelope Timezone",
+    "agents.defaults.envelopeTimestamp": "Envelope Timestamp",
+    "agents.defaults.envelopeElapsed": "Envelope Elapsed Time",
+    "agents.defaults.cliBackends": "CLI Backends",
+    "agents.defaults.llm": "LLM Settings",
+    "agents.defaults.llm.idleTimeoutSeconds": {
+      "label": "Idle Timeout (s)",
+      "placeholder": "120"
+    },
+    "agents.defaults.embeddedPi": "Embedded Pi Settings",
+    "agents.defaults.embeddedPi.projectSettingsPolicy": "Project Settings Policy",
+    "agents.defaults.embeddedPi.executionContract": "Execution Contract",
+    "agents.defaults.blockStreamingDefault": "Block Streaming",
+    "agents.defaults.blockStreamingBreak": "Block Streaming Break",
+    "agents.defaults.blockStreamingChunk": "Block Streaming Chunk",
+    "agents.defaults.blockStreamingCoalesce": "Block Streaming Coalesce",
+    "agents.defaults.imageMaxDimensionPx": {
+      "label": "Image Max Dimension (px)",
+      "placeholder": "1200"
+    },
+    "agents.defaults.typingIntervalSeconds": {
+      "label": "Typing Interval (s)",
+      "placeholder": "3"
+    },
+    "agents.defaults.skillsLimits": "Skills Limits",
+    "agents.defaults.skillsLimits.maxSkillsPromptChars": "Max Skills Prompt Chars",
+    "agents.defaults.blockStreamingChunk.minChars": {
+      "label": "Min Chars",
+      "placeholder": "800"
+    },
+    "agents.defaults.blockStreamingChunk.maxChars": {
+      "label": "Max Chars",
+      "placeholder": "1200"
+    },
+    "agents.defaults.blockStreamingChunk.breakPreference": {
+      "label": "Break Preference",
+      "placeholder": "paragraph"
+    },
+    "agents.defaults.blockStreamingCoalesce.minChars": {
+      "label": "Min Chars",
+      "placeholder": "800"
+    },
+    "agents.defaults.blockStreamingCoalesce.maxChars": {
+      "label": "Max Chars",
+      "placeholder": "1200"
+    },
+    "agents.defaults.blockStreamingCoalesce.idleMs": {
+      "label": "Idle (ms)",
+      "placeholder": "1000"
+    }
+  }
 }

@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { SectionProps } from '../sectionTypes';
 import { ConfigSection, TextField, PasswordField, NumberField, SelectField, SwitchField, ArrayField, KeyValueField } from '../fields';
 import { getTranslation } from '../../../locales';
-import { schemaTooltip } from '../schemaTooltip';
+import { schemaTooltip, schemaDefault } from '../schemaTooltip';
 import SchemaRemainder from '../SchemaRemainder';
 
 // Options moved inside component
@@ -10,6 +10,7 @@ import SchemaRemainder from '../SchemaRemainder';
 export const MessagesSection: React.FC<SectionProps> = ({ config, schema, setField, getField, language }) => {
   const es = useMemo(() => (getTranslation(language) as any).es || {}, [language]);
   const tip = (key: string) => schemaTooltip(key, language, schema);
+  const def = (key: string) => schemaDefault(key, schema);
   const g = (p: string[]) => getField(['messages', ...p]);
   const s = (p: string[], v: any) => setField(['messages', ...p], v);
   const tg = (p: string[]) => getField(['tools', 'message', ...p]);
@@ -46,13 +47,13 @@ export const MessagesSection: React.FC<SectionProps> = ({ config, schema, setFie
 
       <ConfigSection title={es.groupChat} icon="group" iconColor="text-green-500" defaultOpen={false}>
         <ArrayField label={es.mentionPatterns} tooltip={tip('messages.groupChat.mentionPatterns')} value={g(['groupChat', 'mentionPatterns']) || []} onChange={v => s(['groupChat', 'mentionPatterns'], v)} placeholder={es.phMentionPatterns} />
-        <NumberField label={es.historyLimit} tooltip={tip('messages.groupChat.historyLimit')} value={g(['groupChat', 'historyLimit'])} onChange={v => s(['groupChat', 'historyLimit'], v)} min={0} />
+        <NumberField label={es.historyLimit} tooltip={tip('messages.groupChat.historyLimit')} value={g(['groupChat', 'historyLimit'])} onChange={v => s(['groupChat', 'historyLimit'], v)} min={0} placeholder={def('messages.groupChat.historyLimit')} />
       </ConfigSection>
 
       <ConfigSection title={es.messageQueue} icon="queue" iconColor="text-indigo-500" defaultOpen={false}>
         <SelectField label={es.mode} tooltip={tip('messages.queue.mode')} value={g(['queue', 'mode']) || 'debounce'} onChange={v => s(['queue', 'mode'], v)} options={QUEUE_MODE_OPTIONS} />
-        <NumberField label={es.debounceMs} tooltip={tip('messages.queue.debounceMs')} value={g(['queue', 'debounceMs'])} onChange={v => s(['queue', 'debounceMs'], v)} min={0} step={100} />
-        <NumberField label={es.queueCap} tooltip={tip('messages.queue.cap')} value={g(['queue', 'cap'])} onChange={v => s(['queue', 'cap'], v)} min={1} />
+        <NumberField label={es.debounceMs} tooltip={tip('messages.queue.debounceMs')} value={g(['queue', 'debounceMs'])} onChange={v => s(['queue', 'debounceMs'], v)} min={0} step={100} placeholder={def('messages.queue.debounceMs')} />
+        <NumberField label={es.queueCap} tooltip={tip('messages.queue.cap')} value={g(['queue', 'cap'])} onChange={v => s(['queue', 'cap'], v)} min={1} placeholder={def('messages.queue.cap')} />
         <SwitchField label={es.dropWhenFull} tooltip={tip('messages.queue.drop')} value={g(['queue', 'drop']) === true} onChange={v => s(['queue', 'drop'], v)} />
         <KeyValueField label={es.queueByChannel || 'Queue Mode by Channel'} tooltip={tip('messages.queue.byChannel')} value={g(['queue', 'byChannel']) || {}} onChange={v => s(['queue', 'byChannel'], v)} />
         <KeyValueField label={es.debounceMsByChannel || 'Debounce by Channel (ms)'} tooltip={tip('messages.queue.debounceMsByChannel')} value={g(['queue', 'debounceMsByChannel']) || {}} onChange={v => s(['queue', 'debounceMsByChannel'], v)} />
@@ -70,7 +71,7 @@ export const MessagesSection: React.FC<SectionProps> = ({ config, schema, setFie
 
       <ConfigSection title={es.typingMode} icon="edit_note" iconColor="text-purple-500" defaultOpen={false}>
         <SelectField label={es.mode} tooltip={tip('session.typingMode')} value={sg(['typingMode']) || 'never'} onChange={v => ss(['typingMode'], v)} options={TYPING_OPTIONS} />
-        <NumberField label={es.typingIntervalS} tooltip={tip('session.typingIntervalSeconds')} value={sg(['typingIntervalSeconds'])} onChange={v => ss(['typingIntervalSeconds'], v)} min={1} />
+        <NumberField label={es.typingIntervalS} tooltip={tip('session.typingIntervalSeconds')} value={sg(['typingIntervalSeconds'])} onChange={v => ss(['typingIntervalSeconds'], v)} min={1} placeholder={def('session.typingIntervalSeconds')} />
       </ConfigSection>
 
       <ConfigSection title={es.ttsConfig} icon="record_voice_over" iconColor="text-fuchsia-500" defaultOpen={false}>
@@ -93,7 +94,7 @@ export const MessagesSection: React.FC<SectionProps> = ({ config, schema, setFie
       </ConfigSection>
 
       <ConfigSection title={es.inboundDebounce} icon="input" iconColor="text-teal-500" defaultOpen={false}>
-        <NumberField label={es.debounceMs} tooltip={tip('messages.inbound.debounceMs')} value={g(['inbound', 'debounceMs'])} onChange={v => s(['inbound', 'debounceMs'], v)} min={0} step={100} />
+        <NumberField label={es.debounceMs} tooltip={tip('messages.inbound.debounceMs')} value={g(['inbound', 'debounceMs'])} onChange={v => s(['inbound', 'debounceMs'], v)} min={0} step={100} placeholder={def('messages.inbound.debounceMs')} />
         <KeyValueField label={es.inboundByChannel || 'Debounce by Channel'} tooltip={tip('messages.inbound.byChannel')} value={g(['inbound', 'byChannel']) || {}} onChange={v => s(['inbound', 'byChannel'], v)} />
       </ConfigSection>
 

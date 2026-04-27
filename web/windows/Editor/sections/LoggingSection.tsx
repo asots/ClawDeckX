@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { SectionProps } from '../sectionTypes';
 import { ConfigSection, TextField, SelectField, SwitchField, NumberField, ArrayField, KeyValueField } from '../fields';
 import { getTranslation } from '../../../locales';
-import { schemaTooltip } from '../schemaTooltip';
+import { schemaTooltip, schemaDefault } from '../schemaTooltip';
 import SchemaRemainder from '../SchemaRemainder';
 
 // Options moved inside component
@@ -10,6 +10,7 @@ import SchemaRemainder from '../SchemaRemainder';
 export const LoggingSection: React.FC<SectionProps> = ({ config, schema, setField, getField, language }) => {
   const es = useMemo(() => (getTranslation(language) as any).es || {}, [language]);
   const tip = (key: string) => schemaTooltip(key, language, schema);
+  const def = (key: string) => schemaDefault(key, schema);
 
   const LOG_LEVEL_OPTIONS = useMemo(() => [
     { value: 'silent', label: es.logSilent }, { value: 'fatal', label: es.logFatal }, { value: 'error', label: es.logError },
@@ -30,7 +31,7 @@ export const LoggingSection: React.FC<SectionProps> = ({ config, schema, setFiel
       <ConfigSection title={es.loggingConfig} icon="description" iconColor="text-yellow-500">
         <SelectField label={es.logLevel} tooltip={tip('logging.level')} value={getField(['logging', 'level']) || 'info'} onChange={v => setField(['logging', 'level'], v)} options={LOG_LEVEL_OPTIONS} />
         <TextField label={es.logFile} tooltip={tip('logging.file')} value={getField(['logging', 'file']) || ''} onChange={v => setField(['logging', 'file'], v)} placeholder={es.phGatewayLogPath} />
-        <NumberField label={es.maxFileBytes} tooltip={tip('logging.maxFileBytes')} value={getField(['logging', 'maxFileBytes'])} onChange={v => setField(['logging', 'maxFileBytes'], v)} min={0} />
+        <NumberField label={es.maxFileBytes} tooltip={tip('logging.maxFileBytes')} value={getField(['logging', 'maxFileBytes'])} onChange={v => setField(['logging', 'maxFileBytes'], v)} min={0} placeholder={def('logging.maxFileBytes')} />
         <SelectField label={es.consoleLevel} tooltip={tip('logging.consoleLevel')} value={getField(['logging', 'consoleLevel']) || 'info'} onChange={v => setField(['logging', 'consoleLevel'], v)} options={LOG_LEVEL_OPTIONS} />
         <SelectField label={es.consoleStyle} tooltip={tip('logging.consoleStyle')} value={getField(['logging', 'consoleStyle']) || 'pretty'} onChange={v => setField(['logging', 'consoleStyle'], v)} options={CONSOLE_STYLE_OPTIONS} />
         <SelectField label={es.redactSensitive} tooltip={tip('logging.redactSensitive')} value={getField(['logging', 'redactSensitive']) || ''} onChange={v => setField(['logging', 'redactSensitive'], v)} options={REDACT_OPTIONS} />
@@ -40,7 +41,7 @@ export const LoggingSection: React.FC<SectionProps> = ({ config, schema, setFiel
       <ConfigSection title={es.diagnostics} icon="bug_report" iconColor="text-yellow-500" defaultOpen={false}>
         <SwitchField label={es.enableDiag} tooltip={tip('diagnostics.enabled')} value={getField(['diagnostics', 'enabled']) === true} onChange={v => setField(['diagnostics', 'enabled'], v)} />
         <ArrayField label={es.diagFlags} tooltip={tip('diagnostics.flags')} value={getField(['diagnostics', 'flags']) || []} onChange={v => setField(['diagnostics', 'flags'], v)} placeholder="flag-name" />
-        <NumberField label={es.stuckSessionWarnMs} tooltip={tip('diagnostics.stuckSessionWarnMs')} value={getField(['diagnostics', 'stuckSessionWarnMs'])} onChange={v => setField(['diagnostics', 'stuckSessionWarnMs'], v)} min={0} step={1000} />
+        <NumberField label={es.stuckSessionWarnMs} tooltip={tip('diagnostics.stuckSessionWarnMs')} value={getField(['diagnostics', 'stuckSessionWarnMs'])} onChange={v => setField(['diagnostics', 'stuckSessionWarnMs'], v)} min={0} step={1000} placeholder={def('diagnostics.stuckSessionWarnMs')} />
       </ConfigSection>
 
       <ConfigSection title={es.otelConfig} icon="monitoring" iconColor="text-indigo-500" defaultOpen={false}>
@@ -51,8 +52,8 @@ export const LoggingSection: React.FC<SectionProps> = ({ config, schema, setFiel
         <SwitchField label={es.otelTraces} tooltip={tip('diagnostics.otel.traces')} value={getField(['diagnostics', 'otel', 'traces']) !== false} onChange={v => setField(['diagnostics', 'otel', 'traces'], v)} />
         <SwitchField label={es.otelMetrics} tooltip={tip('diagnostics.otel.metrics')} value={getField(['diagnostics', 'otel', 'metrics']) !== false} onChange={v => setField(['diagnostics', 'otel', 'metrics'], v)} />
         <SwitchField label={es.otelLogs} tooltip={tip('diagnostics.otel.logs')} value={getField(['diagnostics', 'otel', 'logs']) !== false} onChange={v => setField(['diagnostics', 'otel', 'logs'], v)} />
-        <NumberField label={es.otelSampleRate} tooltip={tip('diagnostics.otel.sampleRate')} value={getField(['diagnostics', 'otel', 'sampleRate'])} onChange={v => setField(['diagnostics', 'otel', 'sampleRate'], v)} min={0} max={1} step={0.1} />
-        <NumberField label={es.otelFlushMs} tooltip={tip('diagnostics.otel.flushIntervalMs')} value={getField(['diagnostics', 'otel', 'flushIntervalMs'])} onChange={v => setField(['diagnostics', 'otel', 'flushIntervalMs'], v)} min={0} step={1000} />
+        <NumberField label={es.otelSampleRate} tooltip={tip('diagnostics.otel.sampleRate')} value={getField(['diagnostics', 'otel', 'sampleRate'])} onChange={v => setField(['diagnostics', 'otel', 'sampleRate'], v)} min={0} max={1} step={0.1} placeholder={def('diagnostics.otel.sampleRate')} />
+        <NumberField label={es.otelFlushMs} tooltip={tip('diagnostics.otel.flushIntervalMs')} value={getField(['diagnostics', 'otel', 'flushIntervalMs'])} onChange={v => setField(['diagnostics', 'otel', 'flushIntervalMs'], v)} min={0} step={1000} placeholder={def('diagnostics.otel.flushIntervalMs')} />
         <KeyValueField label={es.otelHeaders || 'OTel Headers'} tooltip={tip('diagnostics.otel.headers')} value={getField(['diagnostics', 'otel', 'headers']) || {}} onChange={v => setField(['diagnostics', 'otel', 'headers'], v)} />
       </ConfigSection>
 

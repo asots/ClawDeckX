@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { Language } from '../../types';
 import { gwApi } from '../../services/api';
+import { getTranslation } from '../../locales';
 import SchemaField from '../../components/SchemaField';
 import type { UiHints } from '../../components/SchemaField';
 import { isKeyCovered } from './sectionRegistry';
@@ -94,7 +95,26 @@ const SchemaRemainder: React.FC<SchemaRemainderProps> = ({
   }, [schema]);
 
   const schemaRoot = liveSchema?.schema || liveSchema;
-  const hints: UiHints = liveSchema?.uiHints || {};
+  const rawHints: UiHints = liveSchema?.uiHints || {};
+
+  // Merge locale-provided schema labels into uiHints so SchemaField
+  // can display translated labels instead of raw English property names.
+  // es.schemaLabels is a Record<dottedPath, string | {label,help}>.
+  const hints: UiHints = useMemo(() => {
+    const es = (getTranslation(language) as any).es || {};
+    const labels: Record<string, any> = es.schemaLabels || {};
+    if (Object.keys(labels).length === 0) return rawHints;
+    const merged: UiHints = { ...rawHints };
+    for (const [path, val] of Object.entries(labels)) {
+      const existing = merged[path] || {};
+      if (typeof val === 'string') {
+        merged[path] = { ...existing, label: val };
+      } else if (val && typeof val === 'object') {
+        merged[path] = { ...existing, ...(val as any) };
+      }
+    }
+    return merged;
+  }, [rawHints, language]);
 
   const remainderFields = useMemo(() => {
     if (!schemaRoot?.properties) return [];

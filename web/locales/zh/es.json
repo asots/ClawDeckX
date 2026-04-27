@@ -1530,6 +1530,8 @@
   "dreamingFrequency": "频率",
   "dreamingRecencyHalfLife": "近期衰减半衰期（天）",
   "dreamingMaxAge": "最大保留天数",
+  "contextTokens": "上下文 Token 上限",
+  "contextTokensDesc": "代理的上下文窗口 token 上限。当对话历史超过此限制时，自动触发对话压缩。留空则使用模型原生上下文窗口。",
   "contextLimits": "上下文限制",
   "memoryGetDefaultLines": "memory_get 默认行数",
   "memoryGetMaxChars": "memory_get 最大字符数",
@@ -1589,5 +1591,106 @@
   "feishuDynamicAgent": "动态 Agent",
   "feishuDynamicAgentEnabled": "启用动态创建",
   "feishuDynamicAgentMax": "最大 Agent 数",
-  "tipFeishuDynamicAgent": "为每个私聊用户自动创建独立的 Agent 工作区"
+  "tipFeishuDynamicAgent": "为每个私聊用户自动创建独立的 Agent 工作区",
+  "schemaAdditional": "其它设置",
+  "schemaLabels": {
+    "agents.defaults.embeddedHarness": "嵌入式 Harness 运行时",
+    "agents.defaults.embeddedHarness.runtime": "运行时引擎",
+    "agents.defaults.embeddedHarness.fallback": "回退引擎",
+    "agents.defaults.model": "默认模型",
+    "agents.defaults.model.primary": "主要模型",
+    "agents.defaults.imageModel": "图片模型",
+    "agents.defaults.mediaGenerationAutoProviderFallback": "媒体生成自动回退",
+    "agents.defaults.models": "模型覆盖设置",
+    "agents.defaults.silentReply": "静默回复策略",
+    "agents.defaults.silentReply.direct": "私聊",
+    "agents.defaults.silentReply.group": "群聊",
+    "agents.defaults.silentReply.internal": "内部",
+    "agents.defaults.silentReplyRewrite": "静默回复重写",
+    "agents.defaults.silentReplyRewrite.direct": "私聊",
+    "agents.defaults.silentReplyRewrite.group": "群聊",
+    "agents.defaults.silentReplyRewrite.internal": "内部",
+    "agents.defaults.repoRoot": "仓库根目录",
+    "agents.defaults.skipBootstrap": "跳过引导",
+    "agents.defaults.bootstrapMaxChars": {
+      "label": "引导文件最大字符数",
+      "placeholder": "12000"
+    },
+    "agents.defaults.bootstrapTotalMaxChars": {
+      "label": "引导文件总最大字符数",
+      "placeholder": "150000"
+    },
+    "agents.defaults.bootstrapPromptTruncationWarning": "引导截断警告",
+    "agents.defaults.userTimezone": "用户时区",
+    "agents.defaults.startupContext": "启动上下文",
+    "agents.defaults.startupContext.enabled": "启用",
+    "agents.defaults.startupContext.applyOn": "应用时机",
+    "agents.defaults.startupContext.dailyMemoryDays": {
+      "label": "每日记忆天数",
+      "placeholder": "2"
+    },
+    "agents.defaults.startupContext.maxFileBytes": {
+      "label": "单文件最大字节",
+      "placeholder": "200000"
+    },
+    "agents.defaults.startupContext.maxFileChars": {
+      "label": "单文件最大字符",
+      "placeholder": "20000"
+    },
+    "agents.defaults.startupContext.maxTotalChars": {
+      "label": "总最大字符数",
+      "placeholder": "50000"
+    },
+    "agents.defaults.timeFormat": "时间格式",
+    "agents.defaults.envelopeTimezone": "信封时区",
+    "agents.defaults.envelopeTimestamp": "信封时间戳",
+    "agents.defaults.envelopeElapsed": "信封耗时显示",
+    "agents.defaults.cliBackends": "CLI 后端",
+    "agents.defaults.llm": "LLM 设置",
+    "agents.defaults.llm.idleTimeoutSeconds": {
+      "label": "空闲超时（秒）",
+      "placeholder": "120"
+    },
+    "agents.defaults.embeddedPi": "嵌入式 Pi 设置",
+    "agents.defaults.embeddedPi.projectSettingsPolicy": "项目设置策略",
+    "agents.defaults.embeddedPi.executionContract": "执行契约",
+    "agents.defaults.blockStreamingDefault": "块流式输出",
+    "agents.defaults.blockStreamingBreak": "块流式分割",
+    "agents.defaults.blockStreamingChunk": "块流式分块",
+    "agents.defaults.blockStreamingCoalesce": "块流式合并",
+    "agents.defaults.imageMaxDimensionPx": {
+      "label": "图片最大尺寸（px）",
+      "placeholder": "1200"
+    },
+    "agents.defaults.typingIntervalSeconds": {
+      "label": "打字间隔（秒）",
+      "placeholder": "3"
+    },
+    "agents.defaults.skillsLimits": "技能限制",
+    "agents.defaults.skillsLimits.maxSkillsPromptChars": "技能 Prompt 最大字符数",
+    "agents.defaults.blockStreamingChunk.minChars": {
+      "label": "最小字符数",
+      "placeholder": "800"
+    },
+    "agents.defaults.blockStreamingChunk.maxChars": {
+      "label": "最大字符数",
+      "placeholder": "1200"
+    },
+    "agents.defaults.blockStreamingChunk.breakPreference": {
+      "label": "断行偏好",
+      "placeholder": "paragraph"
+    },
+    "agents.defaults.blockStreamingCoalesce.minChars": {
+      "label": "最小字符数",
+      "placeholder": "800"
+    },
+    "agents.defaults.blockStreamingCoalesce.maxChars": {
+      "label": "最大字符数",
+      "placeholder": "1200"
+    },
+    "agents.defaults.blockStreamingCoalesce.idleMs": {
+      "label": "空闲时间 (ms)",
+      "placeholder": "1000"
+    }
+  }
 }
