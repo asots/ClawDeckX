@@ -120,10 +120,17 @@ type GWClientConfig struct {
 
 type GWEventHandler func(event string, payload json.RawMessage)
 
-// restartGracePeriod is the cooldown after a watchdog-triggered restart
-// during which health checks are skipped, giving the gateway time to start.
-// Gateway startup with plugins can take 20-30s; 60s provides ample margin.
-const restartGracePeriod = 60 * time.Second
+// restartGracePeriod is the initial quiet period after a watchdog-triggered
+// restart during which health checks are fully skipped.  After it expires,
+// checks resume but failures do NOT count toward the restart threshold until
+// the gateway has been healthy at least once (healthPostRestartPending).
+const restartGracePeriod = 30 * time.Second
+
+// restartHardDeadline is the absolute maximum time after a restart during
+// which we tolerate failures without triggering another restart.  If the
+// gateway never becomes healthy within this window, the watchdog will
+// restart it again.
+const restartHardDeadline = 180 * time.Second
 
 type GWClient struct {
 	cfg           GWClientConfig
@@ -169,6 +176,8 @@ type GWClient struct {
 	healthLastProbe             GatewayProbeSnapshot
 	healthRestarting            bool      // true while a restart is in progress
 	healthGraceUntil            time.Time // skip health checks until this time (post-restart grace period)
+	healthPostRestartPending    bool      // true after restart until first successful health check
+	healthPostRestartDeadline   time.Time // hard deadline: if gateway never healthy by this time, allow re-restart
 	healthStopCh                chan struct{}
 	healthRunning               bool
 	onRestart                   func() error                           // restart callback (injected externally)
@@ -348,6 +357,7 @@ func (c *GWClient) HealthStatus() map[string]interface{} {
 	intervalSec := int(c.healthInterval / time.Second)
 	graceUntil := c.healthGraceUntil
 	restarting := c.healthRestarting
+	postRestartPending := c.healthPostRestartPending
 	healthLastCheckTime := c.healthLastCheck
 	healthInterval := c.healthInterval
 	healthLastProbe := c.healthLastProbe
@@ -382,13 +392,15 @@ func (c *GWClient) HealthStatus() map[string]interface{} {
 	}
 
 	// Compute a human-readable phase for the frontend.
-	// Phases: "healthy" | "probing" | "degraded" | "restarting" | "grace" | "disabled"
+	// Phases: "healthy" | "probing" | "degraded" | "starting" | "restarting" | "grace" | "disabled"
 	phase := "disabled"
 	if enabled {
 		if restarting {
 			phase = "restarting"
 		} else if graceStr != "" {
 			phase = "grace"
+		} else if postRestartPending {
+			phase = "starting"
 		} else if failCount > 0 {
 			phase = "degraded"
 		} else if lastOK == "" {
@@ -417,6 +429,7 @@ func (c *GWClient) HealthStatus() map[string]interface{} {
 		"grace_until":              graceStr,
 		"grace_remaining_sec":      graceRemainingSec,
 		"restarting":               restarting,
+		"post_restart_pending":     postRestartPending,
 		"next_check_in_sec":        nextCheckInSec,
 		"phase":                    phase,
 		"probe":                    healthLastProbe,
@@ -551,6 +564,9 @@ func (c *GWClient) healthCheckLoop() {
 				}
 				c.healthFailCount = 0
 				c.healthLastOK = time.Now()
+				// Gateway is healthy — clear post-restart pending state so future
+				// failures count normally toward the restart threshold.
+				c.healthPostRestartPending = false
 			} else {
 				c.healthFailCount++
 				logger.Gateway.Warn().
@@ -558,12 +574,24 @@ func (c *GWClient) healthCheckLoop() {
 					Int("max_fails", c.healthMaxFails).
 					Msg(i18n.T(i18n.MsgLogHeartbeatFailed))
 
+				// After a restart, don't trigger another restart until the gateway
+				// has been healthy at least once — unless the hard deadline passes.
+				if c.healthPostRestartPending && time.Now().Before(c.healthPostRestartDeadline) {
+					logger.Gateway.Debug().
+						Time("deadline", c.healthPostRestartDeadline).
+						Msg("post-restart pending: suppressing restart threshold")
+					c.healthMu.Unlock()
+					continue
+				}
+
 				if c.healthFailCount >= c.healthMaxFails && c.onRestart != nil {
 					logger.Gateway.Warn().
 						Int("consecutive_fails", c.healthFailCount).
 						Msg(i18n.T(i18n.MsgLogHeartbeatThresholdRestart))
 					c.healthFailCount = 0
 					c.healthGraceUntil = time.Now().Add(restartGracePeriod)
+					c.healthPostRestartPending = true
+					c.healthPostRestartDeadline = time.Now().Add(restartHardDeadline)
 					c.healthRestarting = true
 					restartFn := c.onRestart
 					notifyFn := c.onNotify
@@ -591,6 +619,8 @@ func (c *GWClient) healthCheckLoop() {
 					// duration starts from now, not from before the (blocking)
 					// restart call which may have consumed most of the window.
 					c.healthGraceUntil = time.Now().Add(restartGracePeriod)
+					c.healthPostRestartPending = true
+					c.healthPostRestartDeadline = time.Now().Add(restartHardDeadline)
 					c.healthMu.Unlock()
 					continue
 				}
