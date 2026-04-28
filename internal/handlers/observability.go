@@ -157,14 +157,17 @@ func (h *ObservabilityHandler) EnablePlugin(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	var respMap map[string]interface{}
-	if err := json.Unmarshal(data, &respMap); err != nil {
+	var wrapper map[string]interface{}
+	if err := json.Unmarshal(data, &wrapper); err != nil {
 		web.Fail(w, r, "CONFIG_PARSE_FAILED", err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	configObj := respMap
-	if cfg, ok := respMap["config"].(map[string]interface{}); ok {
+	// Extract baseHash for optimistic concurrency control
+	baseHash, _ := wrapper["hash"].(string)
+
+	configObj := wrapper
+	if cfg, ok := wrapper["config"].(map[string]interface{}); ok {
 		configObj = cfg
 	}
 
@@ -195,16 +198,21 @@ func (h *ObservabilityHandler) EnablePlugin(w http.ResponseWriter, r *http.Reque
 	entry["enabled"] = true
 	entries["diagnostics-prometheus"] = entry
 
-	// 3. Write back
+	// 3. Write back with baseHash
 	cfgJSON, err := json.Marshal(configObj)
 	if err != nil {
 		web.Fail(w, r, "CONFIG_MARSHAL_FAILED", err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	_, err = h.gwClient.RequestWithTimeout("config.set", map[string]interface{}{
+	setParams := map[string]interface{}{
 		"raw": string(cfgJSON),
-	}, 10*time.Second)
+	}
+	if baseHash != "" {
+		setParams["baseHash"] = baseHash
+	}
+
+	_, err = h.gwClient.RequestWithTimeout("config.set", setParams, 15*time.Second)
 	if err != nil {
 		web.Fail(w, r, "CONFIG_SET_FAILED", err.Error(), http.StatusBadGateway)
 		return
