@@ -214,7 +214,9 @@
     "errRate": "錯誤率",
     "pluginNotEnabled": "Prometheus 外掛未啟用",
     "pluginNotEnabledHint": "請在 OpenClaw 中啟用 diagnostics-prometheus 外掛以啟動即時觀測。",
-    "enablePlugin": "一鍵啟用外掛"
+    "enablePlugin": "一鍵啟用外掛",
+    "versionTooLow": "OpenClaw 版本過低",
+    "versionTooLowHint": "即時觀測需要 OpenClaw ≥ {{min}}，目前版本：{{cur}}。"
   },
   "d": {
     "mas": {

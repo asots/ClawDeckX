@@ -864,6 +864,13 @@ func (c *GWClient) GetConfig() GWClientConfig {
 	return c.cfg
 }
 
+// GetVersion returns the cached gateway version string (e.g. "2026.4.25").
+func (c *GWClient) GetVersion() string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.gwVersion
+}
+
 // RefreshTokenFromConfig reloads the gateway auth token from the OpenClaw config
 // path and updates the cached config if the token changed.  It does NOT call
 // Reconnect() because the WS connection already authenticated during sendConnect;

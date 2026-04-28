@@ -214,7 +214,9 @@
     "errRate": "エラー率",
     "pluginNotEnabled": "Prometheus プラグインが未有効",
     "pluginNotEnabledHint": "OpenClaw で diagnostics-prometheus プラグインを有効にしてライブメトリクスを開始してください。",
-    "enablePlugin": "プラグインを有効化"
+    "enablePlugin": "プラグインを有効化",
+    "versionTooLow": "OpenClaw のバージョンが低すぎます",
+    "versionTooLowHint": "ライブメトリクスには OpenClaw ≥ {{min}} が必要です。現在: {{cur}}。"
   },
   "d": {
     "mas": {

@@ -11,8 +11,13 @@ import (
 
 	"ClawDeckX/internal/logger"
 	"ClawDeckX/internal/openclaw"
+	"ClawDeckX/internal/version"
 	"ClawDeckX/internal/web"
 )
+
+// minObservabilityVersion is the minimum OpenClaw version that ships the
+// diagnostics-prometheus plugin.
+const minObservabilityVersion = "2026.4.25"
 
 // ObservabilityHandler proxies the OpenClaw gateway diagnostics-prometheus
 // scrape endpoint and provides helper APIs for external Prometheus setups.
@@ -129,6 +134,20 @@ func (h *ObservabilityHandler) EnablePlugin(w http.ResponseWriter, r *http.Reque
 	if h.gwClient == nil {
 		web.Fail(w, r, "GW_NOT_CONFIGURED", "gateway client not available", http.StatusServiceUnavailable)
 		return
+	}
+
+	// 0. Version check — diagnostics-prometheus requires >= 2026.4.25
+	gwVer := h.gwClient.GetVersion()
+	if gwVer != "" {
+		ok, _ := version.CompareVersion(gwVer, minObservabilityVersion)
+		if !ok {
+			web.OK(w, r, map[string]interface{}{
+				"version_too_low": true,
+				"current_version": gwVer,
+				"min_version":     minObservabilityVersion,
+			})
+			return
+		}
 	}
 
 	// 1. Read current config

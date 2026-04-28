@@ -46,6 +46,17 @@ func normalizeVersion(s string) []int {
 	return nums
 }
 
+// CompareVersion returns true if ver >= minVer (both in "2026.4.25" format).
+// If either is empty, returns (true, "") — cannot evaluate, assume OK.
+func CompareVersion(ver, minVer string) (ok bool, detail string) {
+	if ver == "" || minVer == "" {
+		return true, ""
+	}
+	a := normalizeVersion(ver)
+	b := normalizeVersion(minVer)
+	return compareVersionTuples(a, b) >= 0, minVer
+}
+
 // compareVersionTuples returns -1, 0, or 1.
 func compareVersionTuples(a, b []int) int {
 	maxLen := len(a)

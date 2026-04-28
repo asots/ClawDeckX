@@ -852,7 +852,7 @@ export const observabilityApi = {
   metricsJsonCached: (ttlMs = 5000, force = false) =>
     getCached<PromParseResult>('/api/v1/observability/metrics?format=json', ttlMs, force),
   scrapeConfig: () => get<PromScrapeConfig>('/api/v1/observability/scrape-config'),
-  enablePlugin: () => post<{ enabled?: boolean; already_enabled?: boolean }>('/api/v1/observability/enable-plugin'),
+  enablePlugin: () => post<{ enabled?: boolean; already_enabled?: boolean; version_too_low?: boolean; current_version?: string; min_version?: string }>('/api/v1/observability/enable-plugin'),
 };
 
 // ==================== LLM 供应商健康 ====================

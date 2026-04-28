@@ -266,6 +266,27 @@ const Observability: React.FC<ObservabilityProps> = ({ language }) => {
 
   if (error && !data) {
     const is404 = error.includes('404');
+    const versionMatch = error.match(/^version_too_low:(.+):(.+)$/);
+    if (versionMatch) {
+      const [, curVer, minVer] = versionMatch;
+      return (
+        <div className="flex flex-col items-center justify-center h-full gap-4 text-text-secondary max-w-md mx-auto text-center">
+          <span className="material-symbols-outlined text-4xl" style={{ color: 'var(--color-warning)' }}>upgrade</span>
+          <p className="text-sm font-medium text-text">{ob.versionTooLow || 'OpenClaw version too low'}</p>
+          <p className="text-xs text-text-muted">
+            {(ob.versionTooLowHint || 'Live Metrics requires OpenClaw ≥ {{min}}. Current: {{cur}}.')
+              .replace('{{min}}', minVer).replace('{{cur}}', curVer)}
+          </p>
+          <code className="text-xs bg-surface-sunken px-3 py-1.5 rounded-lg font-mono select-all">npm update -g openclaw</code>
+          <button
+            className="px-4 py-1.5 rounded-lg bg-surface-raised hover:bg-surface-overlay text-text text-sm font-medium transition-colors"
+            onClick={() => { setLoading(true); setError(null); fetchMetrics(true); }}
+          >
+            {ob.retry || 'Retry'}
+          </button>
+        </div>
+      );
+    }
     return (
       <div className="flex flex-col items-center justify-center h-full gap-4 text-text-secondary max-w-md mx-auto text-center">
         <span className="material-symbols-outlined text-4xl" style={{ color: is404 ? 'var(--color-warning)' : 'var(--color-danger)' }}>
@@ -281,7 +302,12 @@ const Observability: React.FC<ObservabilityProps> = ({ language }) => {
                 setLoading(true);
                 setError(null);
                 try {
-                  await observabilityApi.enablePlugin();
+                  const res = await observabilityApi.enablePlugin();
+                  if (res?.version_too_low) {
+                    setError(`version_too_low:${res.current_version || '?'}:${res.min_version || '2026.4.25'}`);
+                    setLoading(false);
+                    return;
+                  }
                   // Wait a moment for gateway to reload plugin
                   await new Promise(r => setTimeout(r, 3000));
                   fetchMetrics(true);
