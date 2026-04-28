@@ -213,7 +213,8 @@
     "queueDepth": "队列深度",
     "errRate": "错误率",
     "pluginNotEnabled": "Prometheus 插件未启用",
-    "pluginNotEnabledHint": "请在 OpenClaw 中启用 diagnostics-prometheus 插件以激活实时观测。"
+    "pluginNotEnabledHint": "请在 OpenClaw 中启用 diagnostics-prometheus 插件以激活实时观测。",
+    "enablePlugin": "一键启用插件"
   },
   "d": {
     "mas": {

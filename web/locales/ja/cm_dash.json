@@ -213,7 +213,8 @@
     "queueDepth": "キュー深度",
     "errRate": "エラー率",
     "pluginNotEnabled": "Prometheus プラグインが未有効",
-    "pluginNotEnabledHint": "OpenClaw で diagnostics-prometheus プラグインを有効にしてライブメトリクスを開始してください。"
+    "pluginNotEnabledHint": "OpenClaw で diagnostics-prometheus プラグインを有効にしてライブメトリクスを開始してください。",
+    "enablePlugin": "プラグインを有効化"
   },
   "d": {
     "mas": {

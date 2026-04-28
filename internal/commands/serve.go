@@ -608,6 +608,7 @@ func RunServe(args []string) int {
 	observabilityHandler := handlers.NewObservabilityHandler(gwClient)
 	router.GET("/api/v1/observability/metrics", observabilityHandler.Metrics)
 	router.GET("/api/v1/observability/scrape-config", observabilityHandler.ScrapeConfig)
+	router.POST("/api/v1/observability/enable-plugin", web.RequireAdmin(observabilityHandler.EnablePlugin))
 
 	router.GET("/api/v1/maintenance/context/analyze", maintenanceHandler.ContextAnalyze)
 	router.POST("/api/v1/maintenance/context/optimize", web.RequireAdmin(maintenanceHandler.ContextOptimize))

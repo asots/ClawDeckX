@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net"
@@ -8,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"ClawDeckX/internal/logger"
 	"ClawDeckX/internal/openclaw"
 	"ClawDeckX/internal/web"
 )
@@ -109,12 +111,88 @@ func (h *ObservabilityHandler) ScrapeConfig(w http.ResponseWriter, r *http.Reque
 `, target, cfg.Token)
 
 	web.OK(w, r, map[string]interface{}{
-		"scrapeUrl":  scrapeURL,
-		"target":     target,
+		"scrapeUrl":   scrapeURL,
+		"target":      target,
 		"metricsPath": "/api/diagnostics/prometheus",
-		"token":      cfg.Token,
+		"token":       cfg.Token,
 		"yamlSnippet": yaml,
 	})
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// POST /api/v1/observability/enable-plugin
+//
+// Enables the diagnostics-prometheus plugin in the OpenClaw config via RPC.
+// ────────────────────────────────────────────────────────────────────────────
+
+func (h *ObservabilityHandler) EnablePlugin(w http.ResponseWriter, r *http.Request) {
+	if h.gwClient == nil {
+		web.Fail(w, r, "GW_NOT_CONFIGURED", "gateway client not available", http.StatusServiceUnavailable)
+		return
+	}
+
+	// 1. Read current config
+	data, err := h.gwClient.RequestWithTimeout("config.get", map[string]interface{}{}, 5*time.Second)
+	if err != nil {
+		web.Fail(w, r, "CONFIG_GET_FAILED", err.Error(), http.StatusBadGateway)
+		return
+	}
+
+	var respMap map[string]interface{}
+	if err := json.Unmarshal(data, &respMap); err != nil {
+		web.Fail(w, r, "CONFIG_PARSE_FAILED", err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	configObj := respMap
+	if cfg, ok := respMap["config"].(map[string]interface{}); ok {
+		configObj = cfg
+	}
+
+	// 2. Ensure plugins.entries.diagnostics-prometheus.enabled = true
+	pluginsObj, _ := configObj["plugins"].(map[string]interface{})
+	if pluginsObj == nil {
+		pluginsObj = map[string]interface{}{}
+		configObj["plugins"] = pluginsObj
+	}
+
+	entries, _ := pluginsObj["entries"].(map[string]interface{})
+	if entries == nil {
+		entries = map[string]interface{}{}
+		pluginsObj["entries"] = entries
+	}
+
+	entry, _ := entries["diagnostics-prometheus"].(map[string]interface{})
+	if entry == nil {
+		entry = map[string]interface{}{}
+	}
+
+	// Check if already enabled
+	if enabled, ok := entry["enabled"].(bool); ok && enabled {
+		web.OK(w, r, map[string]interface{}{"already_enabled": true})
+		return
+	}
+
+	entry["enabled"] = true
+	entries["diagnostics-prometheus"] = entry
+
+	// 3. Write back
+	cfgJSON, err := json.Marshal(configObj)
+	if err != nil {
+		web.Fail(w, r, "CONFIG_MARSHAL_FAILED", err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	_, err = h.gwClient.RequestWithTimeout("config.set", map[string]interface{}{
+		"raw": string(cfgJSON),
+	}, 10*time.Second)
+	if err != nil {
+		web.Fail(w, r, "CONFIG_SET_FAILED", err.Error(), http.StatusBadGateway)
+		return
+	}
+
+	logger.Log.Info().Msg("auto-enabled diagnostics-prometheus plugin via observability handler")
+	web.OK(w, r, map[string]interface{}{"enabled": true})
 }
 
 // ────────────────────────────────────────────────────────────────────────────

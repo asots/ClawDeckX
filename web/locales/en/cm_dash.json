@@ -213,7 +213,8 @@
     "queueDepth": "Queue Depth",
     "errRate": "Error rate",
     "pluginNotEnabled": "Prometheus plugin not enabled",
-    "pluginNotEnabledHint": "Enable the diagnostics-prometheus plugin in OpenClaw to activate live metrics."
+    "pluginNotEnabledHint": "Enable the diagnostics-prometheus plugin in OpenClaw to activate live metrics.",
+    "enablePlugin": "Enable Plugin"
   },
   "d": {
     "mas": {

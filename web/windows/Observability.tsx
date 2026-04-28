@@ -275,17 +275,36 @@ const Observability: React.FC<ObservabilityProps> = ({ language }) => {
           <>
             <p className="text-sm font-medium text-text">{ob.pluginNotEnabled || 'Prometheus plugin not enabled'}</p>
             <p className="text-xs text-text-muted">{ob.pluginNotEnabledHint || 'Enable the diagnostics-prometheus plugin in OpenClaw to activate live metrics.'}</p>
-            <code className="text-xs bg-surface-sunken px-3 py-1.5 rounded-lg font-mono select-all">openclaw plugins enable diagnostics-prometheus</code>
+            <button
+              className="px-4 py-1.5 rounded-lg bg-primary/90 hover:bg-primary text-white text-sm font-medium transition-colors"
+              onClick={async () => {
+                setLoading(true);
+                setError(null);
+                try {
+                  await observabilityApi.enablePlugin();
+                  // Wait a moment for gateway to reload plugin
+                  await new Promise(r => setTimeout(r, 3000));
+                  fetchMetrics(true);
+                } catch (e: any) {
+                  setError(e?.message || 'Failed to enable plugin');
+                  setLoading(false);
+                }
+              }}
+            >
+              {ob.enablePlugin || 'Enable Plugin'}
+            </button>
           </>
         ) : (
-          <p className="text-sm">{error}</p>
+          <>
+            <p className="text-sm">{error}</p>
+            <button
+              className="px-4 py-1.5 rounded-lg bg-surface-raised hover:bg-surface-overlay text-text text-sm font-medium transition-colors"
+              onClick={() => { setLoading(true); fetchMetrics(true); }}
+            >
+              {ob.retry || 'Retry'}
+            </button>
+          </>
         )}
-        <button
-          className="px-4 py-1.5 rounded-lg bg-surface-raised hover:bg-surface-overlay text-text text-sm font-medium transition-colors"
-          onClick={() => { setLoading(true); fetchMetrics(true); }}
-        >
-          {ob.retry || 'Retry'}
-        </button>
       </div>
     );
   }
