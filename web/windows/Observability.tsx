@@ -308,8 +308,15 @@ const Observability: React.FC<ObservabilityProps> = ({ language }) => {
                     setLoading(false);
                     return;
                   }
-                  // Wait a moment for gateway to reload plugin
-                  await new Promise(r => setTimeout(r, 3000));
+                  // Poll until the plugin is loaded and metrics are available
+                  for (let i = 0; i < 15; i++) {
+                    await new Promise(r => setTimeout(r, 2000));
+                    try {
+                      const m = await observabilityApi.metricsJsonCached(0, true);
+                      if (m) { setData(m); setError(null); setLoading(false); return; }
+                    } catch { /* plugin not ready yet, keep polling */ }
+                  }
+                  // Exhausted retries — do one final fetch to show the real error
                   fetchMetrics(true);
                 } catch (e: any) {
                   setError(e?.message || 'Failed to enable plugin');
