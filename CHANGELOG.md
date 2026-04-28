@@ -126,28 +126,44 @@ _2026-04-20_
 
 # v0.2.6
 
-_2026-04-20_
+_2026-04-28_
 
 ## What's Changed
 
 ### ✨ New Features / 新功能
 
-- agentroom: Prometheus `/admin/metrics` 端点（零依赖 exposition 格式），覆盖 LLM 调用/tokens/成本/熔断/消息/限速
-- agentroom: RAG Room Memory 一期 —— 支持 `.md` / `.txt` 上传、BM25 检索（复用 FTS5）、context 注入 top-3 chunks
-- agentroom: 右栏新增"资料 (RAG)"面板，支持拖拽上传 / 列表 / 删除
-- agentroom: 移动端 safe-area 支持（iOS 刘海 / 动态岛）+ 窄屏 tap target 优化
+- check OpenClaw version before enabling prometheus plugin
+- auto-enable diagnostics-prometheus plugin on 404
+- integrate Prometheus diagnostics from OpenClaw
+- Claude / Hermes one-click importer wizard
+- QQBot group chat + Yuanbao 2026.4.27 config
 
-### 🔧 Refactor / 重构
+### 🐛 Bug Fixes / 修复
 
-- agentroom: `buildContextPrompt` 标注 RAG 引用来源，防 prompt injection
-- agentroom: Orchestrator 在 LLM 调用 / 熔断 / 消息 append / 限速点全面埋点
+- correct toast argument order (type, message)
+- pass baseHash to all config.set calls for concurrency control
+- pass baseHash to config.set for optimistic concurrency
+- state-driven restart suppression instead of fixed grace timer
+- prevent reconnect grace from shortening restart grace period
+- poll for plugin readiness instead of fixed 3s wait
+- show plugin-not-enabled hint on 404
 
-### 🧪 Tests / 测试
+### ⚡ Performance / 性能优化
 
-- 新增 16 个 Go 单测（ChunkMarkdown 8 + observability 8），全量 59 用例通过
+- parallelize Scan() and extend gateway start timeout to 180s
+
+### 🎨 UI & Styling / 界面优化
+
+- collapsible scrape config with copyable fields
+
+### 🌐 Internationalization / 国际化
+
+- fix watchdog inactive hint wording
 
 ---
 **Full Changelog**: [v0.2.5...v0.2.6](https://github.com/ClawDeckX/ClawDeckX/compare/v0.2.5...v0.2.6)
+
+
 
 ---
 
@@ -1627,6 +1643,7 @@ _2026-03-15_
 
 
 ---
+
 
 
 
