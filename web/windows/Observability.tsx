@@ -120,7 +120,6 @@ const Observability: React.FC<ObservabilityProps> = ({ language }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
-  const [copied, setCopied] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchMetrics = useCallback(async (force = false) => {
@@ -246,14 +245,6 @@ const Observability: React.FC<ObservabilityProps> = ({ language }) => {
       .sort((a, b) => b.size - a.size);
   }, [queueLane]);
 
-  const handleCopyYaml = useCallback(() => {
-    if (!scrapeConfig) return;
-    navigator.clipboard.writeText(scrapeConfig.yamlSnippet).then(() => {
-      setCopied(true);
-      toast(ob.copied || 'Copied!', 'success');
-      setTimeout(() => setCopied(false), 2000);
-    });
-  }, [scrapeConfig, toast, ob]);
 
   // ── Render ───────────────────────────────────────────────────────
   if (loading && !data) {
@@ -593,17 +584,73 @@ const Observability: React.FC<ObservabilityProps> = ({ language }) => {
 
       {/* Scrape Config */}
       {scrapeConfig && (
-        <div className="sci-card p-4 space-y-3">
-          <SectionHeader icon="integration_instructions" title={ob.scrapeConfig || 'Prometheus Scrape Config'} />
+        <ScrapeConfigSection
+          config={scrapeConfig}
+          ob={ob}
+          toast={toast}
+        />
+      )}
+
+      {/* Raw metrics toggle */}
+      <RawMetricsSection raw={data?.raw || ''} label={ob.rawMetrics || 'Raw Prometheus Metrics'} />
+    </div>
+  );
+};
+
+function CopyableField({ label, value, toast, copiedLabel }: { label: string; value: string; toast: (msg: string, type: string) => void; copiedLabel: string }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = useCallback(() => {
+    navigator.clipboard.writeText(value).then(() => {
+      setCopied(true);
+      toast(copiedLabel, 'success');
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }, [value, toast, copiedLabel]);
+  return (
+    <div>
+      <p className="text-text-muted mb-1">{label}</p>
+      <div className="flex items-center gap-1 bg-surface-sunken rounded-lg p-2 group">
+        <code className="flex-1 font-mono text-text break-all select-all min-w-0">{value}</code>
+        <button
+          onClick={handleCopy}
+          className="shrink-0 p-0.5 rounded text-text-muted hover:text-text opacity-0 group-hover:opacity-100 transition-opacity"
+          title={label}
+        >
+          <span className="material-symbols-outlined text-sm">{copied ? 'check' : 'content_copy'}</span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ScrapeConfigSection({ config, ob, toast }: { config: PromScrapeConfig; ob: any; toast: (msg: string, type: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const copiedLabel = ob.copied || 'Copied!';
+
+  const handleCopyYaml = useCallback(() => {
+    navigator.clipboard.writeText(config.yamlSnippet).then(() => {
+      setCopied(true);
+      toast(copiedLabel, 'success');
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }, [config.yamlSnippet, toast, copiedLabel]);
+
+  return (
+    <div className="sci-card p-4">
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="flex items-center gap-2 text-sm font-bold text-text hover:text-info transition-colors w-full text-start"
+      >
+        <span className="material-symbols-outlined text-base text-text-secondary">{open ? 'expand_less' : 'expand_more'}</span>
+        <span className="material-symbols-outlined text-base text-text-secondary">integration_instructions</span>
+        {ob.scrapeConfig || 'Prometheus Scrape Config'}
+      </button>
+      {open && (
+        <div className="mt-3 space-y-3">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-            <div>
-              <p className="text-text-muted mb-1">{ob.scrapeUrl || 'Scrape URL'}</p>
-              <code className="block bg-surface-sunken rounded-lg p-2 font-mono text-text break-all">{scrapeConfig.scrapeUrl}</code>
-            </div>
-            <div>
-              <p className="text-text-muted mb-1">{ob.metricsPath || 'Metrics Path'}</p>
-              <code className="block bg-surface-sunken rounded-lg p-2 font-mono text-text">{scrapeConfig.metricsPath}</code>
-            </div>
+            <CopyableField label={ob.scrapeUrl || 'Scrape URL'} value={config.scrapeUrl} toast={toast} copiedLabel={copiedLabel} />
+            <CopyableField label={ob.metricsPath || 'Metrics Path'} value={config.metricsPath} toast={toast} copiedLabel={copiedLabel} />
           </div>
           <div>
             <div className="flex items-center justify-between mb-1">
@@ -616,16 +663,13 @@ const Observability: React.FC<ObservabilityProps> = ({ language }) => {
                 {copied ? (ob.copied || 'Copied') : (ob.copy || 'Copy')}
               </button>
             </div>
-            <pre className="bg-surface-sunken rounded-lg p-3 font-mono text-xs text-text overflow-x-auto neon-scrollbar whitespace-pre">{scrapeConfig.yamlSnippet}</pre>
+            <pre className="bg-surface-sunken rounded-lg p-3 font-mono text-xs text-text overflow-x-auto neon-scrollbar whitespace-pre select-all">{config.yamlSnippet}</pre>
           </div>
         </div>
       )}
-
-      {/* Raw metrics toggle */}
-      <RawMetricsSection raw={data?.raw || ''} label={ob.rawMetrics || 'Raw Prometheus Metrics'} />
     </div>
   );
-};
+}
 
 function RawMetricsSection({ raw, label }: { raw: string; label: string }) {
   const [open, setOpen] = useState(false);
