@@ -542,7 +542,10 @@ func (c *GWClient) healthCheckLoop() {
 		c.healthLastProbe = probe
 		c.healthMu.Unlock()
 
-		healthy := probe.TCPReachable && probe.Live.OK && probe.Ready.OK
+		// For watchdog purposes the gateway is healthy when WS ping succeeds
+		// or /health returns 200.  /ready may lag after a restart (plugins
+		// loading, channels reconnecting) and must not block recovery.
+		healthy := wsPingOK || probe.Live.OK
 		if healthy {
 			logger.Gateway.Debug().
 				Str("stage", probe.Stage).
