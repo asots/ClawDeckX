@@ -139,7 +139,7 @@
   "serviceCopied": "命令已复制",
   "serviceWatchdog": "看门狗",
   "serviceWatchdogActive": "已激活 — 正在监控网关健康",
-  "serviceWatchdogInactive": "未激活 — 请启用健康检查以激活",
+  "serviceWatchdogInactive": "未激活 — 请启用看门狗以激活监测",
   "daemonInstall": "安装服务",
   "daemonUninstall": "卸载服务",
   "daemonStatusFailed": "无法查询服务状态",
