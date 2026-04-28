@@ -355,6 +355,9 @@ func ForceRemoveOpenClaw(pkg string) error {
 	return nil
 }
 
+// ResolveNpmGlobalDir returns the npm global prefix directory (exported wrapper).
+func ResolveNpmGlobalDir() string { return resolveNpmGlobalDir() }
+
 // resolveNpmGlobalDir returns the npm global prefix directory.
 func resolveNpmGlobalDir() string {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

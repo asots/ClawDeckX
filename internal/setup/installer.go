@@ -362,6 +362,131 @@ func (i *Installer) installViaNpm(ctx context.Context) error {
 	return i.installViaNpmWithOptions(ctx, "openclaw", "")
 }
 
+// isWindowsLockError detects npm/Windows transient file-lock errors that show up
+// during the "retire" rename step (npm renames node_modules/<pkg> to .<pkg>-XXXX
+// before extracting the new version). When another process still holds a file
+// handle, or AV/Defender momentarily scans a freshly-written file, npm returns
+// EBUSY / EPERM / UNKNOWN errno -4094 / "operation not permitted" / "rename".
+func isWindowsLockError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	for _, marker := range []string{
+		"ebusy",
+		"eperm",
+		"errno -4094",
+		"unknown error, rename",
+		"operation not permitted, rename",
+		"resource busy or locked",
+		"the process cannot access the file",
+		"used by another process",
+	} {
+		if strings.Contains(msg, marker) {
+			return true
+		}
+	}
+	return false
+}
+
+// WaitForOpenClawUnlocked polls until the npm-global node_modules/openclaw
+// directory can be probed (renamed to itself) without error, indicating that no
+// process holds an open handle to its files. Returns nil immediately on
+// non-Windows, on missing npm prefix, or once the probe succeeds. On timeout it
+// returns an error so the caller can decide to force-kill again or surface a
+// diagnostic to the user.
+func WaitForOpenClawUnlocked(timeout time.Duration) error {
+	if runtime.GOOS != "windows" {
+		return nil
+	}
+	prefix := openclaw.ResolveNpmGlobalDir()
+	if prefix == "" {
+		return nil
+	}
+	pkgDir := filepath.Join(prefix, "node_modules", "openclaw")
+	if _, err := os.Stat(pkgDir); err != nil {
+		// Not installed via npm global (or not yet) — nothing to wait for.
+		return nil
+	}
+	probe := pkgDir + ".clawdeckx-probe"
+	deadline := time.Now().Add(timeout)
+	var lastErr error
+	for time.Now().Before(deadline) {
+		// Try rename to a sibling probe path. If npm "retire" rename would
+		// succeed, this rename will too.
+		if err := os.Rename(pkgDir, probe); err == nil {
+			// Restore immediately; failure to restore is fatal because we'd
+			// leave the install in a broken state.
+			if rerr := os.Rename(probe, pkgDir); rerr != nil {
+				return fmt.Errorf("probe rename succeeded but restore failed: %w", rerr)
+			}
+			return nil
+		} else {
+			lastErr = err
+		}
+		time.Sleep(300 * time.Millisecond)
+	}
+	if lastErr == nil {
+		lastErr = fmt.Errorf("timeout waiting for OpenClaw files to unlock")
+	}
+	return lastErr
+}
+
+// runNpmInstallWithLockRetry runs `npm install -g <spec>` and, on Windows
+// transient file-lock errors (EBUSY / EPERM / UNKNOWN errno -4094), retries up
+// to 3 times. Between retries it force-kills any leftover OpenClaw process tree
+// and waits for the package directory to unlock. As a final fallback it cleans
+// leftover .openclaw-XXXX retire directories via openclaw.ForceRemoveOpenClaw
+// and retries one last time.
+func (i *Installer) runNpmInstallWithLockRetry(ctx context.Context, sc *StreamCommand, cmd, pkg string) error {
+	maxAttempts := 1
+	if runtime.GOOS == "windows" {
+		maxAttempts = 3
+	}
+
+	var err error
+	for attempt := 1; attempt <= maxAttempts; attempt++ {
+		err = sc.RunShell(ctx, cmd)
+		if err == nil {
+			return nil
+		}
+		if !isWindowsLockError(err) {
+			return err
+		}
+		if attempt < maxAttempts {
+			i.emitter.EmitLog(fmt.Sprintf("⟳ npm reported a Windows file-lock error (attempt %d/%d). Killing leftover processes and retrying...", attempt, maxAttempts))
+			openclaw.ForceKillTree()
+			if waitErr := WaitForOpenClawUnlocked(15 * time.Second); waitErr != nil {
+				i.emitter.EmitLog("⚠ Files still locked after kill: " + waitErr.Error())
+			}
+			time.Sleep(time.Duration(attempt) * 2 * time.Second)
+		}
+	}
+
+	// Final fallback: force-remove leftover npm package + .pkg-XXXX retire dirs,
+	// then retry npm install once. This handles the case where a previous npm
+	// run left a half-renamed tree that subsequent installs cannot recover from.
+	if isWindowsLockError(err) {
+		i.emitter.EmitLog("⟳ Cleaning leftover npm files (ForceRemoveOpenClaw) and retrying once...")
+		openclaw.ForceKillTree()
+		_ = WaitForOpenClawUnlocked(5 * time.Second)
+		if rerr := openclaw.ForceRemoveOpenClaw(pkg); rerr != nil {
+			i.emitter.EmitLog("⚠ ForceRemoveOpenClaw failed: " + rerr.Error())
+		}
+		if err = sc.RunShell(ctx, cmd); err == nil {
+			return nil
+		}
+		if isWindowsLockError(err) {
+			i.emitter.EmitLog("✗ npm install still failing with file-lock errors. " +
+				"Common causes: Windows Defender real-time scan, antivirus, OneDrive sync, or VS Code/File Explorer holding files in the npm global folder. " +
+				"Try: 1) close VS Code & File Explorer windows showing %APPDATA%\\npm; " +
+				"2) add %APPDATA%\\npm to Windows Defender exclusions; " +
+				"3) reboot and retry.")
+		}
+	}
+	return err
+}
+
 // installViaNpmWithOptions 等价于 installViaNpmWithTag(..., "")，即始终安装 @latest。
 func (i *Installer) installViaNpmWithOptions(ctx context.Context, version string, registry string) error {
 	return i.installViaNpmWithTag(ctx, version, registry, "")
@@ -399,7 +524,7 @@ func (i *Installer) installViaNpmWithTag(ctx context.Context, version string, re
 			cmd = "sudo " + cmd
 		}
 
-		lastErr = sc.RunShell(ctx, cmd)
+		lastErr = i.runNpmInstallWithLockRetry(ctx, sc, cmd, version)
 		if lastErr == nil {
 			return nil
 		}

@@ -311,7 +311,8 @@ func (s *Service) Stop() error {
 		}
 		// Step 2: graceful signal — SIGTERM (Unix) / taskkill without /F (Windows)
 		if runtime.GOOS == "windows" {
-			_ = runCommand("taskkill", "/IM", "openclaw.exe")
+			// /T also terminates child processes (plugin workers, MCP stdio, browser-use chrome)
+			_ = runCommand("taskkill", "/T", "/IM", "openclaw.exe")
 		} else {
 			_ = runCommand("pkill", "-SIGTERM", "-f", "openclaw-gateway")
 			_ = runCommand("pkill", "-SIGTERM", "-f", "openclaw gateway")
@@ -320,11 +321,9 @@ func (s *Service) Stop() error {
 		if waitGatewayDown(6, 500*time.Millisecond) {
 			return nil
 		}
-		// Step 3: force kill as last resort
+		// Step 3: force kill as last resort, including the entire OpenClaw process tree
 		if runtime.GOOS == "windows" {
-			_ = runCommand("taskkill", "/F", "/IM", "openclaw.exe")
-			_ = runCommand("powershell", "-NoProfile", "-Command",
-				"Get-CimInstance Win32_Process -Filter \"Name='node.exe'\" | Where-Object { $_.CommandLine -match 'openclaw' -and $_.CommandLine -match 'gateway' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }")
+			ForceKillTree()
 		} else {
 			_ = runCommand("pkill", "-SIGKILL", "-f", "openclaw-gateway")
 			_ = runCommand("pkill", "-SIGKILL", "-f", "openclaw gateway")
@@ -497,12 +496,31 @@ func processExists() bool {
 }
 
 func processExistsWindows() bool {
+	// Match any node.exe whose CommandLine references the OpenClaw package directory
+	// (gateway, MCP plugin workers, channel adapters, baileys/discord workers, ...).
+	// Older logic required both "openclaw" AND "gateway" in the command line, which
+	// missed plugin/MCP child processes that hold file handles in node_modules\openclaw\.
+	isOpenClawProc := func(line string) bool {
+		lower := strings.ToLower(strings.TrimSpace(line))
+		if lower == "" || lower == "commandline" {
+			return false
+		}
+		if strings.Contains(lower, `\node_modules\openclaw\`) ||
+			strings.Contains(lower, `/node_modules/openclaw/`) {
+			return true
+		}
+		// Fallback: also match the legacy "openclaw + gateway" pattern
+		if strings.Contains(lower, "openclaw") && strings.Contains(lower, "gateway") {
+			return true
+		}
+		return false
+	}
+
 	out, err := runOutput("powershell", "-NoProfile", "-Command",
 		"Get-CimInstance Win32_Process -Filter \"Name='node.exe'\" | Select-Object -ExpandProperty CommandLine")
 	if err == nil {
 		for _, line := range strings.Split(out, "\n") {
-			lower := strings.ToLower(strings.TrimSpace(line))
-			if strings.Contains(lower, "openclaw") && strings.Contains(lower, "gateway") {
+			if isOpenClawProc(line) {
 				return true
 			}
 		}
@@ -511,17 +529,46 @@ func processExistsWindows() bool {
 	out, err = runOutput("wmic", "process", "where", "name='node.exe'", "get", "commandline")
 	if err == nil {
 		for _, line := range strings.Split(out, "\n") {
-			lower := strings.ToLower(strings.TrimSpace(line))
-			if lower == "" || lower == "commandline" {
-				continue
-			}
-			if strings.Contains(lower, "openclaw") && strings.Contains(lower, "gateway") {
+			if isOpenClawProc(line) {
 				return true
 			}
 		}
 	}
 
 	return false
+}
+
+// ForceKillTree aggressively terminates every OpenClaw-related process on the
+// host, including child processes (plugin workers, MCP stdio servers,
+// browser-use Chrome, ...). Used before npm install -g openclaw on Windows to
+// release file handles that block the npm "retire" rename step (errno -4094 /
+// EBUSY / UNKNOWN). Safe to call on any OS — it's a no-op outside Windows
+// because Stop()'s pkill paths already cover those cases.
+func ForceKillTree() {
+	if runtime.GOOS != "windows" {
+		// Unix: pkill the family with SIGKILL (caller usually already did SIGTERM)
+		_ = runCommand("pkill", "-SIGKILL", "-f", "openclaw-gateway")
+		_ = runCommand("pkill", "-SIGKILL", "-f", "openclaw gateway")
+		_ = runCommand("pkill", "-SIGKILL", "-f", "node_modules/openclaw/")
+		return
+	}
+	// Windows: kill openclaw.exe + entire process tree.
+	_ = runCommand("taskkill", "/F", "/T", "/IM", "openclaw.exe")
+	// Kill every node.exe whose CommandLine references node_modules\openclaw\.
+	// This covers plugin workers / MCP stdio servers / channel adapters whose
+	// command line does NOT contain the word "gateway".
+	_ = runCommand("powershell", "-NoProfile", "-Command",
+		"Get-CimInstance Win32_Process -Filter \"Name='node.exe'\" | "+
+			"Where-Object { $_.CommandLine -match '\\\\node_modules\\\\openclaw\\\\' -or "+
+			"($_.CommandLine -match 'openclaw' -and $_.CommandLine -match 'gateway') } | "+
+			"ForEach-Object { try { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue } catch {} }")
+	// Kill known child processes spawned by OpenClaw plugins that often hold
+	// handles to the package tree (browser-use chrome, python skill workers).
+	// Use a conservative CommandLine match so we don't kill unrelated chromes.
+	_ = runCommand("powershell", "-NoProfile", "-Command",
+		"Get-CimInstance Win32_Process | "+
+			"Where-Object { $_.CommandLine -match '\\\\node_modules\\\\openclaw\\\\' } | "+
+			"ForEach-Object { try { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue } catch {} }")
 }
 
 func processExistsUnix() bool {

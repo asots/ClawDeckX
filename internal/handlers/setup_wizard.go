@@ -395,8 +395,18 @@ func (h *SetupWizardHandler) UpdateOpenClaw(w http.ResponseWriter, r *http.Reque
 		emitter.EmitPhase("stop-gateway", "Stopping gateway...", 10)
 		if err := h.svc.Stop(); err == nil {
 			gwWasRunning = true
-			time.Sleep(2 * time.Second)
 		}
+	}
+
+	// Actively wait for the OpenClaw npm directory to be unlocked instead of a
+	// hardcoded sleep. On Windows, plugin worker / MCP / browser-use child
+	// processes often outlive the parent gateway and keep file handles open,
+	// which causes npm "retire" rename to fail with errno -4094. If still
+	// locked after 15s, force-kill the entire process tree once more.
+	if err := setup.WaitForOpenClawUnlocked(15 * time.Second); err != nil {
+		emitter.EmitLog("⚠ Files still locked after gateway stop, force-killing process tree...")
+		openclaw.ForceKillTree()
+		_ = setup.WaitForOpenClawUnlocked(5 * time.Second)
 	}
 
 	emitter.EmitPhase("update", "Updating OpenClaw...", 20)
