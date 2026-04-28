@@ -2,6 +2,8 @@ package openclaw
 
 import (
 	"encoding/json"
+	"net"
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -78,6 +80,40 @@ func TestGWClient_HealthStatus(t *testing.T) {
 	assert.Equal(t, 0, status["fail_count"].(int))
 	assert.Equal(t, 3, status["max_fails"].(int))
 	assert.Equal(t, "", status["last_ok"].(string))
+}
+
+func TestProbeGatewayChecksReadyWhenHealthFails(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusServiceUnavailable)
+	})
+	mux.HandleFunc("/ready", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	assert.NoError(t, err)
+	defer listener.Close()
+
+	server := &http.Server{Handler: mux}
+	defer server.Close()
+	go func() {
+		_ = server.Serve(listener)
+	}()
+
+	host, portText, err := net.SplitHostPort(listener.Addr().String())
+	assert.NoError(t, err)
+	port, err := net.LookupPort("tcp", portText)
+	assert.NoError(t, err)
+
+	probe := ProbeGateway(host, port)
+
+	assert.True(t, probe.TCPReachable)
+	assert.False(t, probe.Live.OK)
+	assert.Equal(t, http.StatusServiceUnavailable, probe.Live.StatusCode)
+	assert.True(t, probe.Ready.OK)
+	assert.Equal(t, http.StatusOK, probe.Ready.StatusCode)
+	assert.Equal(t, "http_live", probe.Stage)
 }
 
 func TestGWClient_IsConnected_NotConnected(t *testing.T) {

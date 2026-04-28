@@ -771,6 +771,17 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
   const isLocal = (host: string) => ['127.0.0.1', 'localhost', '::1'].includes(host.trim());
   const localGatewayHost = '127.0.0.1';
   const localGatewayPort = gwWsDetail?.port || status?.port || activeProfile?.port || 18789;
+  const gatewayProbeState = useMemo(() => {
+    const phase = healthStatus?.phase || 'probing';
+    const probe = healthStatus?.probe;
+    const tcpOk = probe?.tcp_reachable === true;
+    const liveOk = probe?.live?.ok === true;
+    const readyOk = probe?.ready?.ok === true;
+    const hasProbe = !!probe;
+    const fullyHealthy = phase === 'healthy' && tcpOk && liveOk && readyOk;
+    const hasFailedProbe = hasProbe && (!tcpOk || !liveOk || !readyOk);
+    return { phase, hasProbe, tcpOk, liveOk, readyOk, fullyHealthy, hasFailedProbe };
+  }, [healthStatus]);
 
   const fmtUptime = (ms: number): string => {
     const s = Math.floor(ms / 1000);
@@ -1353,11 +1364,12 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
               <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full border border-slate-200/60 dark:border-white/[0.06] theme-panel">
                 {(() => {
                   if (!healthCheckEnabled) return <><span className="material-symbols-outlined text-[12px] theme-text-muted">shield_question</span><span className="text-[11px] theme-text-muted">{gw.serviceWatchdogInactive || 'Watchdog inactive'}</span></>;
-                  const phase = healthStatus?.phase || 'probing';
+                  const phase = gatewayProbeState.phase;
                   if (phase === 'restarting') return <><span className="material-symbols-outlined text-[12px] text-mac-red animate-spin">progress_activity</span><span className="text-[11px] font-bold text-mac-red">{gw.wdRestarting || 'Restarting...'}</span></>;
                   if (phase === 'grace') return <><span className="material-symbols-outlined text-[12px] text-amber-500">hourglass_top</span><span className="text-[11px] font-bold text-amber-500">{gw.wdGraceShort || 'Grace'} {(healthStatus?.grace_remaining_sec ?? 0) > 0 ? `${healthStatus!.grace_remaining_sec}s` : ''}</span></>;
                   if (phase === 'degraded') return <><span className="material-symbols-outlined text-[12px] text-mac-red">heart_broken</span><span className="text-[11px] font-bold text-mac-red">{gw.hbUnhealthy} ({healthStatus!.fail_count}/{healthStatus!.max_fails})</span></>;
                   if (phase === 'probing') return <><span className="material-symbols-outlined text-[12px] text-mac-yellow animate-spin">progress_activity</span><span className="text-[11px] theme-text-muted">{gw.hbProbing}</span></>;
+                  if (!gatewayProbeState.fullyHealthy) return <><span className="material-symbols-outlined text-[12px] text-amber-500">warning</span><span className="text-[11px] font-bold text-amber-500">{gatewayProbeState.hasFailedProbe ? (gw.hbUnhealthy || 'Unhealthy') : (gw.hbProbing || 'Probing')}</span></>;
                   return <><span className="material-symbols-outlined text-[12px] text-mac-green animate-pulse">favorite</span><span className="text-[11px] font-bold text-mac-green">{gw.hbHealthy}{(healthStatus?.next_check_in_sec ?? 0) > 0 ? <span className="font-normal theme-text-muted ms-1 text-[9px] font-mono">{healthStatus!.next_check_in_sec}s</span> : ''}</span></>;
                 })()}
               </div>

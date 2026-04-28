@@ -473,6 +473,9 @@ func (c *GWClient) scheduleRestartSuccessNotify(msg string) {
 func (c *GWClient) healthCheckLoop() {
 	ticker := time.NewTicker(c.healthInterval)
 	defer ticker.Stop()
+	first := time.NewTimer(0)
+	defer first.Stop()
+	firstC := first.C
 
 	for {
 		select {
@@ -480,153 +483,167 @@ func (c *GWClient) healthCheckLoop() {
 			return
 		case <-c.stopCh:
 			return
+		case <-firstC:
+			firstC = nil
 		case <-ticker.C:
-			c.healthMu.Lock()
-			enabled := c.healthEnabled
-			graceUntil := c.healthGraceUntil
-			c.healthMu.Unlock()
-			if !enabled {
-				continue
-			}
-			// Skip health checks during post-restart grace period to allow gateway startup
-			if !graceUntil.IsZero() && time.Now().Before(graceUntil) {
-				logger.Gateway.Debug().Time("grace_until", graceUntil).Msg("skipping health check during post-restart grace period")
-				continue
-			}
-
-			healthy := false
-			allowTCPFallback := false
-			c.mu.Lock()
-			wsConnected := c.connected && c.conn != nil
-			// Tick stall detection: if connected but no tick received for 3× tick interval,
-			// the connection is likely silently dead (NAT timeout, proxy drop, etc.)
-			if wsConnected && !c.lastTick.IsZero() {
-				tickStallThreshold := c.tickInterval * 3
-				if tickStallThreshold < 60*time.Second {
-					tickStallThreshold = 60 * time.Second
-				}
-				if time.Since(c.lastTick) > tickStallThreshold {
-					logger.Gateway.Warn().
-						Dur("since_last_tick", time.Since(c.lastTick)).
-						Dur("threshold", tickStallThreshold).
-						Msg("tick stall detected, forcing reconnect")
-					staleConn := c.conn
-					c.mu.Unlock()
-					staleConn.Close()
-					continue
-				}
-			}
-			if wsConnected {
-				allowTCPFallback = true
-				err := c.conn.WriteControl(
-					websocket.PingMessage,
-					[]byte{},
-					time.Now().Add(3*time.Second),
-				)
-				if err == nil {
-					healthy = true
-					logger.Gateway.Debug().Msg(i18n.T(i18n.MsgLogHeartbeatWsPingOk))
-				} else {
-					logger.Gateway.Debug().Err(err).Msg(i18n.T(i18n.MsgLogHeartbeatWsPingFail))
-				}
-			}
-			c.mu.Unlock()
-
-			probe := ProbeGateway(c.cfg.Host, c.cfg.Port)
-			c.healthMu.Lock()
-			c.healthLastProbe = probe
-			c.healthMu.Unlock()
-
-			if !healthy && probe.Live.OK {
-				healthy = true
-				logger.Gateway.Debug().
-					Str("stage", probe.Stage).
-					Int("ready_status", probe.Ready.StatusCode).
-					Msg("watchdog HTTP health probe passed")
-			} else if !healthy && allowTCPFallback && probe.TCPReachable {
-				logger.Gateway.Debug().
-					Str("stage", probe.Stage).
-					Msg("watchdog TCP reachable but HTTP health is not ready")
-			} else if !healthy && !wsConnected {
-				logger.Gateway.Debug().
-					Str("stage", probe.Stage).
-					Str("tcp_error", probe.TCPError).
-					Msg("watchdog detected websocket disconnected and gateway HTTP health unavailable")
-			}
-
-			c.healthMu.Lock()
-			c.healthLastCheck = time.Now()
-			if healthy {
-				if c.healthFailCount > 0 {
-					logger.Gateway.Info().
-						Int("prev_fails", c.healthFailCount).
-						Msg(i18n.T(i18n.MsgLogHeartbeatRecovered))
-				}
-				c.healthFailCount = 0
-				c.healthLastOK = time.Now()
-				// Gateway is healthy — clear post-restart pending state so future
-				// failures count normally toward the restart threshold.
-				c.healthPostRestartPending = false
-			} else {
-				c.healthFailCount++
-				logger.Gateway.Warn().
-					Int("fail_count", c.healthFailCount).
-					Int("max_fails", c.healthMaxFails).
-					Msg(i18n.T(i18n.MsgLogHeartbeatFailed))
-
-				// After a restart, don't trigger another restart until the gateway
-				// has been healthy at least once — unless the hard deadline passes.
-				if c.healthPostRestartPending && time.Now().Before(c.healthPostRestartDeadline) {
-					logger.Gateway.Debug().
-						Time("deadline", c.healthPostRestartDeadline).
-						Msg("post-restart pending: suppressing restart threshold")
-					c.healthMu.Unlock()
-					continue
-				}
-
-				if c.healthFailCount >= c.healthMaxFails && c.onRestart != nil {
-					logger.Gateway.Warn().
-						Int("consecutive_fails", c.healthFailCount).
-						Msg(i18n.T(i18n.MsgLogHeartbeatThresholdRestart))
-					c.healthFailCount = 0
-					c.healthGraceUntil = time.Now().Add(restartGracePeriod)
-					c.healthPostRestartPending = true
-					c.healthPostRestartDeadline = time.Now().Add(restartHardDeadline)
-					c.healthRestarting = true
-					restartFn := c.onRestart
-					notifyFn := c.onNotify
-					c.healthMu.Unlock()
-
-					// Write restart sentinel for heartbeat-triggered restart
-					_ = sentinel.Write(webconfig.DataDir(), "heartbeat_restart", "watchdog", map[string]interface{}{
-						"consecutive_fails": c.healthMaxFails,
-					})
-
-					if restartErr := restartFn(); restartErr != nil {
-						logger.Gateway.Error().Err(restartErr).Msg(i18n.T(i18n.MsgLogHeartbeatRestartFailed))
-						if notifyFn != nil {
-							go notifyFn("heartbeat_restart", i18n.T(i18n.MsgNotifyHeartbeatRestartFailed)+restartErr.Error())
-						}
-					} else {
-						logger.Gateway.Info().Msg(i18n.T(i18n.MsgLogHeartbeatRestartSuccess))
-						if notifyFn != nil {
-							c.scheduleRestartSuccessNotify(i18n.T(i18n.MsgNotifyHeartbeatRestartSuccess))
-						}
-					}
-					c.healthMu.Lock()
-					c.healthRestarting = false
-					// Reset grace period AFTER restart completes so the full
-					// duration starts from now, not from before the (blocking)
-					// restart call which may have consumed most of the window.
-					c.healthGraceUntil = time.Now().Add(restartGracePeriod)
-					c.healthPostRestartPending = true
-					c.healthPostRestartDeadline = time.Now().Add(restartHardDeadline)
-					c.healthMu.Unlock()
-					continue
-				}
-			}
-			c.healthMu.Unlock()
 		}
+
+		c.healthMu.Lock()
+		enabled := c.healthEnabled
+		graceUntil := c.healthGraceUntil
+		c.healthMu.Unlock()
+		if !enabled {
+			continue
+		}
+		// Skip health checks during post-restart grace period to allow gateway startup
+		if !graceUntil.IsZero() && time.Now().Before(graceUntil) {
+			logger.Gateway.Debug().Time("grace_until", graceUntil).Msg("skipping health check during post-restart grace period")
+			continue
+		}
+
+		wsPingOK := false
+		c.mu.Lock()
+		wsConnected := c.connected && c.conn != nil
+		// Tick stall detection: if connected but no tick received for 3× tick interval,
+		// the connection is likely silently dead (NAT timeout, proxy drop, etc.)
+		if wsConnected && !c.lastTick.IsZero() {
+			tickStallThreshold := c.tickInterval * 3
+			if tickStallThreshold < 60*time.Second {
+				tickStallThreshold = 60 * time.Second
+			}
+			if time.Since(c.lastTick) > tickStallThreshold {
+				logger.Gateway.Warn().
+					Dur("since_last_tick", time.Since(c.lastTick)).
+					Dur("threshold", tickStallThreshold).
+					Msg("tick stall detected, forcing reconnect")
+				staleConn := c.conn
+				c.mu.Unlock()
+				staleConn.Close()
+				continue
+			}
+		}
+		if wsConnected {
+			err := c.conn.WriteControl(
+				websocket.PingMessage,
+				[]byte{},
+				time.Now().Add(3*time.Second),
+			)
+			if err == nil {
+				wsPingOK = true
+				logger.Gateway.Debug().Msg(i18n.T(i18n.MsgLogHeartbeatWsPingOk))
+			} else {
+				logger.Gateway.Debug().Err(err).Msg(i18n.T(i18n.MsgLogHeartbeatWsPingFail))
+			}
+		}
+		c.mu.Unlock()
+
+		probe := ProbeGateway(c.cfg.Host, c.cfg.Port)
+		c.healthMu.Lock()
+		c.healthLastProbe = probe
+		c.healthMu.Unlock()
+
+		healthy := probe.TCPReachable && probe.Live.OK && probe.Ready.OK
+		if healthy {
+			logger.Gateway.Debug().
+				Str("stage", probe.Stage).
+				Bool("ws_ping_ok", wsPingOK).
+				Int("health_status", probe.Live.StatusCode).
+				Int("ready_status", probe.Ready.StatusCode).
+				Msg("watchdog gateway probe passed")
+		} else {
+			logEvt := logger.Gateway.Debug().
+				Str("stage", probe.Stage).
+				Bool("tcp_reachable", probe.TCPReachable).
+				Bool("ws_connected", wsConnected).
+				Bool("ws_ping_ok", wsPingOK).
+				Bool("health_ok", probe.Live.OK).
+				Int("health_status", probe.Live.StatusCode).
+				Bool("ready_ok", probe.Ready.OK).
+				Int("ready_status", probe.Ready.StatusCode)
+			if probe.TCPError != "" {
+				logEvt = logEvt.Str("tcp_error", probe.TCPError)
+			}
+			if probe.Live.Error != "" {
+				logEvt = logEvt.Str("health_error", probe.Live.Error)
+			}
+			if probe.Ready.Error != "" {
+				logEvt = logEvt.Str("ready_error", probe.Ready.Error)
+			}
+			logEvt.Msg("watchdog gateway probe failed")
+		}
+
+		c.healthMu.Lock()
+		c.healthLastCheck = time.Now()
+		if healthy {
+			if c.healthFailCount > 0 {
+				logger.Gateway.Info().
+					Int("prev_fails", c.healthFailCount).
+					Msg(i18n.T(i18n.MsgLogHeartbeatRecovered))
+			}
+			c.healthFailCount = 0
+			c.healthLastOK = time.Now()
+			// Gateway is healthy — clear post-restart pending state so future
+			// failures count normally toward the restart threshold.
+			c.healthPostRestartPending = false
+		} else {
+			c.healthFailCount++
+			logger.Gateway.Warn().
+				Int("fail_count", c.healthFailCount).
+				Int("max_fails", c.healthMaxFails).
+				Msg(i18n.T(i18n.MsgLogHeartbeatFailed))
+
+			// After a restart, don't trigger another restart until the gateway
+			// has been healthy at least once — unless the hard deadline passes.
+			if c.healthPostRestartPending && time.Now().Before(c.healthPostRestartDeadline) {
+				logger.Gateway.Debug().
+					Time("deadline", c.healthPostRestartDeadline).
+					Msg("post-restart pending: suppressing restart threshold")
+				c.healthMu.Unlock()
+				continue
+			}
+
+			if c.healthFailCount >= c.healthMaxFails && c.onRestart != nil {
+				logger.Gateway.Warn().
+					Int("consecutive_fails", c.healthFailCount).
+					Msg(i18n.T(i18n.MsgLogHeartbeatThresholdRestart))
+				c.healthFailCount = 0
+				c.healthGraceUntil = time.Now().Add(restartGracePeriod)
+				c.healthPostRestartPending = true
+				c.healthPostRestartDeadline = time.Now().Add(restartHardDeadline)
+				c.healthRestarting = true
+				restartFn := c.onRestart
+				notifyFn := c.onNotify
+				c.healthMu.Unlock()
+
+				// Write restart sentinel for heartbeat-triggered restart
+				_ = sentinel.Write(webconfig.DataDir(), "heartbeat_restart", "watchdog", map[string]interface{}{
+					"consecutive_fails": c.healthMaxFails,
+				})
+
+				if restartErr := restartFn(); restartErr != nil {
+					logger.Gateway.Error().Err(restartErr).Msg(i18n.T(i18n.MsgLogHeartbeatRestartFailed))
+					if notifyFn != nil {
+						go notifyFn("heartbeat_restart", i18n.T(i18n.MsgNotifyHeartbeatRestartFailed)+restartErr.Error())
+					}
+				} else {
+					logger.Gateway.Info().Msg(i18n.T(i18n.MsgLogHeartbeatRestartSuccess))
+					if notifyFn != nil {
+						c.scheduleRestartSuccessNotify(i18n.T(i18n.MsgNotifyHeartbeatRestartSuccess))
+					}
+				}
+				c.healthMu.Lock()
+				c.healthRestarting = false
+				// Reset grace period AFTER restart completes so the full
+				// duration starts from now, not from before the (blocking)
+				// restart call which may have consumed most of the window.
+				c.healthGraceUntil = time.Now().Add(restartGracePeriod)
+				c.healthPostRestartPending = true
+				c.healthPostRestartDeadline = time.Now().Add(restartHardDeadline)
+				c.healthMu.Unlock()
+				continue
+			}
+		}
+		c.healthMu.Unlock()
 	}
 }
 

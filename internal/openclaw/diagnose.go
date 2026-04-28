@@ -173,14 +173,13 @@ func ProbeGateway(host string, port int) GatewayProbeSnapshot {
 	_ = conn.Close()
 
 	snap.Live = probeGatewayHTTP(addr, "/health")
+	snap.Ready = probeGatewayHTTP(addr, "/ready")
 	if !snap.Live.OK {
 		snap.Stage = "http_live"
 		snap.Summary = i18n.T(i18n.MsgDiagnoseGatewayHealthSuggestion)
 		snap.RestartSafe = false
 		return snap
 	}
-
-	snap.Ready = probeGatewayHTTP(addr, "/ready")
 	if !snap.Ready.OK {
 		snap.Stage = "http_ready"
 		snap.Summary = i18n.T(i18n.MsgDiagnoseGatewayStartingSuggestion)
