@@ -265,10 +265,21 @@ const Observability: React.FC<ObservabilityProps> = ({ language }) => {
   }
 
   if (error && !data) {
+    const is404 = error.includes('404');
     return (
-      <div className="flex flex-col items-center justify-center h-full gap-3 text-text-secondary">
-        <span className="material-symbols-outlined text-4xl text-danger">error</span>
-        <p className="text-sm">{error}</p>
+      <div className="flex flex-col items-center justify-center h-full gap-4 text-text-secondary max-w-md mx-auto text-center">
+        <span className="material-symbols-outlined text-4xl" style={{ color: is404 ? 'var(--color-warning)' : 'var(--color-danger)' }}>
+          {is404 ? 'extension_off' : 'error'}
+        </span>
+        {is404 ? (
+          <>
+            <p className="text-sm font-medium text-text">{ob.pluginNotEnabled || 'Prometheus plugin not enabled'}</p>
+            <p className="text-xs text-text-muted">{ob.pluginNotEnabledHint || 'Enable the diagnostics-prometheus plugin in OpenClaw to activate live metrics.'}</p>
+            <code className="text-xs bg-surface-sunken px-3 py-1.5 rounded-lg font-mono select-all">openclaw plugins enable diagnostics-prometheus</code>
+          </>
+        ) : (
+          <p className="text-sm">{error}</p>
+        )}
         <button
           className="px-4 py-1.5 rounded-lg bg-surface-raised hover:bg-surface-overlay text-text text-sm font-medium transition-colors"
           onClick={() => { setLoading(true); fetchMetrics(true); }}

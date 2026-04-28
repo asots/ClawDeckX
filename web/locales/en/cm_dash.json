@@ -211,7 +211,9 @@
     "copied": "Copied",
     "rawMetrics": "Raw Prometheus Metrics",
     "queueDepth": "Queue Depth",
-    "errRate": "Error rate"
+    "errRate": "Error rate",
+    "pluginNotEnabled": "Prometheus plugin not enabled",
+    "pluginNotEnabledHint": "Enable the diagnostics-prometheus plugin in OpenClaw to activate live metrics."
   },
   "d": {
     "mas": {

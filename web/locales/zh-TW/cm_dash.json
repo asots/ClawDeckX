@@ -211,7 +211,9 @@
     "copied": "已複製",
     "rawMetrics": "原始 Prometheus 指標",
     "queueDepth": "佇列深度",
-    "errRate": "錯誤率"
+    "errRate": "錯誤率",
+    "pluginNotEnabled": "Prometheus 外掛未啟用",
+    "pluginNotEnabledHint": "請在 OpenClaw 中啟用 diagnostics-prometheus 外掛以啟動即時觀測。"
   },
   "d": {
     "mas": {

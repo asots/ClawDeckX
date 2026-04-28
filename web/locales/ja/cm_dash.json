@@ -211,7 +211,9 @@
     "copied": "コピー済",
     "rawMetrics": "生の Prometheus メトリクス",
     "queueDepth": "キュー深度",
-    "errRate": "エラー率"
+    "errRate": "エラー率",
+    "pluginNotEnabled": "Prometheus プラグインが未有効",
+    "pluginNotEnabledHint": "OpenClaw で diagnostics-prometheus プラグインを有効にしてライブメトリクスを開始してください。"
   },
   "d": {
     "mas": {

@@ -211,7 +211,9 @@
     "copied": "已复制",
     "rawMetrics": "原始 Prometheus 指标",
     "queueDepth": "队列深度",
-    "errRate": "错误率"
+    "errRate": "错误率",
+    "pluginNotEnabled": "Prometheus 插件未启用",
+    "pluginNotEnabledHint": "请在 OpenClaw 中启用 diagnostics-prometheus 插件以激活实时观测。"
   },
   "d": {
     "mas": {
