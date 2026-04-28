@@ -153,28 +153,33 @@ _2026-04-20_
 
 # v0.2.5
 
-_2026-04-20_
+_2026-04-28_
 
 ## What's Changed
 
-### 🔒 Security / 安全
-
-- agentroom: whisper 消息走 user-scoped WS 投递 (BroadcastToUsers)，不再向同房间其它订阅者泄漏
-- agentroom: ListMessages 对非房主的 whisper 内容 defense-in-depth 遥蔽
-
 ### ✨ New Features / 新功能
 
-- agentroom: FTS5 全文检索 (`Cmd+F`)，支持关键词/短语/AND/OR/NEAR
-- agentroom: `GET /rooms/{id}/search?q=` 端点 + 前端 SearchPanel 带高亮
-- agentroom: WSHub.BroadcastToUsers 用户定向广播 + Broker.EmitToUsers
-- agentroom: Playwright 冒烟套件 (web/e2e/agentroom.spec.ts)
+- sync OpenClaw 2026.4.27 + per-agent TTS + node pair remove
+- scheduler blueprint, UI unification, cross-room bus
+- add defaults-map and ModelField for schema-driven config defaults
+- openclaw 2026.4.22 compat - slash commands, gpt5 personality toggle, sessions runner field, i18n keys
 
-### 🧪 Tests / 测试
+### 🐛 Bug Fixes / 修复
 
-- 新增 9 个 Go 单测 (breaker/fts/broker)，全量 37 用例通过
+- kill openclaw process tree to unblock npm upgrade on Windows
+
+### 🌐 Internationalization / 国际化
+
+- trim locales from 13 to 5 (en/zh/zh-TW/ja/ko)
+
+### ♻️ Refactoring / 重构
+
+- local-only UI, merge probe badges, runtime i18n
 
 ---
 **Full Changelog**: [v0.2.4...v0.2.5](https://github.com/ClawDeckX/ClawDeckX/compare/v0.2.4...v0.2.5)
+
+
 
 ---
 
@@ -1622,6 +1627,7 @@ _2026-03-15_
 
 
 ---
+
 
 
 
