@@ -1134,7 +1134,8 @@ func (c *GWClient) readLoop(conn *websocket.Conn) error {
 	}()
 
 	connectNonce := ""
-	connectSent := false
+	connectSent := true
+	go c.sendConnect(conn, connectNonce)
 
 	for {
 		_, message, err := conn.ReadMessage()
@@ -1254,7 +1255,7 @@ func (c *GWClient) sendConnect(conn *websocket.Conn, nonce string) {
 	identity, err := LoadOrCreateDeviceIdentity("")
 	if err != nil {
 		logger.Log.Error().Err(err).Msg(i18n.T(i18n.MsgLogDeviceIdentityLoadFail))
-	} else {
+	} else if nonce != "" {
 		signedAt := time.Now().UnixMilli()
 		scopesStr := ""
 		if len(params.Scopes) > 0 {

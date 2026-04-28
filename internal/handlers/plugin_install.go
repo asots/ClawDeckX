@@ -1067,6 +1067,8 @@ func (h *PluginInstallHandler) ensurePluginAllowed(pluginId string) error {
 		return err
 	}
 
+	baseHash, _ := respMap["hash"].(string)
+
 	configObj := respMap
 	if cfg, ok := respMap["config"].(map[string]interface{}); ok {
 		configObj = cfg
@@ -1104,9 +1106,13 @@ func (h *PluginInstallHandler) ensurePluginAllowed(pluginId string) error {
 	if err != nil {
 		return err
 	}
-	_, err = h.gwClient.RequestWithTimeout("config.set", map[string]interface{}{
+	setParams := map[string]interface{}{
 		"raw": string(cfgJSON),
-	}, 10*time.Second)
+	}
+	if baseHash != "" {
+		setParams["baseHash"] = baseHash
+	}
+	_, err = h.gwClient.RequestWithTimeout("config.set", setParams, 10*time.Second)
 	if err != nil {
 		return err
 	}
@@ -1202,6 +1208,8 @@ func (h *PluginInstallHandler) removePluginAllowed(pluginId string) error {
 		return err
 	}
 
+	baseHash, _ := respMap["hash"].(string)
+
 	configObj := respMap
 	if cfg, ok := respMap["config"].(map[string]interface{}); ok {
 		configObj = cfg
@@ -1240,9 +1248,13 @@ func (h *PluginInstallHandler) removePluginAllowed(pluginId string) error {
 	if err != nil {
 		return err
 	}
-	_, err = h.gwClient.RequestWithTimeout("config.set", map[string]interface{}{
+	setParams := map[string]interface{}{
 		"raw": string(cfgJSON),
-	}, 10*time.Second)
+	}
+	if baseHash != "" {
+		setParams["baseHash"] = baseHash
+	}
+	_, err = h.gwClient.RequestWithTimeout("config.set", setParams, 10*time.Second)
 	if err != nil {
 		return err
 	}

@@ -517,9 +517,19 @@ func (s *Service) writeResourceViaGateway(logicalPath string, data []byte) (bool
 		if jsonErr != nil {
 			return true, jsonErr
 		}
-		_, err := s.gwClient.RequestWithTimeout("config.set", map[string]interface{}{
+		// Fetch baseHash for optimistic concurrency
+		setParams := map[string]interface{}{
 			"raw": string(raw),
-		}, 15*time.Second)
+		}
+		if getResp, getErr := s.gwClient.RequestWithTimeout("config.get", map[string]interface{}{}, 5*time.Second); getErr == nil {
+			var wrapper map[string]interface{}
+			if json.Unmarshal(getResp, &wrapper) == nil {
+				if h, ok := wrapper["hash"].(string); ok && h != "" {
+					setParams["baseHash"] = h
+				}
+			}
+		}
+		_, err := s.gwClient.RequestWithTimeout("config.set", setParams, 15*time.Second)
 		return true, err
 	}
 	agentID, fileName, ok := parseAgentLogicalPath(logicalPath)

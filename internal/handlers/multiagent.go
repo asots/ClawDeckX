@@ -1334,6 +1334,8 @@ func (h *MultiAgentHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	baseHash, _ := wrapper["hash"].(string)
+
 	var currentCfg map[string]interface{}
 	if parsed, ok := wrapper["parsed"]; ok {
 		if m, ok := parsed.(map[string]interface{}); ok {
@@ -1397,9 +1399,13 @@ func (h *MultiAgentHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		web.Fail(w, r, "CONFIG_SERIALIZE_FAILED", jsonErr.Error(), http.StatusInternalServerError)
 		return
 	}
-	_, err = h.client.Request("config.set", map[string]interface{}{
+	setParams := map[string]interface{}{
 		"raw": string(cfgJSON),
-	})
+	}
+	if baseHash != "" {
+		setParams["baseHash"] = baseHash
+	}
+	_, err = h.client.Request("config.set", setParams)
 	if err != nil {
 		web.Fail(w, r, "UPDATE_CONFIG_FAILED", err.Error(), http.StatusBadGateway)
 		return
@@ -1551,6 +1557,8 @@ func (h *MultiAgentHandler) updateOpenClawConfig(template MultiAgentTemplate, pr
 		return err
 	}
 
+	baseHash, _ := wrapper["hash"].(string)
+
 	var currentCfg map[string]interface{}
 	if parsed, ok := wrapper["parsed"]; ok {
 		if m, ok := parsed.(map[string]interface{}); ok {
@@ -1634,9 +1642,13 @@ func (h *MultiAgentHandler) updateOpenClawConfig(template MultiAgentTemplate, pr
 	if jsonErr != nil {
 		return fmt.Errorf("config serialize: %w", jsonErr)
 	}
-	_, err = h.client.RequestWithTimeout("config.set", map[string]interface{}{
+	setParams := map[string]interface{}{
 		"raw": string(cfgJSONBytes),
-	}, 15*time.Second)
+	}
+	if baseHash != "" {
+		setParams["baseHash"] = baseHash
+	}
+	_, err = h.client.RequestWithTimeout("config.set", setParams, 15*time.Second)
 
 	if err != nil {
 		return err
