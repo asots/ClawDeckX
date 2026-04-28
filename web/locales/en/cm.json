@@ -39,6 +39,7 @@
   "maintenance": "Health Center",
   "knowledge": "Knowledge Center",
   "agentroom": "AgentRoom",
+  "observability": "Live Metrics",
   "settings": "Settings",
   "setup_wizard": "Setup Wizard",
   "usage_wizard": "Usage Wizard",

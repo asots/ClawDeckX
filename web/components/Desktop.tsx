@@ -68,6 +68,7 @@ const ALL_DESKTOP_APPS: AppInfo[] = [
   { id: 'skills', titleKey: 'skills', icon: 'extension', gradient: 'from-[#FF9500] to-[#E67E00]' },
   // — Medium frequency —
   { id: 'knowledge', titleKey: 'knowledge', icon: 'auto_awesome', gradient: 'from-[#8B5CF6] to-[#6D28D9]' },
+  { id: 'observability', titleKey: 'observability', icon: 'monitoring', gradient: 'from-[#06B6D4] to-[#0891B2]' },
   { id: 'usage', titleKey: 'usage', icon: 'analytics', gradient: 'from-[#F472B6] to-[#DB2777]' },
   { id: 'alerts', titleKey: 'alerts', icon: 'approval', gradient: 'from-[#FF453A] to-[#C33B32]' },
   { id: 'agents', titleKey: 'agents', icon: 'robot_2', gradient: 'from-[#5856D6] to-[#3634A3]' },
@@ -115,6 +116,7 @@ const DOCK_GROUPS: AppGroup[] = [
       { id: 'editor', icon: 'code_blocks', color: 'bg-slate-700' },
       { id: 'skills', icon: 'extension', color: 'bg-amber-600' },
       { id: 'knowledge', icon: 'auto_awesome', color: 'bg-violet-500' },
+      { id: 'observability', icon: 'monitoring', color: 'bg-cyan-600' },
       { id: 'usage', icon: 'analytics', color: 'bg-cyan-500' },
       { id: 'usage_wizard', icon: 'auto_fix_high', color: 'bg-violet-600' },
     ]

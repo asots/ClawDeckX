@@ -2,7 +2,7 @@
 export type WindowID =
   | 'dashboard' | 'gateway' | 'sessions' | 'activity' | 'alerts'
   | 'usage' | 'editor' | 'skills' | 'agents' | 'maintenance'
-  | 'scheduler' | 'settings' | 'nodes' | 'setup_wizard' | 'usage_wizard'
+  | 'scheduler' | 'settings' | 'nodes' | 'setup_wizard' | 'usage_wizard' | 'observability'
   | 'knowledge' | 'terminal' | 'agentroom';
 
 export type Language = 'en' | 'zh' | 'zh-TW' | 'ja' | 'ko';

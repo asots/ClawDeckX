@@ -605,6 +605,10 @@ func RunServe(args []string) int {
 	router.POST("/api/v1/migrate/plan", migrateHandler.Plan)
 	router.POST("/api/v1/migrate/apply", web.RequireAdmin(migrateHandler.Apply))
 
+	observabilityHandler := handlers.NewObservabilityHandler(gwClient)
+	router.GET("/api/v1/observability/metrics", observabilityHandler.Metrics)
+	router.GET("/api/v1/observability/scrape-config", observabilityHandler.ScrapeConfig)
+
 	router.GET("/api/v1/maintenance/context/analyze", maintenanceHandler.ContextAnalyze)
 	router.POST("/api/v1/maintenance/context/optimize", web.RequireAdmin(maintenanceHandler.ContextOptimize))
 	router.POST("/api/v1/maintenance/context/optimize-all", web.RequireAdmin(maintenanceHandler.ContextOptimizeAll))

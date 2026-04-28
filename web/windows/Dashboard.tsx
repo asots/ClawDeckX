@@ -2,7 +2,7 @@
 import React, { useMemo, useState, useEffect, useCallback, useRef, useId } from 'react';
 import { Language, WindowID, OpenWindowDetail, dispatchOpenWindow } from '../types';
 import { getTranslation } from '../locales';
-import { dashboardApi, gwApi, gatewayApi, hostInfoApi, configApi, doctorApi, gatewayProfileApi, selfUpdateApi } from '../services/api';
+import { dashboardApi, gwApi, gatewayApi, hostInfoApi, configApi, doctorApi, gatewayProfileApi, selfUpdateApi, observabilityApi, PromParseResult, PromMetric } from '../services/api';
 import { settleTyped } from '../utils/settle';
 import { useGatewayEvents } from '../hooks/useGatewayEvents';
 import { subscribeManagerWS } from '../services/manager-ws';
@@ -132,6 +132,75 @@ function isLocal(host: string): boolean {
   return host === '127.0.0.1' || host === 'localhost' || host === '::1';
 }
 
+// ── Observability Summary for Dashboard ────────────────────────────
+function ObservabilitySummaryCards({ ob }: { ob: any }) {
+  const [data, setData] = useState<PromParseResult | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    const fetch = () => observabilityApi.metricsJsonCached(15000).then(r => { if (!cancelled && r) setData(r); }).catch(() => {});
+    fetch();
+    const t = setInterval(fetch, 30_000);
+    return () => { cancelled = true; clearInterval(t); };
+  }, []);
+
+  if (!data) return null;
+  const find = (n: string) => data.metrics.find(m => m.name === n);
+  const sum = (m: PromMetric | undefined, f?: (l: Record<string, string>) => boolean) =>
+    m ? m.values.filter(v => !v.suffix && (!f || f(v.labels))).reduce((s, v) => s + v.value, 0) : 0;
+  const hp95 = (m: PromMetric | undefined) => {
+    if (!m) return 0;
+    const cnt = m.values.find(v => v.suffix === 'count');
+    if (!cnt || cnt.value === 0) return 0;
+    const target = cnt.value * 0.95;
+    for (const b of m.values.filter(v => v.suffix === 'bucket')) {
+      const le = b.labels['le'];
+      if (le && b.value >= target) return parseFloat(le);
+    }
+    return 0;
+  };
+
+  const modelCall = find('openclaw_model_call');
+  const modelDur = find('openclaw_model_call_duration_seconds');
+  const memB = find('openclaw_memory_bytes');
+  const queue = find('openclaw_queue_lane_size');
+
+  const totalCalls = sum(modelCall);
+  const errors = sum(modelCall, l => l.outcome === 'error');
+  const p95 = hp95(modelDur);
+  const rss = memB ? (memB.values.find(v => !v.suffix && v.labels.kind === 'rss')?.value ?? 0) : 0;
+  const qDepth = queue ? queue.values.filter(v => !v.suffix).reduce((s, v) => s + v.value, 0) : 0;
+  const errRate = totalCalls > 0 ? ((errors / totalCalls) * 100).toFixed(1) + '%' : '0%';
+
+  const fmtMs = (sec: number) => { const ms = sec * 1000; return ms < 1 ? '<1ms' : ms < 1000 ? ms.toFixed(0) + 'ms' : (ms / 1000).toFixed(2) + 's'; };
+  const fmtB = (b: number) => b >= 1073741824 ? (b / 1073741824).toFixed(1) + ' GB' : b >= 1048576 ? (b / 1048576).toFixed(1) + ' MB' : b >= 1024 ? (b / 1024).toFixed(1) + ' KB' : b + ' B';
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      {[
+        { icon: 'speed', label: ob.modelP95 || 'Model p95', value: fmtMs(p95), sub: errors > 0 ? `${ob.errRate || 'Error rate'}: ${errRate}` : undefined, color: p95 > 5 ? '#f59e0b' : '#3b82f6', bg: p95 > 5 ? 'bg-amber-500/10' : 'bg-blue-500/10' },
+        { icon: 'queue', label: ob.queueDepth || 'Queue Depth', value: String(qDepth), sub: undefined, color: qDepth > 10 ? '#f59e0b' : '#8b5cf6', bg: qDepth > 10 ? 'bg-amber-500/10' : 'bg-violet-500/10' },
+        { icon: 'memory', label: ob.rssMemory || 'RSS Memory', value: fmtB(rss), sub: undefined, color: rss > 512 * 1048576 ? '#ef4444' : '#10b981', bg: rss > 512 * 1048576 ? 'bg-red-500/10' : 'bg-emerald-500/10' },
+      ].map((c, i) => (
+        <button
+          key={i}
+          onClick={() => dispatchOpenWindow({ id: 'observability' })}
+          className="rounded-xl border border-slate-200/60 dark:border-white/[0.06] bg-white dark:bg-white/[0.02] p-3 flex items-center gap-3 hover:bg-slate-50 dark:hover:bg-white/[0.04] transition-colors text-start"
+        >
+          <div className={`w-8 h-8 rounded-lg ${c.bg} flex items-center justify-center shrink-0`}>
+            <span className="material-symbols-outlined text-[18px]" style={{ color: c.color }}>{c.icon}</span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] text-slate-400 dark:text-white/35 font-medium">{c.label}</p>
+            <p className="text-sm font-bold tabular-nums text-slate-700 dark:text-white/80">{c.value}</p>
+            {c.sub && <p className="text-[10px] text-slate-400 dark:text-white/35">{c.sub}</p>}
+          </div>
+          <span className="material-symbols-outlined text-sm text-slate-300 dark:text-white/15">chevron_right</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
 const FAST_INTERVAL = 25000;
 
 const Dashboard: React.FC<DashboardProps> = ({ language }) => {
@@ -142,6 +211,7 @@ const Dashboard: React.FC<DashboardProps> = ({ language }) => {
   const dr = (t as any).dr as any;
   const hi = (t as any).hi as any;
   const gwL = (t as any).gw as any;
+  const ob = (t as any).obs || {};
   const menuCostLabel = typeof (t as any).menu?.cost === 'string' ? (t as any).menu.cost : 'Cost';
   const locale = String(language || 'en');
   const { toast } = useToast();
@@ -824,6 +894,9 @@ const Dashboard: React.FC<DashboardProps> = ({ language }) => {
             onOpenTarget={() => dispatchOpenWindow({ id: 'editor', section: 'auth' })}
           />
         )}
+
+        {/* Observability Summary (Prometheus metrics) */}
+        {gwRunning && <ObservabilitySummaryCards ob={ob} />}
 
         {/* Background Work — Task Summary Section */}
         {taskSummary && (

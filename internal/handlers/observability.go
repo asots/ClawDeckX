@@ -1,0 +1,301 @@
+package handlers
+
+import (
+	"fmt"
+	"io"
+	"net"
+	"net/http"
+	"strings"
+	"time"
+
+	"ClawDeckX/internal/openclaw"
+	"ClawDeckX/internal/web"
+)
+
+// ObservabilityHandler proxies the OpenClaw gateway diagnostics-prometheus
+// scrape endpoint and provides helper APIs for external Prometheus setups.
+type ObservabilityHandler struct {
+	gwClient *openclaw.GWClient
+}
+
+func NewObservabilityHandler(client *openclaw.GWClient) *ObservabilityHandler {
+	return &ObservabilityHandler{gwClient: client}
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// GET /api/v1/observability/metrics?format=text|json
+//
+// format=text (default): proxies raw Prometheus exposition text.
+// format=json:           parses the text into structured JSON for the UI.
+// ────────────────────────────────────────────────────────────────────────────
+
+func (h *ObservabilityHandler) Metrics(w http.ResponseWriter, r *http.Request) {
+	cfg := h.gwClient.GetConfig()
+	if strings.TrimSpace(cfg.Host) == "" || cfg.Port <= 0 {
+		web.Fail(w, r, "GW_NOT_CONFIGURED", "gateway not configured", http.StatusServiceUnavailable)
+		return
+	}
+
+	url := fmt.Sprintf("http://%s/api/diagnostics/prometheus",
+		net.JoinHostPort(cfg.Host, fmt.Sprintf("%d", cfg.Port)))
+
+	req, err := http.NewRequestWithContext(r.Context(), http.MethodGet, url, nil)
+	if err != nil {
+		web.Fail(w, r, "PROXY_ERR", err.Error(), http.StatusBadGateway)
+		return
+	}
+	if cfg.Token != "" {
+		req.Header.Set("Authorization", "Bearer "+cfg.Token)
+	}
+
+	client := &http.Client{Timeout: 15 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		web.Fail(w, r, "SCRAPE_FAILED", err.Error(), http.StatusBadGateway)
+		return
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 4*1024*1024))
+	if err != nil {
+		web.Fail(w, r, "READ_FAILED", err.Error(), http.StatusBadGateway)
+		return
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		web.Fail(w, r, "SCRAPE_STATUS", fmt.Sprintf("gateway returned %d", resp.StatusCode), resp.StatusCode)
+		return
+	}
+
+	format := r.URL.Query().Get("format")
+	if format == "json" {
+		parsed := parsePrometheusText(string(body))
+		web.OK(w, r, parsed)
+		return
+	}
+
+	// Default: raw text passthrough
+	w.Header().Set("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-store")
+	w.WriteHeader(http.StatusOK)
+	w.Write(body)
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// GET /api/v1/observability/scrape-config
+//
+// Returns a YAML snippet + raw values for Prometheus config.
+// ────────────────────────────────────────────────────────────────────────────
+
+func (h *ObservabilityHandler) ScrapeConfig(w http.ResponseWriter, r *http.Request) {
+	cfg := h.gwClient.GetConfig()
+	host := cfg.Host
+	if host == "" || host == "0.0.0.0" {
+		host = "localhost"
+	}
+	target := net.JoinHostPort(host, fmt.Sprintf("%d", cfg.Port))
+	scrapeURL := fmt.Sprintf("http://%s/api/diagnostics/prometheus", target)
+
+	yaml := fmt.Sprintf(`scrape_configs:
+  - job_name: openclaw
+    scheme: http
+    metrics_path: /api/diagnostics/prometheus
+    static_configs:
+      - targets: ["%s"]
+    authorization:
+      type: Bearer
+      credentials: "%s"
+    scrape_interval: 15s
+`, target, cfg.Token)
+
+	web.OK(w, r, map[string]interface{}{
+		"scrapeUrl":  scrapeURL,
+		"target":     target,
+		"metricsPath": "/api/diagnostics/prometheus",
+		"token":      cfg.Token,
+		"yamlSnippet": yaml,
+	})
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Prometheus text format parser → structured JSON for frontend.
+// ────────────────────────────────────────────────────────────────────────────
+
+type PromMetric struct {
+	Name   string            `json:"name"`
+	Type   string            `json:"type"`
+	Help   string            `json:"help"`
+	Values []PromMetricValue `json:"values"`
+}
+
+type PromMetricValue struct {
+	Labels map[string]string `json:"labels"`
+	Value  float64           `json:"value"`
+	Suffix string            `json:"suffix,omitempty"`
+}
+
+type PromParseResult struct {
+	Metrics []PromMetric `json:"metrics"`
+	Raw     string       `json:"raw"`
+}
+
+func parsePrometheusText(text string) PromParseResult {
+	lines := strings.Split(text, "\n")
+
+	metaType := map[string]string{}
+	metaHelp := map[string]string{}
+	// indexed metric values keyed by metric base name
+	valuesMap := map[string][]PromMetricValue{}
+	orderedNames := []string{}
+	seenName := map[string]bool{}
+
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		if strings.HasPrefix(line, "# TYPE ") {
+			parts := strings.SplitN(line[7:], " ", 2)
+			if len(parts) == 2 {
+				metaType[parts[0]] = parts[1]
+			}
+			continue
+		}
+		if strings.HasPrefix(line, "# HELP ") {
+			parts := strings.SplitN(line[7:], " ", 2)
+			if len(parts) == 2 {
+				metaHelp[parts[0]] = parts[1]
+			}
+			continue
+		}
+		if strings.HasPrefix(line, "#") {
+			continue
+		}
+
+		// Parse sample line: metric_name{label="val",...} value
+		name, labels, val, suffix := parseSampleLine(line)
+		if name == "" {
+			continue
+		}
+
+		// Determine base name (strip _bucket, _sum, _count, _total suffixes for grouping)
+		baseName := metricBaseName(name)
+
+		if !seenName[baseName] {
+			seenName[baseName] = true
+			orderedNames = append(orderedNames, baseName)
+		}
+
+		valuesMap[baseName] = append(valuesMap[baseName], PromMetricValue{
+			Labels: labels,
+			Value:  val,
+			Suffix: suffix,
+		})
+	}
+
+	metrics := make([]PromMetric, 0, len(orderedNames))
+	for _, name := range orderedNames {
+		metrics = append(metrics, PromMetric{
+			Name:   name,
+			Type:   metaType[name],
+			Help:   metaHelp[name],
+			Values: valuesMap[name],
+		})
+	}
+	return PromParseResult{Metrics: metrics, Raw: text}
+}
+
+func metricBaseName(name string) string {
+	for _, suffix := range []string{"_bucket", "_sum", "_count", "_total"} {
+		if strings.HasSuffix(name, suffix) {
+			base := strings.TrimSuffix(name, suffix)
+			if base != "" {
+				return base
+			}
+		}
+	}
+	return name
+}
+
+func parseSampleLine(line string) (name string, labels map[string]string, value float64, suffix string) {
+	labels = map[string]string{}
+
+	// Find the value (last space-separated token)
+	idx := strings.LastIndex(line, " ")
+	if idx < 0 {
+		return
+	}
+	valStr := line[idx+1:]
+	metricPart := line[:idx]
+
+	_, err := fmt.Sscanf(valStr, "%f", &value)
+	if err != nil {
+		return
+	}
+
+	// Parse name{labels}
+	braceOpen := strings.IndexByte(metricPart, '{')
+	if braceOpen < 0 {
+		name = metricPart
+	} else {
+		name = metricPart[:braceOpen]
+		braceClose := strings.LastIndexByte(metricPart, '}')
+		if braceClose > braceOpen {
+			labelsStr := metricPart[braceOpen+1 : braceClose]
+			parseLabels(labelsStr, labels)
+		}
+	}
+
+	// Determine suffix from full metric name
+	for _, s := range []string{"_bucket", "_sum", "_count"} {
+		if strings.HasSuffix(name, s) {
+			suffix = s[1:] // strip leading underscore
+			break
+		}
+	}
+
+	return
+}
+
+func parseLabels(s string, out map[string]string) {
+	// Simple state machine for key="value",key="value"
+	for len(s) > 0 {
+		eq := strings.IndexByte(s, '=')
+		if eq < 0 {
+			break
+		}
+		key := s[:eq]
+		s = s[eq+1:]
+		if len(s) == 0 || s[0] != '"' {
+			break
+		}
+		s = s[1:]
+		var val strings.Builder
+		for len(s) > 0 {
+			if s[0] == '\\' && len(s) > 1 {
+				switch s[1] {
+				case 'n':
+					val.WriteByte('\n')
+				case '"':
+					val.WriteByte('"')
+				case '\\':
+					val.WriteByte('\\')
+				default:
+					val.WriteByte(s[1])
+				}
+				s = s[2:]
+				continue
+			}
+			if s[0] == '"' {
+				s = s[1:]
+				break
+			}
+			val.WriteByte(s[0])
+			s = s[1:]
+		}
+		out[key] = val.String()
+		if len(s) > 0 && s[0] == ',' {
+			s = s[1:]
+		}
+	}
+}

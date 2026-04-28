@@ -40,6 +40,7 @@ const loadUsageWizard = () => import('./windows/UsageWizard');
 const loadKnowledge = () => import('./windows/Knowledge');
 const loadTerminal = () => import('./windows/Terminal');
 const loadAgentRoom = () => import('./windows/AgentRoom');
+const loadObservability = () => import('./windows/Observability');
 
 const WINDOW_LOADERS: Record<WindowID, () => Promise<unknown>> = {
   dashboard: loadDashboard,
@@ -60,6 +61,7 @@ const WINDOW_LOADERS: Record<WindowID, () => Promise<unknown>> = {
   knowledge: loadKnowledge,
   terminal: loadTerminal,
   agentroom: loadAgentRoom,
+  observability: loadObservability,
 };
 
 const PRIORITY_WARMUP_LOADERS: Array<() => Promise<unknown>> = [
@@ -100,6 +102,7 @@ const UsageWizard = React.lazy(loadUsageWizard);
 const Knowledge = React.lazy(loadKnowledge);
 const TerminalPage = React.lazy(loadTerminal);
 const AgentRoom = React.lazy(loadAgentRoom);
+const Observability = React.lazy(loadObservability);
 
 const WINDOW_IDS: { id: WindowID; openByDefault?: boolean }[] = [
   { id: 'dashboard', openByDefault: true },
@@ -118,6 +121,7 @@ const WINDOW_IDS: { id: WindowID; openByDefault?: boolean }[] = [
   { id: 'knowledge' },
   { id: 'terminal' },
   { id: 'agentroom' },
+  { id: 'observability' },
   { id: 'setup_wizard' },
   { id: 'usage_wizard' },
 ];
@@ -510,6 +514,7 @@ const App: React.FC = () => {
                     {w.id === 'knowledge' && <Knowledge language={language} pendingExpandItem={detailFor('knowledge')?.expandItem ?? null} onExpandItemConsumed={consumeDetail} />}
                     {w.id === 'terminal' && <TerminalPage language={language} />}
                     {w.id === 'agentroom' && <AgentRoom language={language} />}
+                    {w.id === 'observability' && <Observability language={language} />}
                     {w.id === 'setup_wizard' && (
                       <SetupWizard
                         language={language}

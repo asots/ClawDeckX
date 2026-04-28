@@ -34,6 +34,7 @@ const WINDOW_META: Record<WindowID, { icon: string; gradient: string }> = {
   activity:     { icon: 'query_stats',       gradient: 'from-[#AF52DE] to-[#8944AB]' },
   skills:       { icon: 'extension',         gradient: 'from-[#FF9500] to-[#E67E00]' },
   knowledge:    { icon: 'auto_awesome',      gradient: 'from-[#8B5CF6] to-[#6D28D9]' },
+  observability: { icon: 'monitoring',        gradient: 'from-[#06B6D4] to-[#0891B2]' },
   usage:        { icon: 'analytics',         gradient: 'from-[#F472B6] to-[#DB2777]' },
   alerts:       { icon: 'approval',          gradient: 'from-[#FF453A] to-[#C33B32]' },
   agents:       { icon: 'robot_2',           gradient: 'from-[#5856D6] to-[#3634A3]' },
@@ -48,7 +49,7 @@ const WINDOW_META: Record<WindowID, { icon: string; gradient: string }> = {
 
 const ALL_WINDOW_IDS: WindowID[] = [
   'dashboard', 'agentroom', 'editor', 'gateway', 'sessions', 'activity', 'skills',
-  'knowledge', 'usage', 'alerts', 'agents', 'scheduler',
+  'knowledge', 'observability', 'usage', 'alerts', 'agents', 'scheduler',
   'maintenance', 'terminal', 'setup_wizard', 'usage_wizard', 'settings', 'nodes',
 ];
 

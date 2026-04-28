@@ -824,6 +824,36 @@ export const migrateApi = {
     post<{ ok: boolean; error?: string; result: MigrateApplyResult }>('/api/v1/migrate/apply', data),
 };
 
+// ==================== Prometheus 可观测 ====================
+export interface PromMetricValue {
+  labels: Record<string, string>;
+  value: number;
+  suffix?: string;
+}
+export interface PromMetric {
+  name: string;
+  type: string;
+  help: string;
+  values: PromMetricValue[];
+}
+export interface PromParseResult {
+  metrics: PromMetric[];
+  raw: string;
+}
+export interface PromScrapeConfig {
+  scrapeUrl: string;
+  target: string;
+  metricsPath: string;
+  token: string;
+  yamlSnippet: string;
+}
+export const observabilityApi = {
+  metricsJson: () => get<PromParseResult>('/api/v1/observability/metrics?format=json'),
+  metricsJsonCached: (ttlMs = 5000, force = false) =>
+    getCached<PromParseResult>('/api/v1/observability/metrics?format=json', ttlMs, force),
+  scrapeConfig: () => get<PromScrapeConfig>('/api/v1/observability/scrape-config'),
+};
+
 // ==================== LLM 供应商健康 ====================
 export interface LlmProviderStatus {
   provider: string;
