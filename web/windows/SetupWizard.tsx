@@ -324,7 +324,7 @@ const SetupWizard: React.FC<SetupWizardProps> = ({ language, onClose, onOpenEdit
       elapsed += 2;
       setGwStartElapsed(elapsed);
 
-      if (elapsed > 60) {
+      if (elapsed > 180) {
         clearInterval(interval);
         setGwStartFailed(true);
         setGwStartError(sw.gwStartTimeout);
@@ -979,13 +979,18 @@ const SetupWizard: React.FC<SetupWizardProps> = ({ language, onClose, onOpenEdit
                     <div className="h-2 theme-field rounded-full overflow-hidden">
                       <div
                         className="h-full bg-yellow-500 transition-all duration-1000"
-                        style={{ width: `${Math.min((gwStartElapsed / 60) * 100, 100)}%` }}
+                        style={{ width: `${Math.min((gwStartElapsed / 180) * 100, 100)}%` }}
                       />
                     </div>
                   </div>
                   <p className="text-xs theme-text-muted">
-                    {gwStartElapsed}s / 60s
+                    {gwStartElapsed}s / 180s
                   </p>
+                  {gwStartElapsed > 10 && (
+                    <p className="text-xs theme-text-muted mt-1">
+                      {sw.gwFirstRunHint || 'First-time startup may take 1–3 minutes while OpenClaw initializes.'}
+                    </p>
+                  )}
                 </>
               ) : (
                 <>

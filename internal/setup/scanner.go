@@ -17,6 +17,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -120,15 +121,33 @@ func Scan() (*EnvironmentReport, error) {
 	report.PackageManager = detectPackageManager()
 	report.HasSudo = detectSudo()
 
-	report.Tools = detectTools()
+	// ── Phase 1: run heavy probes in parallel ──────────────────────
+	var (
+		tools          map[string]ToolInfo
+		internetAccess bool
+		homeDirW       bool
+		diskFree       float64
+		gwRunning      bool
+		gwPort         int
+	)
 
-	report.InternetAccess = runBoolWithTimeout(4*time.Second, checkInternetAccess, false)
-	if report.Tools["npm"].Installed {
-		report.NpmRegistry, report.RegistryLatency = runRegistryWithTimeout(4*time.Second, detectNpmRegistry, "https://registry.npmjs.org/", 0)
-	}
+	var wg1 sync.WaitGroup
+	wg1.Add(4)
+	go func() { defer wg1.Done(); tools = detectToolsParallel() }()
+	go func() {
+		defer wg1.Done()
+		internetAccess = runBoolWithTimeout(4*time.Second, checkInternetAccess, false)
+	}()
+	go func() { defer wg1.Done(); homeDirW = checkHomeDirWritable(); diskFree = getDiskFreeGB() }()
+	go func() { defer wg1.Done(); gwRunning, gwPort = checkGatewayRunning() }()
+	wg1.Wait()
 
-	report.HomeDirWritable = checkHomeDirWritable()
-	report.DiskFreeGB = getDiskFreeGB()
+	report.Tools = tools
+	report.InternetAccess = internetAccess
+	report.HomeDirWritable = homeDirW
+	report.DiskFreeGB = diskFree
+	report.GatewayRunning = gwRunning
+	report.GatewayPort = gwPort
 
 	report.OpenClawInstalled = report.Tools["openclaw"].Installed
 	report.OpenClawVersion = report.Tools["openclaw"].Version
@@ -138,17 +157,30 @@ func Scan() (*EnvironmentReport, error) {
 	report.OpenClawInstallLog = GetInstallLogPath()
 	report.OpenClawDoctorLog = GetDoctorLogPath()
 	report.OpenClawConfigured = checkOpenClawConfigured(report.OpenClawConfigPath)
-	report.GatewayRunning, report.GatewayPort = checkGatewayRunning()
 
-	if report.OpenClawInstalled {
-		latest := runStringWithTimeout(4*time.Second, fetchLatestVersion, "")
-		if latest != "" {
-			report.LatestOpenClawVersion = latest
-			if report.OpenClawVersion != "" && report.OpenClawVersion != latest {
-				report.UpdateAvailable = true
-			}
-		}
+	// ── Phase 2: network-dependent checks (parallel) ───────────────
+	var wg2 sync.WaitGroup
+	if report.Tools["npm"].Installed {
+		wg2.Add(1)
+		go func() {
+			defer wg2.Done()
+			report.NpmRegistry, report.RegistryLatency = runRegistryWithTimeout(4*time.Second, detectNpmRegistry, "https://registry.npmjs.org/", 0)
+		}()
 	}
+	if report.OpenClawInstalled {
+		wg2.Add(1)
+		go func() {
+			defer wg2.Done()
+			latest := runStringWithTimeout(4*time.Second, fetchLatestVersion, "")
+			if latest != "" {
+				report.LatestOpenClawVersion = latest
+				if report.OpenClawVersion != "" && report.OpenClawVersion != latest {
+					report.UpdateAvailable = true
+				}
+			}
+		}()
+	}
+	wg2.Wait()
 
 	if report.IsDocker {
 		report.DockerMounts = detectDockerMounts()
@@ -368,54 +400,57 @@ func detectSudo() bool {
 	return cmd.Run() == nil
 }
 
-func detectTools() map[string]ToolInfo {
-	tools := make(map[string]ToolInfo)
+func detectToolsParallel() map[string]ToolInfo {
+	type entry struct {
+		name string
+		info ToolInfo
+	}
+	ch := make(chan entry, 20)
+	var wg sync.WaitGroup
 
-	tools["node"] = detectNodeWithFallback()
+	detect := func(name string, fn func() ToolInfo) {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			ch <- entry{name, fn()}
+		}()
+	}
 
-	tools["npm"] = detectNpmWithFallback()
-
-	// Git
-	tools["git"] = detectTool("git", "--version")
-
-	// curl
-	tools["curl"] = detectTool("curl", "--version")
-
-	// wget
-	tools["wget"] = detectTool("wget", "--version")
-
-	// PowerShell
+	detect("node", detectNodeWithFallback)
+	detect("npm", detectNpmWithFallback)
+	detect("git", func() ToolInfo { return detectTool("git", "--version") })
+	detect("curl", func() ToolInfo { return detectTool("curl", "--version") })
+	detect("wget", func() ToolInfo { return detectTool("wget", "--version") })
 	if runtime.GOOS == "windows" {
-		// powershell -Version starts interactive shell, use -Command instead
-		tools["powershell"] = detectTool("powershell", "-Command \"$PSVersionTable.PSVersion.ToString()\"")
+		detect("powershell", func() ToolInfo {
+			return detectTool("powershell", "-Command \"$PSVersionTable.PSVersion.ToString()\"")
+		})
 	}
-
-	// OpenClaw — use comprehensive discovery (handles nvm, fnm, volta, custom npm prefix, etc.)
-	tools["openclaw"] = detectOpenClawWithFallback()
-
-	// ClawHub CLI
-	tools["clawhub"] = detectTool("clawhub", "--version")
-
-	// Docker
-	tools["docker"] = detectTool("docker", "--version")
-
-	// Python
-	tools["python"] = detectPython()
-
-	// Homebrew (macOS only — not recommended on Linux)
+	detect("openclaw", detectOpenClawWithFallback)
+	detect("clawhub", func() ToolInfo { return detectTool("clawhub", "--version") })
+	detect("docker", func() ToolInfo { return detectTool("docker", "--version") })
+	detect("python", detectPython)
 	if runtime.GOOS == "darwin" {
-		tools["brew"] = detectTool("brew", "--version")
-		tools["xcode-cli"] = detectXcodeCLI()
+		detect("brew", func() ToolInfo { return detectTool("brew", "--version") })
+		detect("xcode-cli", detectXcodeCLI)
 	}
+	detect("go", func() ToolInfo { return detectTool("go", "version") })
+	detect("uv", func() ToolInfo { return detectTool("uv", "--version") })
+	detect("ffmpeg", func() ToolInfo { return detectTool("ffmpeg", "-version") })
+	detect("jq", func() ToolInfo { return detectTool("jq", "--version") })
+	detect("rg", func() ToolInfo { return detectTool("rg", "--version") })
 
-	// Skill runtime dependencies
-	tools["go"] = detectTool("go", "version")
-	tools["uv"] = detectTool("uv", "--version")
-	tools["ffmpeg"] = detectTool("ffmpeg", "-version")
-	tools["jq"] = detectTool("jq", "--version")
-	tools["rg"] = detectTool("rg", "--version")
+	go func() { wg.Wait(); close(ch) }()
 
+	tools := make(map[string]ToolInfo)
+	for e := range ch {
+		tools[e.name] = e.info
+	}
 	return tools
+}
+
+func detectTools() map[string]ToolInfo {
+	return detectToolsParallel()
 }
 
 func detectTool(name string, versionArg string) ToolInfo {
