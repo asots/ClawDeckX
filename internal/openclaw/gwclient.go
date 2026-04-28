@@ -122,7 +122,8 @@ type GWEventHandler func(event string, payload json.RawMessage)
 
 // restartGracePeriod is the cooldown after a watchdog-triggered restart
 // during which health checks are skipped, giving the gateway time to start.
-const restartGracePeriod = 30 * time.Second
+// Gateway startup with plugins can take 20-30s; 60s provides ample margin.
+const restartGracePeriod = 60 * time.Second
 
 type GWClient struct {
 	cfg           GWClientConfig
@@ -1340,10 +1341,14 @@ func (c *GWClient) sendConnect(conn *websocket.Conn, nonce string) {
 			logEvt.Msg(i18n.T(i18n.MsgLogGatewayWsConnected))
 			// Fetch gateway version after connect
 			go c.fetchGatewayVersion()
-			// Brief grace period after reconnect to avoid false health-check failures
+			// Brief grace period after reconnect to avoid false health-check failures.
+			// Never shorten an existing restart grace window (restartGracePeriod is longer).
 			c.healthMu.Lock()
 			if reconnects > 0 {
-				c.healthGraceUntil = time.Now().Add(10 * time.Second)
+				reconnectGrace := time.Now().Add(10 * time.Second)
+				if reconnectGrace.After(c.healthGraceUntil) {
+					c.healthGraceUntil = reconnectGrace
+				}
 			}
 			c.healthFailCount = 0
 			c.clearPendingRestartSuccessNotifyLocked()
