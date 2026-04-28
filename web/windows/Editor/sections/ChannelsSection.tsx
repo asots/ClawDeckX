@@ -1688,7 +1688,15 @@ export const ChannelsSection: React.FC<SectionProps> = ({ config, schema, setFie
             <TextField label={es.qqClientSecretFile || 'Client Secret File'} value={g(['clientSecretFile']) || ''} onChange={v => s(['clientSecretFile'], v)} tooltip={es.tipQQClientSecretFile} />
             <TextField label={es.qqName || 'Display Name'} value={g(['name']) || ''} onChange={v => s(['name'], v)} tooltip={es.tipQQName} />
             <SwitchField label={es.chMarkdownSupport} value={g(['markdownSupport']) === true} onChange={v => s(['markdownSupport'], v)} tooltip={es.tipQQMarkdown} />
+            {/* DM + Group policy (OpenClaw 2026.4.27 — full group chat support) */}
+            <SelectField label={es.dmPolicy} value={g(['dmPolicy']) || 'allowlist'} onChange={v => s(['dmPolicy'], v)} options={[
+              { value: 'open', label: es.optOpen },
+              { value: 'allowlist', label: es.optAllowlist },
+              { value: 'disabled', label: es.optDisabled },
+            ]} tooltip={es.tipQQDmPolicy || tip('dmPolicy')} />
             <ArrayField label={es.allowFrom} value={g(['allowFrom']) || []} onChange={v => s(['allowFrom'], v)} placeholder={es.phQQAllowFrom || 'qqbot:user-xxx'} tooltip={es.tipQQAllowFrom} />
+            <SelectField label={es.qqGroupPolicy || es.groupPolicy} value={g(['groupPolicy']) || 'allowlist'} onChange={v => s(['groupPolicy'], v)} options={groupPolicy(es)} tooltip={es.tipQQGroupPolicy || tip('groupPolicy')} />
+            <ArrayField label={es.qqGroupAllowFrom || 'Group Allowlist'} value={g(['groupAllowFrom']) || []} onChange={v => s(['groupAllowFrom'], v)} placeholder={es.phQQGroupAllowFrom || 'qqbot:group-xxx'} tooltip={es.tipQQGroupAllowFrom} />
             <TextField label={es.systemPrompt || 'System Prompt'} value={g(['systemPrompt']) || ''} onChange={v => s(['systemPrompt'], v)} tooltip={es.tipQQSystemPrompt} />
             <SwitchField label={es.qqUrlDirectUpload || 'URL Direct Upload'} value={g(['urlDirectUpload']) === true} onChange={v => s(['urlDirectUpload'], v)} tooltip={es.tipQQUrlDirectUpload} />
             <TextField label={es.qqUpgradeUrl || 'Upgrade URL'} value={g(['upgradeUrl']) || ''} onChange={v => s(['upgradeUrl'], v)} tooltip={es.tipQQUpgradeUrl} />
@@ -1738,18 +1746,56 @@ export const ChannelsSection: React.FC<SectionProps> = ({ config, schema, setFie
               </>
             )}
             {/* Streaming */}
-            <SelectField label={es.qqStreaming || 'Streaming'} value={(() => { const v = g(['streaming']); if (v === true || (v && typeof v === 'object' && v.mode === 'partial')) return 'partial'; if (v === false || (v && typeof v === 'object' && v.mode === 'off')) return 'off'; return 'partial'; })()} onChange={v => s(['streaming'], v === 'partial' ? { mode: 'partial' } : { mode: 'off' })} options={[
+            <SelectField label={es.qqStreaming || 'Streaming'} value={(() => { const v = g(['streaming']); if (v === true || (v && typeof v === 'object' && v.mode === 'partial')) return 'partial'; if (v === false || (v && typeof v === 'object' && v.mode === 'off')) return 'off'; return 'partial'; })()} onChange={v => { const cur = g(['streaming']); const c2c = (cur && typeof cur === 'object' && cur.c2cStreamApi) ? true : undefined; s(['streaming'], v === 'partial' ? { mode: 'partial', ...(c2c ? { c2cStreamApi: true } : {}) } : { mode: 'off' }); }} options={[
               { value: 'partial', label: es.optPartial || 'Partial' },
               { value: 'off', label: es.optOff || 'Off' },
             ]} tooltip={es.tipQQStreaming} />
+            {(() => { const v = g(['streaming']); const partial = v === true || (v && typeof v === 'object' && v.mode !== 'off'); return partial; })() && (
+              <SwitchField
+                label={es.qqC2cStreamApi || 'C2C stream_messages API'}
+                desc={es.qqC2cStreamApiDesc || 'OpenClaw 2026.4.27+: use the official QQ C2C stream_messages API for true incremental streaming.'}
+                tooltip={es.tipQQC2cStreamApi}
+                value={(() => { const v = g(['streaming']); return !!(v && typeof v === 'object' && v.c2cStreamApi); })()}
+                onChange={v => { const cur = g(['streaming']) || { mode: 'partial' }; const next = (typeof cur === 'object' ? { ...cur } : { mode: 'partial' }) as any; if (v) next.c2cStreamApi = true; else delete next.c2cStreamApi; s(['streaming'], next); }}
+              />
+            )}
           </>
         )}
 
-        {/* 元宝派 */}
+        {/* 元宝派 (Yuanbao) — OpenClaw 2026.4.26+ external channel plugin (openclaw-plugin-yuanbao) */}
         {ch === 'yuanbao' && (
           <>
-            <TextField label={labelAppId} value={g(['appKey']) || ''} onChange={v => s(['appKey'], v)} tooltip={es.tipYuanbaoAppKey} />
+            <TextField label={labelAppKey} value={g(['appKey']) || ''} onChange={v => s(['appKey'], v)} tooltip={es.tipYuanbaoAppKey} />
             <PasswordField label={labelAppSecret} value={g(['appSecret']) || ''} onChange={v => s(['appSecret'], v)} tooltip={es.tipYuanbaoAppSecret} />
+            <TextField label={es.ybName || 'Display Name'} value={g(['name']) || ''} onChange={v => s(['name'], v)} tooltip={es.tipYbName} />
+            {/* DM policy — nested under `dm.*` per upstream docs */}
+            <SelectField label={es.dmPolicy} value={g(['dm', 'policy']) || 'open'} onChange={v => s(['dm', 'policy'], v)} options={dmPolicy(es)} tooltip={es.tipYbDmPolicy || tip('dmPolicy')} />
+            <ArrayField label={es.allowFrom} value={g(['dm', 'allowFrom']) || []} onChange={v => s(['dm', 'allowFrom'], v)} placeholder={es.phYbAllowFrom || 'user_xxx'} tooltip={es.tipYbAllowFrom} />
+            {/* Group chat */}
+            <SwitchField label={es.ybRequireMention || 'Group: require @mention'} desc={es.ybRequireMentionDesc || 'Default true. Set false to respond without @mention. Replying to bot is treated as implicit mention.'} value={g(['requireMention']) !== false} onChange={v => s(['requireMention'], v)} tooltip={es.tipYbRequireMention} />
+            <NumberField label={es.ybHistoryLimit || 'Group history limit'} tooltip={es.tipYbHistoryLimit || 'Group chat history entries included in AI context. 0 disables.'} value={g(['historyLimit'])} onChange={v => s(['historyLimit'], v)} min={0} placeholder="100" />
+            <SelectField label={es.ybReplyToMode || 'Reply-to mode'} value={g(['replyToMode']) || 'first'} onChange={v => s(['replyToMode'], v)} options={replyToMode(es)} tooltip={es.tipYbReplyToMode} />
+            {/* Outbound queue */}
+            <SelectField label={es.ybOutboundQueueStrategy || 'Outbound queue strategy'} value={g(['outboundQueueStrategy']) || 'merge-text'} onChange={v => s(['outboundQueueStrategy'], v)} options={[
+              { value: 'merge-text', label: es.optMergeText || 'Merge Text' },
+              { value: 'immediate', label: es.optImmediate || 'Immediate' },
+            ]} tooltip={es.tipYbOutboundQueueStrategy} />
+            {(g(['outboundQueueStrategy']) || 'merge-text') === 'merge-text' && (
+              <>
+                <NumberField label={es.ybMinChars || 'Merge: min chars'} tooltip={es.tipYbMinChars} value={g(['minChars'])} onChange={v => s(['minChars'], v)} min={0} placeholder="2800" />
+                <NumberField label={es.ybMaxChars || 'Merge: max chars'} tooltip={es.tipYbMaxChars} value={g(['maxChars'])} onChange={v => s(['maxChars'], v)} min={0} placeholder="3000" />
+                <NumberField label={es.ybIdleMs || 'Merge: idle flush (ms)'} tooltip={es.tipYbIdleMs} value={g(['idleMs'])} onChange={v => s(['idleMs'], v)} min={0} placeholder="5000" />
+              </>
+            )}
+            {/* Streaming + media */}
+            <SwitchField label={es.ybDisableBlockStreaming || 'Disable block streaming'} desc={es.ybDisableBlockStreamingDesc || 'When true, sends complete reply in one message instead of block streaming.'} value={g(['disableBlockStreaming']) === true} onChange={v => s(['disableBlockStreaming'], v)} tooltip={es.tipYbDisableBlockStreaming} />
+            <NumberField label={es.ybMediaMaxMb || 'Media max (MB)'} tooltip={es.tipYbMediaMaxMb} value={g(['mediaMaxMb'])} onChange={v => s(['mediaMaxMb'], v)} min={0} placeholder="20" />
+            <SelectField label={es.ybOverflowPolicy || 'Overflow policy'} value={g(['overflowPolicy']) || 'split'} onChange={v => s(['overflowPolicy'], v)} options={[
+              { value: 'split', label: es.optSplit || 'Split' },
+              { value: 'stop', label: es.optStop || 'Stop' },
+            ]} tooltip={es.tipYbOverflowPolicy} />
+            <TextField label={es.ybFallbackReply || 'Fallback reply'} value={g(['fallbackReply']) || ''} onChange={v => s(['fallbackReply'], v)} placeholder="暂时无法解答，你可以换个问题问问我哦" tooltip={es.tipYbFallbackReply} />
+            <SwitchField label={es.ybMarkdownHintEnabled || 'Markdown hint injection'} desc={es.ybMarkdownHintEnabledDesc || 'Inject system prompt instructions to prevent the model from wrapping the entire reply in a code block.'} value={g(['markdownHintEnabled']) !== false} onChange={v => s(['markdownHintEnabled'], v)} tooltip={es.tipYbMarkdownHintEnabled} />
           </>
         )}
 
