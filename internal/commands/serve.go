@@ -134,7 +134,7 @@ func RunServe(args []string) int {
 	wsHub := web.NewWSHub(cfg.Server.CORSOrigins)
 	go wsHub.Run()
 
-	gwHost := cfg.OpenClaw.GatewayHost
+	gwHost := "127.0.0.1"
 	gwPort := cfg.OpenClaw.GatewayPort
 	gwToken := cfg.OpenClaw.GatewayToken
 	profileRepo := database.NewGatewayProfileRepo()
@@ -143,34 +143,15 @@ func RunServe(args []string) int {
 		if lang, err := database.NewSettingRepo().Get("language"); err == nil && lang != "" {
 			i18n.SetLanguage(lang)
 		}
-		// Auto-create default local gateway profile on first launch
-		if profiles, err := profileRepo.List(); err == nil && len(profiles) == 0 {
-			defaultPort := gwPort
-			if defaultPort == 0 {
-				defaultPort = 18789
-			}
-			localProfile := &database.GatewayProfile{
-				Name:     i18n.T(i18n.MsgDefaultLocalGatewayName),
-				Host:     "127.0.0.1",
-				Port:     defaultPort,
-				Token:    gwToken,
-				IsActive: true,
-			}
-			if err := profileRepo.Create(localProfile); err == nil {
-				logger.Log.Info().
-					Str("name", localProfile.Name).
-					Int("port", localProfile.Port).
-					Msg("auto-created default local gateway profile")
-			}
-		}
-		if activeProfile, err := profileRepo.GetActive(); err == nil && activeProfile != nil {
-			gwHost = activeProfile.Host
-			gwPort = activeProfile.Port
-			gwToken = activeProfile.Token
+		ensureLocalGatewayProfile(profileRepo, gwPort, gwToken)
+		if localProfile := selectLocalGatewayProfile(profileRepo); localProfile != nil {
+			gwHost = localProfile.Host
+			gwPort = localProfile.Port
+			gwToken = localProfile.Token
 			logger.Log.Info().
-				Str("name", activeProfile.Name).
-				Str("host", activeProfile.Host).
-				Int("port", activeProfile.Port).
+				Str("name", localProfile.Name).
+				Str("host", localProfile.Host).
+				Int("port", localProfile.Port).
 				Msg(i18n.T(i18n.MsgLogUsingGatewayProfile))
 		}
 	}
@@ -183,13 +164,11 @@ func RunServe(args []string) int {
 		if t := readOpenClawGatewayToken(cfg.OpenClaw.ConfigPath); t != "" {
 			gwToken = t
 			logger.Log.Info().Int("tokenLen", len(t)).Msg(i18n.T(i18n.MsgLogGatewayTokenRead))
-			// Persist the token back to the active DB profile so that subsequent
-			// Reconnect() calls (e.g. on profile switch) carry the correct token
-			// instead of empty string, which causes a cascade of re-reads and
-			// concurrent connectLoop goroutines triggering "1008: first request must be connect".
-			if activeProfile, err := profileRepo.GetActive(); err == nil && activeProfile != nil && activeProfile.Token == "" {
-				activeProfile.Token = t
-				if err := profileRepo.Update(activeProfile); err == nil {
+			// Persist the token back to the local DB profile so reconnects carry
+			// the correct token instead of empty string.
+			if localProfile := selectLocalGatewayProfile(profileRepo); localProfile != nil && localProfile.Token == "" {
+				localProfile.Token = t
+				if err := profileRepo.Update(localProfile); err == nil {
 					logger.Log.Info().Msg("persisted openclaw.json token to active DB gateway profile")
 				}
 			}
@@ -199,12 +178,8 @@ func RunServe(args []string) int {
 				Msg(i18n.T(i18n.MsgLogGwTokenReadFailed))
 		}
 	} else {
-		// Proactive staleness check: if the active profile points at a local
-		// gateway and openclaw.json has a different token (e.g. OpenClaw was
-		// reinstalled and regenerated its auth token), sync to the new value
-		// BEFORE the first WS connect so we avoid a 1008 token_mismatch cycle.
-		// Only trigger for local gateways — remote gateways may legitimately
-		// have a different token than the local openclaw.json.
+		// Proactive staleness check for the local gateway token before the first
+		// WS connect so we avoid a 1008 token_mismatch cycle.
 		if gwHost == "" || gwHost == "127.0.0.1" || gwHost == "localhost" || gwHost == "::1" {
 			if latest := readOpenClawGatewayToken(cfg.OpenClaw.ConfigPath); latest != "" && latest != gwToken {
 				logger.Log.Warn().
@@ -212,9 +187,9 @@ func RunServe(args []string) int {
 					Int("configTokenLen", len(latest)).
 					Msg("active gateway profile token differs from openclaw.json (likely OpenClaw reinstall) — syncing before first connect")
 				gwToken = latest
-				if activeProfile, err := profileRepo.GetActive(); err == nil && activeProfile != nil {
-					activeProfile.Token = latest
-					if err := profileRepo.Update(activeProfile); err == nil {
+				if localProfile := selectLocalGatewayProfile(profileRepo); localProfile != nil {
+					localProfile.Token = latest
+					if err := profileRepo.Update(localProfile); err == nil {
 						logger.Log.Info().Msg("synced openclaw.json token to active DB gateway profile")
 					}
 				}
@@ -283,17 +258,17 @@ func RunServe(args []string) int {
 		}
 	}
 	// When autoRefreshToken() reads a new token from the OpenClaw config file,
-	// persist it back to the DB active profile so restarts use the updated token.
+	// persist it back to the DB local profile so restarts use the updated token.
 	gwClient.SetTokenRefreshedCallback(func(newToken string) {
-		activeProfile, err := profileRepo.GetActive()
-		if err != nil || activeProfile == nil {
+		localProfile := selectLocalGatewayProfile(profileRepo)
+		if localProfile == nil {
 			return
 		}
-		if activeProfile.Token == newToken {
+		if localProfile.Token == newToken {
 			return
 		}
-		activeProfile.Token = newToken
-		if err := profileRepo.Update(activeProfile); err != nil {
+		localProfile.Token = newToken
+		if err := profileRepo.Update(localProfile); err != nil {
 			logger.Log.Error().Err(err).Msg("failed to persist refreshed gateway token to DB profile")
 			return
 		}
@@ -310,30 +285,30 @@ func RunServe(args []string) int {
 			return true
 		}
 
-		activeProfile, err := profileRepo.GetActive()
-		if err != nil || activeProfile == nil {
+		localProfile := selectLocalGatewayProfile(profileRepo)
+		if localProfile == nil {
 			return false
 		}
 		current := gwClient.GetConfig()
-		if current.Host == activeProfile.Host && current.Port == activeProfile.Port && current.Token == activeProfile.Token {
+		if current.Host == localProfile.Host && current.Port == localProfile.Port && current.Token == localProfile.Token {
 			return false
 		}
 
-		svc.GatewayHost = activeProfile.Host
-		svc.GatewayPort = activeProfile.Port
-		svc.GatewayToken = activeProfile.Token
+		svc.GatewayHost = localProfile.Host
+		svc.GatewayPort = localProfile.Port
+		svc.GatewayToken = localProfile.Token
 
 		// If only the token changed (same host:port), update in-place without
 		// reconnecting — Reconnect() kills all pending WS requests and causes
 		// a 502 storm for concurrent callers.
-		if current.Host == activeProfile.Host && current.Port == activeProfile.Port {
-			gwClient.UpdateToken(activeProfile.Token)
+		if current.Host == localProfile.Host && current.Port == localProfile.Port {
+			gwClient.UpdateToken(localProfile.Token)
 			return true
 		}
 		gwClient.Reconnect(openclaw.GWClientConfig{
-			Host:  activeProfile.Host,
-			Port:  activeProfile.Port,
-			Token: activeProfile.Token,
+			Host:  localProfile.Host,
+			Port:  localProfile.Port,
+			Token: localProfile.Token,
 		})
 		return true
 	}
@@ -1422,6 +1397,45 @@ func spaHandler() http.HandlerFunc {
 		}
 
 		serveIndex(w, fsys)
+	}
+}
+
+func selectLocalGatewayProfile(repo *database.GatewayProfileRepo) *database.GatewayProfile {
+	if repo == nil {
+		return nil
+	}
+	profiles, err := repo.List()
+	if err != nil {
+		return nil
+	}
+	for i := range profiles {
+		host := strings.TrimSpace(profiles[i].Host)
+		if host == "" || host == "127.0.0.1" || host == "localhost" || host == "::1" {
+			return &profiles[i]
+		}
+	}
+	return nil
+}
+
+func ensureLocalGatewayProfile(repo *database.GatewayProfileRepo, port int, token string) {
+	if repo == nil || selectLocalGatewayProfile(repo) != nil {
+		return
+	}
+	if port == 0 {
+		port = 18789
+	}
+	localProfile := &database.GatewayProfile{
+		Name:     i18n.T(i18n.MsgDefaultLocalGatewayName),
+		Host:     "127.0.0.1",
+		Port:     port,
+		Token:    token,
+		IsActive: true,
+	}
+	if err := repo.Create(localProfile); err == nil {
+		logger.Log.Info().
+			Str("name", localProfile.Name).
+			Int("port", localProfile.Port).
+			Msg("auto-created default local gateway profile")
 	}
 }
 

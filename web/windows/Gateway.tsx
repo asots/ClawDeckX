@@ -166,6 +166,15 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
     notify_last_event: string;
     notify_last_at: string;
     notify_last_ago_sec: number;
+    probe?: {
+      tcp_reachable?: boolean;
+      tcp_latency_ms?: number;
+      tcp_error?: string;
+      stage?: 'port' | 'http_live' | 'http_ready' | 'ready' | string;
+      summary?: string;
+      live?: { ok?: boolean; status_code?: number; latency_ms?: number; error?: string };
+      ready?: { ok?: boolean; status_code?: number; latency_ms?: number; error?: string; body?: Record<string, unknown> };
+    };
   } | null>(null);
   const [displayUptimeMs, setDisplayUptimeMs] = useState(0);
   const [watchdogIntervalSec, setWatchdogIntervalSec] = useState('30');
@@ -298,6 +307,7 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
         notify_last_event: data?.notify_last_event || '',
         notify_last_at: data?.notify_last_at || '',
         notify_last_ago_sec: data?.notify_last_ago_sec || 0,
+        probe: data?.probe,
       });
       setWatchdogIntervalSec(String(data?.interval_sec ?? 30));
       setWatchdogMaxFails(String(data?.max_fails ?? 3));
@@ -619,6 +629,7 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
         notify_last_event: data?.notify_last_event || '',
         notify_last_at: data?.notify_last_at || '',
         notify_last_ago_sec: data?.notify_last_ago_sec || 0,
+        probe: data?.probe,
       });
       setWatchdogIntervalSec(String(data?.interval_sec ?? intervalSec));
       setWatchdogMaxFails(String(data?.max_fails ?? maxFails));
@@ -758,6 +769,8 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
   const activeProfile = useMemo(() => profiles.find(p => p.is_active) || null, [profiles]);
 
   const isLocal = (host: string) => ['127.0.0.1', 'localhost', '::1'].includes(host.trim());
+  const localGatewayHost = '127.0.0.1';
+  const localGatewayPort = gwWsDetail?.port || status?.port || activeProfile?.port || 18789;
 
   const fmtUptime = (ms: number): string => {
     const s = Math.floor(ms / 1000);
@@ -891,93 +904,6 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-[var(--color-surface)] dark:bg-transparent">
-      {/* 网关选择区 */}
-      <div className="p-3 md:p-4 border-b border-slate-200 dark:border-white/5 theme-panel shrink-0">
-        <div className="flex items-center justify-between mb-2.5">
-          <h3 className="text-[10px] md:text-[11px] font-bold theme-text-muted uppercase tracking-widest">{gw.profiles}</h3>
-          <button onClick={openAddForm} className="flex items-center gap-1 px-2.5 py-1 bg-primary/10 hover:bg-primary/20 text-primary rounded-lg text-[10px] md:text-[11px] font-bold transition-all border border-primary/20">
-            <span className="material-symbols-outlined text-[14px]">add</span> {gw.addGateway}
-          </button>
-        </div>
-
-        {profilesLoading && profiles.length === 0 ? (
-          <div className="w-full py-4 border border-slate-200 dark:border-white/10 rounded-xl theme-text-muted text-xs flex items-center justify-center gap-2">
-            <span className="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>
-            {gw.loading}
-          </div>
-        ) : profiles.length === 0 ? (
-          <button onClick={openAddForm} className="w-full py-4 border-2 border-dashed border-slate-300 dark:border-white/10 rounded-xl theme-text-muted text-xs font-medium hover:border-primary hover:text-primary transition-all">
-            <span className="material-symbols-outlined text-[20px] block mb-1">add_circle</span>
-            {gw.noProfiles}
-          </button>
-        ) : (
-          <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
-            {profiles.map(p => (
-              <div
-                key={p.id}
-                className={`group relative flex-shrink-0 w-44 md:w-52 rounded-xl border p-3 cursor-pointer transition-all ${
-                  p.is_active
-                    ? 'bg-primary/5 dark:bg-primary/10 border-primary/30 shadow-sm shadow-primary/10'
-                    : 'theme-panel border-slate-200 dark:border-white/10 hover:border-primary/20'
-                }`}
-                onClick={() => !p.is_active && handleActivateProfile(p.id)}
-              >
-                {/* 状态指示 + WS + 远程/本地 + 进程 */}
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-1.5">
-                    <div className={`w-2 h-2 rounded-full ${p.is_active && status?.running ? 'bg-mac-green animate-pulse' : p.is_active ? 'bg-mac-yellow animate-pulse' : 'bg-slate-300 dark:bg-white/20'}`}></div>
-                    <span className={`text-[11px] font-bold uppercase ${p.is_active && status?.running ? 'text-mac-green' : p.is_active ? 'text-mac-yellow' : 'theme-text-muted'}`}>
-                      {p.is_active ? (status?.running ? gw.running : gw.stopped) : gw.inactive}
-                    </span>
-                    {p.is_active && status?.running && gwWsConnected !== null && (
-                      <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold flex items-center gap-0.5 ${gwWsConnected ? 'bg-mac-green/10 text-mac-green' : 'bg-mac-red/10 text-mac-red'}`}>
-                        <span className={`w-1 h-1 rounded-full ${gwWsConnected ? 'bg-mac-green' : 'bg-mac-red'}`} />
-                        WS
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${
-                      isLocal(p.host)
-                        ? 'bg-blue-500/10 text-blue-500'
-                        : 'bg-purple-500/10 text-purple-500'
-                    }`}>
-                      {isLocal(p.host) ? gw.local : gw.remote}
-                    </span>
-                    {p.is_active && status?.running && status?.runtime && (
-                      <span className="text-[9px] px-1.5 py-0.5 rounded theme-field theme-text-muted">{(gw as any)[`runtime${status.runtime.charAt(0).toUpperCase()}${status.runtime.slice(1)}`] || status.runtime}</span>
-                    )}
-                  </div>
-                </div>
-                {/* 名称 */}
-                <div className="flex items-center gap-1.5">
-                  <h4 className="text-xs font-bold text-[var(--color-text)] dark:text-white truncate">{isLocal(p.host) && (p.name === 'Local Gateway' || p.name === '本地网关') ? (gw.localGateway || p.name) : p.name}</h4>
-                  {p.is_active && status?.running && displayUptimeMs > 0 && (
-                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-mac-green font-mono font-bold">{fmtUptime(displayUptimeMs)}</span>
-                  )}
-                </div>
-                <p className="text-[11px] theme-text-muted font-mono mt-0.5 truncate">{p.host}:{p.port}</p>
-                {/* 操作按钮 */}
-                <div className="absolute top-2 end-2 hidden group-hover:flex items-center gap-0.5">
-                  <button
-                    onClick={(e) => { e.stopPropagation(); openEditForm(p); }}
-                    className="w-5 h-5 rounded flex items-center justify-center theme-field hover:bg-primary/20 theme-text-secondary hover:text-primary transition-all"
-                  >
-                    <span className="material-symbols-outlined text-[12px]">edit</span>
-                  </button>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); handleDeleteProfile(p.id); }}
-                    className="w-5 h-5 rounded flex items-center justify-center theme-field hover:bg-mac-red/20 theme-text-secondary hover:text-mac-red transition-all"
-                  >
-                    <span className="material-symbols-outlined text-[12px]">close</span>
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
       {/* 网关配置表单弹窗 */}
       {showProfilePanel && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm" onClick={() => setShowProfilePanel(false)}>
@@ -1398,13 +1324,30 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
             </div>
           </div>
         )}
-        {/* Row 1: 状态信息 + 心跳 */}
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-primary/10 rounded-xl flex items-center justify-center text-primary border border-primary/20 shrink-0 animate-glow-breathe">
-            <span className="material-symbols-outlined text-[20px]">router</span>
+        {/* Row 1: 本地网关状态卡片 — 全部信息融合 */}
+        <div className="rounded-xl border border-slate-200/60 dark:border-white/[0.06] theme-panel px-3 py-2.5 space-y-2">
+          {/* Header: icon + name + badges */}
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 bg-primary/10 rounded-xl flex items-center justify-center text-primary border border-primary/20 shrink-0 animate-glow-breathe">
+              <span className="material-symbols-outlined text-[18px]">router</span>
+            </div>
+            <div className="flex-1 min-w-0 flex items-center gap-1.5 flex-wrap">
+              <h3 className="text-[var(--color-text)] dark:text-white font-bold text-sm leading-none">{gw.localGateway || 'Local Gateway'}</h3>
+              <span className={`inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-md font-bold ${status?.running ? 'bg-mac-green/10 text-mac-green' : 'bg-mac-yellow/10 text-mac-yellow'}`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${status?.running ? 'bg-mac-green animate-pulse' : 'bg-mac-yellow'}`} />
+                {status?.running ? gw.running : gw.stopped}
+              </span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-blue-500/10 text-blue-500 font-bold font-mono">{localGatewayHost}:{localGatewayPort}</span>
+              {status?.runtime && (
+                <span className="text-[9px] px-1.5 py-0.5 rounded-md theme-field theme-text-muted">{(gw as any)[`runtime_${status.runtime}`] || status.runtime}</span>
+              )}
+              {status?.running && displayUptimeMs > 0 && (
+                <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-mac-green font-mono font-bold">{fmtUptime(displayUptimeMs)}</span>
+              )}
+            </div>
           </div>
-          <div className="flex-1 min-w-0 flex items-center gap-2 flex-wrap">
-            <h3 className="text-[var(--color-text)] dark:text-white font-bold text-sm">{activeProfile ? (isLocal(activeProfile.host) && (activeProfile.name === 'Local Gateway' || activeProfile.name === '本地网关') ? (gw.localGateway || activeProfile.name) : activeProfile.name) : gw.status}</h3>
+          {/* Detail row: address + watchdog + WS + probe chips */}
+          <div className="flex items-center gap-1.5 flex-wrap">
             {/* 看门狗探测状态 */}
             {status?.running && (
               <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full border border-slate-200/60 dark:border-white/[0.06] theme-panel">
@@ -1419,7 +1362,7 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
                 })()}
               </div>
             )}
-            {/* WS 数据通道状态指示器 — 始终可见 */}
+            {/* WS 数据通道状态指示器 */}
             {status?.running && gwWsConnected !== null && (
               <div className="relative" ref={wsIndicatorRef}>
                 <button
@@ -1565,12 +1508,46 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
                 )}
               </div>
             )}
+            {/* Probe chips — inline with other status indicators */}
+            {!initialDetecting && healthCheckEnabled && healthStatus?.probe && [
+              {
+                key: 'tcp',
+                label: `TCP${healthStatus.probe.tcp_latency_ms != null ? ` ${healthStatus.probe.tcp_latency_ms}ms` : ''}`,
+                ok: !!healthStatus.probe.tcp_reachable,
+                detail: healthStatus.probe.tcp_error,
+              },
+              {
+                key: 'health',
+                label: `/health${healthStatus.probe.live?.status_code ? ` ${healthStatus.probe.live.status_code}` : ''}`,
+                ok: !!healthStatus.probe.live?.ok,
+                detail: healthStatus.probe.live?.error,
+              },
+              {
+                key: 'ready',
+                label: `/ready${healthStatus.probe.ready?.status_code ? ` ${healthStatus.probe.ready.status_code}` : ''}`,
+                ok: !!healthStatus.probe.ready?.ok,
+                detail: healthStatus.probe.ready?.error,
+              },
+            ].map(step => (
+              <span
+                key={step.key}
+                className={`inline-flex items-center gap-1 text-[10px] font-bold font-mono px-2 py-0.5 rounded-full border transition-colors ${
+                  step.ok
+                    ? 'border-mac-green/25 bg-mac-green/5 text-mac-green'
+                    : 'border-amber-500/25 bg-amber-500/5 text-amber-500'
+                } ${step.detail ? 'cursor-help' : ''}`}
+                title={step.detail || ''}
+              >
+                <span className="material-symbols-outlined text-[11px]">{step.ok ? 'check_circle' : 'warning'}</span>
+                {step.label}
+              </span>
+            ))}
           </div>
         </div>
 
         {/* Row 2: 操作按钮 — 单行紧凑 */}
         {(() => {
-          const remote = activeProfile ? !isLocal(activeProfile.host) : false;
+          const remote = false;
           return (
             <div className="flex items-center gap-1.5 flex-wrap">
               {!remote && (
@@ -1823,7 +1800,7 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
                 {omittedLogCount > 0 && <span>+{omittedLogCount}</span>}
                 {logStats.errors > 0 && <span className="text-red-500 dark:text-red-400">{logStats.errors} ERR</span>}
                 {logStats.warns > 0 && <span className="text-amber-500 dark:text-yellow-400">{logStats.warns} WARN</span>}
-                {activeProfile && <span className="text-primary">{activeProfile.host}:{activeProfile.port}</span>}
+                <span className="text-primary">{localGatewayHost}:{localGatewayPort}</span>
               </div>
               <div className="flex items-center gap-1">
                 <span className="material-symbols-outlined text-[10px]">terminal</span>
@@ -1859,7 +1836,7 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
             gw={gw}
             onCopy={(text) => { copyToClipboard(text).then(() => toast('success', gw.serviceCopied || 'Copied')).catch(() => {}); }}
             toast={toast}
-            remote={activeProfile ? !isLocal(activeProfile.host) : false}
+            remote={false}
           />
         ) : (
           <DebugPanel

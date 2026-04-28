@@ -10,29 +10,24 @@
   "gateway.not_running": "Gateway is not running",
   "gateway.not_connected": "Gateway not connected",
   "gateway.kill_switch": "Kill switch triggered",
-
   "channel.connected": "{{.Channel}} channel connected",
   "channel.disconnected": "{{.Channel}} channel disconnected",
   "channel.token_required": "{{.Channel}} {{.Field}} is required",
   "channel.token_invalid": "{{.Channel}} {{.Field}} format is invalid",
   "channel.token_too_short": "{{.Channel}} {{.Field}} is too short",
   "channel.config_failed": "{{.Channel}} configuration failed",
-
   "validation.field_required": "{{.Field}} is required",
   "validation.field_invalid": "{{.Field}} format is invalid",
   "validation.field_too_short": "{{.Field}} is too short",
   "validation.field_too_long": "{{.Field}} is too long",
-
   "session.created": "Session created: {{.SessionID}}",
   "session.ended": "Session ended: {{.SessionID}}",
   "session.not_found": "Session not found",
-
   "agent.created": "Agent created: {{.AgentID}}",
   "agent.deleted": "Agent deleted: {{.AgentID}}",
   "agent.not_found": "Agent not found",
   "agent.file_not_found": "Agent file not found: {{.FileName}}",
   "agent.file_unsupported": "Unsupported file: {{.FileName}}",
-
   "model.test_success": "Model test successful",
   "model.test_failed": "Model test failed: {{.Error}}",
   "model.not_found": "Model not found: {{.ModelID}}",
@@ -40,25 +35,20 @@
   "model.rate_limited": "Rate limited: too many requests",
   "model.test_unstable": "Provider response is unstable. Please retry later.",
   "model.test_warning_auth_ok": "Authentication succeeded, but completion test is unstable: {{.Reason}}",
-
   "config.read_failed": "Configuration read failed",
   "config.write_failed": "Configuration write failed",
   "config.invalid": "Invalid configuration",
-
   "cron.created": "Cron job created: {{.Name}}",
   "cron.deleted": "Cron job deleted: {{.Name}}",
   "cron.not_found": "Cron job not found",
-
   "skill.installed": "Skill installed: {{.Name}}",
   "skill.uninstalled": "Skill uninstalled: {{.Name}}",
   "skill.not_found": "Skill not found",
-
   "auth.login_success": "Login successful",
   "auth.login_failed": "Login failed",
   "auth.logout_success": "Logout successful",
   "auth.session_expired": "Session expired",
   "auth.unauthorized": "Unauthorized access",
-
   "error.internal": "Internal server error",
   "error.invalid_request": "Invalid request",
   "error.invalid_body": "Invalid request body",
@@ -70,17 +60,14 @@
   "error.create_request_failed": "Failed to create request: {{.Error}}",
   "error.api_error": "API error (HTTP {{.Status}}): {{.Detail}}",
   "error.config_error": "Configuration error (HTTP {{.Status}}): {{.Detail}}",
-
   "workflow.unsupported_type": "Unsupported workflow type: {{.Type}}",
   "workflow.step_failed": "Step {{.Step}} ({{.Agent}}) failed: {{.Error}}",
   "workflow.no_steps": "Workflow requires at least one step",
   "workflow.parse_failed": "Failed to parse response: {{.Error}}",
-
   "file.create_failed": "Failed to create {{.File}}: {{.Error}}",
   "file.write_failed": "Failed to write {{.File}}: {{.Error}}",
   "file.read_failed": "Failed to read {{.File}}: {{.Error}}",
   "file.dir_create_failed": "Failed to create directory: {{.Error}}",
-
   "cli.app_name": "ClawDeckX - OpenClaw Web Management Console",
   "cli.usage": "Usage:",
   "cli.start_web": "  ClawDeckX [options]                Start Web management console",
@@ -109,7 +96,6 @@
   "cli.invalid_args": "Invalid arguments",
   "cli.error": "Error: {{.Error}}",
   "cli.config_loaded": "Config loaded: {{.Path}} mode={{.Mode}}",
-
   "serve.config_load_failed": "Config load failed: {{.Error}}",
   "serve.config_save_failed": "⚠️  Config save failed: {{.Error}}",
   "serve.port_saved": "✓ Port {{.Port}} saved to config, will be used on next startup",
@@ -137,7 +123,6 @@
   "serve.change_password_warning": "⚠️  Please change username & password after login!",
   "serve.change_password_hint": "   Settings → Account Security",
   "serve.access_urls": "Access URLs:",
-
   "doctor.fix_flag": "Attempt safe fixes",
   "doctor.fix_runtime_flag": "Fix OpenClaw runtime startup crash (networkInterfaces)",
   "doctor.rollback_runtime_flag": "Rollback OpenClaw runtime hotfix (restore latest backup)",
@@ -210,7 +195,6 @@
   "doctor.custom_webhook_missing": "Custom Webhook not configured",
   "doctor.notify_unknown": "Notification platform not recognized: {{.Platform}}",
   "doctor.notify_reconfigure": "Run `ClawDeckX channels wizard` to reconfigure",
-
   "reset_password.usage": "Usage: ClawDeckX reset-password <username> <new_password>",
   "reset_password.password_too_short": "Error: Password must be at least 6 characters",
   "reset_password.config_load_failed": "Config load failed: {{.Error}}",
@@ -219,12 +203,10 @@
   "reset_password.encrypt_failed": "Password encryption failed: {{.Error}}",
   "reset_password.update_failed": "Password update failed: {{.Error}}",
   "reset_password.success": "Password for user {{.Username}} has been reset",
-
   "list_users.no_users": "No users found in the database.",
   "list_users.header": "Registered users:",
   "list_users.config_load_failed": "Config load failed: {{.Error}}",
   "list_users.db_init_failed": "Database init failed: {{.Error}}",
-
   "reset_username.usage": "Usage: ClawDeckX reset-username <old_username> <new_username>",
   "reset_username.username_too_short": "Error: Username must be at least 3 characters",
   "reset_username.config_load_failed": "Config load failed: {{.Error}}",
@@ -233,7 +215,6 @@
   "reset_username.username_exists": "Username {{.Username}} already exists",
   "reset_username.update_failed": "Username update failed: {{.Error}}",
   "reset_username.success": "Username changed: {{.OldUsername}} → {{.NewUsername}}",
-
   "settings.config_title": "ClawDeckX Configuration",
   "settings.path": "Path: {{.Path}}",
   "settings.mode": "Mode: {{.Mode}}",
@@ -247,10 +228,8 @@
   "settings.subcommands": "Subcommands:",
   "settings.cmd_show": "  show      Show current ClawDeckX configuration",
   "settings.cmd_set_mode": "  set-mode  Set mode (production/debug)",
-
   "gateway.heartbeat_restart_failed": "🚨 OpenClaw Gateway heartbeat check failed, auto-restart also failed: {{.Error}}",
   "gateway.heartbeat_restart_success": "⚠️ OpenClaw Gateway heartbeat check failed, auto-restart succeeded",
-
   "installer.node_already_installed": "Node.js already installed, skipping",
   "installer.node_trying_pkg_manager": "Trying to install via system package manager...",
   "installer.node_pkg_manager_success": "✓ Node.js installed via system package manager",
@@ -377,7 +356,6 @@
   "installer.complete_manual_config": "OpenClaw installation complete! Please configure manually later.",
   "installer.complete_success": "OpenClaw installation complete!",
   "installer.gateway_start_failed_msg": "Gateway start failed",
-
   "diagnose.gateway_running_ok": "Gateway running normally",
   "diagnose.gateway_has_warnings": "Gateway has warnings, please check",
   "diagnose.gateway_has_errors": "Gateway has errors, please fix according to suggestions",
@@ -425,7 +403,6 @@
   "diagnose.token_verify_failed": "Token verification failed (HTTP {{.Code}})",
   "diagnose.token_mismatch_suggestion": "Token in config file does not match Gateway, please check gateway.auth.token config",
   "diagnose.token_verify_passed": "Token verification passed",
-
   "scanner.step_configure": "Configure OpenClaw",
   "scanner.step_start_gateway": "Start Gateway",
   "scanner.step_install_node": "Install Node.js 22+",
@@ -441,7 +418,6 @@
   "scanner.warn_no_internet": "Cannot access internet, installation may fail",
   "scanner.warn_disk_space_low": "Disk space is low ({{.FreeGB}} GB), recommend at least 1 GB",
   "scanner.warn_wsl_environment": "WSL environment detected, some features may be limited",
-
   "service.runtime_systemd": "Service: openclaw",
   "service.runtime_docker_not_found": "openclaw container not found",
   "service.runtime_docker_container": "Container: {{.Name}}",
@@ -453,9 +429,7 @@
   "service.remote_gateway_http_ok": "Remote Gateway {{.Addr}} (HTTP OK, status {{.Code}})",
   "service.remote_gateway_tcp_only_no_http": "Remote Gateway {{.Addr}} — port open but gateway not responding ({{.Error}})",
   "service.remote_gateway_http_error": "Remote Gateway {{.Addr}} — HTTP error (status {{.Code}})",
-
   "gwclient.unknown_error": "Unknown error",
-
   "verifier.check_install": "Checking OpenClaw installation...",
   "verifier.check_config": "Checking configuration...",
   "verifier.check_gateway": "Checking Gateway...",
@@ -466,31 +440,25 @@
   "verifier.err_gateway_not_running": "Gateway not running",
   "verifier.err_health_check_failed": "Gateway health check failed",
   "verifier.err_doctor_failed": "Diagnostics failed: {{.Error}}",
-
   "prompt.default_no": "No",
   "prompt.default_yes": "Yes",
   "prompt.default_label": "{{.Label}} [default:{{.Default}}]: ",
   "prompt.default_marker": " [default]",
   "prompt.enter_number_with_default": "Enter number [{{.Default}}]: ",
   "prompt.enter_number": "Enter number: ",
-
   "serve.html_index_not_found": "<!DOCTYPE html><html><body><h1>ClawDeckX</h1><p>index.html not found</p></body></html>",
   "serve.html_frontend_load_failed": "<!DOCTYPE html><html><body><h1>ClawDeckX</h1><p>Frontend resources failed to load</p></body></html>",
   "serve.port_conflict_401": "127.0.0.1:{{.Port}} returned 401 Unauthorized (may have hit Gateway instead of ClawDeckX)",
   "serve.port_conflict_http": "127.0.0.1:{{.Port}} returned HTTP {{.Code}} (response snippet: {{.Body}})",
   "serve.port_conflict_request_failed": "127.0.0.1:{{.Port}} request failed ({{.Error}})",
-
   "diagnostics.level_warning": "Warning",
   "diagnostics.gateway_status_placeholder": "Gateway status not checked (placeholder)",
   "diagnostics.implement_health_check": "Implement gateway health check",
-
   "tray.open_web_ui": "Open Web UI",
   "tray.address": "Address: {{.Url}}",
   "tray.quit": "Quit",
-
   "auth.username_too_short": "Username must be at least 3 characters",
   "auth.username_exists": "Username already exists",
-
   "notify.gateway_started": "🟢 Gateway started: {{.Addr}}",
   "notify.gateway_started_repeated": "🟢 Gateway started {{.Count}}x: {{.Addr}}",
   "notify.gateway_recovered": "🟢 Gateway recovered: {{.Addr}}",
@@ -501,51 +469,40 @@
   "notify.gateway_unreachable": "🟡 Gateway unreachable: {{.Addr}}",
   "notify.gateway_unreachable_repeated": "🟡 Gateway unreachable {{.Count}}x: {{.Addr}}",
   "notify.test_message": "🔔 ClawDeckX Notification Test",
-
   "helpers.env_header": "# OpenClaw environment variables (generated by ClawDeckX)",
-
   "owner.unknown": "Unknown",
-
   "output.debug_prefix": "[Debug] ",
-
   "cli.default_config_generated": "Default configuration generated via config set",
-
   "service.get_gateway_config_failed": "Failed to get gateway config: {{.Error}}",
   "service.gateway_restart_failed": "Gateway restart failed: {{.Error}}",
   "service.start_gateway_process_failed": "Failed to start gateway process: {{.Error}}",
   "service.command_failed": "{{.Command}} failed: {{.Output}}",
-
   "stream.create_stdout_pipe_failed": "Failed to create stdout pipe: {{.Error}}",
   "stream.create_stderr_pipe_failed": "Failed to create stderr pipe: {{.Error}}",
   "stream.start_command_failed": "Failed to start command: {{.Error}}",
   "stream.command_exec_failed": "Command execution failed: {{.Error}}",
-
   "cli.openclaw_not_installed": "openclaw not installed",
   "cli.config_set_failed": "Failed to set {{.Key}}: {{.Error}}",
   "cli.serialize_failed": "Failed to serialize {{.Key}}: {{.Error}}",
   "cli.openclaw_not_installed_no_config": "openclaw not installed, cannot generate config",
   "cli.config_set_fallback_failed": "config set fallback also failed: onboard error: {{.OnboardError}}, config set error: {{.SetError}}",
   "cli.parse_pairing_list_failed": "Failed to parse pairing list: {{.Error}}",
-
   "installer.windows_manual_zerotier": "Windows requires manual ZeroTier installation (no winget)",
   "installer.macos_manual_zerotier": "macOS requires Homebrew or manual ZeroTier installation",
   "installer.windows_manual_tailscale": "Windows requires manual Tailscale installation (no winget)",
   "installer.macos_manual_tailscale": "macOS requires Homebrew or manual Tailscale installation",
   "installer.unsupported_os_with_name": "Unsupported operating system: {{.OS}}",
   "installer.unknown_tool": "Unknown tool: {{.Tool}}",
-
   "gwclient.serialize_request_failed": "Failed to serialize request: {{.Error}}",
   "gwclient.send_request_failed": "Failed to send request: {{.Error}}",
   "gwclient.gateway_error": "Gateway error: {{.Message}}",
   "gwclient.request_timeout": "Request timeout: {{.Method}}",
   "gwclient.websocket_dial_failed": "WebSocket dial failed: {{.Error}}",
   "gwclient.read_message_failed": "Failed to read message: {{.Error}}",
-
   "lang.select_prompt": "Select language / 选择语言 [1=English, 2=中文] (default: {{.Default}} in {{.Seconds}}s): ",
   "lang.countdown": "{{.Seconds}}s...",
   "lang.selected": "Language: {{.Language}}",
   "lang.auto_selected": "Auto-selected: {{.Language}}",
-
   "guide.node_windows": "Please install Node.js manually:\n1. Visit https://nodejs.org/en/download/\n2. Download Windows installer (LTS recommended)\n3. Run installer and complete installation\n4. Restart ClawDeckX",
   "guide.node_macos": "Please install Node.js manually:\nMethod 1 (Recommended): Use Homebrew\n  brew install node@22\n\nMethod 2: Official installer\n  1. Visit https://nodejs.org/en/download/\n  2. Download macOS installer\n  3. Run installer\n\nRestart ClawDeckX after installation",
   "guide.node_linux": "Please install Node.js manually:\nMethod 1: Use package manager\n  # Ubuntu/Debian\n  curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -\n  sudo apt-get install -y nodejs\n\n  # Fedora/RHEL\n  curl -fsSL https://rpm.nodesource.com/setup_22.x | sudo bash -\n  sudo dnf install -y nodejs\n\nMethod 2: Use nvm\n  curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash\n  source ~/.bashrc\n  nvm install 22\n\nRestart ClawDeckX after installation",
@@ -554,7 +511,6 @@
   "guide.openclaw_windows": "\n  # PowerShell\n  iwr -useb https://openclaw.ai/install.ps1 | iex",
   "guide.openclaw_unix": "\n  # Bash\n  curl -fsSL https://openclaw.ai/install.sh | bash",
   "guide.openclaw_footer": "\n\nAfter installation:\n  1. Run 'openclaw config set gateway.mode local' to initialize config\n  2. Restart ClawDeckX",
-
   "log.serve_starting": "ClawDeckX Web starting...",
   "log.db_init_failed": "Database initialization failed",
   "log.gateway_token_read": "Read gateway auth token from openclaw.json",
@@ -642,12 +598,10 @@
   "log.remote_gateway_mode": "Remote Gateway mode",
   "log.bind_non_loopback_warning": "⚠️  Web service bound to non-loopback address, ensure firewall rules are configured",
   "gateway.default_local_name": "Local Gateway",
-
   "success.applied": "Applied successfully",
   "success.saved": "Saved successfully",
   "success.deleted": "Deleted successfully",
   "success.updated": "Updated successfully",
-
   "error.remote_gateway_no_start": "Remote gateway does not support remote start, please start OpenClaw gateway manually on the remote server",
   "error.remote_gateway_no_stop": "Remote gateway does not support remote stop, please stop OpenClaw gateway manually on the remote server",
   "error.remote_gateway_not_connected": "Remote gateway not connected, cannot restart",
@@ -706,7 +660,6 @@
   "error.parse_pairing_list_failed": "Failed to parse pairing list: %w",
   "error.gateway_cli_not_found": "OpenClaw gateway-cli file not found: %s",
   "error.target_fragment_not_found": "Target fragment not found in file: %s",
-
   "error.daemon_remote_install": "Cannot install daemon on remote gateway",
   "error.daemon_remote_uninstall": "Cannot uninstall daemon on remote gateway",
   "error.daemon_unsupported_os": "Unsupported OS for daemon management",
@@ -741,7 +694,13 @@
   "daemon.status_active": ", active",
   "daemon.status_loaded": ", loaded",
   "daemon.status_running": ", running",
-
   "notify.heartbeat_restart_failed": "🚨 OpenClaw Gateway heartbeat check failed, auto-restart also failed: ",
-  "notify.heartbeat_restart_success": "⚠️ OpenClaw Gateway heartbeat check failed, auto-restart succeeded"
+  "notify.heartbeat_restart_success": "⚠️ OpenClaw Gateway heartbeat check failed, auto-restart succeeded",
+  "diagnose.gateway_ready": "Gateway Readiness",
+  "diagnose.gateway_not_listening": "Gateway is not listening yet. If it was just started, wait for startup; otherwise restart the gateway.",
+  "diagnose.gateway_health_not_healthy": "/health returned HTTP {{.Code}}",
+  "diagnose.gateway_health_suggestion": "Gateway port is reachable but the HTTP health endpoint is not healthy.",
+  "diagnose.gateway_ready_status": "/ready returned HTTP {{.Code}}",
+  "diagnose.gateway_starting_suggestion": "Gateway is alive but still starting sidecars/channels. Avoid restarting unless this state lasts for several minutes.",
+  "diagnose.gateway_ready_passed": "/health {{.HealthCode}}, /ready {{.ReadyCode}}"
 }

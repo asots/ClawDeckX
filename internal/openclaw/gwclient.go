@@ -1,11 +1,10 @@
-﻿package openclaw
+package openclaw
 
 import (
 	"encoding/json"
 	"errors"
 	"fmt"
 	"math/rand/v2"
-	"net"
 	"net/url"
 	"os"
 	"runtime"
@@ -166,8 +165,9 @@ type GWClient struct {
 	healthFailCount             int           // current consecutive failure count
 	healthLastOK                time.Time     // last success time
 	healthLastCheck             time.Time     // last time a probe ran (success or fail)
-	healthRestarting            bool          // true while a restart is in progress
-	healthGraceUntil            time.Time     // skip health checks until this time (post-restart grace period)
+	healthLastProbe             GatewayProbeSnapshot
+	healthRestarting            bool      // true while a restart is in progress
+	healthGraceUntil            time.Time // skip health checks until this time (post-restart grace period)
 	healthStopCh                chan struct{}
 	healthRunning               bool
 	onRestart                   func() error                           // restart callback (injected externally)
@@ -349,6 +349,7 @@ func (c *GWClient) HealthStatus() map[string]interface{} {
 	restarting := c.healthRestarting
 	healthLastCheckTime := c.healthLastCheck
 	healthInterval := c.healthInterval
+	healthLastProbe := c.healthLastProbe
 	// Notification status snapshot
 	nfyChannels := make([]string, len(c.notifyChannels))
 	copy(nfyChannels, c.notifyChannels)
@@ -417,6 +418,7 @@ func (c *GWClient) HealthStatus() map[string]interface{} {
 		"restarting":               restarting,
 		"next_check_in_sec":        nextCheckInSec,
 		"phase":                    phase,
+		"probe":                    healthLastProbe,
 		// Notification status
 		"notify_channels":     nfyChannels,
 		"notify_sending":      nfySending,
@@ -516,17 +518,26 @@ func (c *GWClient) healthCheckLoop() {
 			}
 			c.mu.Unlock()
 
-			if !healthy && allowTCPFallback {
-				tcpAddr := net.JoinHostPort(c.cfg.Host, fmt.Sprintf("%d", c.cfg.Port))
-				if conn, tcpErr := net.DialTimeout("tcp", tcpAddr, 3*time.Second); tcpErr == nil {
-					conn.Close()
-					healthy = true
-					logger.Gateway.Debug().Msg(i18n.T(i18n.MsgLogHeartbeatTcpOk))
-				} else {
-					logger.Gateway.Debug().Err(tcpErr).Msg(i18n.T(i18n.MsgLogHeartbeatTcpFail))
-				}
+			probe := ProbeGateway(c.cfg.Host, c.cfg.Port)
+			c.healthMu.Lock()
+			c.healthLastProbe = probe
+			c.healthMu.Unlock()
+
+			if !healthy && probe.Live.OK {
+				healthy = true
+				logger.Gateway.Debug().
+					Str("stage", probe.Stage).
+					Int("ready_status", probe.Ready.StatusCode).
+					Msg("watchdog HTTP health probe passed")
+			} else if !healthy && allowTCPFallback && probe.TCPReachable {
+				logger.Gateway.Debug().
+					Str("stage", probe.Stage).
+					Msg("watchdog TCP reachable but HTTP health is not ready")
 			} else if !healthy && !wsConnected {
-				logger.Gateway.Debug().Msg("watchdog detected websocket disconnected; skipping TCP-only healthy fallback")
+				logger.Gateway.Debug().
+					Str("stage", probe.Stage).
+					Str("tcp_error", probe.TCPError).
+					Msg("watchdog detected websocket disconnected and gateway HTTP health unavailable")
 			}
 
 			c.healthMu.Lock()

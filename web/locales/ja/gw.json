@@ -5,6 +5,10 @@
   "uptime": "稼働時間",
   "runtime": "ランタイム",
   "runtimeMode": "実行モード",
+  "runtime_process": "プロセス",
+  "runtime_systemd": "Systemd",
+  "runtime_docker": "Docker",
+  "runtime_unknown": "不明",
   "traffic": "トラフィック",
   "location": "サーバー位置",
   "start": "起動",
@@ -306,5 +310,11 @@
   "wsDiagIssues": "件の問題",
   "wsDiagAllPass": "すべてのチェックに合格",
   "wsDiagExpand": "詳細",
-  "wsDiagCollapse": "閉じる"
+  "wsDiagCollapse": "閉じる",
+  "probeTitle": "ゲートウェイ階層プローブ",
+  "probeDesc": "プロセス、ポート、HTTP readiness のプローブ",
+  "probePort": "ゲートウェイのポートに到達できません",
+  "probeHttpLive": "ポートには到達できますが /health は正常ではありません",
+  "probeHttpReady": "ゲートウェイは生存していますが未準備です",
+  "probeReady": "ゲートウェイ HTTP プローブは正常です"
 }

@@ -5,6 +5,10 @@
   "uptime": "Uptime",
   "runtime": "Runtime",
   "runtimeMode": "Mode",
+  "runtime_process": "Process",
+  "runtime_systemd": "Systemd",
+  "runtime_docker": "Docker",
+  "runtime_unknown": "Unknown",
   "traffic": "Traffic",
   "location": "Location",
   "start": "Start",
@@ -306,5 +310,11 @@
   "wsDiagIssues": "issue(s)",
   "wsDiagAllPass": "All checks passed",
   "wsDiagExpand": "Details",
-  "wsDiagCollapse": "Collapse"
+  "wsDiagCollapse": "Collapse",
+  "probeTitle": "Gateway layered probe",
+  "probeDesc": "Process, port and HTTP readiness probes",
+  "probePort": "Gateway port is not reachable",
+  "probeHttpLive": "Port is reachable but /health is not healthy",
+  "probeHttpReady": "Gateway is alive but not ready",
+  "probeReady": "Gateway HTTP probes are healthy"
 }

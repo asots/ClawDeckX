@@ -10,29 +10,24 @@
   "gateway.not_running": "网关未运行",
   "gateway.not_connected": "网关未连接",
   "gateway.kill_switch": "紧急停止已触发",
-
   "channel.connected": "{{.Channel}} 渠道已连接",
   "channel.disconnected": "{{.Channel}} 渠道已断开",
   "channel.token_required": "{{.Channel}} {{.Field}} 是必需的",
   "channel.token_invalid": "{{.Channel}} {{.Field}} 格式无效",
   "channel.token_too_short": "{{.Channel}} {{.Field}} 太短",
   "channel.config_failed": "{{.Channel}} 配置失败",
-
   "validation.field_required": "{{.Field}} 是必填项",
   "validation.field_invalid": "{{.Field}} 格式无效",
   "validation.field_too_short": "{{.Field}} 太短",
   "validation.field_too_long": "{{.Field}} 太长",
-
   "session.created": "会话已创建: {{.SessionID}}",
   "session.ended": "会话已结束: {{.SessionID}}",
   "session.not_found": "会话未找到",
-
   "agent.created": "代理已创建: {{.AgentID}}",
   "agent.deleted": "代理已删除: {{.AgentID}}",
   "agent.not_found": "代理未找到",
   "agent.file_not_found": "代理文件未找到: {{.FileName}}",
   "agent.file_unsupported": "不支持的文件: {{.FileName}}",
-
   "model.test_success": "模型测试成功",
   "model.test_failed": "模型测试失败: {{.Error}}",
   "model.not_found": "模型未找到: {{.ModelID}}",
@@ -40,25 +35,20 @@
   "model.rate_limited": "请求过于频繁",
   "model.test_unstable": "服务商响应不稳定，请稍后重试。",
   "model.test_warning_auth_ok": "鉴权成功，但补全链路不稳定：{{.Reason}}",
-
   "config.read_failed": "配置读取失败",
   "config.write_failed": "配置写入失败",
   "config.invalid": "配置无效",
-
   "cron.created": "定时任务已创建: {{.Name}}",
   "cron.deleted": "定时任务已删除: {{.Name}}",
   "cron.not_found": "定时任务未找到",
-
   "skill.installed": "技能已安装: {{.Name}}",
   "skill.uninstalled": "技能已卸载: {{.Name}}",
   "skill.not_found": "技能未找到",
-
   "auth.login_success": "登录成功",
   "auth.login_failed": "登录失败",
   "auth.logout_success": "已退出登录",
   "auth.session_expired": "会话已过期",
   "auth.unauthorized": "未授权访问",
-
   "error.internal": "内部服务器错误",
   "error.invalid_request": "无效请求",
   "error.invalid_body": "请求体无效",
@@ -70,17 +60,14 @@
   "error.create_request_failed": "创建请求失败: {{.Error}}",
   "error.api_error": "API 错误 (HTTP {{.Status}}): {{.Detail}}",
   "error.config_error": "配置错误 (HTTP {{.Status}}): {{.Detail}}",
-
   "workflow.unsupported_type": "不支持的工作流类型: {{.Type}}",
   "workflow.step_failed": "步骤 {{.Step}} ({{.Agent}}) 失败: {{.Error}}",
   "workflow.no_steps": "工作流至少需要一个步骤",
   "workflow.parse_failed": "解析响应失败: {{.Error}}",
-
   "file.create_failed": "创建 {{.File}} 失败: {{.Error}}",
   "file.write_failed": "写入 {{.File}} 失败: {{.Error}}",
   "file.read_failed": "读取 {{.File}} 失败: {{.Error}}",
   "file.dir_create_failed": "创建目录失败: {{.Error}}",
-
   "cli.app_name": "ClawDeckX - OpenClaw Web 管理后台",
   "cli.usage": "用法:",
   "cli.start_web": "  ClawDeckX [参数]                启动 Web 管理后台",
@@ -109,7 +96,6 @@
   "cli.invalid_args": "参数无效",
   "cli.error": "错误: {{.Error}}",
   "cli.config_loaded": "已加载配置: {{.Path}} mode={{.Mode}}",
-
   "serve.config_load_failed": "配置加载失败: {{.Error}}",
   "serve.config_save_failed": "⚠️  保存配置文件失败: {{.Error}}",
   "serve.port_saved": "✓ 端口 {{.Port}} 已保存到配置文件，下次启动将自动使用",
@@ -137,7 +123,6 @@
   "serve.change_password_warning": "⚠️  请登录后立即修改用户名和密码！",
   "serve.change_password_hint": "   系统设置 → 账户安全",
   "serve.access_urls": "可通过以下地址访问:",
-
   "doctor.fix_flag": "尝试安全修复",
   "doctor.fix_runtime_flag": "修复 OpenClaw 运行时启动崩溃（networkInterfaces）",
   "doctor.rollback_runtime_flag": "回滚 OpenClaw 运行时热修复（恢复最近备份）",
@@ -210,7 +195,6 @@
   "doctor.custom_webhook_missing": "自定义 Webhook 未配置",
   "doctor.notify_unknown": "通知平台未识别: {{.Platform}}",
   "doctor.notify_reconfigure": "运行 `ClawDeckX channels wizard` 重新配置",
-
   "reset_password.usage": "用法: ClawDeckX reset-password <用户名> <新密码>",
   "reset_password.password_too_short": "错误: 密码至少 6 位",
   "reset_password.config_load_failed": "配置加载失败: {{.Error}}",
@@ -219,12 +203,10 @@
   "reset_password.encrypt_failed": "密码加密失败: {{.Error}}",
   "reset_password.update_failed": "密码更新失败: {{.Error}}",
   "reset_password.success": "用户 {{.Username}} 的密码已重置",
-
   "list_users.no_users": "数据库中没有用户。",
   "list_users.header": "已注册用户:",
   "list_users.config_load_failed": "配置加载失败: {{.Error}}",
   "list_users.db_init_failed": "数据库初始化失败: {{.Error}}",
-
   "reset_username.usage": "用法: ClawDeckX reset-username <旧用户名> <新用户名>",
   "reset_username.username_too_short": "错误: 用户名至少 3 个字符",
   "reset_username.config_load_failed": "配置加载失败: {{.Error}}",
@@ -233,7 +215,6 @@
   "reset_username.username_exists": "用户名 {{.Username}} 已存在",
   "reset_username.update_failed": "用户名更新失败: {{.Error}}",
   "reset_username.success": "用户名已更改: {{.OldUsername}} → {{.NewUsername}}",
-
   "settings.config_title": "ClawDeckX 配置",
   "settings.path": "路径: {{.Path}}",
   "settings.mode": "模式: {{.Mode}}",
@@ -247,10 +228,8 @@
   "settings.subcommands": "子命令:",
   "settings.cmd_show": "  show      显示当前 ClawDeckX 配置",
   "settings.cmd_set_mode": "  set-mode  设置模式（production/debug）",
-
   "gateway.heartbeat_restart_failed": "🚨 OpenClaw Gateway 心跳检测失败，自动重启也失败: {{.Error}}",
   "gateway.heartbeat_restart_success": "⚠️ OpenClaw Gateway 心跳检测失败，已自动重启成功",
-
   "installer.node_already_installed": "Node.js 已安装，跳过",
   "installer.node_trying_pkg_manager": "尝试使用系统包管理器安装...",
   "installer.node_pkg_manager_success": "✓ Node.js 通过系统包管理器安装成功",
@@ -377,7 +356,6 @@
   "installer.complete_manual_config": "OpenClaw 安装完成！请稍后手动配置。",
   "installer.complete_success": "OpenClaw 安装完成！",
   "installer.gateway_start_failed_msg": "Gateway 启动失败",
-
   "diagnose.gateway_running_ok": "Gateway 运行正常",
   "diagnose.gateway_has_warnings": "Gateway 存在警告项，建议检查",
   "diagnose.gateway_has_errors": "Gateway 存在异常，请根据建议修复",
@@ -425,7 +403,6 @@
   "diagnose.token_verify_failed": "Token 验证失败（HTTP {{.Code}}）",
   "diagnose.token_mismatch_suggestion": "配置文件中的 Token 与 Gateway 不匹配，请检查 gateway.auth.token 配置",
   "diagnose.token_verify_passed": "Token 验证通过",
-
   "scanner.step_configure": "配置 OpenClaw",
   "scanner.step_start_gateway": "启动 Gateway",
   "scanner.step_install_node": "安装 Node.js 22+",
@@ -441,7 +418,6 @@
   "scanner.warn_no_internet": "无法访问互联网，安装可能失败",
   "scanner.warn_disk_space_low": "磁盘剩余空间不足 ({{.FreeGB}} GB)，建议至少 1 GB",
   "scanner.warn_wsl_environment": "检测到 WSL 环境，部分功能可能受限",
-
   "service.runtime_systemd": "服务名: openclaw",
   "service.runtime_docker_not_found": "未找到 openclaw 容器",
   "service.runtime_docker_container": "容器: {{.Name}}",
@@ -453,9 +429,7 @@
   "service.remote_gateway_http_ok": "远程 Gateway {{.Addr}}（HTTP 正常，状态码 {{.Code}}）",
   "service.remote_gateway_tcp_only_no_http": "远程 Gateway {{.Addr}} — 端口可达但网关未响应（{{.Error}}）",
   "service.remote_gateway_http_error": "远程 Gateway {{.Addr}} — HTTP 错误（状态码 {{.Code}}）",
-
   "gwclient.unknown_error": "未知错误",
-
   "verifier.check_install": "检查 OpenClaw 安装...",
   "verifier.check_config": "检查配置...",
   "verifier.check_gateway": "检查 Gateway...",
@@ -466,31 +440,25 @@
   "verifier.err_gateway_not_running": "Gateway 未运行",
   "verifier.err_health_check_failed": "Gateway 健康检查失败",
   "verifier.err_doctor_failed": "诊断失败: {{.Error}}",
-
   "prompt.default_no": "否",
   "prompt.default_yes": "是",
   "prompt.default_label": "{{.Label}} [默认:{{.Default}}]: ",
   "prompt.default_marker": " [默认]",
   "prompt.enter_number_with_default": "输入序号 [{{.Default}}]: ",
   "prompt.enter_number": "输入序号: ",
-
   "serve.html_index_not_found": "<!DOCTYPE html><html><body><h1>ClawDeckX</h1><p>index.html 未找到</p></body></html>",
   "serve.html_frontend_load_failed": "<!DOCTYPE html><html><body><h1>ClawDeckX</h1><p>前端资源加载失败</p></body></html>",
   "serve.port_conflict_401": "127.0.0.1:{{.Port}} 返回 401 Unauthorized（可能命中 Gateway 而非 ClawDeckX）",
   "serve.port_conflict_http": "127.0.0.1:{{.Port}} 返回 HTTP {{.Code}}（响应片段: {{.Body}}）",
   "serve.port_conflict_request_failed": "127.0.0.1:{{.Port}} 请求失败（{{.Error}}）",
-
   "diagnostics.level_warning": "警告",
   "diagnostics.gateway_status_placeholder": "网关状态未检查（占位）",
   "diagnostics.implement_health_check": "实现网关健康检查",
-
   "tray.open_web_ui": "打开管理后台",
   "tray.address": "地址: {{.Url}}",
   "tray.quit": "退出",
-
   "auth.username_too_short": "用户名至少3个字符",
   "auth.username_exists": "用户名已存在",
-
   "notify.gateway_started": "🟢 Gateway 已启动: {{.Addr}}",
   "notify.gateway_started_repeated": "🟢 Gateway 已启动 {{.Count}} 次: {{.Addr}}",
   "notify.gateway_recovered": "🟢 Gateway 已恢复: {{.Addr}}",
@@ -501,51 +469,40 @@
   "notify.gateway_unreachable": "🟡 Gateway 不可达: {{.Addr}}",
   "notify.gateway_unreachable_repeated": "🟡 Gateway 不可达 {{.Count}} 次: {{.Addr}}",
   "notify.test_message": "🔔 ClawDeckX 通知测试",
-
   "helpers.env_header": "# OpenClaw 环境变量（由 ClawDeckX 生成）",
-
   "owner.unknown": "未知",
-
   "output.debug_prefix": "[调试] ",
-
   "cli.default_config_generated": "默认配置已通过 config set 生成",
-
   "service.get_gateway_config_failed": "获取网关配置失败: {{.Error}}",
   "service.gateway_restart_failed": "网关重启失败: {{.Error}}",
   "service.start_gateway_process_failed": "启动网关进程失败: {{.Error}}",
   "service.command_failed": "{{.Command}} 失败: {{.Output}}",
-
   "stream.create_stdout_pipe_failed": "创建 stdout 管道失败: {{.Error}}",
   "stream.create_stderr_pipe_failed": "创建 stderr 管道失败: {{.Error}}",
   "stream.start_command_failed": "启动命令失败: {{.Error}}",
   "stream.command_exec_failed": "命令执行失败: {{.Error}}",
-
   "cli.openclaw_not_installed": "openclaw 未安装",
   "cli.config_set_failed": "设置 {{.Key}} 失败: {{.Error}}",
   "cli.serialize_failed": "序列化 {{.Key}} 失败: {{.Error}}",
   "cli.openclaw_not_installed_no_config": "openclaw 未安装，无法生成配置",
   "cli.config_set_fallback_failed": "config set 降级也失败: onboard 错误: {{.OnboardError}}, config set 错误: {{.SetError}}",
   "cli.parse_pairing_list_failed": "解析配对列表失败: {{.Error}}",
-
   "installer.windows_manual_zerotier": "Windows 需要手动安装 ZeroTier（无 winget）",
   "installer.macos_manual_zerotier": "macOS 需要 Homebrew 或手动安装 ZeroTier",
   "installer.windows_manual_tailscale": "Windows 需要手动安装 Tailscale（无 winget）",
   "installer.macos_manual_tailscale": "macOS 需要 Homebrew 或手动安装 Tailscale",
   "installer.unsupported_os_with_name": "不支持的操作系统: {{.OS}}",
   "installer.unknown_tool": "未知工具: {{.Tool}}",
-
   "gwclient.serialize_request_failed": "序列化请求失败: {{.Error}}",
   "gwclient.send_request_failed": "发送请求失败: {{.Error}}",
   "gwclient.gateway_error": "Gateway 错误: {{.Message}}",
   "gwclient.request_timeout": "请求超时: {{.Method}}",
   "gwclient.websocket_dial_failed": "WebSocket 拨号失败: {{.Error}}",
   "gwclient.read_message_failed": "读取消息失败: {{.Error}}",
-
   "lang.select_prompt": "选择语言 / Select language [1=English, 2=中文] (默认: {{.Default}} {{.Seconds}}秒后): ",
   "lang.countdown": "{{.Seconds}}秒...",
   "lang.selected": "语言: {{.Language}}",
   "lang.auto_selected": "自动选择: {{.Language}}",
-
   "guide.node_windows": "请手动安装 Node.js:\n1. 访问 https://nodejs.org/en/download/\n2. 下载 Windows 安装包（推荐 LTS 版本）\n3. 运行安装程序并完成安装\n4. 重启 ClawDeckX 应用",
   "guide.node_macos": "请手动安装 Node.js:\n方式 1 (推荐): 使用 Homebrew\n  brew install node@22\n\n方式 2: 官方安装包\n  1. 访问 https://nodejs.org/en/download/\n  2. 下载 macOS 安装包\n  3. 运行安装程序\n\n安装完成后重启 ClawDeckX",
   "guide.node_linux": "请手动安装 Node.js:\n方式 1: 使用包管理器\n  # Ubuntu/Debian\n  curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -\n  sudo apt-get install -y nodejs\n\n  # Fedora/RHEL\n  curl -fsSL https://rpm.nodesource.com/setup_22.x | sudo bash -\n  sudo dnf install -y nodejs\n\n方式 2: 使用 nvm\n  curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash\n  source ~/.bashrc\n  nvm install 22\n\n安装完成后重启 ClawDeckX",
@@ -554,7 +511,6 @@
   "guide.openclaw_windows": "\n  # PowerShell\n  iwr -useb https://openclaw.ai/install.ps1 | iex",
   "guide.openclaw_unix": "\n  # Bash\n  curl -fsSL https://openclaw.ai/install.sh | bash",
   "guide.openclaw_footer": "\n\n安装完成后:\n  1. 运行 'openclaw config set gateway.mode local' 初始化配置\n  2. 重启 ClawDeckX 应用",
-
   "log.serve_starting": "ClawDeckX Web 启动中...",
   "log.db_init_failed": "数据库初始化失败",
   "log.gateway_token_read": "从 openclaw.json 读取到 gateway auth token",
@@ -642,12 +598,10 @@
   "log.remote_gateway_mode": "远程 Gateway 模式",
   "log.bind_non_loopback_warning": "⚠️  Web 服务绑定到非回环地址，请确保已配置防火墙规则",
   "gateway.default_local_name": "本地网关",
-
   "success.applied": "应用成功",
   "success.saved": "保存成功",
   "success.deleted": "删除成功",
   "success.updated": "更新成功",
-
   "error.remote_gateway_no_start": "远程网关不支持远程启动，请在远程服务器上手动启动 OpenClaw 网关",
   "error.remote_gateway_no_stop": "远程网关不支持远程停止，请在远程服务器上手动停止 OpenClaw 网关",
   "error.remote_gateway_not_connected": "远程网关未连接，无法重启",
@@ -706,7 +660,6 @@
   "error.parse_pairing_list_failed": "解析配对列表失败: %w",
   "error.gateway_cli_not_found": "未找到 OpenClaw gateway-cli 文件: %s",
   "error.target_fragment_not_found": "文件未找到目标片段: %s",
-
   "error.daemon_remote_install": "无法在远程网关上安装守护服务",
   "error.daemon_remote_uninstall": "无法在远程网关上卸载守护服务",
   "error.daemon_unsupported_os": "当前操作系统不支持守护服务管理",
@@ -741,7 +694,13 @@
   "daemon.status_active": "，活跃",
   "daemon.status_loaded": "，已加载",
   "daemon.status_running": "，运行中",
-
   "notify.heartbeat_restart_failed": "🚨 OpenClaw Gateway 心跳检测失败，自动重启也失败: ",
-  "notify.heartbeat_restart_success": "⚠️ OpenClaw Gateway 心跳检测失败，已自动重启成功"
+  "notify.heartbeat_restart_success": "⚠️ OpenClaw Gateway 心跳检测失败，已自动重启成功",
+  "diagnose.gateway_ready": "网关就绪状态",
+  "diagnose.gateway_not_listening": "网关尚未监听。如果刚刚启动，请等待启动完成；否则可考虑重启网关。",
+  "diagnose.gateway_health_not_healthy": "/health 返回 HTTP {{.Code}}",
+  "diagnose.gateway_health_suggestion": "网关端口可达，但 HTTP 健康端点未返回健康状态。",
+  "diagnose.gateway_ready_status": "/ready 返回 HTTP {{.Code}}",
+  "diagnose.gateway_starting_suggestion": "网关已存活但仍在启动 sidecar/渠道。除非该状态持续数分钟，否则应避免重启。",
+  "diagnose.gateway_ready_passed": "/health {{.HealthCode}}, /ready {{.ReadyCode}}"
 }

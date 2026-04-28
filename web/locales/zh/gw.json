@@ -5,6 +5,10 @@
   "uptime": "运行时间",
   "runtime": "运行时",
   "runtimeMode": "运行模式",
+  "runtime_process": "进程",
+  "runtime_systemd": "Systemd",
+  "runtime_docker": "Docker",
+  "runtime_unknown": "未知",
   "traffic": "实时流量",
   "location": "服务器位置",
   "start": "启动",
@@ -306,5 +310,11 @@
   "wsDiagIssues": "个问题",
   "wsDiagAllPass": "所有检查通过",
   "wsDiagExpand": "展开详情",
-  "wsDiagCollapse": "收起"
+  "wsDiagCollapse": "收起",
+  "probeTitle": "网关分层探测",
+  "probeDesc": "进程、端口与 HTTP 就绪探测",
+  "probePort": "网关端口不可达",
+  "probeHttpLive": "端口可达，但 /health 未健康",
+  "probeHttpReady": "网关已存活，但尚未就绪",
+  "probeReady": "网关 HTTP 探测健康"
 }

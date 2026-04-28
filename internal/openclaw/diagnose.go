@@ -1,10 +1,11 @@
-﻿package openclaw
+package openclaw
 
 import (
 	"ClawDeckX/internal/executil"
 	"ClawDeckX/internal/i18n"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"os"
@@ -35,6 +36,30 @@ type DiagnoseResult struct {
 	Items   []DiagnoseItem `json:"items"`
 	Summary string         `json:"summary"` // pass | fail | warn
 	Message string         `json:"message"`
+}
+
+type GatewayProbeHTTPResult struct {
+	OK         bool                   `json:"ok"`
+	Status     string                 `json:"status,omitempty"`
+	StatusCode int                    `json:"status_code,omitempty"`
+	LatencyMs  int64                  `json:"latency_ms,omitempty"`
+	Error      string                 `json:"error,omitempty"`
+	Body       map[string]interface{} `json:"body,omitempty"`
+}
+
+type GatewayProbeSnapshot struct {
+	Host         string                 `json:"host"`
+	Port         int                    `json:"port"`
+	Addr         string                 `json:"addr"`
+	CheckedAt    string                 `json:"checked_at"`
+	TCPReachable bool                   `json:"tcp_reachable"`
+	TCPLatencyMs int64                  `json:"tcp_latency_ms,omitempty"`
+	TCPError     string                 `json:"tcp_error,omitempty"`
+	Live         GatewayProbeHTTPResult `json:"live"`
+	Ready        GatewayProbeHTTPResult `json:"ready"`
+	Stage        string                 `json:"stage"`
+	RestartSafe  bool                   `json:"restart_safe"`
+	Summary      string                 `json:"summary"`
 }
 
 func DiagnoseGateway(host string, port int) *DiagnoseResult {
@@ -85,6 +110,15 @@ func DiagnoseGateway(host string, port int) *DiagnoseResult {
 		overallStatus = DiagnoseFail
 	}
 
+	item = checkGatewayReady(host, port)
+	result.Items = append(result.Items, item)
+	if item.Status == DiagnoseFail && overallStatus != DiagnoseFail {
+		overallStatus = DiagnoseFail
+	}
+	if item.Status == DiagnoseWarn && overallStatus == DiagnosePass {
+		overallStatus = DiagnoseWarn
+	}
+
 	item = checkPortConflict(host, port)
 	result.Items = append(result.Items, item)
 	if item.Status == DiagnoseWarn && overallStatus == DiagnosePass {
@@ -108,6 +142,82 @@ func DiagnoseGateway(host string, port int) *DiagnoseResult {
 	}
 
 	return result
+}
+
+func ProbeGateway(host string, port int) GatewayProbeSnapshot {
+	if host == "" {
+		host = "127.0.0.1"
+	}
+	if port == 0 {
+		port = 18789
+	}
+	addr := net.JoinHostPort(host, strconv.Itoa(port))
+	snap := GatewayProbeSnapshot{
+		Host:      host,
+		Port:      port,
+		Addr:      addr,
+		CheckedAt: time.Now().UTC().Format(time.RFC3339),
+		Stage:     "port",
+		Summary:   i18n.T(i18n.MsgDiagnoseGatewayNotListening),
+	}
+
+	start := time.Now()
+	conn, err := net.DialTimeout("tcp", addr, 2*time.Second)
+	snap.TCPLatencyMs = time.Since(start).Milliseconds()
+	if err != nil {
+		snap.TCPError = err.Error()
+		snap.RestartSafe = true
+		return snap
+	}
+	snap.TCPReachable = true
+	_ = conn.Close()
+
+	snap.Live = probeGatewayHTTP(addr, "/health")
+	if !snap.Live.OK {
+		snap.Stage = "http_live"
+		snap.Summary = i18n.T(i18n.MsgDiagnoseGatewayHealthSuggestion)
+		snap.RestartSafe = false
+		return snap
+	}
+
+	snap.Ready = probeGatewayHTTP(addr, "/ready")
+	if !snap.Ready.OK {
+		snap.Stage = "http_ready"
+		snap.Summary = i18n.T(i18n.MsgDiagnoseGatewayStartingSuggestion)
+		snap.RestartSafe = false
+		return snap
+	}
+
+	snap.Stage = "ready"
+	snap.Summary = i18n.T(i18n.MsgDiagnoseGatewayReadyPassed, map[string]interface{}{"HealthCode": snap.Live.StatusCode, "ReadyCode": snap.Ready.StatusCode})
+	snap.RestartSafe = false
+	return snap
+}
+
+func probeGatewayHTTP(addr string, path string) GatewayProbeHTTPResult {
+	client := &http.Client{Timeout: 3 * time.Second}
+	target := fmt.Sprintf("http://%s%s", addr, path)
+	start := time.Now()
+	resp, err := client.Get(target)
+	elapsed := time.Since(start).Milliseconds()
+	if err != nil {
+		return GatewayProbeHTTPResult{OK: false, Status: strings.TrimPrefix(path, "/"), LatencyMs: elapsed, Error: err.Error()}
+	}
+	defer resp.Body.Close()
+
+	out := GatewayProbeHTTPResult{
+		OK:         resp.StatusCode >= 200 && resp.StatusCode < 300,
+		Status:     strings.TrimPrefix(path, "/"),
+		StatusCode: resp.StatusCode,
+		LatencyMs:  elapsed,
+	}
+	if data, readErr := io.ReadAll(io.LimitReader(resp.Body, 4096)); readErr == nil && len(data) > 0 {
+		var body map[string]interface{}
+		if json.Unmarshal(data, &body) == nil {
+			out.Body = body
+		}
+	}
+	return out
 }
 
 func openclawConfigPath() string {
@@ -280,6 +390,50 @@ func checkGatewayAPI(host string, port int) DiagnoseItem {
 
 	item.Status = DiagnosePass
 	item.Detail = i18n.T(i18n.MsgDiagnoseHttpStatusCode, map[string]interface{}{"Code": resp.StatusCode})
+	return item
+}
+
+func checkGatewayReady(host string, port int) DiagnoseItem {
+	item := DiagnoseItem{
+		Name:    "gateway_ready",
+		Label:   i18n.T(i18n.MsgDiagnoseGatewayReady),
+		LabelEn: "Gateway Readiness",
+	}
+
+	probe := ProbeGateway(host, port)
+	if !probe.TCPReachable {
+		item.Status = DiagnoseFail
+		item.Detail = probe.TCPError
+		item.Suggestion = i18n.T(i18n.MsgDiagnoseGatewayNotListening)
+		return item
+	}
+	if !probe.Live.OK {
+		item.Status = DiagnoseWarn
+		if probe.Live.Error != "" {
+			item.Detail = probe.Live.Error
+		} else {
+			item.Detail = i18n.T(i18n.MsgDiagnoseGatewayHealthNotHealthy, map[string]interface{}{"Code": probe.Live.StatusCode})
+		}
+		item.Suggestion = i18n.T(i18n.MsgDiagnoseGatewayHealthSuggestion)
+		return item
+	}
+	if !probe.Ready.OK {
+		item.Status = DiagnoseWarn
+		item.Detail = i18n.T(i18n.MsgDiagnoseGatewayReadyStatus, map[string]interface{}{"Code": probe.Ready.StatusCode})
+		if probe.Ready.Body != nil {
+			if failing, ok := probe.Ready.Body["failing"]; ok {
+				item.Detail = fmt.Sprintf("%s, failing=%v", item.Detail, failing)
+			}
+			if uptime, ok := probe.Ready.Body["uptimeMs"]; ok {
+				item.Detail = fmt.Sprintf("%s, uptimeMs=%v", item.Detail, uptime)
+			}
+		}
+		item.Suggestion = i18n.T(i18n.MsgDiagnoseGatewayStartingSuggestion)
+		return item
+	}
+
+	item.Status = DiagnosePass
+	item.Detail = i18n.T(i18n.MsgDiagnoseGatewayReadyPassed, map[string]interface{}{"HealthCode": probe.Live.StatusCode, "ReadyCode": probe.Ready.StatusCode})
 	return item
 }
 

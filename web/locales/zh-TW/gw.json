@@ -5,6 +5,10 @@
   "uptime": "執行時間",
   "runtime": "執行時",
   "runtimeMode": "運行模式",
+  "runtime_process": "程序",
+  "runtime_systemd": "Systemd",
+  "runtime_docker": "Docker",
+  "runtime_unknown": "未知",
   "traffic": "實時流量",
   "location": "伺服器位置",
   "start": "啟動",
@@ -306,5 +310,11 @@
   "wsDiagIssues": "個問題",
   "wsDiagAllPass": "所有檢查通過",
   "wsDiagExpand": "展開詳情",
-  "wsDiagCollapse": "收起"
+  "wsDiagCollapse": "收起",
+  "probeTitle": "閘道分層探測",
+  "probeDesc": "行程、連接埠與 HTTP 就緒探測",
+  "probePort": "閘道連接埠不可達",
+  "probeHttpLive": "連接埠可達，但 /health 未健康",
+  "probeHttpReady": "閘道已存活，但尚未就緒",
+  "probeReady": "閘道 HTTP 探測健康"
 }
