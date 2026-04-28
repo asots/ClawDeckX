@@ -16,6 +16,7 @@ interface EditorProps {
 }
 
 type SectionId =
+  | 'migration'
   | 'models' | 'agents' | 'tools' | 'channels' | 'messages' | 'commands'
   | 'session' | 'gateway' | 'hooks' | 'cron' | 'extensions'
   | 'memory' | 'audio' | 'browser' | 'logging' | 'auth' | 'misc' | 'json' | 'live' | 'templates'
@@ -28,6 +29,7 @@ interface SectionDef {
   color: string;
   searchKeys?: string[];
 }
+const MigrationSection = lazy(() => import('./sections/MigrationSection').then(m => ({ default: m.MigrationSection })));
 const ModelsSection = lazy(() => import('./sections/ModelsSection').then(m => ({ default: m.ModelsSection })));
 const AgentsSection = lazy(() => import('./sections/AgentsSection').then(m => ({ default: m.AgentsSection })));
 const ToolsSection = lazy(() => import('./sections/ToolsSection').then(m => ({ default: m.ToolsSection })));
@@ -50,6 +52,9 @@ const LiveConfigSection = lazy(() => import('./sections/LiveConfigSection').then
 const TemplatesSection = lazy(() => import('./sections/TemplatesSectionV2').then(m => ({ default: m.TemplatesSectionV2 })));
 const UnmappedConfigSection = lazy(() => import('./sections/UnmappedConfigSection').then(m => ({ default: m.UnmappedConfigSection })));
 const SECTIONS: SectionDef[] = [
+  // OpenClaw 一键导入（置顶）
+  { id: 'migration', icon: 'swap_horiz', labelKey: 'secMigration', color: 'text-cyan-400',
+    searchKeys: ['migrate', 'migration', 'claude', 'hermes', 'import', '导入', '迁移', 'importer'] },
   // core sections
   { id: 'models', icon: 'psychology', labelKey: 'secModels', color: 'text-blue-500',
     searchKeys: ['providers', 'provider', 'apiType', 'apiTypeTip', 'baseUrlTip', 'credentials', 'models', 'primaryModel', 'primaryModelDesc', 'fallbackModel', 'fallbackModelDesc', 'contextWindow', 'contextWindowDesc', 'reasoning', 'reasoningDesc', 'mergeMode', 'mergeModeDesc', 'subagentModel', 'subagentModelDesc', 'heartbeatModel', 'heartbeatModelDesc', 'customHeaders', 'authMethod', 'advancedSettings', 'addProviderWizard', 'testConn', 'discoverModels'] },
@@ -270,6 +275,7 @@ const Editor: React.FC<EditorProps> = ({ language, pendingSection, onSectionCons
   const renderedSection = useMemo(() => {
     if (!editor.config || !sectionProps) return null;
     switch (activeSection) {
+      case 'migration': return <MigrationSection {...sectionProps} />;
       case 'models': return <ModelsSection {...sectionProps} />;
       case 'agents': return <AgentsSection {...sectionProps} />;
       case 'tools': return <ToolsSection {...sectionProps} />;

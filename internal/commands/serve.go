@@ -599,6 +599,12 @@ func RunServe(args []string) int {
 
 	router.POST("/api/v1/recipe/apply-step", web.RequireAdmin(recipeHandler.ApplyStep))
 
+	migrateHandler := handlers.NewMigrateHandler()
+	router.GET("/api/v1/migrate/list", migrateHandler.List)
+	router.GET("/api/v1/migrate/detect", migrateHandler.Detect)
+	router.POST("/api/v1/migrate/plan", migrateHandler.Plan)
+	router.POST("/api/v1/migrate/apply", web.RequireAdmin(migrateHandler.Apply))
+
 	router.GET("/api/v1/maintenance/context/analyze", maintenanceHandler.ContextAnalyze)
 	router.POST("/api/v1/maintenance/context/optimize", web.RequireAdmin(maintenanceHandler.ContextOptimize))
 	router.POST("/api/v1/maintenance/context/optimize-all", web.RequireAdmin(maintenanceHandler.ContextOptimizeAll))

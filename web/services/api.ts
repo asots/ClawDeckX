@@ -759,6 +759,71 @@ export const recipeApi = {
     post<{ success: boolean; backupPath?: string; message: string }>('/api/v1/recipe/apply-step', data),
 };
 
+// ==================== Claude / Hermes 一键迁移（OpenClaw 2026.4.26+）====================
+export interface MigrateProvider {
+  id: string;
+  title?: string;
+  description?: string;
+  source?: string;
+  pluginId?: string;
+}
+export interface MigrateItem {
+  id: string;
+  kind: string;
+  action: string;
+  status: string;
+  target?: string;
+  sensitive?: boolean;
+  message?: string;
+  reason?: string;
+}
+export interface MigrateSummary {
+  total: number;
+  conflicts: number;
+  sensitive: number;
+  errors?: number;
+  applied?: number;
+  skipped?: number;
+  archived?: number;
+  manualOnly?: number;
+}
+export interface MigratePlan {
+  providerId: string;
+  source: string;
+  target?: string;
+  summary: MigrateSummary;
+  items: MigrateItem[];
+  warnings?: string[];
+  nextSteps?: string[];
+}
+export interface MigrateApplyResult extends MigratePlan {
+  backupPath?: string;
+  reportDir?: string;
+}
+export interface MigrateDetectResult {
+  provider: string;
+  path: string;
+  exists: boolean;
+}
+export interface MigratePlanRequest {
+  provider: string;
+  from?: string;
+  includeSecrets?: boolean;
+  overwrite?: boolean;
+}
+export interface MigrateApplyRequest extends MigratePlanRequest {
+  noBackup?: boolean;
+  force?: boolean;
+  backupOutput?: string;
+}
+export const migrateApi = {
+  list: () => get<{ providers: MigrateProvider[] }>('/api/v1/migrate/list'),
+  detect: () => get<{ results: MigrateDetectResult[] }>('/api/v1/migrate/detect'),
+  plan: (data: MigratePlanRequest) => post<MigratePlan>('/api/v1/migrate/plan', data),
+  apply: (data: MigrateApplyRequest) =>
+    post<{ ok: boolean; error?: string; result: MigrateApplyResult }>('/api/v1/migrate/apply', data),
+};
+
 // ==================== LLM 供应商健康 ====================
 export interface LlmProviderStatus {
   provider: string;
