@@ -7,15 +7,19 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import type { Member, Message } from '../types';
-import { listDecisions, demoteDecision, roomEvents } from '../service';
+import { listDecisions, demoteDecision, roomEvents, promoteDecisionToTask } from '../service';
+import { useToast } from '../../../components/Toast';
 
 interface Props {
   roomId: string;
+  meId: string;
   members: Map<string, Member>;
   onJump?: (messageId: string) => void;
 }
 
-const DecisionsPanel: React.FC<Props> = ({ roomId, members, onJump }) => {
+const DecisionsPanel: React.FC<Props> = ({ roomId, meId, members, onJump }) => {
+  const { toast } = useToast();
+  const [promotingId, setPromotingId] = useState<string | null>(null);
   const [items, setItems] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -51,6 +55,25 @@ const DecisionsPanel: React.FC<Props> = ({ roomId, members, onJump }) => {
     setItems(prev => prev.filter(m => m.id !== id));
   };
 
+  // v0.2 GAP G2：决策一键转任务。后端会基于 decisionSummary / 消息内容自动生成任务文本，
+  // 并写入 sourceDecisionId 形成回溯链。任务面板会通过 WS 自动刷新。
+  const handlePromote = async (msg: Message) => {
+    if (promotingId) return;
+    setPromotingId(msg.id);
+    try {
+      await promoteDecisionToTask(roomId, {
+        messageId: msg.id,
+        creatorId: meId,
+        // assigneeId / reviewerId / DoD 留空，让用户在 TasksPanel 中后续补充
+      });
+      toast('success', '已生成任务，可在右侧任务面板中编辑');
+    } catch {
+      // service 已用 withToast 弹错误
+    } finally {
+      setPromotingId(null);
+    }
+  };
+
   if (loading) return <div className="text-[11px] text-text-muted">加载中…</div>;
 
   if (sorted.length === 0) {
@@ -82,6 +105,17 @@ const DecisionsPanel: React.FC<Props> = ({ roomId, members, onJump }) => {
             </div>
           </div>
           <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition shrink-0">
+            <button
+              type="button"
+              onClick={() => handlePromote(m)}
+              disabled={promotingId === m.id}
+              className="w-6 h-6 rounded hover:bg-cyan-500/10 flex items-center justify-center text-text-muted hover:text-cyan-500 disabled:opacity-50 disabled:cursor-wait"
+              title="把此决策转为任务"
+            >
+              <span className="material-symbols-outlined text-[14px]">
+                {promotingId === m.id ? 'hourglass_top' : 'task_alt'}
+              </span>
+            </button>
             {onJump && (
               <button
                 type="button"

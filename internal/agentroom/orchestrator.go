@@ -409,6 +409,11 @@ func (o *Orchestrator) handle(ctx context.Context, c cmd) {
 	case "user.nudge":
 		txt, _ := c.payload.(string)
 		o.onUserNudge(ctx, txt)
+	case "task.dispatch":
+		// v0.3 主题 A：把任务派发给某成员的 agent 真实运行（见 dispatch.go）
+		if p, ok := c.payload.(dispatchPayload); ok {
+			o.onDispatchTask(ctx, p)
+		}
 	case "refresh":
 		// 状态被外部改过 → 可能需要继续触发（如从 paused → active）
 		if o.room.State == StateActive {
@@ -1691,6 +1696,11 @@ func (o *Orchestrator) runAgentTurn(ctx context.Context, memberID string, recent
 		cancel()
 	}()
 
+	// v0.3 主题 B：主持人 / conductor agent 拥有调度行动权——追加 conductor action 指令。
+	if m.IsModerator || m.Kind == MemberKindConductor {
+		extraSys = appendConductorHint(extraSys)
+	}
+
 	// 构造带 prompt 的 member 副本供 bridge：userMessage 直接当 Message 传。
 	bridgeMember := *m
 	result, streamErr := o.runViaBridge(tctx, &bridgeMember, userMessage, extraSys, msg.ID, triggerAttachments)
@@ -1768,6 +1778,13 @@ func (o *Orchestrator) runAgentTurn(ctx context.Context, memberID string, recent
 	}
 	if replanSig != nil {
 		cleaned = StripReplanTags(cleaned)
+	}
+	// v0.3 主题 B：conductor action 解析与执行（推决策 / 推议程 / 验收任务 / 暂停 / 投票）。
+	// 任何 agent 在回复里嵌入 <conductor-action ...> 都会触发这里——主持人 agent 用得最多。
+	// 标签从正文剥除，agent 看上去仍是自然对话。
+	if conductorActions, withoutTags := ParseConductorActions(cleaned); len(conductorActions) > 0 {
+		cleaned = withoutTags
+		o.applyConductorActions(conductorActions, m)
 	}
 	cleaned = strings.TrimSpace(cleaned)
 
@@ -1848,6 +1865,9 @@ func (o *Orchestrator) runAgentTurn(ctx context.Context, memberID string, recent
 			case "summarize":
 				o.appendSystemMessage("📋 已达到预期轮次 " + fmt.Sprint(o.room.RoundBudget) + "，正在自动生成会议总结…")
 				go o.runDeadlineSummary()
+			case "closeout":
+				o.appendSystemMessage("📋 已达到预期轮次 " + fmt.Sprint(o.room.RoundBudget) + "，正在自动执行完整闭环（纪要→行动项→复盘）…")
+				go o.runDeadlineCloseout()
 			default: // "remind" or empty
 				o.appendSystemMessage("已达到预期轮次 " + fmt.Sprint(o.room.RoundBudget) + "，是否收敛？可 /extract-todo 或 /close 结束。")
 			}
@@ -2542,6 +2562,27 @@ func (o *Orchestrator) incrBudget(tokens int, costMilli int64) {
 		"roomId": o.roomID,
 		"patch":  map[string]any{"budget": b},
 	})
+}
+
+// runDeadlineCloseout —— deadlineAction="closeout" 时：执行完整 Closeout 流水线（纪要→todo→playbook→复盘→总包）并关闭房间。
+// 用于定时会议：轮次耗尽后全自动生产会议产出物。
+func (o *Orchestrator) runDeadlineCloseout() {
+	timeout := 5 * time.Minute
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	logger.Log.Info().Str("room", o.roomID).Msg("agentroom: deadline closeout starting")
+
+	result, err := o.Closeout(ctx, true)
+	if err != nil {
+		o.appendSystemMessage("⚠️ 自动闭环失败（" + err.Error() + "），会议已暂停。")
+		o.transitionToPaused("deadline closeout failed")
+		return
+	}
+	if result != nil && result.Ok {
+		o.appendSystemMessage("✅ 定时会议已完成完整闭环。纪要、行动项、复盘均已生成。")
+	} else {
+		o.appendSystemMessage("⚠️ 闭环部分步骤失败，请查看产出物。会议已关闭。")
+	}
 }
 
 // runDeadlineSummary —— deadlineAction="summarize" 时：自动生成会议纪要后暂停房间。

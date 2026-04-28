@@ -382,6 +382,9 @@ func (o *Orchestrator) Closeout(ctx context.Context, closeRoom bool) (*CloseoutR
 		o.DeliverInterRoomBus(cctx, "closeout.done", res.Bundle)
 	}
 
+	// v1.0+：关闭前自动收尾未完成任务 —— todo/doing/in_progress/review → cancelled
+	o.cancelPendingTasks()
+
 	// 收束房间
 	if closeRoom {
 		closed := NowMs()
@@ -623,13 +626,39 @@ func (o *Orchestrator) GenerateRetro(ctx context.Context) (*Retro, error) {
 		GeneratedAt:          NowMs(),
 	}
 	if parsed.NextMeeting != nil && strings.TrimSpace(parsed.NextMeeting.Title) != "" {
+		// v0.2 GAP G6：收集结构化继承项，让续会自动继承未完成任务 / 返工任务 / 风险。
+		unfinishedIDs := []string{}
+		reworkIDs := []string{}
+		for _, t := range tasks {
+			switch t.Status {
+			case TaskStatusDone, TaskStatusCancelled:
+				continue
+			}
+			if t.AcceptanceStatus == AcceptanceStatusRework {
+				reworkIDs = append(reworkIDs, t.ID)
+			} else {
+				unfinishedIDs = append(unfinishedIDs, t.ID)
+			}
+		}
+		riskIDs := []string{}
+		if rs, err := o.repo.ListRisks(o.roomID); err == nil {
+			for _, rk := range rs {
+				if rk.Status == "" || rk.Status == "open" {
+					riskIDs = append(riskIDs, rk.ID)
+				}
+			}
+		}
 		out.NextMeetingDraft = &NextMeetingDraft{
-			Title:       trimRunes(parsed.NextMeeting.Title, 120),
-			Goal:        trimRunes(parsed.NextMeeting.Goal, 400),
-			TemplateID:  o.room.TemplateID,
-			AgendaItems: trimStringSlice(parsed.NextMeeting.Agenda, 6, 100),
-			InviteRoles: roleNames(o.members),
-			SuggestedAt: "1 week later",
+			Title:             trimRunes(parsed.NextMeeting.Title, 120),
+			Goal:              trimRunes(parsed.NextMeeting.Goal, 400),
+			TemplateID:        o.room.TemplateID,
+			AgendaItems:       trimStringSlice(parsed.NextMeeting.Agenda, 6, 100),
+			InviteRoles:       roleNames(o.members),
+			SuggestedAt:       "1 week later",
+			SourceRoomID:      o.roomID,
+			UnfinishedTaskIDs: unfinishedIDs,
+			ReworkTaskIDs:     reworkIDs,
+			RiskIDs:           riskIDs,
 		}
 	}
 	return out, nil

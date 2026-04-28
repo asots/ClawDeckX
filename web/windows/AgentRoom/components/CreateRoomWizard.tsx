@@ -3,7 +3,7 @@
 //   2) 自定义路径（高级 5 步）：目标 / 成员 / 氛围 / 策略 / 预算
 //      v0.9：第 3 步原为"工具配置"，与成员卡高级区重复、价值低；已替换为房间级
 //      "氛围与节奏"（冲突模式 + 轮次预算 + 协作风格），直接注入每轮 system prompt。
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { NextMeetingDraft, RoomTemplate, RoomPolicy, TemplateMemberOverride, RoleProfile, GatewayAgentInfo, PlaybookV7 } from '../types';
 import {
   listTemplates,
@@ -20,25 +20,54 @@ import CustomSelect from '../../../components/CustomSelect';
 import { useConfirm } from '../../../components/ConfirmDialog';
 import RoleEditorModal from './RoleEditorModal';
 import AiRoomPath from './AiRoomPath';
+import ScheduleToggle from './ScheduleToggle';
+import type { ScheduleToggleRef, ScheduleConfig } from './ScheduleToggle';
 import { resolveTemplateColor } from '../../../utils/templateColors';
 
 type ConflictMode = '' | 'review' | 'debate';
 
+export interface InitialTaskPayload {
+  text: string;
+  deliverable?: string;
+  definitionOfDone?: string;
+  executorRole?: string;
+  reviewerRole?: string;
+  dependsOnIndices?: number[];
+}
+
 type CreateRequest =
-  | { kind: 'template'; templateId: string; title?: string; initialPrompt?: string; budgetCNY?: number; memberOverrides?: TemplateMemberOverride[]; auxModel?: string; conflictMode?: ConflictMode }
-  | { kind: 'custom'; title: string; goal?: string; members: CustomMemberSpec[]; policy: RoomPolicy; budgetCNY: number; initialPrompt?: string; auxModel?: string; conflictMode?: ConflictMode; roundBudget?: number; collaborationStyle?: string };
+  | { kind: 'template'; templateId: string; title?: string; initialPrompt?: string; budgetCNY?: number; memberOverrides?: TemplateMemberOverride[]; auxModel?: string; conflictMode?: ConflictMode; disabledInitialTaskIndices?: number[] }
+  | { kind: 'custom'; title: string; goal?: string; members: CustomMemberSpec[]; policy: RoomPolicy; budgetCNY: number; initialPrompt?: string; auxModel?: string; conflictMode?: ConflictMode; roundBudget?: number; collaborationStyle?: string; initialTasks?: InitialTaskPayload[]; defaultDispatchMode?: string };
+
+export interface SchedulePayload {
+  title: string;
+  /** 模板路径填 templateId；custom / AI 建会路径填 blueprint，二选一。 */
+  templateId?: string;
+  blueprint?: Record<string, unknown>;
+  cronExpr: string;
+  timezone: string;
+  initialPrompt?: string;
+  autoCloseout: boolean;
+  roundBudget?: number;
+  budgetCNY?: number;
+  inheritFromLast: boolean;
+  deadlineAction: string;
+}
 
 interface Props {
   // onCreate 支持 async — 向导据此显示 loading 并锁住 primary 按钮，避免双击创建重复房间。
   onCreate: (req: CreateRequest) => void | Promise<void>;
+  onCreateSchedule?: (payload: SchedulePayload) => void | Promise<void>;
   onCancel: () => void;
   initialMode?: Exclude<Mode, 'choose'>;
   initialDraft?: NextMeetingDraft;
+  /** Retro 「设为定时续会」入口传入 true — 该父会让子向导预勾选 ScheduleToggle。 */
+  initialScheduleEnabled?: boolean;
 }
 
 type Mode = 'choose' | 'template' | 'custom' | 'ai' | 'roles';
 
-const CreateRoomWizard: React.FC<Props> = ({ onCreate, onCancel, initialMode, initialDraft }) => {
+const CreateRoomWizard: React.FC<Props> = ({ onCreate, onCreateSchedule, onCancel, initialMode, initialDraft, initialScheduleEnabled }) => {
   const [mode, setMode] = useState<Mode>(initialMode || 'choose');
 
   useEffect(() => {
@@ -50,9 +79,9 @@ const CreateRoomWizard: React.FC<Props> = ({ onCreate, onCancel, initialMode, in
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onCancel} />
       <div className="relative bg-surface rounded-2xl shadow-2xl border border-border w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden animate-card-enter">
         {mode === 'choose' && <ModeChooser onPick={setMode} onCancel={onCancel} />}
-        {mode === 'template' && <TemplatePath onCreate={onCreate} onCancel={onCancel} onBack={() => setMode('choose')} initialDraft={initialDraft} />}
-        {mode === 'custom' && <CustomPath onCreate={onCreate} onCancel={onCancel} onBack={() => setMode('choose')} initialDraft={initialDraft} />}
-        {mode === 'ai' && <AiRoomPath onCreate={onCreate} onCancel={onCancel} onBack={() => setMode('choose')} />}
+        {mode === 'template' && <TemplatePath onCreate={onCreate} onCreateSchedule={onCreateSchedule} onCancel={onCancel} onBack={() => setMode('choose')} initialDraft={initialDraft} initialScheduleEnabled={initialScheduleEnabled} />}
+        {mode === 'custom' && <CustomPath onCreate={onCreate} onCreateSchedule={onCreateSchedule} onCancel={onCancel} onBack={() => setMode('choose')} initialDraft={initialDraft} initialScheduleEnabled={initialScheduleEnabled} />}
+        {mode === 'ai' && <AiRoomPath onCreate={onCreate} onCreateSchedule={onCreateSchedule} onCancel={onCancel} onBack={() => setMode('choose')} initialScheduleEnabled={initialScheduleEnabled} />}
         {mode === 'roles' && <RoleLibraryView onBack={() => setMode('choose')} onCancel={onCancel} />}
       </div>
     </div>
@@ -181,14 +210,17 @@ function renderHealthItems(items: HealthItem[]) {
   );
 }
 
-const TemplatePath: React.FC<{ onCreate: (r: CreateRequest) => void | Promise<void>; onCancel: () => void; onBack: () => void; initialDraft?: NextMeetingDraft }> = ({ onCreate, onCancel, onBack, initialDraft }) => {
+const TemplatePath: React.FC<{ onCreate: (r: CreateRequest) => void | Promise<void>; onCreateSchedule?: (p: SchedulePayload) => void | Promise<void>; onCancel: () => void; onBack: () => void; initialDraft?: NextMeetingDraft; initialScheduleEnabled?: boolean }> = ({ onCreate, onCreateSchedule, onCancel, onBack, initialDraft, initialScheduleEnabled }) => {
+  const scheduleRef = useRef<ScheduleToggleRef>(null);
   const [templates, setTemplates] = useState<RoomTemplate[]>([]);
   const [selected, setSelected] = useState<RoomTemplate | null>(null);
   const [category, setCategory] = useState<RoomTemplate['category'] | 'all'>('all');
-  const [step, setStep] = useState<1 | 2>(1);
+  const [step, setStep] = useState<1 | 2 | 3>(1);
   const [title, setTitle] = useState('');
   const [prompt, setPrompt] = useState('');
   const [budget, setBudget] = useState(10);
+  // v1.0+：勾掉的初始任务下标。空 set = 全部种子化。切换模板时重置。
+  const [disabledTaskIdx, setDisabledTaskIdx] = useState<Set<number>>(new Set());
   // v0.8 建房即选冲突驱动模式。'' = 跟模板 preset 的默认值（后端不下发即走 preset）。
   // 切换模板时自动回到 '' 让用户重新判断，避免残留上一模板的选择。
   const [conflictMode, setConflictMode] = useState<ConflictMode>('');
@@ -234,7 +266,12 @@ const TemplatePath: React.FC<{ onCreate: (r: CreateRequest) => void | Promise<vo
     setOverrides({});
     setAdvancedOpen(false);
     setConflictMode('');
+    setDisabledTaskIdx(new Set());
   }, [selected?.id]);
+
+  // 模板是否带初始任务清单（决定向导是 2 步还是 3 步）。
+  const hasInitialTasks = (selected?.initialTasks?.length ?? 0) > 0;
+  const totalSteps = hasInitialTasks ? 3 : 2;
 
   const filtered = category === 'all' ? templates : templates.filter(t => t.category === category);
   // v0.8：隐藏“热门模板”置顶区——stars 字段是占位虚数，排名感不真实。保留分类 Tab 即可。
@@ -253,8 +290,30 @@ const TemplatePath: React.FC<{ onCreate: (r: CreateRequest) => void | Promise<vo
   const [submitting, setSubmitting] = useState(false);
   const submit = async () => {
     if (!selected || submitting) return; // 双击守护
+    const sched = scheduleRef.current?.getConfig();
+    if (sched?.enabled && sched.validationError) return; // 有校验错 → 不提交（用户可见内联提示）
+    if (sched?.enabled && onCreateSchedule) {
+      setSubmitting(true);
+      try {
+        await onCreateSchedule({
+          title: title.trim() || selected.name,
+          templateId: selected.id,
+          cronExpr: sched.cronExpr,
+          timezone: sched.timezone,
+          initialPrompt: prompt.trim() || undefined,
+          autoCloseout: sched.autoCloseout,
+          budgetCNY: budget,
+          inheritFromLast: sched.inheritFromLast,
+          deadlineAction: sched.autoCloseout ? 'closeout' : 'summarize',
+        });
+      } finally { setSubmitting(false); }
+      return;
+    }
     setSubmitting(true);
     try {
+      const disabledIdx = hasInitialTasks && disabledTaskIdx.size > 0
+        ? Array.from(disabledTaskIdx).sort((a, b) => a - b)
+        : undefined;
       await onCreate({
         kind: 'template',
         templateId: selected.id,
@@ -264,6 +323,7 @@ const TemplatePath: React.FC<{ onCreate: (r: CreateRequest) => void | Promise<vo
         memberOverrides: buildOverridesPayload(),
         auxModel: auxModel.trim() || undefined,
         conflictMode: conflictMode || undefined,
+        disabledInitialTaskIndices: disabledIdx,
       });
     } finally {
       setSubmitting(false);
@@ -291,10 +351,14 @@ const TemplatePath: React.FC<{ onCreate: (r: CreateRequest) => void | Promise<vo
         icon="auto_awesome"
         gradient="from-cyan-500 to-blue-500"
         title="从模板开始"
-        subtitle={step === 1 ? '第 1 步 · 选一个场景' : '第 2 步 · 告诉团队要做什么'}
+        subtitle={
+          step === 1 ? '第 1 步 · 选一个场景'
+            : step === 2 ? '第 2 步 · 告诉团队要做什么'
+            : '第 3 步 · 确认初始任务清单'
+        }
         onBack={onBack}
         onCancel={onCancel}
-        stepLabel={`${step} / 2`}
+        stepLabel={`${step} / ${totalSteps}`}
       />
       <div className="flex-1 min-h-0 overflow-y-auto neon-scrollbar p-5">
         {step === 1 && (
@@ -445,19 +509,166 @@ const TemplatePath: React.FC<{ onCreate: (r: CreateRequest) => void | Promise<vo
                 )}
               </div>
             </div>
+            {onCreateSchedule && (
+              <ScheduleToggle ref={scheduleRef} defaultEnabled={initialScheduleEnabled} />
+            )}
           </div>
+        )}
+
+        {step === 3 && selected && hasInitialTasks && (
+          <InitialTasksPreview
+            template={selected}
+            disabled={disabledTaskIdx}
+            onToggle={(idx) => {
+              setDisabledTaskIdx(prev => {
+                const next = new Set(prev);
+                if (next.has(idx)) next.delete(idx); else next.add(idx);
+                return next;
+              });
+            }}
+          />
         )}
       </div>
       <WizardFooter
         backLabel={step === 1 ? '返回' : '上一步'}
-        onBack={() => step === 1 ? onBack() : setStep(1)}
-        primaryLabel={step === 1 ? '下一步' : (submitting ? '创建中…' : '启动房间')}
-        primaryIcon={step === 1 ? 'arrow_forward' : 'rocket_launch'}
+        onBack={() => {
+          if (step === 1) onBack();
+          else if (step === 3) setStep(2);
+          else setStep(1);
+        }}
+        primaryLabel={
+          step === 1 ? '下一步'
+            : step === 2 ? (totalSteps === 3 ? '下一步' : (submitting ? '创建中…' : '启动房间'))
+            : (submitting ? '创建中…' : '启动房间')
+        }
+        primaryIcon={
+          step === 1 ? 'arrow_forward'
+            : step === 2 && totalSteps === 3 ? 'arrow_forward'
+            : 'rocket_launch'
+        }
         primaryDisabled={!selected || submitting}
         primaryLoading={submitting}
-        onPrimary={() => (step === 1 ? setStep(2) : submit())}
+        onPrimary={() => {
+          if (step === 1) setStep(2);
+          else if (step === 2 && totalSteps === 3) setStep(3);
+          else submit();
+        }}
       />
     </>
+  );
+};
+
+// ── Step 3: Initial Tasks Preview ──
+//
+// 把模板预置的 InitialTasks 渲染成可勾选清单。用户可以勾掉自己不想要的任务，
+// 后端在 seedInitialTasksFromTemplate 里跳过这些下标。
+// dependsOn 依赖链以小箭头展示，让用户能直观看到流水线顺序。
+const InitialTasksPreview: React.FC<{
+  template: RoomTemplate;
+  disabled: Set<number>;
+  onToggle: (idx: number) => void;
+}> = ({ template, disabled, onToggle }) => {
+  const tasks = template.initialTasks ?? [];
+  const memberByRole = useMemo(() => {
+    const m = new Map<string, { role: string; emoji: string }>();
+    template.members.forEach(member => {
+      m.set(member.roleId, { role: member.role, emoji: member.emoji });
+    });
+    return m;
+  }, [template.members]);
+  const enabledCount = tasks.length - disabled.size;
+  return (
+    <div className="max-w-2xl mx-auto space-y-3">
+      <div className="rounded-xl border border-border bg-surface-raised p-3">
+        <div className="flex items-start gap-2">
+          <span className="material-symbols-outlined text-[18px] text-cyan-500 mt-0.5">checklist</span>
+          <div className="text-[12px] text-text-secondary leading-relaxed">
+            <span className="font-semibold text-text">「{template.name}」</span>
+            模板会自动种子化 <span className="font-bold text-cyan-500">{tasks.length}</span> 条任务到任务面板，
+            预设了执行人 / 验收人 / 完成标准（DoD）和依赖关系，方便房间一开就能直接派发。
+            勾掉的任务不会被创建（剩 <span className="font-bold">{enabledCount}</span> 条）。
+            派发模式：
+            {template.defaultDispatchMode === 'subagent'
+              ? <span className="ms-1 font-mono text-[11px] text-cyan-500">子代理 isolated</span>
+              : <span className="ms-1 font-mono text-[11px] text-text-muted">成员代理（默认）</span>}
+          </div>
+        </div>
+      </div>
+      <div className="space-y-2">
+        {tasks.map((t, idx) => {
+          const isDisabled = disabled.has(idx);
+          const executor = t.executorRoleId ? memberByRole.get(t.executorRoleId) : undefined;
+          const reviewer = t.reviewerRoleId ? memberByRole.get(t.reviewerRoleId) : undefined;
+          const deps = t.dependsOnIndices ?? [];
+          return (
+            <div
+              key={idx}
+              className={`rounded-xl border p-3 transition-all ${
+                isDisabled
+                  ? 'border-border bg-surface-sunken/40 opacity-50'
+                  : 'border-cyan-400/30 bg-surface-raised hover:border-cyan-400/60'
+              }`}
+            >
+              <div className="flex items-start gap-2.5">
+                <button
+                  onClick={() => onToggle(idx)}
+                  className={`shrink-0 w-5 h-5 mt-0.5 rounded-md border-2 flex items-center justify-center transition-colors ${
+                    isDisabled
+                      ? 'border-border bg-surface'
+                      : 'border-cyan-500 bg-cyan-500'
+                  }`}
+                  aria-label={isDisabled ? '启用此任务' : '跳过此任务'}
+                >
+                  {!isDisabled && (
+                    <span className="material-symbols-outlined text-white text-[14px]">check</span>
+                  )}
+                </button>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[11px] font-mono text-text-muted">#{idx + 1}</span>
+                    <span className={`text-[13px] font-semibold ${isDisabled ? 'line-through text-text-muted' : 'text-text'}`}>
+                      {t.text}
+                    </span>
+                  </div>
+                  {t.deliverable && (
+                    <div className="mt-1.5 text-[11.5px] text-text-secondary">
+                      <span className="font-semibold">交付：</span>{t.deliverable}
+                    </div>
+                  )}
+                  {t.definitionOfDone && (
+                    <div className="mt-1 text-[11.5px] text-text-secondary">
+                      <span className="font-semibold">DoD：</span>
+                      <span className="text-text-muted">{t.definitionOfDone}</span>
+                    </div>
+                  )}
+                  <div className="mt-2 flex flex-wrap gap-1.5 items-center">
+                    {executor && (
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 text-[10.5px] font-semibold">
+                        <span>{executor.emoji}</span>执行 · {executor.role}
+                      </span>
+                    )}
+                    {reviewer && (
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-purple-500/10 text-purple-600 dark:text-purple-400 text-[10.5px] font-semibold">
+                        <span>{reviewer.emoji}</span>验收 · {reviewer.role}
+                      </span>
+                    )}
+                    {deps.length > 0 && (
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[10.5px] font-semibold">
+                        <span className="material-symbols-outlined text-[12px]">link</span>
+                        依赖 #{deps.map(d => d + 1).join(', #')}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div className="text-[11px] text-text-muted text-center pt-1">
+        房间创建后你仍可以在「任务」面板继续编辑、添加或删除。
+      </div>
+    </div>
   );
 };
 
@@ -503,7 +714,8 @@ function buildMembersFromInviteRoles(inviteRoles: string[]): CustomMemberSpec[] 
   }));
 }
 
-const CustomPath: React.FC<{ onCreate: (r: CreateRequest) => void | Promise<void>; onCancel: () => void; onBack: () => void; initialDraft?: NextMeetingDraft }> = ({ onCreate, onCancel, onBack, initialDraft }) => {
+const CustomPath: React.FC<{ onCreate: (r: CreateRequest) => void | Promise<void>; onCreateSchedule?: (p: SchedulePayload) => void | Promise<void>; onCancel: () => void; onBack: () => void; initialDraft?: NextMeetingDraft; initialScheduleEnabled?: boolean }> = ({ onCreate, onCreateSchedule, onCancel, onBack, initialDraft, initialScheduleEnabled }) => {
+  const scheduleRef = useRef<ScheduleToggleRef>(null);
   const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
   const [state, setState] = useState<CustomState>(CUSTOM_STARTER);
   // v0.4：自定义路径的成员 model 下拉也改走真实配置（同 RoomSettingsModal）。
@@ -554,6 +766,40 @@ const CustomPath: React.FC<{ onCreate: (r: CreateRequest) => void | Promise<void
   const [submitting, setSubmitting] = useState(false);
   const submit = async () => {
     if (submitting) return; // 双击守护
+    const sched = scheduleRef.current?.getConfig();
+    if (sched?.enabled && sched.validationError) return;
+    if (sched?.enabled && onCreateSchedule) {
+      setSubmitting(true);
+      try {
+        // custom 路径走 blueprint：把完整建房请求序列化进 schedule，
+        // 后端定时触发时通过 buildRoomFromRequest 重放。
+        const blueprint: Record<string, unknown> = {
+          kind: 'custom',
+          title: state.title.trim(),
+          goal: state.goal.trim() || undefined,
+          members: state.members,
+          policy: state.policy,
+          budgetCNY: state.budget,
+          initialPrompt: state.prompt.trim() || undefined,
+          conflictMode: state.conflictMode || undefined,
+          roundBudget: state.roundBudget > 0 ? state.roundBudget : undefined,
+          collaborationStyle: state.collaborationStyle.trim() || undefined,
+        };
+        await onCreateSchedule({
+          title: state.title.trim(),
+          blueprint,
+          cronExpr: sched.cronExpr,
+          timezone: sched.timezone,
+          initialPrompt: state.prompt.trim() || undefined,
+          autoCloseout: sched.autoCloseout,
+          roundBudget: state.roundBudget > 0 ? state.roundBudget : undefined,
+          budgetCNY: state.budget,
+          inheritFromLast: sched.inheritFromLast,
+          deadlineAction: sched.autoCloseout ? 'closeout' : 'summarize',
+        });
+      } finally { setSubmitting(false); }
+      return;
+    }
     setSubmitting(true);
     try {
       await onCreate({
@@ -616,6 +862,9 @@ const CustomPath: React.FC<{ onCreate: (r: CreateRequest) => void | Promise<void
         {step === 3 && <Step3Vibe state={state} update={update} />}
         {step === 4 && <Step4Policy state={state} update={update} />}
         {step === 5 && <Step5Review state={state} update={update} />}
+        {step === 5 && onCreateSchedule && (
+          <ScheduleToggle ref={scheduleRef} defaultEnabled={initialScheduleEnabled} />
+        )}
       </div>
 
       <WizardFooter

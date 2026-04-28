@@ -14,12 +14,16 @@
 import type {
   Room, Member, Message, RoomTemplate, RoomMetrics,
   RoomPolicy, InterventionEvent, RoomState, RoomFact, RoomTask,
+  AcceptTaskPayload, PromoteDecisionPayload,
+  TaskExecution, DispatchTaskPayload, SubmitExecutionResultPayload,
+  RoomLineage, TaskLineage, MyDashboard, CloneFromRoomPayload, CloneFromRoomResult,
   RoomProjection, ProjectionTarget,
   ToolResult, GatewayAgentInfo, GatewayStatus,
   TemplateMemberOverride,
   // v0.7 真实会议环节
   AgendaItem, OpenQuestion, ParkingLotItem, Risk, Vote, VoteBallot, VoteMode,
   Retro, CloseoutResult, OutcomeBundle, PlaybookV7, PlaybookStep, RoleProfile,
+  MeetingSchedule,
 } from './types';
 import { get, post, put as putReq, del } from '../../services/request';
 import { gwApi } from '../../services/api';
@@ -354,6 +358,8 @@ export async function createRoomFromTemplate(templateId: string, opts: {
   auxModel?: string;
   // v0.8：建房时选的冲突驱动模式（'review' / 'debate'），覆盖模板 preset。
   conflictMode?: '' | 'review' | 'debate';
+  // v1.0+：用户在向导第 3 步勾掉的初始任务下标（0-based），后端跳过这些任务的种子化。
+  disabledInitialTaskIndices?: number[];
 }): Promise<Room> {
   return await withToast(post<Room>(`${API}/rooms`, {
     kind: 'template',
@@ -364,6 +370,7 @@ export async function createRoomFromTemplate(templateId: string, opts: {
     memberOverrides: opts.memberOverrides,
     auxModel: opts.auxModel,
     policyOptions: opts.conflictMode ? { conflictMode: opts.conflictMode } : undefined,
+    disabledInitialTaskIndices: opts.disabledInitialTaskIndices,
   }), '创建房间失败');
 }
 
@@ -397,6 +404,9 @@ export async function createCustomRoom(opts: {
   // 后端 Room 结构体直接绑定这两个字段；create 时透传等同进房后 PATCH。
   roundBudget?: number;
   collaborationStyle?: string;
+  // v1.0+：AI 建会 / 自定义路径可直接带初始任务清单
+  initialTasks?: { text: string; deliverable?: string; definitionOfDone?: string; executorRole?: string; reviewerRole?: string; dependsOnIndices?: number[] }[];
+  defaultDispatchMode?: string;
 }): Promise<Room> {
   return await withToast(post<Room>(`${API}/rooms`, {
     kind: 'custom',
@@ -419,7 +429,10 @@ export async function createCustomRoom(opts: {
     auxModel: opts.auxModel,
     roundBudget: opts.roundBudget,
     collaborationStyle: opts.collaborationStyle,
-    policyOptions: opts.conflictMode ? { conflictMode: opts.conflictMode } : undefined,
+    policyOptions: (opts.conflictMode || opts.defaultDispatchMode)
+      ? { conflictMode: opts.conflictMode || undefined, defaultDispatchMode: opts.defaultDispatchMode || undefined }
+      : undefined,
+    initialTasks: opts.initialTasks,
   }), '创建房间失败');
 }
 
@@ -864,6 +877,22 @@ export async function promoteDecision(messageId: string, summary?: string): Prom
     '推为决策失败',
   );
 }
+// v0.3 主题 D：撤回决策前查询影响——返回从该决策衍生出的任务列表。
+// 前端在用户点"撤销决策"时先调用此接口，有衍生任务则弹出确认对话框。
+export interface DecisionImpact {
+  message: { id: string; isDecision: boolean; decisionSummary?: string } | null;
+  derivedTasks: RoomTask[];
+}
+export async function getDecisionImpact(messageId: string): Promise<DecisionImpact | null> {
+  try {
+    return await get<DecisionImpact>(
+      `${API}/messages/${encodeURIComponent(messageId)}/decision-impact`,
+    );
+  } catch {
+    return null;
+  }
+}
+
 export async function demoteDecision(messageId: string): Promise<void> {
   await withToast(
     del<{ status: string }>(`${API}/messages/${encodeURIComponent(messageId)}/promote-decision`),
@@ -975,15 +1004,155 @@ export async function addTask(roomId: string, task: Omit<RoomTask, 'id' | 'creat
     creatorId: task.creatorId,
     status: task.status,
     dueAt: task.dueAt,
+    // v0.2 工作单字段（全部可选，后端默认空）
+    reviewerId: task.reviewerId,
+    deliverable: task.deliverable,
+    definitionOfDone: task.definitionOfDone,
+    sourceDecisionId: task.sourceDecisionId,
+    sourceMessageId: task.sourceMessageId,
+    executionMode: task.executionMode,
   });
 }
 
 export async function updateTask(_roomId: string, taskId: string, patch: Partial<RoomTask>) {
-  await putReq(`${API}/tasks/${encodeURIComponent(taskId)}`, {
-    status: patch.status,
-    text: patch.text,
-    assigneeId: patch.assigneeId,
-  });
+  // 仅传入 patch 中显式存在的字段（后端按 key in body 决策）。
+  const body: Record<string, unknown> = {};
+  if (patch.status !== undefined) body.status = patch.status;
+  if (patch.text !== undefined) body.text = patch.text;
+  if (patch.assigneeId !== undefined) body.assigneeId = patch.assigneeId;
+  if (patch.reviewerId !== undefined) body.reviewerId = patch.reviewerId;
+  if (patch.deliverable !== undefined) body.deliverable = patch.deliverable;
+  if (patch.definitionOfDone !== undefined) body.definitionOfDone = patch.definitionOfDone;
+  if (patch.executionMode !== undefined) body.executionMode = patch.executionMode;
+  if (patch.resultSummary !== undefined) body.resultSummary = patch.resultSummary;
+  if (patch.dueAt !== undefined) body.dueAt = patch.dueAt;
+  await putReq(`${API}/tasks/${encodeURIComponent(taskId)}`, body);
+}
+
+// v0.2 GAP G2：把决策消息一键转为任务。后端会校验该消息 isDecision=true。
+export async function promoteDecisionToTask(
+  roomId: string,
+  payload: PromoteDecisionPayload,
+): Promise<RoomTask> {
+  return await withToast(
+    post<RoomTask>(
+      `${API}/rooms/${encodeURIComponent(roomId)}/tasks/promote-decision`,
+      payload,
+    ),
+    '把决策转为任务失败',
+  );
+}
+
+// v0.2 GAP G3：提交任务验收结论（accepted/rework/needs_human/blocked）。
+// 后端按结论自动维护 status / completedAt / reworkCount。
+export async function acceptTask(
+  taskId: string,
+  payload: AcceptTaskPayload,
+): Promise<RoomTask> {
+  return await withToast(
+    post<RoomTask>(
+      `${API}/tasks/${encodeURIComponent(taskId)}/accept`,
+      payload,
+    ),
+    '提交验收失败',
+  );
+}
+
+// v0.2 GAP G4：派发任务执行（创建 execution，任务推进到 in_progress）。
+// 同一任务有活跃 execution 时，旧的会被自动 canceled，新建一条 queued。
+export async function dispatchTask(
+  roomId: string,
+  taskId: string,
+  payload: DispatchTaskPayload,
+): Promise<TaskExecution> {
+  return await withToast(
+    post<TaskExecution>(
+      `${API}/rooms/${encodeURIComponent(roomId)}/tasks/${encodeURIComponent(taskId)}/dispatch`,
+      payload,
+    ),
+    '派发任务失败',
+  );
+}
+
+export async function listTaskExecutions(taskId: string): Promise<TaskExecution[]> {
+  try {
+    const r = await get<TaskExecution[]>(`${API}/tasks/${encodeURIComponent(taskId)}/executions`);
+    return r || [];
+  } catch {
+    return [];
+  }
+}
+
+// 提交执行结果（manual / 任意模式都可走此接口当作"完成"）。
+// 后端会同时把任务推进到 review 状态，让 reviewer 接手。
+export async function submitExecutionResult(
+  executionId: string,
+  payload: SubmitExecutionResultPayload,
+): Promise<TaskExecution> {
+  return await withToast(
+    post<TaskExecution>(
+      `${API}/executions/${encodeURIComponent(executionId)}/submit-result`,
+      payload,
+    ),
+    '提交执行结果失败',
+  );
+}
+
+export async function cancelExecution(
+  executionId: string,
+  reason?: string,
+): Promise<TaskExecution> {
+  return await withToast(
+    post<TaskExecution>(
+      `${API}/executions/${encodeURIComponent(executionId)}/cancel`,
+      { reason },
+    ),
+    '取消执行失败',
+  );
+}
+
+// v0.3 主题 C：跨房间血缘 / 跨房间总览。
+// getRoomLineage 拿房间的 parent / root / children 视图。
+export async function getRoomLineage(roomId: string): Promise<RoomLineage | null> {
+  try {
+    return await get<RoomLineage>(`${API}/rooms/${encodeURIComponent(roomId)}/lineage`);
+  } catch {
+    return null;
+  }
+}
+
+// getTaskLineage 拿单个任务的全链路：sourceDecision/sourceMessage/parentTask/childTasks/executions。
+export async function getTaskLineage(taskId: string): Promise<TaskLineage | null> {
+  try {
+    return await get<TaskLineage>(`${API}/tasks/${encodeURIComponent(taskId)}/lineage`);
+  } catch {
+    return null;
+  }
+}
+
+// getMyDashboard 拿当前用户名下所有房间的工作台聚合视图。
+export async function getMyDashboard(): Promise<MyDashboard | null> {
+  try {
+    return await get<MyDashboard>(`${API}/dashboard`);
+  } catch {
+    return null;
+  }
+}
+
+// cloneFromRoom 把源房间的指定 task / risk 真实复制到目标房间，
+// 并自动写入 parentTaskId / parentRiskId 形成血缘。
+export async function cloneFromRoom(
+  newRoomId: string,
+  sourceRoomId: string,
+  payload: CloneFromRoomPayload,
+): Promise<CloneFromRoomResult | null> {
+  return await withToast(
+    post<CloneFromRoomResult>(
+      `${API}/rooms/${encodeURIComponent(newRoomId)}/clone-from/${encodeURIComponent(sourceRoomId)}`,
+      payload,
+    ),
+    '从源房间克隆失败',
+  );
 }
 
 // ── 投影 ──
@@ -1407,4 +1576,44 @@ export async function togglePlaybookFavorite(id: string): Promise<PlaybookV7> {
     post<PlaybookV7>(`${API}/playbooks/${encodeURIComponent(id)}/favorite`, {}),
     '收藏失败',
   );
+}
+
+// ── v1.0 定时会议 ──
+
+export async function listSchedules(): Promise<MeetingSchedule[]> {
+  return await withToast(get<MeetingSchedule[]>(`${API}/schedules`), '加载定时会议失败');
+}
+
+export async function createSchedule(payload: {
+  title: string;
+  /** 与 blueprint 互斥：填了 templateId 走模板路径，否则要求 blueprint 非空。 */
+  templateId?: string;
+  /** custom / AI 建会的完整建房请求（kind/members/policy/initialTasks 等）。 */
+  blueprint?: Record<string, unknown>;
+  cronExpr: string;
+  timezone?: string;
+  initialPrompt?: string;
+  autoCloseout?: boolean;
+  roundBudget?: number;
+  budgetCNY?: number;
+  inheritFromLast?: boolean;
+  deadlineAction?: string;
+}): Promise<MeetingSchedule> {
+  return await withToast(post<MeetingSchedule>(`${API}/schedules`, payload), '创建定时会议失败');
+}
+
+export async function getSchedule(id: string): Promise<MeetingSchedule> {
+  return await withToast(get<MeetingSchedule>(`${API}/schedules/${encodeURIComponent(id)}`), '加载定时会议失败');
+}
+
+export async function updateSchedule(id: string, patch: Partial<MeetingSchedule>): Promise<MeetingSchedule> {
+  return await withToast(putReq<MeetingSchedule>(`${API}/schedules/${encodeURIComponent(id)}`, patch), '更新定时会议失败');
+}
+
+export async function deleteSchedule(id: string): Promise<void> {
+  await withToast(del<any>(`${API}/schedules/${encodeURIComponent(id)}`), '删除定时会议失败');
+}
+
+export async function runScheduleNow(id: string): Promise<void> {
+  await withToast(post<any>(`${API}/schedules/${encodeURIComponent(id)}/run`, {}), '触发定时会议失败');
 }

@@ -182,6 +182,11 @@ type PolicyOptions struct {
 	ConflictMode string `json:"conflictMode,omitempty"`
 	// MeetingStyle —— 房间整体会风标签，用于前端预设和后端轻量提示。
 	MeetingStyle string `json:"meetingStyle,omitempty"`
+	// DefaultDispatchMode —— v1.0+ 任务派发默认模式（呼应 G4 / D4）。
+	// 取值：member_agent | subagent。空 = 让 dispatch UI 自己决定（manual 不在此预设）。
+	// 模板创建房间时 handler 会从 Template.DefaultDispatchMode 写入；
+	// 房间调参向导也可以单独修改。前端 dispatch 弹窗读它做默认勾选。
+	DefaultDispatchMode string `json:"defaultDispatchMode,omitempty"`
 	// RelationshipMode —— 角色关系网络基调：balanced | collaborative | adversarial | review | command
 	RelationshipMode string `json:"relationshipMode,omitempty"`
 	// 关系/节奏强度（0 = 默认）
@@ -896,6 +901,23 @@ type Fact struct {
 	UpdatedAt int64  `json:"updatedAt"`
 }
 
+// Task —— 工作单 DTO（v0.2 升级，向下兼容）。
+//
+// 设计：旧字段（id/text/assigneeId/creator/status/dueAt）保持不变；
+// 新字段全部 omitempty，UI 可以渐进采用；存量房间任务自动获得"空"新字段
+// （reviewerId/deliverable/DoD 等都为空），不影响现有 TasksPanel 行为。
+//
+// 关键状态机（status × acceptanceStatus）：
+//
+//	新建：           status=todo,         acceptanceStatus=''
+//	派发后（owner）： status=in_progress,  acceptanceStatus=''
+//	owner 提交结果： status=review,       acceptanceStatus=''       resultSummary 已写
+//	reviewer 通过：  status=done,         acceptanceStatus=accepted completedAt 已写
+//	reviewer 返工：  status=in_progress,  acceptanceStatus=rework   reworkCount++
+//	reviewer 阻塞：  status=blocked,      acceptanceStatus=blocked
+//	reviewer 上升：  status=review,       acceptanceStatus=needs_human
+//
+// 兼容：现有面板若只看 status，rework 任务回到 in_progress 自然显示在"未完成"区。
 type Task struct {
 	ID         string `json:"id"`
 	RoomID     string `json:"roomId"`
@@ -905,6 +927,117 @@ type Task struct {
 	Status     string `json:"status"`
 	DueAt      *int64 `json:"dueAt,omitempty"`
 	CreatedAt  int64  `json:"createdAt"`
+
+	// v0.2 工作单字段
+	ReviewerID       string   `json:"reviewerId,omitempty"`
+	Deliverable      string   `json:"deliverable,omitempty"`
+	DefinitionOfDone string   `json:"definitionOfDone,omitempty"`
+	SourceDecisionID string   `json:"sourceDecisionId,omitempty"`
+	SourceMessageID  string   `json:"sourceMessageId,omitempty"`
+	ExecutionMode    string   `json:"executionMode,omitempty"`
+	ResultSummary    string   `json:"resultSummary,omitempty"`
+	AcceptanceStatus string   `json:"acceptanceStatus,omitempty"`
+	AcceptanceNote   string   `json:"acceptanceNote,omitempty"`
+	PassedCriteria   []string `json:"passedCriteria,omitempty"`
+	FailedCriteria   []string `json:"failedCriteria,omitempty"`
+	ReworkCount      int      `json:"reworkCount,omitempty"`
+	CompletedAt      *int64   `json:"completedAt,omitempty"`
+	ReviewedAt       *int64   `json:"reviewedAt,omitempty"`
+	// v0.3 主题 C：跨房间血缘
+	ParentTaskID string `json:"parentTaskId,omitempty"`
+	RootRoomID   string `json:"rootRoomId,omitempty"`
+	// v0.3 主题 D：任务依赖（同房间）。
+	DependsOn []string `json:"dependsOn,omitempty"`
+}
+
+// 任务状态常量
+const (
+	TaskStatusTodo       = "todo"
+	TaskStatusDoing      = "doing"
+	TaskStatusAssigned   = "assigned"
+	TaskStatusInProgress = "in_progress"
+	TaskStatusReview     = "review"
+	TaskStatusDone       = "done"
+	TaskStatusCancelled  = "cancelled"
+	TaskStatusBlocked    = "blocked"
+)
+
+// 验收结论常量
+const (
+	AcceptanceStatusNone       = ""
+	AcceptanceStatusAccepted   = "accepted"
+	AcceptanceStatusRework     = "rework"
+	AcceptanceStatusNeedsHuman = "needs_human"
+	AcceptanceStatusBlocked    = "blocked"
+)
+
+// 任务执行模式
+const (
+	TaskExecutionModeManual      = "manual"
+	TaskExecutionModeMemberAgent = "member_agent"
+	TaskExecutionModeSubagent    = "subagent"
+)
+
+// 默认返工轮次上限（达到后自动 needs_human）
+const DefaultReworkLimit = 3
+
+// TaskExecution —— 任务执行回执 DTO（v0.2 GAP G4）。
+//
+// 一个任务对应 0..N 条 execution；当前活跃 = status in {queued, running} 的最新一条。
+// 终态：completed / failed / canceled。
+//
+// artifacts/blockers 用 []string 承载——前端 UI 简单友好，后端持久化为 \n 拼接。
+type TaskExecution struct {
+	ID               string   `json:"id"`
+	TaskID           string   `json:"taskId"`
+	RoomID           string   `json:"roomId"`
+	ExecutorMemberID string   `json:"executorMemberId,omitempty"`
+	Mode             string   `json:"mode"`   // manual | member_agent | subagent
+	Status           string   `json:"status"` // queued | running | completed | failed | canceled
+	Summary          string   `json:"summary,omitempty"`
+	Artifacts        []string `json:"artifacts,omitempty"`
+	Blockers         []string `json:"blockers,omitempty"`
+	RawRunRef        string   `json:"rawRunRef,omitempty"`
+	TokenUsage       int64    `json:"tokenUsage,omitempty"`
+	ErrorMsg         string   `json:"errorMsg,omitempty"`
+	StartedAt        *int64   `json:"startedAt,omitempty"`
+	CompletedAt      *int64   `json:"completedAt,omitempty"`
+	CreatedAt        int64    `json:"createdAt"`
+}
+
+const (
+	TaskExecStatusQueued    = "queued"
+	TaskExecStatusRunning   = "running"
+	TaskExecStatusCompleted = "completed"
+	TaskExecStatusFailed    = "failed"
+	TaskExecStatusCanceled  = "canceled"
+)
+
+func TaskExecutionFromModel(m *database.AgentRoomTaskExecution) TaskExecution {
+	var artifacts, blockers []string
+	if strings.TrimSpace(m.ArtifactsJSON) != "" {
+		_ = json.Unmarshal([]byte(m.ArtifactsJSON), &artifacts)
+	}
+	if strings.TrimSpace(m.BlockersJSON) != "" {
+		_ = json.Unmarshal([]byte(m.BlockersJSON), &blockers)
+	}
+	return TaskExecution{
+		ID:               m.ID,
+		TaskID:           m.TaskID,
+		RoomID:           m.RoomID,
+		ExecutorMemberID: m.ExecutorMemberID,
+		Mode:             m.Mode,
+		Status:           m.Status,
+		Summary:          m.Summary,
+		Artifacts:        artifacts,
+		Blockers:         blockers,
+		RawRunRef:        m.RawRunRef,
+		TokenUsage:       m.TokenUsage,
+		ErrorMsg:         m.ErrorMsg,
+		StartedAt:        m.StartedAt,
+		CompletedAt:      m.CompletedAt,
+		CreatedAt:        m.CreatedAt.UnixMilli(),
+	}
 }
 
 type Intervention struct {
@@ -1173,15 +1306,80 @@ func FactFromModel(m *database.AgentRoomFact) Fact {
 
 func TaskFromModel(m *database.AgentRoomTask) Task {
 	return Task{
-		ID:         m.ID,
-		RoomID:     m.RoomID,
-		Text:       m.Text,
-		AssigneeID: m.AssigneeID,
-		CreatorID:  m.CreatorID,
-		Status:     m.Status,
-		DueAt:      m.DueAt,
-		CreatedAt:  m.CreatedAt.UnixMilli(),
+		ID:               m.ID,
+		RoomID:           m.RoomID,
+		Text:             m.Text,
+		AssigneeID:       m.AssigneeID,
+		CreatorID:        m.CreatorID,
+		Status:           m.Status,
+		DueAt:            m.DueAt,
+		CreatedAt:        m.CreatedAt.UnixMilli(),
+		ReviewerID:       m.ReviewerID,
+		Deliverable:      m.Deliverable,
+		DefinitionOfDone: m.DefinitionOfDone,
+		SourceDecisionID: m.SourceDecisionID,
+		SourceMessageID:  m.SourceMessageID,
+		ExecutionMode:    m.ExecutionMode,
+		ResultSummary:    m.ResultSummary,
+		AcceptanceStatus: m.AcceptanceStatus,
+		AcceptanceNote:   m.AcceptanceNote,
+		PassedCriteria:   splitNonEmptyLines(m.PassedCriteria),
+		FailedCriteria:   splitNonEmptyLines(m.FailedCriteria),
+		ReworkCount:      m.ReworkCount,
+		CompletedAt:      m.CompletedAt,
+		ReviewedAt:       m.ReviewedAt,
+		ParentTaskID:     m.ParentTaskID,
+		RootRoomID:       m.RootRoomID,
+		DependsOn:        decodeStringSlice(m.DependsOnJSON),
 	}
+}
+
+// decodeStringSlice 反序列化 task.DependsOnJSON 这类 JSON 字符串数组字段。
+// 失败 / 空 → 返回 nil，调用方按空切片处理。
+func decodeStringSlice(s string) []string {
+	if strings.TrimSpace(s) == "" {
+		return nil
+	}
+	var out []string
+	if err := json.Unmarshal([]byte(s), &out); err != nil {
+		return nil
+	}
+	return out
+}
+
+// splitNonEmptyLines 把 \n 分隔的字符串拆成非空 trim 后字符串切片。
+// 用于 PassedCriteria / FailedCriteria 这种"行存"字段。
+func splitNonEmptyLines(s string) []string {
+	if strings.TrimSpace(s) == "" {
+		return nil
+	}
+	parts := strings.Split(s, "\n")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p != "" {
+			out = append(out, p)
+		}
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
+}
+
+// JoinLines 反向：[]string → \n 拼接，给 handler 写入数据库使用。
+func JoinLines(items []string) string {
+	if len(items) == 0 {
+		return ""
+	}
+	cleaned := make([]string, 0, len(items))
+	for _, s := range items {
+		s = strings.TrimSpace(s)
+		if s != "" {
+			cleaned = append(cleaned, s)
+		}
+	}
+	return strings.Join(cleaned, "\n")
 }
 
 func InterventionFromModel(m *database.AgentRoomIntervention) Intervention {

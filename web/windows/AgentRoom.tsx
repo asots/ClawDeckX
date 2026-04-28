@@ -15,16 +15,19 @@ import {
   emergencyStop, nudgeRoom, updateRoom, deleteRoom, roomEvents, exportRoom,
   // v0.6
   synthesizeMinutes, extractTodo, askAll, promoteDecision, demoteDecision, rerunMessage,
+  getDecisionImpact,
   fetchSystemModels, updateMemberModel, updateMemberAgent, updateMemberThinking, updateMemberSystemPrompt,
   purgeRoomSessions, reopenRoom, inviteBackMember,
   listGatewayAgents, getGatewayStatus,
   addMember, removeMember,
+  createSchedule,
 } from './AgentRoom/service';
 import type { SystemModel } from './AgentRoom/service';
 import type { Message as RoomMessage, GatewayAgentInfo } from './AgentRoom/types';
-import type { CreateRequest } from './AgentRoom/components/CreateRoomWizard';
+import type { CreateRequest, SchedulePayload } from './AgentRoom/components/CreateRoomWizard';
 
 import TopBar from './AgentRoom/components/TopBar';
+import WorkflowTimeline from './AgentRoom/components/WorkflowTimeline';
 import MeetingDepthBadge from './AgentRoom/components/MeetingDepthBadge';
 import RoomsRail from './AgentRoom/components/RoomsRail';
 import MessageStream from './AgentRoom/components/MessageStream';
@@ -62,6 +65,8 @@ import PersonaMemoryModal from './AgentRoom/components/PersonaMemoryModal';
 import AddMemberModal from './AgentRoom/components/AddMemberModal';
 import WhiteboardPanel from './AgentRoom/components/WhiteboardPanel';
 import TasksPanel from './AgentRoom/components/TasksPanel';
+import CrossRoomDashboard from './AgentRoom/components/CrossRoomDashboard';
+import SchedulePanel from './AgentRoom/components/SchedulePanel';
 import MetricsPanel from './AgentRoom/components/MetricsPanel';
 import CreateRoomWizard from './AgentRoom/components/CreateRoomWizard';
 import TimelineOverlay from './AgentRoom/components/TimelineOverlay';
@@ -90,6 +95,8 @@ const AgentRoom: React.FC<AgentRoomProps> = ({ language }) => {
   const [creatorOpen, setCreatorOpen] = useState(false);
   const [creatorInitialMode, setCreatorInitialMode] = useState<'template' | 'custom' | 'ai' | undefined>(undefined);
   const [creatorInitialDraft, setCreatorInitialDraft] = useState<NextMeetingDraft | undefined>(undefined);
+  // Retro 「设为定时续会」入口会设为 true —— 向导会预勾选 ScheduleToggle。
+  const [creatorScheduleEnabled, setCreatorScheduleEnabled] = useState(false);
   const [timelineOpen, setTimelineOpen] = useState(false);
   const [playbooksOpen, setPlaybooksOpen] = useState(false);
   const [playbookEditorTargetId, setPlaybookEditorTargetId] = useState<string | null>(null);
@@ -121,6 +128,21 @@ const AgentRoom: React.FC<AgentRoomProps> = ({ language }) => {
   const [helpOpen, setHelpOpen] = useState(false);
   // 搜索面板开关
   const [searchOpen, setSearchOpen] = useState(false);
+  // v0.3 主题 D：跨房间工作台
+  const [dashboardOpen, setDashboardOpen] = useState(false);
+  const [scheduleOpen, setScheduleOpen] = useState(false);
+  useEffect(() => {
+    // 监听 ParentRoomChip / Dashboard 等组件派发的"切换到目标房间"事件
+    const onOpenRoom = (e: Event) => {
+      const detail = (e as CustomEvent<{ roomId?: string }>).detail;
+      if (detail?.roomId) {
+        setActiveId(detail.roomId);
+        setDashboardOpen(false);
+      }
+    };
+    window.addEventListener('agentroom:open-room', onOpenRoom);
+    return () => window.removeEventListener('agentroom:open-room', onOpenRoom);
+  }, []);
   // 未读追踪：房间 id → 最后一次用户查看时的消息 timestamp（按 ms）
   const [lastSeen, setLastSeen] = useState<Record<string, number>>(() => {
     try { return JSON.parse(localStorage.getItem('agentroom_last_seen') || '{}'); } catch { return {}; }
@@ -271,6 +293,7 @@ const AgentRoom: React.FC<AgentRoomProps> = ({ language }) => {
             memberOverrides: req.memberOverrides,
             auxModel: req.auxModel,
             conflictMode: req.conflictMode,
+            disabledInitialTaskIndices: req.disabledInitialTaskIndices,
           })
         : await createCustomRoom({
             title: req.title,
@@ -283,10 +306,21 @@ const AgentRoom: React.FC<AgentRoomProps> = ({ language }) => {
             conflictMode: req.conflictMode,
             roundBudget: req.roundBudget,
             collaborationStyle: req.collaborationStyle,
+            initialTasks: req.initialTasks,
+            defaultDispatchMode: req.defaultDispatchMode,
           });
       const next = await listRooms();
       setRooms(next);
       setActiveId(room.id);
+      setCreatorOpen(false);
+      setCreatorInitialMode(undefined);
+      setCreatorInitialDraft(undefined);
+    });
+  }, [createBusy]);
+
+  const handleCreateSchedule = useCallback(async (payload: SchedulePayload) => {
+    await createBusy.run(async () => {
+      await createSchedule(payload);
       setCreatorOpen(false);
       setCreatorInitialMode(undefined);
       setCreatorInitialDraft(undefined);
@@ -441,8 +475,16 @@ const AgentRoom: React.FC<AgentRoomProps> = ({ language }) => {
   const handleStartNextMeetingDraft = useCallback((draft: NextMeetingDraft) => {
     setCreatorInitialDraft(draft);
     setCreatorInitialMode(draft.templateId ? 'template' : 'custom');
+    setCreatorScheduleEnabled(false);
     setCreatorOpen(true);
     toast('info', tx('toastNextMeetingDraftPrefilled', 'Next-meeting draft prefilled from the retro suggestion — tweak it and start'));
+  }, [toast]);
+  const handleSetAsSchedule = useCallback((draft: NextMeetingDraft) => {
+    setCreatorInitialDraft(draft);
+    setCreatorInitialMode(draft.templateId ? 'template' : 'custom');
+    setCreatorScheduleEnabled(true);
+    setCreatorOpen(true);
+    toast('info', '已预填复盘建议并勾选「设为定时会议」，确认 cron 后提交即可');
   }, [toast]);
 
   // ── 面板宽度 ──
@@ -518,7 +560,7 @@ const AgentRoom: React.FC<AgentRoomProps> = ({ language }) => {
             </div>
           </div>
         </div>
-        {creatorOpen && <CreateRoomWizard onCreate={handleCreate} onCancel={() => { setCreatorOpen(false); setCreatorInitialMode(undefined); setCreatorInitialDraft(undefined); }} initialMode={creatorInitialMode} initialDraft={creatorInitialDraft} />}
+        {creatorOpen && <CreateRoomWizard onCreate={handleCreate} onCreateSchedule={handleCreateSchedule} onCancel={() => { setCreatorOpen(false); setCreatorInitialMode(undefined); setCreatorInitialDraft(undefined); setCreatorScheduleEnabled(false); }} initialMode={creatorInitialMode} initialDraft={creatorInitialDraft} initialScheduleEnabled={creatorScheduleEnabled} />}
       </div>
     );
   }
@@ -548,6 +590,8 @@ const AgentRoom: React.FC<AgentRoomProps> = ({ language }) => {
               onDelete={handleDeleteRoom}
               lastSeen={lastSeen}
               onCollapse={wideEnoughLeft ? () => setLeftCollapsed(true) : undefined}
+              onOpenDashboard={() => setDashboardOpen(true)}
+              onOpenSchedule={() => setScheduleOpen(true)}
             />
           </div>
         ) : (
@@ -743,6 +787,17 @@ const AgentRoom: React.FC<AgentRoomProps> = ({ language }) => {
 
           {snap.room && (
             <>
+              {/* v0.2 GAP G5：三层 phase 统一工作流时间轴 */}
+              <WorkflowTimeline
+                room={snap.room}
+                activeAgendaItem={activeAgendaItem}
+                onJumpAgenda={() => {
+                  // 触发右栏议程区域的滚动 / 高亮（保持轻量：自定义事件，由 RightPanel 监听）
+                  window.dispatchEvent(new CustomEvent('agentroom:focus-section', {
+                    detail: { roomId: snap.room!.id, section: 'agenda' },
+                  }));
+                }}
+              />
               <AwaySummaryBanner
                 roomId={snap.room.id}
                 messages={snap.messages}
@@ -778,7 +833,25 @@ const AgentRoom: React.FC<AgentRoomProps> = ({ language }) => {
               }}
               onWhisper={(mid) => { /* TODO: 打开 Composer whisper */ }}
               onPromoteDecision={(mid, summary) => promoteDecision(mid, summary).catch(() => {})}
-              onDemoteDecision={(mid) => demoteDecision(mid).catch(() => {})}
+              onDemoteDecision={async (mid) => {
+                // v0.3 主题 D：撤回前先查影响
+                const impact = await getDecisionImpact(mid);
+                const derived = impact?.derivedTasks || [];
+                if (derived.length > 0) {
+                  const sample = derived.slice(0, 5).map(t => `· ${t.text}`).join('\n');
+                  const more = derived.length > 5 ? `\n…还有 ${derived.length - 5} 个` : '';
+                  const ok = await confirm({
+                    title: '此决策已派生 ' + derived.length + ' 个任务',
+                    message:
+                      '撤销决策后，下列任务的"决策来源"链接将失效（任务本身不会被删除）：\n\n' +
+                      sample + more + '\n\n确认要撤销吗？',
+                    confirmText: '仍然撤销',
+                    danger: true,
+                  });
+                  if (!ok) return;
+                }
+                demoteDecision(mid).catch(() => {});
+              }}
               onRerun={(mid, model) => rerunMessage(mid, model).catch(() => {})}
               systemModels={systemModels}
             />
@@ -859,6 +932,7 @@ const AgentRoom: React.FC<AgentRoomProps> = ({ language }) => {
               activeAgendaItem={activeAgendaItem}
               onActiveAgendaItemChange={setActiveAgendaItem}
               onStartNextMeetingDraft={handleStartNextMeetingDraft}
+              onSetAsSchedule={handleSetAsSchedule}
               onOpenPlaybook={(playbookId, context) => {
                 setPlaybookEditorTargetId(playbookId);
                 setPlaybookHighlightContext(context);
@@ -894,13 +968,16 @@ const AgentRoom: React.FC<AgentRoomProps> = ({ language }) => {
       {creatorOpen && (
         <CreateRoomWizard
           onCreate={handleCreate}
+          onCreateSchedule={handleCreateSchedule}
           onCancel={() => {
             setCreatorOpen(false);
             setCreatorInitialMode(undefined);
             setCreatorInitialDraft(undefined);
+            setCreatorScheduleEnabled(false);
           }}
           initialMode={creatorInitialMode}
           initialDraft={creatorInitialDraft}
+          initialScheduleEnabled={creatorScheduleEnabled}
         />
       )}
 
@@ -914,6 +991,35 @@ const AgentRoom: React.FC<AgentRoomProps> = ({ language }) => {
           onJump={(mid) => { setHighlightMessageId(mid); }}
           onClose={() => setSearchOpen(false)}
         />
+      )}
+
+      {/* v0.3 主题 D：跨房间工作台 */}
+      <CrossRoomDashboard
+        open={dashboardOpen}
+        onClose={() => setDashboardOpen(false)}
+        onOpenRoom={(rid) => { setActiveId(rid); setDashboardOpen(false); }}
+      />
+
+      {/* v1.0 定时会议 */}
+      {scheduleOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setScheduleOpen(false)}>
+          <div
+            className="w-[90vw] max-w-[800px] max-h-[88vh] bg-surface rounded-xl shadow-2xl border border-border overflow-hidden flex flex-col"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="px-4 h-11 shrink-0 border-b border-border flex items-center justify-between">
+              <span className="text-sm font-semibold text-text flex items-center gap-2">
+                <span className="material-symbols-outlined text-base text-cyan-500">schedule</span>定时会议管理
+              </span>
+              <button onClick={() => setScheduleOpen(false)} className="w-7 h-7 rounded-md hover:bg-surface-sunken flex items-center justify-center text-text-muted">
+                <span className="material-symbols-outlined text-[16px]">close</span>
+              </button>
+            </div>
+            <div className="flex-1 min-h-0 overflow-y-auto">
+              <SchedulePanel onOpenRoom={(rid) => { setActiveId(rid); setScheduleOpen(false); }} />
+            </div>
+          </div>
+        </div>
       )}
 
       {/* 快捷键帮助 cheatsheet */}
@@ -1116,13 +1222,14 @@ const RightPanel: React.FC<{
   activeAgendaItem: AgendaItem | null;
   onActiveAgendaItemChange: (item: AgendaItem | null) => void;
   onStartNextMeetingDraft?: (draft: NextMeetingDraft) => void;
+  onSetAsSchedule?: (draft: NextMeetingDraft) => void;
   onOpenPlaybook?: (playbookId: string, context: PlaybookHighlightContext) => void;
   // v0.9：TopBar 的经验库 / 设置按钮已下沉到 LiveControlsPanel，
   // 由父组件在同一处定义回调并同时注入给 TopBar 和 RightPanel。
   // v0.9.1：投影按钮已下架（见 AgentRoom.tsx handleToggleProjection 处注释）。
   onOpenPlaybooks?: () => void;
   onOpenSettings?: () => void;
-}> = ({ snap, meId, language, systemModels, gatewayAgents, onChangeModel, onChangeAgent, onChangeThinking, onChangeSystemPrompt, onCollapse, activeAgendaItem, onActiveAgendaItemChange, onStartNextMeetingDraft, onOpenPlaybook, onOpenPlaybooks, onOpenSettings }) => {
+}> = ({ snap, meId, language, systemModels, gatewayAgents, onChangeModel, onChangeAgent, onChangeThinking, onChangeSystemPrompt, onCollapse, activeAgendaItem, onActiveAgendaItemChange, onStartNextMeetingDraft, onSetAsSchedule, onOpenPlaybook, onOpenPlaybooks, onOpenSettings }) => {
   const { confirm } = useConfirm();
   // v0.8 需要 toast 给"离席/邀回/静音"等成员级操作补交互反馈
   const { toast } = useToast();
@@ -1302,6 +1409,7 @@ const RightPanel: React.FC<{
             window.dispatchEvent(new CustomEvent('agentroom:highlight-message', { detail: { roomId: room.id, messageId: mid } }));
           }}
           onStartNextMeeting={onStartNextMeetingDraft}
+          onSetAsSchedule={onSetAsSchedule}
           onOpenPlaybook={onOpenPlaybook}
         />
       </CollapsibleSection>
@@ -1312,6 +1420,7 @@ const RightPanel: React.FC<{
       >
         <DecisionsPanel
           roomId={room.id}
+          meId={meId}
           members={snap.memberMap}
           onJump={(mid) => {
             window.dispatchEvent(new CustomEvent('agentroom:highlight-message', { detail: { roomId: room.id, messageId: mid } }));
@@ -1320,6 +1429,7 @@ const RightPanel: React.FC<{
       </CollapsibleSection>
       <CollapsibleSection title={`${tx('sectionTasksPrefix', 'Tasks')} (${(room.tasks ?? []).filter(t => t.status !== 'done').length})`} icon="task_alt" defaultOpen={false}>
         <TasksPanel
+          roomId={room.id}
           tasks={room.tasks ?? []}
           members={snap.memberMap}
           meId={meId}
@@ -1330,6 +1440,7 @@ const RightPanel: React.FC<{
             updateTask(room.id, tid, { status: t.status === 'done' ? 'todo' : 'done' });
           }}
           onDelete={(tid) => updateTask(room.id, tid, { status: 'cancelled' })}
+          onJumpMessage={(mid) => window.dispatchEvent(new CustomEvent('agentroom:highlight-message', { detail: { roomId: room.id, messageId: mid } }))}
         />
       </CollapsibleSection>
       <CollapsibleSection title={tx('sectionArtifacts', 'Artifacts')} icon="inventory_2" defaultOpen={false}>

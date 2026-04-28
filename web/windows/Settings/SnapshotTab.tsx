@@ -946,14 +946,19 @@ const SnapshotTab: React.FC<SnapshotTabProps> = ({ s, inputCls, labelCls, rowCls
         {snapshotModeTab !== 'config-history' && (snapshotModeTab !== 'manual' || backupMethod !== 'openclaw') && <>
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-1.5">
-            <select value={filterTrigger} onChange={e => setFilterTrigger(e.target.value)} className="px-2 py-1 rounded-lg text-[11px] border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] text-slate-600 dark:text-white/60">
-              <option value="all">{s.snapshotFilterAll || 'All'}</option>
-              <option value="manual">{s.snapshotFilterManual || 'Manual'}</option>
-              <option value="scheduled">{s.snapshotFilterScheduled || 'Scheduled'}</option>
-              <option value="import">{s.snapshotFilterImport || 'Imported'}</option>
-              <option value="import_openclaw">OpenClaw</option>
-              <option value="pre_restore">{s.snapshotFilterPreRestore || 'Pre-restore'}</option>
-            </select>
+            <CustomSelect
+              value={filterTrigger}
+              onChange={setFilterTrigger}
+              options={[
+                { value: 'all', label: s.snapshotFilterAll || 'All' },
+                { value: 'manual', label: s.snapshotFilterManual || 'Manual' },
+                { value: 'scheduled', label: s.snapshotFilterScheduled || 'Scheduled' },
+                { value: 'import', label: s.snapshotFilterImport || 'Imported' },
+                { value: 'import_openclaw', label: 'OpenClaw' },
+                { value: 'pre_restore', label: s.snapshotFilterPreRestore || 'Pre-restore' },
+              ]}
+              className="px-2 py-1 rounded-lg text-[11px] border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] text-slate-600 dark:text-white/60 min-w-[120px]"
+            />
             <button type="button" onClick={() => { setBatchMode(!batchMode); setBatchSelected(new Set()); }} className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium border transition-colors ${batchMode ? 'border-primary/40 bg-primary/5 text-primary' : 'border-slate-200 dark:border-white/10 text-slate-500 dark:text-white/50 hover:bg-slate-50 dark:hover:bg-white/5'}`}><span className="material-symbols-outlined text-[14px]">checklist</span>{s.snapshotBatchMode || 'Select'}</button>
           </div>
           <div className="flex items-center gap-1.5">

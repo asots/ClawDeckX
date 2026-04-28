@@ -60,6 +60,19 @@ func Fail(w http.ResponseWriter, r *http.Request, code string, message string, h
 	})
 }
 
+// FailWith 在 Fail 的基础上额外附带结构化 data payload，
+// 用于让前端拿到失败的细节（如依赖未完成时的阻塞任务列表）。
+func FailWith(w http.ResponseWriter, r *http.Request, code string, message string, httpStatus int, data interface{}) {
+	writeJSON(w, httpStatus, Response{
+		Success:   false,
+		ErrorCode: code,
+		Message:   message,
+		Data:      data,
+		Timestamp: time.Now().UTC().Format(time.RFC3339),
+		RequestID: GetRequestID(r),
+	})
+}
+
 func writeJSON(w http.ResponseWriter, status int, v interface{}) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(status)

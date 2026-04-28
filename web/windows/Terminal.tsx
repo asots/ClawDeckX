@@ -23,6 +23,7 @@ import { sysInfoApi } from '../services/sysinfo';
 import type { SysInfo } from '../services/sysinfo';
 import { snippetsApi } from '../services/snippets';
 import { copyToClipboard } from '../utils/clipboard';
+import NumberStepper from '../components/NumberStepper';
 import type { SSHSnippet } from '../services/snippets';
 import {
   commandTemplatesApi,
@@ -2841,7 +2842,7 @@ const TerminalPage: React.FC<Props> = ({ language }) => {
           <div><label className="text-xs text-text-muted mb-1 block">{tt.hostName || 'Name'}</label><input className="sci-input w-full px-3 py-2 rounded-lg bg-surface-sunken text-sm" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="My Server" /></div>
           <div className="flex gap-3">
             <div className="flex-1"><label className="text-xs text-text-muted mb-1 block">{tt.hostAddr || 'Host'}</label><input className="sci-input w-full px-3 py-2 rounded-lg bg-surface-sunken text-sm" value={form.host} onChange={(e) => setForm({ ...form, host: e.target.value })} placeholder="192.168.1.100" /></div>
-            <div className="w-24"><label className="text-xs text-text-muted mb-1 block">{tt.port || 'Port'}</label><input type="number" className="sci-input w-full px-3 py-2 rounded-lg bg-surface-sunken text-sm" value={form.port} onChange={(e) => setForm({ ...form, port: parseInt(e.target.value) || 22 })} /></div>
+            <div className="w-32"><label className="text-xs text-text-muted mb-1 block">{tt.port || 'Port'}</label><NumberStepper value={form.port} onChange={(v) => setForm({ ...form, port: parseInt(v, 10) || 22 })} min={1} max={65535} step={1} className="h-[38px] w-full" inputClassName="text-sm" /></div>
           </div>
           <div><label className="text-xs text-text-muted mb-1 block">{tt.username || 'Username'}</label><input className="sci-input w-full px-3 py-2 rounded-lg bg-surface-sunken text-sm" value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} placeholder="root" /></div>
           <div>

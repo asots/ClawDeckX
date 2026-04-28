@@ -407,6 +407,51 @@ func (r *Repo) DeleteTask(id string) error {
 	return database.DB.Delete(&database.AgentRoomTask{}, "id = ?", id).Error
 }
 
+// ── TaskExecution（v0.2 GAP G4）──
+
+func (r *Repo) CreateTaskExecution(e *database.AgentRoomTaskExecution) error {
+	if e.ID == "" {
+		e.ID = GenID("texe")
+	}
+	return database.DB.Create(e).Error
+}
+
+func (r *Repo) UpdateTaskExecution(id string, patch map[string]any) error {
+	patch["updated_at"] = time.Now()
+	return database.DB.Model(&database.AgentRoomTaskExecution{}).Where("id = ?", id).Updates(patch).Error
+}
+
+func (r *Repo) GetTaskExecution(id string) (*database.AgentRoomTaskExecution, error) {
+	var e database.AgentRoomTaskExecution
+	if err := database.DB.First(&e, "id = ?", id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &e, nil
+}
+
+// ListTaskExecutions 返回某任务的全部执行记录，按 created_at 升序（旧 → 新）。
+func (r *Repo) ListTaskExecutions(taskID string) ([]database.AgentRoomTaskExecution, error) {
+	var es []database.AgentRoomTaskExecution
+	return es, database.DB.Where("task_id = ?", taskID).Order("created_at ASC").Find(&es).Error
+}
+
+// FindActiveTaskExecution 返回最新一条非终态 execution（queued/running），无则 nil。
+func (r *Repo) FindActiveTaskExecution(taskID string) (*database.AgentRoomTaskExecution, error) {
+	var e database.AgentRoomTaskExecution
+	err := database.DB.Where("task_id = ? AND status IN ?", taskID, []string{"queued", "running"}).
+		Order("created_at DESC").Limit(1).First(&e).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &e, nil
+}
+
 // ResetStaleStreaming 把所有 streaming=true 的消息重置为 false（启动时调用）。
 // 避免 DeckX 半途崩溃/重启后有"永远在说话"的消息。
 func (r *Repo) ResetStaleStreaming() (int64, error) {
@@ -414,6 +459,28 @@ func (r *Repo) ResetStaleStreaming() (int64, error) {
 		Where("streaming = ?", true).
 		Updates(map[string]any{"streaming": false})
 	return res.RowsAffected, res.Error
+}
+
+// ListChildRooms 返回 parentRoomID = 给定 id 的所有房间（v0.3 主题 C：跨房间血缘）。
+func (r *Repo) ListChildRooms(parentRoomID string) ([]database.AgentRoom, error) {
+	if parentRoomID == "" {
+		return nil, nil
+	}
+	var rs []database.AgentRoom
+	err := database.DB.Where("parent_room_id = ?", parentRoomID).
+		Order("created_at DESC").Find(&rs).Error
+	return rs, err
+}
+
+// ListTasksByParent 返回所有 parent_task_id = 给定 id 的任务（v0.3 主题 C：跨房间血缘）。
+func (r *Repo) ListTasksByParent(parentTaskID string) ([]database.AgentRoomTask, error) {
+	if parentTaskID == "" {
+		return nil, nil
+	}
+	var ts []database.AgentRoomTask
+	err := database.DB.Where("parent_task_id = ?", parentTaskID).
+		Order("created_at ASC").Find(&ts).Error
+	return ts, err
 }
 
 // ListActiveRoomIDs 返回所有 state='active' 的房间 ID（启动时 warm-up 用）。
@@ -569,4 +636,42 @@ func (r *Repo) RoomSnapshot(roomID string) (*Room, error) {
 		tasks = append(tasks, TaskFromModel(&taskModels[i]))
 	}
 	return RoomFromModel(m, memberIDs, facts, tasks), nil
+}
+
+// ── Schedule（v1.0 定时会议）──
+
+func (r *Repo) CreateSchedule(s *database.AgentRoomSchedule) error {
+	if s.ID == "" {
+		s.ID = GenID("sched")
+	}
+	return database.DB.Create(s).Error
+}
+
+func (r *Repo) GetSchedule(id string) (*database.AgentRoomSchedule, error) {
+	var s database.AgentRoomSchedule
+	if err := database.DB.First(&s, "id = ?", id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &s, nil
+}
+
+func (r *Repo) ListSchedules(ownerUserID uint) ([]database.AgentRoomSchedule, error) {
+	var ss []database.AgentRoomSchedule
+	return ss, database.DB.Where("owner_user_id = ?", ownerUserID).Order("created_at DESC").Find(&ss).Error
+}
+
+func (r *Repo) UpdateSchedule(id string, patch map[string]any) error {
+	return database.DB.Model(&database.AgentRoomSchedule{}).Where("id = ?", id).Updates(patch).Error
+}
+
+func (r *Repo) DeleteSchedule(id string) error {
+	return database.DB.Delete(&database.AgentRoomSchedule{}, "id = ?", id).Error
+}
+
+func (r *Repo) ListDueSchedules(now time.Time) ([]database.AgentRoomSchedule, error) {
+	var ss []database.AgentRoomSchedule
+	return ss, database.DB.Where("enabled = ? AND next_run_at IS NOT NULL AND next_run_at <= ? AND (last_status IS NULL OR last_status != ?)", true, now, "running").Find(&ss).Error
 }

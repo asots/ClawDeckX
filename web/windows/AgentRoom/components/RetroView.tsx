@@ -16,6 +16,7 @@ interface Props {
   /** 可选：外部已预加载好的 retro；否则组件自行 fetch。 */
   initialRetro?: Retro | null;
   onStartNextMeeting?: (draft: NextMeetingDraft) => void;
+  onSetAsSchedule?: (draft: NextMeetingDraft) => void;
   onOpenPlaybook?: (playbookId: string, context: PlaybookHighlightContext) => void;
 }
 
@@ -26,7 +27,7 @@ const DIM: { key: keyof Retro; label: string; tone: string }[] = [
   { key: 'scoreEfficiency',      label: '效率',        tone: 'from-amber-400 to-amber-600' },
 ];
 
-const RetroView: React.FC<Props> = ({ roomId, initialRetro, onStartNextMeeting, onOpenPlaybook }) => {
+const RetroView: React.FC<Props> = ({ roomId, initialRetro, onStartNextMeeting, onSetAsSchedule, onOpenPlaybook }) => {
   const { confirm } = useConfirm();
   const { busy: promotingBusy, run: runPromoting } = useBusy();
   const [retro, setRetro] = useState<Retro | null>(initialRetro ?? null);
@@ -367,12 +368,57 @@ const RetroView: React.FC<Props> = ({ roomId, initialRetro, onStartNextMeeting, 
                 </ul>
               </div>
             )}
+            {/* v0.2 GAP G6：结构化继承项预览 */}
+            {!editing && (() => {
+              const d = shown.nextMeetingDraft!;
+              const u = d.unfinishedTaskIds?.length || 0;
+              const r = d.reworkTaskIds?.length || 0;
+              const k = d.riskIds?.length || 0;
+              if (u + r + k === 0) return null;
+              return (
+                <div className="mt-2 pt-2 border-t border-indigo-500/20 text-[10.5px] text-text-secondary">
+                  <div className="text-[10px] uppercase tracking-wide text-indigo-500 font-semibold mb-1 inline-flex items-center gap-1">
+                    <span className="material-symbols-outlined text-[12px]">link</span>
+                    将带入新房间
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {u > 0 && (
+                      <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30">
+                        <span className="material-symbols-outlined text-[11px]">pending_actions</span>
+                        未完成 {u}
+                      </span>
+                    )}
+                    {r > 0 && (
+                      <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-fuchsia-500/15 text-fuchsia-600 dark:text-fuchsia-400 border border-fuchsia-500/30">
+                        <span className="material-symbols-outlined text-[11px]">redo</span>
+                        返工 {r}
+                      </span>
+                    )}
+                    {k > 0 && (
+                      <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30">
+                        <span className="material-symbols-outlined text-[11px]">warning</span>
+                        风险 {k}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
             {!editing && onStartNextMeeting && (
-              <button type="button" onClick={() => onStartNextMeeting(shown.nextMeetingDraft!)}
-                className="mt-2 h-7 px-3 rounded-md text-[11.5px] font-semibold bg-indigo-500 hover:bg-indigo-600 text-white inline-flex items-center gap-1">
-                <span className="material-symbols-outlined text-[13px]">rocket_launch</span>
-                基于此建议开新会议
-              </button>
+              <div className="mt-2 flex items-center gap-2 flex-wrap">
+                <button type="button" onClick={() => onStartNextMeeting(shown.nextMeetingDraft!)}
+                  className="h-7 px-3 rounded-md text-[11.5px] font-semibold bg-indigo-500 hover:bg-indigo-600 text-white inline-flex items-center gap-1">
+                  <span className="material-symbols-outlined text-[13px]">rocket_launch</span>
+                  基于此建议开新会议
+                </button>
+                {onSetAsSchedule && (
+                  <button type="button" onClick={() => onSetAsSchedule(shown.nextMeetingDraft!)}
+                    className="h-7 px-3 rounded-md text-[11.5px] font-semibold border border-info/40 text-info hover:bg-info/10 inline-flex items-center gap-1">
+                    <span className="material-symbols-outlined text-[13px]">schedule</span>
+                    设为定时续会
+                  </button>
+                )}
+              </div>
             )}
           </div>
         </section>

@@ -36,6 +36,31 @@ type Template struct {
 	InitialWhiteboard  string            `json:"initialWhiteboard,omitempty"`
 	SupportsProjection bool              `json:"supportsProjection,omitempty"`
 	MemberCount        int               `json:"memberCount"` // 计算字段
+
+	// v1.0+ 工作单初值（呼应 G3 验收 / G4 派发 / D1 依赖 DAG / D4 真实 spawn）。
+	// 创建房间时 handler 会按顺序 insert 成真实 AgentRoomTask；空 = 不预置任务。
+	InitialTasks []TemplateTask `json:"initialTasks,omitempty"`
+	// DefaultDispatchMode —— 模板对该场景下"派发任务"的推荐模式。
+	// 允许值：member_agent | subagent。空 = 跟随 dispatch handler 默认。
+	// 前端 dispatch 弹窗可读取此值预选。
+	DefaultDispatchMode string `json:"defaultDispatchMode,omitempty"`
+}
+
+// TemplateTask —— 模板预置的初始任务条目。
+//
+// 字段映射到 AgentRoomTask；ExecutorRoleID / ReviewerRoleID 在创建房间时通过
+// member.RoleID → memberId 解析；DependsOnIndices 引用同模板里前面 task 的下标。
+type TemplateTask struct {
+	Text             string `json:"text"`                       // 必填，任务描述
+	Deliverable      string `json:"deliverable,omitempty"`      // 期望交付物
+	DefinitionOfDone string `json:"definitionOfDone,omitempty"` // DoD（行/分号分隔）
+	// ExecutorRoleID：默认执行人对应模板成员的 RoleID；空 = 不预指派。
+	ExecutorRoleID string `json:"executorRoleId,omitempty"`
+	// ReviewerRoleID：默认验收人对应模板成员的 RoleID；
+	// 留空时 handler 回退到 IsDefaultReviewer = true 的成员。
+	ReviewerRoleID string `json:"reviewerRoleId,omitempty"`
+	// DependsOnIndices：依赖的前置任务在 InitialTasks 中的 0-based 下标。
+	DependsOnIndices []int `json:"dependsOnIndices,omitempty"`
 }
 
 type TemplateMember struct {
@@ -54,6 +79,11 @@ type TemplateMember struct {
 	// 模板未指定 AgentID 时由 handler 自动填 "default"（OpenClaw 配置的默认 agent）。
 	AgentID  string `json:"agentId,omitempty"`
 	Thinking string `json:"thinking,omitempty"` // off|low|medium|high
+
+	// v1.0+：模板里此成员是否为 InitialTasks 的默认验收人。
+	// 当 TemplateTask.ReviewerRoleID 留空时，handler 回退到第一个 IsDefaultReviewer = true 的成员。
+	// 一般是 moderator / judge / 事实核查员一类把关角色。
+	IsDefaultReviewer bool `json:"isDefaultReviewer,omitempty"`
 }
 
 // Templates 返回内置模板列表（按序稳定）。
@@ -88,8 +118,31 @@ func Templates() []Template {
 			Icon: "edit_note", Tagline: "研究 → 大纲 → 草稿 → 编辑 → 事实核查 · 一条龙产出成品文章",
 			Gradient:      "from-violet-400 via-purple-500 to-fuchsia-500",
 			DefaultPolicy: PolicyRoundRobin, PresetID: "deep", BudgetCNY: 25, Stars: 0,
-			InitialPromptHint: "例如：帮我写一篇 800 字的公众号软文，主题是 \"AI 工具如何改变内容创作\"，受众是非技术读者，调性轻快但有干货。",
-			InitialWhiteboard: "# 成品稿协作区\n\n_五位角色会按顺序把各自产出写到对应小节。会议结束这里就是一篇可发稿的成品。_\n\n---\n\n## 素材（研究员填）\n\n\n## 大纲（结构师填）\n\n\n## 草稿（写手填）\n\n\n## 编辑定稿（编辑填）\n\n\n## 事实核查（核查员填）\n",
+			DefaultDispatchMode: TaskExecutionModeMemberAgent,
+			InitialPromptHint:   "例如：帮我写一篇 800 字的公众号软文，主题是 \"AI 工具如何改变内容创作\"，受众是非技术读者，调性轻快但有干货。",
+			InitialWhiteboard:   "# 成品稿协作区\n\n_五位角色会按顺序把各自产出写到对应小节。会议结束这里就是一篇可发稿的成品。_\n\n---\n\n## 素材（研究员填）\n\n\n## 大纲（结构师填）\n\n\n## 草稿（写手填）\n\n\n## 编辑定稿（编辑填）\n\n\n## 事实核查（核查员填）\n",
+			InitialTasks: []TemplateTask{
+				{Text: "产出可引用素材清单（3-6 条事实，标注来源域名 + 日期）",
+					Deliverable:      "Markdown 列表 · 每行一条事实 · 附原链接",
+					DefinitionOfDone: "至少 3 条素材；每条带可点开原链接；至少 1 条是数字或第一手引用；附 2-3 句素材观察",
+					ExecutorRoleID:   "researcher"},
+				{Text: "基于素材产出可执行大纲（受众/长度/调性 + 3-6 小节）",
+					Deliverable:      "Markdown 大纲，含定位行 + 小节列表 + 开头钩子/结尾收束建议",
+					DefinitionOfDone: "包含一行定位（受众/长度/调性）；小节 3-6 节，每节标注引用哪条素材；含开头钩子+结尾收束",
+					ExecutorRoleID:   "architect", DependsOnIndices: []int{0}},
+				{Text: "按大纲完成完整草稿",
+					Deliverable:      "完整 Markdown 草稿",
+					DefinitionOfDone: "严格按大纲小节顺序无遗漏；总字数对齐目标 ±15%；自然嵌入素材中的数字/引文；调性与定位一致",
+					ExecutorRoleID:   "writer", DependsOnIndices: []int{1}},
+				{Text: "对草稿做精修 + 给标题建议",
+					Deliverable:      "修订后完整稿 + 修订理由清单（3-6 条）+ 标题主推 1 个 · 备选 1 个",
+					DefinitionOfDone: "不增删事实；删冗优化过渡；标题非标题党；理由清单逐条对应改动",
+					ExecutorRoleID:   "editor", DependsOnIndices: []int{2}},
+				{Text: "事实核查 + 出发稿建议",
+					Deliverable:      "事实核查表 + 发稿建议（可发 / 小改后可发 / 重写）",
+					DefinitionOfDone: "扫出全文所有数字/引语/年份/事件名/人名；逐条对照素材给出 ✅/⚠️/❌ 判定；最终给出明确发稿建议带理由",
+					ExecutorRoleID:   "fact-checker", DependsOnIndices: []int{3}},
+			},
 			Members: []TemplateMember{
 				{RoleID: "researcher", Role: "研究员", Emoji: "🔬",
 					SystemPrompt: "你是团队里的研究员。在其他人开始写之前，你先交付事实素材。" +
@@ -133,7 +186,7 @@ func Templates() []Template {
 						"\n- 大段重写（那是写手的活）。" +
 						"\n- 引入新事实。" +
 						"\n- 把硬核调性改成鸡汤或反之。"},
-				{RoleID: "fact-checker", Role: "事实核查员", Emoji: "🔍",
+				{RoleID: "fact-checker", Role: "事实核查员", Emoji: "🔍", IsDefaultReviewer: true,
 					SystemPrompt: "你是发稿前最后一关。**只做事实与引用核查**，不修语言。" +
 						"\n\n工作流程：" +
 						"\n1. 扫编辑后的全文，挑出所有**数字、引语、年份、事件名、人名、研究名**。" +
@@ -163,7 +216,14 @@ func Templates() []Template {
 			Icon: "groups_3", Tagline: "CFO / 法务 / 市场 / 执行 / 用户 5 视角 + 裁判收敛 · 任何决策的万能压力测试",
 			Gradient:      "from-sky-400 via-blue-500 to-indigo-600",
 			DefaultPolicy: PolicyModerator, PresetID: "planning", BudgetCNY: 20, Stars: 0,
-			InitialPromptHint: "例如：我想辞职做独立开发者，存款够活 18 个月，请各位帮我压力测试这个决定。",
+			DefaultDispatchMode: TaskExecutionModeMemberAgent,
+			InitialPromptHint:   "例如：我想辞职做独立开发者，存款够活 18 个月，请各位帮我压力测试这个决定。",
+			InitialTasks: []TemplateTask{
+				{Text: "5 视角发言完成后，输出最终 GO/NO-GO 决议",
+					Deliverable:      "判断（GO / NO-GO / 需更多信息）+ 核心理由 + 最小可验证动作或翻盘条件",
+					DefinitionOfDone: "列出 3-5 条跨视角共识风险；明确给出判断词（GO / NO-GO / 需更多信息）；GO 时附 1-2 周可完成的最小验证动作；NO-GO 时附翻盘条件；不和稀泥",
+					ExecutorRoleID:   "judge"},
+			},
 			InitialFacts: map[string]string{
 				"决策主题":   "（一句话描述要决定什么）",
 				"时间窗口":   "（什么时候必须做决定 / 可以观察多久）",
@@ -221,7 +281,7 @@ func Templates() []Template {
 						"\n- 替产品吹。" +
 						"\n- 给战略建议（那是别人的活）。" +
 						"\n- 讲抽象用户画像（要讲一个具体的「我」，带真实细节）。"},
-				{RoleID: "judge", Role: "裁判", Emoji: "⚖️", IsModerator: true,
+				{RoleID: "judge", Role: "裁判", Emoji: "⚖️", IsModerator: true, IsDefaultReviewer: true,
 					SystemPrompt: "你在**其他 5 位都发言过后**再介入。你的任务不是再加一个视角，而是**收敛**。" +
 						"\n\n每次发言做三件事：" +
 						"\n1. 列 **3-5 条「跨视角出现多次的担忧」**（代表高共识风险）。" +
@@ -258,9 +318,17 @@ func Templates() []Template {
 			// free 策略：大家自由发言；deep preset 提高门槛 + 长上下文，
 			// 适合需要大量贴代码/讨论架构的深度评审。
 			DefaultPolicy: PolicyFree, PresetID: "deep", BudgetCNY: 10, Stars: 1560,
-			InitialPromptHint: "粘贴代码或 PR 描述，让大家轮流挑刺。",
+			// subagent 模式：每次评审在 isolated 子 session 跑（D4），不污染评审员主 session。
+			DefaultDispatchMode: TaskExecutionModeSubagent,
+			InitialPromptHint:   "粘贴代码或 PR 描述，让大家轮流挑刺。",
+			InitialTasks: []TemplateTask{
+				{Text: "输出最终代码评审报告",
+					Deliverable:      "分级问题列表（Blocker / Major / Minor / Nit）+ 总体合并建议（Approve / Request Changes / Block）",
+					DefinitionOfDone: "覆盖架构 / 安全 / 性能 / 边界 / 可读性 5 个维度；每个 Blocker / Major 含具体行/位置定位；给出明确合并建议",
+					ExecutorRoleID:   "senior"},
+			},
 			Members: []TemplateMember{
-				{RoleID: "senior", Role: "资深工程师", Emoji: "🧓", SystemPrompt: "你像一个见过很多线上事故的老工程师。发言不多，但一开口就抓架构、边界、演化成本；如果你觉得方向不对，可以直接说重话。"},
+				{RoleID: "senior", Role: "资深工程师", Emoji: "🧓", IsDefaultReviewer: true, SystemPrompt: "你像一个见过很多线上事故的老工程师。发言不多，但一开口就抓架构、边界、演化成本；如果你觉得方向不对，可以直接说重话。"},
 				{RoleID: "junior", Role: "初级工程师", Emoji: "🐣", SystemPrompt: "你负责把那些大家默认懂、其实没讲清的地方问出来。语气可以直接、甚至有点冒失；不懂就问，不要假装懂。"},
 				{RoleID: "secops", Role: "安全工程师", Emoji: "🛡️", SystemPrompt: "你天然对风险敏感。优先盯权限、输入边界、数据泄漏、注入、越权、滥用路径。别泛泛说『有风险』，要指出具体怎么出事。"},
 			},
@@ -286,9 +354,24 @@ func Templates() []Template {
 			// moderator 策略 + deep preset：复盘要长上下文 + 少连续发言，
 			// 避免一角色把时间线/根因/改进一口气讲完。
 			DefaultPolicy: PolicyModerator, PresetID: "deep", BudgetCNY: 20, Stars: 750, SupportsProjection: true,
-			InitialPromptHint: "粘贴事故概要（时间、影响范围、当前猜测）。",
+			DefaultDispatchMode: TaskExecutionModeMemberAgent,
+			InitialPromptHint:   "粘贴事故概要（时间、影响范围、当前猜测）。",
+			InitialTasks: []TemplateTask{
+				{Text: "整理完整事件时间线",
+					Deliverable:      "按时间倒序的关键事件列表（时间点 + 一句话事实）",
+					DefinitionOfDone: "覆盖从首发异常到恢复的全过程；每条带时间戳；只列事实不加结论",
+					ExecutorRoleID:   "timeline"},
+				{Text: "基于时间线给出根因分析（系统/流程/人）",
+					Deliverable:      "根因分析报告 · 5-Why 推导链",
+					DefinitionOfDone: "明确区分直接原因与根本原因；从 3 个层面（系统/流程/人）给结论；不越位提改进",
+					ExecutorRoleID:   "rca", DependsOnIndices: []int{0}},
+				{Text: "基于根因输出 2-3 条可执行改进项",
+					Deliverable:      "改进清单（每项含 Owner 候选 / 优先级 / 工时估计）",
+					DefinitionOfDone: "2-3 条具体可执行项；每项对应一个根因；不重复时间线/根因已说过的结论",
+					ExecutorRoleID:   "improver", DependsOnIndices: []int{1}},
+			},
 			Members: []TemplateMember{
-				{RoleID: "facilitator", Role: "主持人", Emoji: "🎤", IsModerator: true,
+				{RoleID: "facilitator", Role: "主持人", Emoji: "🎤", IsModerator: true, IsDefaultReviewer: true,
 					SystemPrompt: "你主持复盘。按 5-Why 引导；每轮让时间线专家→根因分析师→改进建议者按顺序深入，避免大家同时给出完整答案。"},
 				{RoleID: "timeline", Role: "时间线专家", Emoji: "📅",
 					SystemPrompt: "你只负责整理事件【发生顺序与关键时间点】。不要下根因结论，也不要提改进，这是后两位的职责。"},
@@ -357,10 +440,18 @@ func Templates() []Template {
 			// free 策略 + deep preset：研究题需要长上下文 + 高门槛发言，
 			// 避免研究员还没查完资料审稿人就插话打断。
 			DefaultPolicy: PolicyFree, PresetID: "deep", BudgetCNY: 25, Stars: 430,
-			InitialPromptHint: "给个研究问题，研究员会去查资料。",
+			// subagent：每次研究在 isolated 子 session 跑（D4），保证单题不污染长会话上下文。
+			DefaultDispatchMode: TaskExecutionModeSubagent,
+			InitialPromptHint:   "给个研究问题，研究员会去查资料。",
+			InitialTasks: []TemplateTask{
+				{Text: "输出最终研究综述报告",
+					Deliverable:      "研究综述（含：核心结论 / 证据链 / 反例与争议 / 不确定性 / 引用列表）",
+					DefinitionOfDone: "核心结论清晰；至少 3 条独立来源支持；明确标注不确定性与反例；引用可点开",
+					ExecutorRoleID:   "writer"},
+			},
 			Members: []TemplateMember{
 				{RoleID: "researcher", Role: "研究员", Emoji: "🔬", SystemPrompt: "你像真正在查资料的人。先去找事实、来源、数字和原始表述，再回来汇报；不要没查就凭感觉下结论。"},
-				{RoleID: "reviewer", Role: "审稿人", Emoji: "📝", SystemPrompt: "你像一个刻薄但专业的审稿人。专门盯证据够不够硬、推理有没有跳步、来源是否可靠；不怕打断别人追问。"},
+				{RoleID: "reviewer", Role: "审稿人", Emoji: "📝", IsDefaultReviewer: true, SystemPrompt: "你像一个刻薄但专业的审稿人。专门盯证据够不够硬、推理有没有跳步、来源是否可靠；不怕打断别人追问。"},
 				{RoleID: "writer", Role: "综述员", Emoji: "📚", SystemPrompt: "你负责把已经得到的材料整理成可读结论。语气清楚、克制、像给真实同事写 brief；不要抢着先定论。"},
 			},
 		},
@@ -388,9 +479,11 @@ func Templates() []Template {
 			Gradient: "from-red-600 via-orange-600 to-yellow-500",
 			// moderator + deep：指挥官控场，复杂场景下需要保留完整时间线 + 事实链。
 			DefaultPolicy: PolicyModerator, PresetID: "deep", BudgetCNY: 30, Stars: 290, SupportsProjection: true,
-			InitialPromptHint: "简述当前危机（系统宕机/舆情/...）。",
+			// 危机现场场景动态，不预置 InitialTasks（指挥官按现场拆任务派发）。
+			DefaultDispatchMode: TaskExecutionModeMemberAgent,
+			InitialPromptHint:   "简述当前危机（系统宕机/舆情/...）。",
 			Members: []TemplateMember{
-				{RoleID: "commander", Role: "事件指挥官", Emoji: "⚓", IsModerator: true, SystemPrompt: "主导决策节奏。"},
+				{RoleID: "commander", Role: "事件指挥官", Emoji: "⚓", IsModerator: true, IsDefaultReviewer: true, SystemPrompt: "主导决策节奏。"},
 				{RoleID: "sre", Role: "SRE", Emoji: "🔧"},
 				{RoleID: "pm", Role: "产品", Emoji: "📋"},
 				{RoleID: "pr", Role: "公关", Emoji: "📢"},

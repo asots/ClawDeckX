@@ -17,6 +17,7 @@ import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react'
 import type { Room, PolicyOptions, PolicyPresetMeta, PromptPack } from '../types';
 import { listPresets, getPromptDefaults, updateRoom } from '../service';
 import NumberStepper from '../../../components/NumberStepper';
+import CustomSelect from '../../../components/CustomSelect';
 
 interface Props {
   room: Room;
@@ -1013,7 +1014,7 @@ const NumberField: React.FC<{
 };
 
 // SelectField —— 三/多选枚举场景，语义比一串 ToggleField 更清楚。
-// 用原生 <select> 避免引入新依赖；样式跟其它 field 对齐。
+// 改用统一的 CustomSelect（portal 弹层 + 不会触发原生下拉漂移）。
 const SelectField: React.FC<{
   label: string;
   hint: string;
@@ -1026,15 +1027,9 @@ const SelectField: React.FC<{
       <div className="text-[12px] font-semibold text-text">{label}</div>
       <div className="text-[11px] text-text-secondary">{hint}</div>
     </div>
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="h-8 px-2 rounded-md bg-surface-sunken border border-border text-[12px] text-text focus:outline-none focus:ring-2 focus:ring-violet-500/40 min-w-[180px]"
-    >
-      {options.map((o) => (
-        <option key={o.value} value={o.value}>{o.label}</option>
-      ))}
-    </select>
+    <div className="h-8 px-2 rounded-md bg-surface-sunken border border-border text-[12px] text-text focus-within:ring-2 focus-within:ring-violet-500/40 min-w-[180px] flex items-center">
+      <CustomSelect value={value} onChange={onChange} options={options} className="w-full" />
+    </div>
   </label>
 );
 

@@ -404,16 +404,166 @@ export interface RoomFact {
   history?: { value: string; authorId: string; at: number }[];
 }
 
+// 任务状态。v0.2 扩展为工作单状态机（后端常量见 internal/agentroom/types.go）：
+//   todo / doing                      —— 旧字段，保持兼容
+//   assigned / in_progress / review   —— 派发→执行→待验收
+//   done / cancelled / blocked        —— 终态 / 阻塞
+export type TaskStatus =
+  | 'todo'
+  | 'doing'
+  | 'assigned'
+  | 'in_progress'
+  | 'review'
+  | 'done'
+  | 'cancelled'
+  | 'blocked';
+
+// 验收结论（reviewer 给出的判定）。空字符串/undefined = 未提交验收。
+export type AcceptanceStatus = '' | 'accepted' | 'rework' | 'needs_human' | 'blocked';
+
+// 任务执行模式（v0.2 仅做字段承载，派发链路在 Phase C 实现）。
+export type TaskExecutionMode = '' | 'manual' | 'member_agent' | 'subagent';
+
 export interface RoomTask {
   id: string;
+  roomId?: string;            // 所属房间（后端 DTO 始终携带；跨房间 dashboard 用到。前端创建草稿可省）
   text: string;
-  assigneeId?: string;        // 成员 id
+  assigneeId?: string;        // 执行人 member id
   creatorId: string;
-  status: 'todo' | 'doing' | 'done' | 'cancelled';
+  status: TaskStatus;
   dueAt?: number;
   refMessageId?: string;
   createdAt: number;
   completedAt?: number;
+
+  // v0.2 工作单字段（后端 GAP G1+G3）。所有字段都可选，老房间任务自然为空。
+  reviewerId?: string;            // 审查/验收人 member id
+  deliverable?: string;           // 期望交付物
+  definitionOfDone?: string;      // DoD（多行文本）
+  sourceDecisionId?: string;      // 来源决策消息 id
+  sourceMessageId?: string;       // 来源普通消息 id
+  executionMode?: TaskExecutionMode;
+  resultSummary?: string;         // 执行/手动结果摘要
+  acceptanceStatus?: AcceptanceStatus;
+  acceptanceNote?: string;        // 验收说明 / 返工要求
+  passedCriteria?: string[];      // 已达标 DoD 项
+  failedCriteria?: string[];      // 未达标 DoD 项
+  reworkCount?: number;           // 已返工次数
+  reviewedAt?: number;            // 上次提交验收时间
+  // v0.3 主题 C：跨房间血缘
+  parentTaskId?: string;
+  rootRoomId?: string;
+  // v0.3 主题 D：任务依赖（同房间）。dispatch 前会校验所有依赖必须 done。
+  dependsOn?: string[];
+}
+
+// v0.3 主题 C：跨房间血缘 / dashboard / lineage 类型
+export interface RoomBrief {
+  id: string;
+  title: string;
+  state: string;
+}
+
+export interface RoomLineage {
+  current: RoomBrief;
+  parent: RoomBrief | null;
+  root: RoomBrief | null;
+  children: RoomBrief[];
+}
+
+export interface TaskLineage {
+  task: RoomTask;
+  sourceDecision: Message | null;
+  sourceMessage: Message | null;
+  parentTask: RoomTask | null;
+  childTasks: RoomTask[];
+  executions: TaskExecution[];
+}
+
+export interface RoomDashboardSummary {
+  id: string;
+  title: string;
+  state: string;
+  policy: string;
+  taskCount: number;
+  openCount: number;
+  reviewCount: number;
+  riskCount: number;
+  parentRoomId?: string;
+  updatedAt: number;
+}
+
+export interface MyDashboard {
+  rooms: RoomDashboardSummary[];
+  myActiveTasks: RoomTask[];
+  awaitingMyReview: RoomTask[];
+}
+
+export interface CloneFromRoomPayload {
+  taskIds?: string[];
+  riskIds?: string[];
+}
+
+export interface CloneFromRoomResult {
+  sourceRoomId: string;
+  newRoomId: string;
+  clonedTasks: RoomTask[];
+  clonedRisks: Risk[];
+  skippedTasks: number;
+  skippedRisks: number;
+}
+
+// 验收提交载荷（前端调 acceptTask 时使用）。
+export interface AcceptTaskPayload {
+  status: 'accepted' | 'rework' | 'needs_human' | 'blocked';
+  summary: string;
+  passedCriteria?: string[];
+  failedCriteria?: string[];
+  reworkInstructions?: string;
+}
+
+// v0.2 GAP G4：任务执行回执。
+export type TaskExecutionStatus = 'queued' | 'running' | 'completed' | 'failed' | 'canceled';
+
+export interface TaskExecution {
+  id: string;
+  taskId: string;
+  roomId: string;
+  executorMemberId?: string;
+  mode: 'manual' | 'member_agent' | 'subagent';
+  status: TaskExecutionStatus;
+  summary?: string;
+  artifacts?: string[];
+  blockers?: string[];
+  rawRunRef?: string;
+  tokenUsage?: number;
+  errorMsg?: string;
+  startedAt?: number;
+  completedAt?: number;
+  createdAt: number;
+}
+
+export interface DispatchTaskPayload {
+  mode: 'manual' | 'member_agent' | 'subagent';
+  executorMemberId?: string;
+}
+
+export interface SubmitExecutionResultPayload {
+  summary: string;
+  artifacts?: string[];
+  blockers?: string[];
+}
+
+// 决策转任务的请求载荷。
+export interface PromoteDecisionPayload {
+  messageId: string;             // 来源决策消息 id（必须 isDecision=true）
+  text?: string;                 // 自定义任务描述
+  assigneeId?: string;
+  reviewerId?: string;
+  creatorId: string;
+  deliverable?: string;
+  definitionOfDone?: string;
+  dueAt?: number;
 }
 
 export interface RoomFile {
@@ -669,6 +819,7 @@ export interface Risk {
   severity: RiskSeverity;
   ownerId?: string;
   status: RiskStatus;
+  parentRiskId?: string;  // v0.3 主题 C：跨房间血缘
   createdAt: number;
   updatedAt: number;
 }
@@ -708,6 +859,13 @@ export interface NextMeetingDraft {
   agendaItems: string[];
   inviteRoles: string[];
   suggestedAt?: string;
+  // v0.2 GAP G6：结构化继承字段。LLM 生成的纯文本议程之外，
+  // retro 还会带回未完成任务 / 返工任务 / 风险的 ID 列表，
+  // 续会向导可据此精确显示"将带入新房间的事项"。
+  sourceRoomId?: string;
+  unfinishedTaskIds?: string[];
+  reworkTaskIds?: string[];
+  riskIds?: string[];
 }
 
 export interface Retro {
@@ -801,6 +959,22 @@ export interface RoomTemplate {
   initialWhiteboard?: string;
   initialPromptHint?: string; // 向导第 2 步的占位提示
   budgetCNY: number;
+  // v1.0+ 工作单初值（呼应 G3 验收 / G4 派发 / D1 依赖 DAG / D4 真实 spawn）。
+  initialTasks?: TemplateTask[];
+  // 推荐的任务派发模式：'member_agent' | 'subagent'；空 = 不预设。
+  defaultDispatchMode?: string;
+}
+
+export interface TemplateTask {
+  text: string;
+  deliverable?: string;
+  definitionOfDone?: string;
+  // 默认执行人对应的模板成员 roleId
+  executorRoleId?: string;
+  // 默认验收人对应的模板成员 roleId；为空时回退到 isDefaultReviewer 成员
+  reviewerRoleId?: string;
+  // 依赖的前置任务在 initialTasks 中的 0-based 下标
+  dependsOnIndices?: number[];
 }
 
 export interface TemplateMember {
@@ -813,6 +987,8 @@ export interface TemplateMember {
   // v0.4：模板作者可预置 agent/thinking；向导「高级」折叠区允许用户覆盖。
   agentId?: string;
   thinking?: string;
+  // v1.0+：是否为 initialTasks 默认验收人（任务未指定 reviewerRoleId 时回退到此）
+  isDefaultReviewer?: boolean;
 }
 
 // v0.4：启动模板房间时可为每个 roleId 覆盖 agent/thinking/model。
@@ -872,4 +1048,28 @@ export interface InterventionEvent {
   byHumanId: string;
   label: string;
   messageId?: string;
+}
+
+// ── v1.0 定时会议 ──
+
+export interface MeetingSchedule {
+  id: string;
+  ownerUserId: number;
+  title: string;
+  templateId: string;
+  cronExpr: string;
+  timezone: string;
+  enabled: boolean;
+  initialPrompt?: string;
+  autoCloseout: boolean;
+  roundBudget: number;
+  budgetCNY: number;
+  inheritFromLast: boolean;
+  deadlineAction: string;
+  lastRunAt?: string;
+  lastRoomId?: string;
+  lastStatus?: string;
+  lastError?: string;
+  nextRunAt?: string;
+  runCount: number;
 }

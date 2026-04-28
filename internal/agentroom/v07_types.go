@@ -17,10 +17,10 @@ import (
 
 // PlaybookStep —— 一个方法论卡里的可勾选步骤。
 type PlaybookStep struct {
-	ID       string `json:"id"`
-	Text     string `json:"text"`
-	Checked  bool   `json:"checked,omitempty"`
-	Note     string `json:"note,omitempty"`
+	ID      string `json:"id"`
+	Text    string `json:"text"`
+	Checked bool   `json:"checked,omitempty"`
+	Note    string `json:"note,omitempty"`
 }
 
 // ─────────── Agenda ───────────
@@ -120,41 +120,43 @@ func ParkingLotItemFromModel(m *database.AgentRoomParkingLot) ParkingLotItem {
 }
 
 type Risk struct {
-	ID        string `json:"id"`
-	RoomID    string `json:"roomId"`
-	Text      string `json:"text"`
-	Severity  string `json:"severity"`
-	OwnerID   string `json:"ownerId,omitempty"`
-	Status    string `json:"status"`
-	CreatedAt int64  `json:"createdAt"`
-	UpdatedAt int64  `json:"updatedAt"`
+	ID           string `json:"id"`
+	RoomID       string `json:"roomId"`
+	Text         string `json:"text"`
+	Severity     string `json:"severity"`
+	OwnerID      string `json:"ownerId,omitempty"`
+	Status       string `json:"status"`
+	ParentRiskID string `json:"parentRiskId,omitempty"` // v0.3 主题 C：跨房间血缘
+	CreatedAt    int64  `json:"createdAt"`
+	UpdatedAt    int64  `json:"updatedAt"`
 }
 
 func RiskFromModel(m *database.AgentRoomRisk) Risk {
 	return Risk{
 		ID: m.ID, RoomID: m.RoomID, Text: m.Text, Severity: m.Severity,
 		OwnerID: m.OwnerID, Status: m.Status,
-		CreatedAt: m.CreatedAt.UnixMilli(), UpdatedAt: m.UpdatedAt.UnixMilli(),
+		ParentRiskID: m.ParentRiskID,
+		CreatedAt:    m.CreatedAt.UnixMilli(), UpdatedAt: m.UpdatedAt.UnixMilli(),
 	}
 }
 
 // ─────────── Vote ───────────
 
 type Vote struct {
-	ID           string        `json:"id"`
-	RoomID       string        `json:"roomId"`
-	AgendaItemID string        `json:"agendaItemId,omitempty"`
-	Question     string        `json:"question"`
-	Options      []string      `json:"options"`
-	Mode         string        `json:"mode"`
-	VoterIDs     []string      `json:"voterIds"`
-	Status       string        `json:"status"`
-	Result       string        `json:"result,omitempty"`
-	InitiatorID  string        `json:"initiatorId,omitempty"`
-	Ballots      []VoteBallot  `json:"ballots"`
-	ClosedAt     *int64        `json:"closedAt,omitempty"`
-	CreatedAt    int64         `json:"createdAt"`
-	UpdatedAt    int64         `json:"updatedAt"`
+	ID           string       `json:"id"`
+	RoomID       string       `json:"roomId"`
+	AgendaItemID string       `json:"agendaItemId,omitempty"`
+	Question     string       `json:"question"`
+	Options      []string     `json:"options"`
+	Mode         string       `json:"mode"`
+	VoterIDs     []string     `json:"voterIds"`
+	Status       string       `json:"status"`
+	Result       string       `json:"result,omitempty"`
+	InitiatorID  string       `json:"initiatorId,omitempty"`
+	Ballots      []VoteBallot `json:"ballots"`
+	ClosedAt     *int64       `json:"closedAt,omitempty"`
+	CreatedAt    int64        `json:"createdAt"`
+	UpdatedAt    int64        `json:"updatedAt"`
 }
 
 type VoteBallot struct {
@@ -201,12 +203,22 @@ const (
 // ─────────── Retro / NextMeeting ───────────
 
 type NextMeetingDraft struct {
-	Title          string    `json:"title"`
-	Goal           string    `json:"goal"`
-	TemplateID     string    `json:"templateId,omitempty"`
-	AgendaItems    []string  `json:"agendaItems"`
-	InviteRoles    []string  `json:"inviteRoles"`
-	SuggestedAt    string    `json:"suggestedAt,omitempty"` // e.g. "1 week later"
+	Title       string   `json:"title"`
+	Goal        string   `json:"goal"`
+	TemplateID  string   `json:"templateId,omitempty"`
+	AgendaItems []string `json:"agendaItems"`
+	InviteRoles []string `json:"inviteRoles"`
+	SuggestedAt string   `json:"suggestedAt,omitempty"` // e.g. "1 week later"
+
+	// v0.2 GAP G6：结构化继承字段。让续会能精确引用源会的工作单 / 风险，
+	// 而不只是 LLM 生成的纯文本议程。前端 CreateRoomWizard 收到 draft 后可：
+	//   - 顶部展示"续自 [源房间]"
+	//   - 列出未完成任务 / 返工任务 / 风险，让用户勾选哪些带入新房间
+	// 无相关项时为空数组（保持 JSON 形状稳定）。
+	SourceRoomID      string   `json:"sourceRoomId,omitempty"`
+	UnfinishedTaskIDs []string `json:"unfinishedTaskIds"`
+	ReworkTaskIDs     []string `json:"reworkTaskIds"`
+	RiskIDs           []string `json:"riskIds"`
 }
 
 type Retro struct {

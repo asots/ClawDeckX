@@ -22,13 +22,14 @@ interface Props {
   /** 点击消息跳转时触发 —— 会把聊天流滚到对应位置。 */
   onJump?: (messageId: string) => void;
   onStartNextMeeting?: (draft: NextMeetingDraft) => void;
+  onSetAsSchedule?: (draft: NextMeetingDraft) => void;
   forcedTab?: Tab;
   onOpenPlaybook?: (playbookId: string, context: PlaybookHighlightContext) => void;
 }
 
 type Tab = 'overview' | 'decisions' | 'tasks' | 'questions' | 'retro';
 
-const OutcomeBundleView: React.FC<Props> = ({ roomId, members, onJump, onStartNextMeeting, forcedTab, onOpenPlaybook }) => {
+const OutcomeBundleView: React.FC<Props> = ({ roomId, members, onJump, onStartNextMeeting, onSetAsSchedule, forcedTab, onOpenPlaybook }) => {
   const [loading, setLoading] = useState(true);
   const [bundle, setBundle] = useState<{ content: string; title: string } | null>(null);
   const [retro, setRetro] = useState<Retro | null>(null);
@@ -258,7 +259,7 @@ const OutcomeBundleView: React.FC<Props> = ({ roomId, members, onJump, onStartNe
       )}
 
       {tab === 'retro' && (
-        <RetroView roomId={roomId} initialRetro={retro} onStartNextMeeting={onStartNextMeeting} onOpenPlaybook={onOpenPlaybook} />
+        <RetroView roomId={roomId} initialRetro={retro} onStartNextMeeting={onStartNextMeeting} onSetAsSchedule={onSetAsSchedule} onOpenPlaybook={onOpenPlaybook} />
       )}
     </div>
   );

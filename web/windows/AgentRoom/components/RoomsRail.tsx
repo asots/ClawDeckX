@@ -14,6 +14,10 @@ interface Props {
   lastSeen?: Record<string, number>;
   // 宽屏下的主动折叠回调；不传则不渲染折叠按钮（例如移动端 drawer 里）。
   onCollapse?: () => void;
+  // v0.3 主题 D：跨房间工作台入口；不传则不渲染按钮。
+  onOpenDashboard?: () => void;
+  // v1.0：定时会议入口
+  onOpenSchedule?: () => void;
 }
 
 // isUnread 判断房间是否有未读消息：仅对非当前激活房间计算。
@@ -30,7 +34,7 @@ function isUnread(r: Room, activeId: string | null, lastSeen?: Record<string, nu
   return updated > seen;
 }
 
-const RoomsRail: React.FC<Props> = ({ rooms, activeId, onSelect, onCreate, onDelete, lastSeen, onCollapse }) => {
+const RoomsRail: React.FC<Props> = ({ rooms, activeId, onSelect, onCreate, onDelete, lastSeen, onCollapse, onOpenDashboard, onOpenSchedule }) => {
   const active = rooms.filter(r => r.state === 'active' || r.state === 'paused' || r.state === 'draft');
   const archived = rooms.filter(r => r.state === 'closed' || r.state === 'archived');
 
@@ -42,6 +46,24 @@ const RoomsRail: React.FC<Props> = ({ rooms, activeId, onSelect, onCreate, onDel
           <span className="text-[12px] font-bold tracking-wide truncate">AgentRoom</span>
         </div>
         <div className="flex items-center gap-1 shrink-0">
+          {onOpenSchedule && (
+            <button
+              onClick={onOpenSchedule}
+              title="定时会议"
+              className="w-7 h-7 rounded-md hover:bg-surface-sunken text-text-muted hover:text-cyan-500 flex items-center justify-center transition"
+            >
+              <span className="material-symbols-outlined text-[16px]">schedule</span>
+            </button>
+          )}
+          {onOpenDashboard && (
+            <button
+              onClick={onOpenDashboard}
+              title="跨房间工作台"
+              className="w-7 h-7 rounded-md hover:bg-surface-sunken text-text-muted hover:text-cyan-500 flex items-center justify-center transition"
+            >
+              <span className="material-symbols-outlined text-[16px]">dashboard</span>
+            </button>
+          )}
           <button
             onClick={onCreate}
             title="新建房间"

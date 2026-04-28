@@ -19,10 +19,29 @@ import (
 )
 
 type AgentRoomHandler struct {
-	repo    *agentroom.Repo
-	manager *agentroom.Manager
+	repo      *agentroom.Repo
+	manager   *agentroom.Manager
+	scheduler *agentroom.RoomScheduler
 	// 每房间发言速率限制：简单 token bucket（per-room，非 per-user）。
 	rateLim *agentroom.RoomRateLimiter
+}
+
+func (h *AgentRoomHandler) SetScheduler(s *agentroom.RoomScheduler) {
+	h.scheduler = s
+}
+
+// ReplayBlueprint 是 RoomScheduler.BlueprintReplayFn 的实现：将存储在 schedule 中
+// 的 createRoomRequest JSON 反序列化并通过 buildRoomFromRequest 重建房间。
+func (h *AgentRoomHandler) ReplayBlueprint(ctx context.Context, ownerUserID uint, blueprintJSON []byte) (string, error) {
+	var req createRoomRequest
+	if err := json.Unmarshal(blueprintJSON, &req); err != nil {
+		return "", fmt.Errorf("decode blueprint: %w", err)
+	}
+	roomID, appErr := h.buildRoomFromRequest(ctx, ownerUserID, req)
+	if appErr != nil {
+		return "", fmt.Errorf("%s: %s", appErr.Code, appErr.Message)
+	}
+	return roomID, nil
 }
 
 func NewAgentRoomHandler(repo *agentroom.Repo, mgr *agentroom.Manager) *AgentRoomHandler {
@@ -586,6 +605,21 @@ type createRoomRequest struct {
 	// v0.8：建房时直接带 PolicyOptions 覆盖（会在 preset 应用后 merge 进去）。
 	// 常见用途：CreateRoomWizard 里选"冲突驱动模式"等。留空 = 跟 preset。
 	PolicyOptions *agentroom.PolicyOptions `json:"policyOptions,omitempty"`
+	// v1.0+：用户在向导第 3 步勾掉的初始任务下标（0-based），种子化时跳过。
+	// 仅 template 路径有效；为空 / nil 时全部种子化。
+	DisabledInitialTaskIndices []int `json:"disabledInitialTaskIndices,omitempty"`
+	// v1.0+：AI 建会 / 自定义路径可直接带初始任务清单。
+	// 与模板不同的是，executorRole / reviewerRole 是角色名（非 roleId），handler 用名称匹配 member。
+	InitialTasks []initialTaskSpec `json:"initialTasks,omitempty"`
+}
+
+type initialTaskSpec struct {
+	Text             string `json:"text"`
+	Deliverable      string `json:"deliverable,omitempty"`
+	DefinitionOfDone string `json:"definitionOfDone,omitempty"`
+	ExecutorRole     string `json:"executorRole,omitempty"`
+	ReviewerRole     string `json:"reviewerRole,omitempty"`
+	DependsOnIndices []int  `json:"dependsOnIndices,omitempty"`
 }
 
 type resolvedMemberSpec struct {
@@ -600,6 +634,19 @@ func (h *AgentRoomHandler) CreateRoom(w http.ResponseWriter, r *http.Request) {
 		web.FailErr(w, r, web.ErrInvalidBody)
 		return
 	}
+	roomID, appErr := h.buildRoomFromRequest(r.Context(), web.GetUserID(r), req)
+	if appErr != nil {
+		web.FailErr(w, r, appErr)
+		return
+	}
+	snap, _ := h.repo.RoomSnapshot(roomID)
+	web.OK(w, r, snap)
+}
+
+// buildRoomFromRequest 是 CreateRoom 的可复用核心逻辑。
+// 既给 HTTP 入口用，也给 RoomScheduler 在定时触发时用（blueprint 重放）。
+// 返回创建的 roomID。失败时返回结构化 AppError；调用方决定如何回写响应。
+func (h *AgentRoomHandler) buildRoomFromRequest(ctx context.Context, ownerUserID uint, req createRoomRequest) (string, *web.AppError) {
 	var (
 		roomID  = agentroom.GenID("room")
 		members []resolvedMemberSpec
@@ -612,13 +659,16 @@ func (h *AgentRoomHandler) CreateRoom(w http.ResponseWriter, r *http.Request) {
 		// 空结构（PresetID 未落）→ 存空串，orchestrator 通过 GetXxx() 回退到默认。
 		policyOpts agentroom.PolicyOptions
 		hasOpts    bool
+		// v1.0+：从模板里捕获 InitialWhiteboard / InitialTasks，给后续 roomModel 写入与 task 种子用。
+		tplInitialWhiteboard string
+		tplInitialTasks      []agentroom.TemplateTask
+		tplMembers           []agentroom.TemplateMember
 	)
 
 	if req.Kind == "template" || req.TemplateID != "" {
 		tpl := agentroom.FindTemplate(req.TemplateID)
 		if tpl == nil {
-			web.Fail(w, r, "TEMPLATE_NOT_FOUND", "template not found", http.StatusBadRequest)
-			return
+			return "", &web.AppError{Code: "TEMPLATE_NOT_FOUND", Message: "template not found", HTTPStatus: http.StatusBadRequest}
 		}
 		// 深拷贝模板 members（避免污染全局模板）并按 roleId 应用 overrides。
 		overrideByRole := make(map[string]templateMemberOverride, len(req.MemberOverrides))
@@ -655,26 +705,32 @@ func (h *AgentRoomHandler) CreateRoom(w http.ResponseWriter, r *http.Request) {
 			agentroom.ApplyPreset(&policyOpts, tpl.PresetID)
 			hasOpts = true
 		}
+		// v1.0+：模板的派发模式偏好写入 PolicyOpts，前端 dispatch 弹窗读它预选。
+		if v := strings.TrimSpace(tpl.DefaultDispatchMode); v != "" {
+			policyOpts.DefaultDispatchMode = v
+			hasOpts = true
+		}
 		for k, v := range tpl.InitialFacts {
 			facts = append(facts, agentroom.Fact{Key: k, Value: v, AuthorID: "system", UpdatedAt: agentroom.NowMs()})
 		}
+		// v1.0+：捕获模板的初始白板 / 初始任务清单，待 roomModel 创建 + 成员落库后再用。
+		tplInitialWhiteboard = tpl.InitialWhiteboard
+		tplInitialTasks = tpl.InitialTasks
+		tplMembers = tpl.Members
 	} else if req.Kind == "custom" {
 		if title == "" || len(req.Members) == 0 {
-			web.Fail(w, r, "INVALID_PARAM", "title and members are required", http.StatusBadRequest)
-			return
+			return "", &web.AppError{Code: "INVALID_PARAM", Message: "title and members are required", HTTPStatus: http.StatusBadRequest}
 		}
 		members = make([]resolvedMemberSpec, 0, len(req.Members))
 		for _, spec := range req.Members {
 			resolved := resolvedMemberSpec{Member: spec, RoleProfileID: strings.TrimSpace(spec.RoleProfileID), RoleProfileMode: "custom_snapshot"}
 			if resolved.RoleProfileID != "" {
-				profile, err := h.repo.GetRoleProfile(resolved.RoleProfileID, web.GetUserID(r))
+				profile, err := h.repo.GetRoleProfile(resolved.RoleProfileID, ownerUserID)
 				if err != nil {
-					web.FailErr(w, r, web.ErrDBQuery)
-					return
+					return "", web.ErrDBQuery
 				}
 				if profile == nil {
-					web.Fail(w, r, "ROLE_PROFILE_NOT_FOUND", "role profile not found", http.StatusBadRequest)
-					return
+					return "", &web.AppError{Code: "ROLE_PROFILE_NOT_FOUND", Message: "role profile not found", HTTPStatus: http.StatusBadRequest}
 				}
 				resolved.Member.Role = firstNonEmpty(strings.TrimSpace(spec.Role), profile.Role, profile.Name)
 				resolved.Member.RoleID = firstNonEmpty(strings.TrimSpace(spec.RoleID), profile.Slug, profile.ID)
@@ -698,9 +754,32 @@ func (h *AgentRoomHandler) CreateRoom(w http.ResponseWriter, r *http.Request) {
 		if strings.TrimSpace(req.Goal) != "" {
 			facts = append(facts, agentroom.Fact{Key: "目标", Value: req.Goal, AuthorID: "system", UpdatedAt: agentroom.NowMs()})
 		}
+		// v1.0+：AI 建会 / 自定义路径也可带初始任务。
+		// 转成 TemplateTask（用 role name 当 ExecutorRoleID），复用模板种子化逻辑。
+		if len(req.InitialTasks) > 0 {
+			for _, it := range req.InitialTasks {
+				tplInitialTasks = append(tplInitialTasks, agentroom.TemplateTask{
+					Text:             it.Text,
+					Deliverable:      it.Deliverable,
+					DefinitionOfDone: it.DefinitionOfDone,
+					ExecutorRoleID:   it.ExecutorRole,
+					ReviewerRoleID:   it.ReviewerRole,
+					DependsOnIndices: it.DependsOnIndices,
+				})
+			}
+			// 用 members 的 Role name 做 roleId → memberId 映射的 key
+			for i := range members {
+				if members[i].Member.RoleID == "" {
+					members[i].Member.RoleID = members[i].Member.Role
+				}
+			}
+			tplMembers = make([]agentroom.TemplateMember, len(members))
+			for i, m := range members {
+				tplMembers[i] = m.Member
+			}
+		}
 	} else {
-		web.Fail(w, r, "INVALID_PARAM", "kind must be 'template' or 'custom'", http.StatusBadRequest)
-		return
+		return "", &web.AppError{Code: "INVALID_PARAM", Message: "kind must be 'template' or 'custom'", HTTPStatus: http.StatusBadRequest}
 	}
 
 	// v0.8：Wizard 传入的 policyOptions 叠加到 preset 之上（用户显式选择 > 模板默认）。
@@ -713,7 +792,7 @@ func (h *AgentRoomHandler) CreateRoom(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	uid := web.GetUserID(r)
+	uid := ownerUserID
 
 	budgetJSON, _ := json.Marshal(agentroom.RoomBudget{
 		LimitCNY:   budget,
@@ -739,11 +818,11 @@ func (h *AgentRoomHandler) CreateRoom(w http.ResponseWriter, r *http.Request) {
 		Policy:      policy,
 		BudgetJSON:  string(budgetJSON),
 		PolicyOpts:  policyOptsJSON,
+		Whiteboard:  tplInitialWhiteboard,
 		AuxModel:    strings.TrimSpace(req.AuxModel),
 	}
 	if err := h.repo.CreateRoom(roomModel); err != nil {
-		web.FailErr(w, r, web.ErrDBQuery)
-		return
+		return "", web.ErrDBQuery
 	}
 
 	// 插入成员 + 预建 OpenClaw session（v0.4 Bridge 接入）
@@ -752,7 +831,7 @@ func (h *AgentRoomHandler) CreateRoom(w http.ResponseWriter, r *http.Request) {
 	// （通常是 "main"），避免硬编码 "default" 让 gateway 自动创建幽灵 agent。
 	fallbackAgent := "main"
 	if bridge != nil {
-		fallbackAgent = bridge.DefaultAgentID(r.Context())
+		fallbackAgent = bridge.DefaultAgentID(ctx)
 	}
 	for i, resolved := range members {
 		spec := resolved.Member
@@ -783,13 +862,12 @@ func (h *AgentRoomHandler) CreateRoom(w http.ResponseWriter, r *http.Request) {
 			Thinking:        spec.Thinking,
 		}
 		if err := h.repo.CreateMember(m); err != nil {
-			web.FailErr(w, r, web.ErrDBQuery)
-			return
+			return "", web.ErrDBQuery
 		}
 		// 预建 OpenClaw session（best-effort；gateway 未就绪时成员仍可落库，
 		// 下一次发言尝试时会再 try）。
 		if bridge != nil && bridge.IsAvailable() {
-			if err := bridge.EnsureSession(r.Context(), agentroom.EnsureSessionParams{
+			if err := bridge.EnsureSession(ctx, agentroom.EnsureSessionParams{
 				Key:          sessionKey,
 				AgentID:      agentID,
 				Model:        spec.Model,
@@ -828,16 +906,34 @@ func (h *AgentRoomHandler) CreateRoom(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
+	// v1.0+：模板/AI 初始任务清单（呼应 G3 验收 / G4 派发 / D1 依赖 DAG）。
+	// 按下标顺序 insert，dependsOn 用前面已落库的 task id 解析。
+	// 用户在向导第 3 步勾掉的下标会跳过种子化（保留下标对齐让 dependsOn 仍能解析）。
+	var seeded []seededTask
+	if len(tplInitialTasks) > 0 {
+		disabled := make(map[int]bool, len(req.DisabledInitialTaskIndices))
+		for _, i := range req.DisabledInitialTaskIndices {
+			disabled[i] = true
+		}
+		seeded = seedInitialTasksFromTemplate(h.repo, roomID, you.ID, tplInitialTasks, tplMembers, members, disabled)
+	}
+
 	// 启动 orchestrator
 	orch := h.manager.Get(roomID)
+
+	// v1.0+：无依赖的种子任务自动派发（用户无需逐个手动点击「派发」）。
+	// dispatchMode 优先取 policyOpts.DefaultDispatchMode，否则 member_agent。
+	if len(seeded) > 0 && orch != nil {
+		dm := strings.TrimSpace(policyOpts.DefaultDispatchMode)
+		autoDispatchSeededTasks(h.repo, seeded, roomID, dm, orch)
+	}
 
 	// 初始 prompt 作为人类消息投递
 	if strings.TrimSpace(req.InitialPrompt) != "" {
 		orch.PostUserMessage(you.ID, req.InitialPrompt, nil, nil, "", "", "", nil)
 	}
 
-	snap, _ := h.repo.RoomSnapshot(roomID)
-	web.OK(w, r, snap)
+	return roomID, nil
 }
 
 func (h *AgentRoomHandler) UpdateRoom(w http.ResponseWriter, r *http.Request) {
@@ -1732,6 +1828,17 @@ type taskRequest struct {
 	CreatorID  string `json:"creatorId"`
 	Status     string `json:"status,omitempty"`
 	DueAt      *int64 `json:"dueAt,omitempty"`
+
+	// v0.2 工作单字段（GAP G1）
+	ReviewerID       string `json:"reviewerId,omitempty"`
+	Deliverable      string `json:"deliverable,omitempty"`
+	DefinitionOfDone string `json:"definitionOfDone,omitempty"`
+	SourceDecisionID string `json:"sourceDecisionId,omitempty"`
+	SourceMessageID  string `json:"sourceMessageId,omitempty"`
+	ExecutionMode    string `json:"executionMode,omitempty"`
+
+	// v0.3 主题 D：任务依赖（同房间）
+	DependsOn []string `json:"dependsOn,omitempty"`
 }
 
 func (h *AgentRoomHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
@@ -1746,11 +1853,28 @@ func (h *AgentRoomHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
 	}
 	status := req.Status
 	if status == "" {
-		status = "todo"
+		status = agentroom.TaskStatusTodo
 	}
 	t := &database.AgentRoomTask{
 		RoomID: id, Text: req.Text, AssigneeID: req.AssigneeID,
 		CreatorID: req.CreatorID, Status: status, DueAt: req.DueAt,
+		ReviewerID:       req.ReviewerID,
+		Deliverable:      req.Deliverable,
+		DefinitionOfDone: req.DefinitionOfDone,
+		SourceDecisionID: req.SourceDecisionID,
+		SourceMessageID:  req.SourceMessageID,
+		ExecutionMode:    req.ExecutionMode,
+	}
+	if len(req.DependsOn) > 0 {
+		// v0.3 主题 D：DAG 校验。前置任务必须同房间，禁止自引用 / 重复 id。
+		filtered, err := h.validateAndCleanDeps(id, "", req.DependsOn)
+		if err != nil {
+			web.Fail(w, r, "INVALID_DEPS", err.Error(), http.StatusBadRequest)
+			return
+		}
+		if b, _ := json.Marshal(filtered); len(filtered) > 0 {
+			t.DependsOnJSON = string(b)
+		}
 	}
 	if err := h.repo.CreateTask(t); err != nil {
 		web.FailErr(w, r, web.ErrDBQuery)
@@ -1786,6 +1910,13 @@ func (h *AgentRoomHandler) UpdateTask(w http.ResponseWriter, r *http.Request) {
 	patch := map[string]any{}
 	if v, ok := body["status"].(string); ok {
 		patch["status"] = v
+		// 自动维护 completedAt：进入 done 写入；离开 done 清空
+		if v == agentroom.TaskStatusDone && t.CompletedAt == nil {
+			now := agentroom.NowMs()
+			patch["completed_at"] = &now
+		} else if v != agentroom.TaskStatusDone && t.CompletedAt != nil {
+			patch["completed_at"] = nil
+		}
 	}
 	if v, ok := body["text"].(string); ok {
 		patch["text"] = v
@@ -1793,12 +1924,552 @@ func (h *AgentRoomHandler) UpdateTask(w http.ResponseWriter, r *http.Request) {
 	if v, ok := body["assigneeId"].(string); ok {
 		patch["assignee_id"] = v
 	}
+	if v, ok := body["reviewerId"].(string); ok {
+		patch["reviewer_id"] = v
+	}
+	if v, ok := body["deliverable"].(string); ok {
+		patch["deliverable"] = v
+	}
+	if v, ok := body["definitionOfDone"].(string); ok {
+		patch["definition_of_done"] = v
+	}
+	if v, ok := body["executionMode"].(string); ok {
+		patch["execution_mode"] = v
+	}
+	if v, ok := body["resultSummary"].(string); ok {
+		patch["result_summary"] = v
+	}
+	if v, ok := body["dueAt"].(float64); ok {
+		dv := int64(v)
+		patch["due_at"] = &dv
+	} else if _, present := body["dueAt"]; present {
+		// 显式传 null 可清除截止
+		patch["due_at"] = nil
+	}
+	// v0.3 主题 D：任务依赖更新
+	if rawDeps, present := body["dependsOn"]; present {
+		ids := []string{}
+		if arr, ok := rawDeps.([]any); ok {
+			for _, x := range arr {
+				if s, ok := x.(string); ok {
+					ids = append(ids, s)
+				}
+			}
+		}
+		filtered, err := h.validateAndCleanDeps(roomID, tid, ids)
+		if err != nil {
+			web.Fail(w, r, "INVALID_DEPS", err.Error(), http.StatusBadRequest)
+			return
+		}
+		if len(filtered) == 0 {
+			patch["depends_on_json"] = ""
+		} else if b, _ := json.Marshal(filtered); len(b) > 0 {
+			patch["depends_on_json"] = string(b)
+		}
+	}
 	if err := h.repo.UpdateTask(tid, patch); err != nil {
 		web.FailErr(w, r, web.ErrDBQuery)
 		return
 	}
+	// 广播任务变更
+	h.broker().Emit(roomID, agentroom.EventRoomUpdate, map[string]any{
+		"roomId": roomID, "patch": map[string]any{"tasksChanged": true},
+	})
 	web.OK(w, r, map[string]any{"status": "ok"})
 }
+
+// ── v0.2 GAP G2：决策一键转任务 ─────────────────────────────────────────
+//
+// POST /api/v1/agentroom/rooms/{id}/tasks/promote-decision
+//
+// Body:
+//
+//	{
+//	  "messageId": "msg_xxx",          // 必填：来源决策消息（必须 isDecision=true）
+//	  "text":      "...",              // 选填：自定义任务描述；默认用 decisionSummary 或消息内容前 200 字
+//	  "assigneeId": "mem_xxx",         // 选填：默认空
+//	  "reviewerId": "mem_yyy",         // 选填
+//	  "creatorId":  "mem_human",       // 必填：当前用户成员 id
+//	  "deliverable": "...",            // 选填
+//	  "definitionOfDone": "...",       // 选填
+//	}
+//
+// 返回新 Task DTO（含 sourceDecisionId 已设置）。
+func (h *AgentRoomHandler) PromoteDecisionToTask(w http.ResponseWriter, r *http.Request) {
+	roomID := pathIDBetween(r, "/api/v1/agentroom/rooms/", "/tasks/promote-decision")
+	if _, ok := h.authorizeRoom(w, r, roomID); !ok {
+		return
+	}
+	var req struct {
+		MessageID        string `json:"messageId"`
+		Text             string `json:"text"`
+		AssigneeID       string `json:"assigneeId"`
+		ReviewerID       string `json:"reviewerId"`
+		CreatorID        string `json:"creatorId"`
+		Deliverable      string `json:"deliverable"`
+		DefinitionOfDone string `json:"definitionOfDone"`
+		DueAt            *int64 `json:"dueAt"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.MessageID == "" {
+		web.FailErr(w, r, web.ErrInvalidBody)
+		return
+	}
+	msg, err := h.repo.GetMessage(req.MessageID)
+	if err != nil || msg == nil || msg.RoomID != roomID {
+		web.FailErr(w, r, web.ErrNotFound)
+		return
+	}
+	if !msg.IsDecision {
+		web.Fail(w, r, "NOT_A_DECISION", "message is not anchored as decision", http.StatusBadRequest)
+		return
+	}
+	text := strings.TrimSpace(req.Text)
+	if text == "" {
+		text = strings.TrimSpace(msg.DecisionSummary)
+	}
+	if text == "" {
+		text = strings.TrimSpace(msg.Content)
+		if n := []rune(text); len(n) > 200 {
+			text = string(n[:200]) + "…"
+		}
+	}
+	if text == "" {
+		web.Fail(w, r, "EMPTY_TEXT", "cannot derive task text from decision", http.StatusBadRequest)
+		return
+	}
+	t := &database.AgentRoomTask{
+		RoomID:           roomID,
+		Text:             text,
+		AssigneeID:       req.AssigneeID,
+		ReviewerID:       req.ReviewerID,
+		CreatorID:        req.CreatorID,
+		Status:           agentroom.TaskStatusTodo,
+		DueAt:            req.DueAt,
+		Deliverable:      req.Deliverable,
+		DefinitionOfDone: req.DefinitionOfDone,
+		SourceDecisionID: req.MessageID,
+	}
+	if err := h.repo.CreateTask(t); err != nil {
+		web.FailErr(w, r, web.ErrDBQuery)
+		return
+	}
+	h.audit(r, roomID, "task.promote_from_decision", req.MessageID, t.ID)
+	h.broker().Emit(roomID, agentroom.EventRoomUpdate, map[string]any{
+		"roomId": roomID, "patch": map[string]any{"tasksChanged": true},
+	})
+	web.OK(w, r, agentroom.TaskFromModel(t))
+}
+
+// ── v0.2 GAP G3：任务验收 / 返工 ───────────────────────────────────────
+//
+// POST /api/v1/agentroom/tasks/{tid}/accept
+//
+// Body:
+//
+//	{
+//	  "status":            "accepted|rework|needs_human|blocked",
+//	  "summary":           "...",                 // 验收总结（写入 acceptance_note）
+//	  "passedCriteria":    ["..."],               // 已达标 DoD 项
+//	  "failedCriteria":    ["..."],               // 未达标 DoD 项
+//	  "reworkInstructions":"..."                  // rework 时建议同时填写，并入 acceptance_note
+//	}
+//
+// 状态流转：
+//
+//	accepted    → status=done,    completed_at=now
+//	rework      → status=in_progress, rework_count++; 若 ≥ DefaultReworkLimit 自动升 needs_human
+//	needs_human → status=review（保持），同时记录 acceptance_status=needs_human
+//	blocked     → status=blocked
+func (h *AgentRoomHandler) AcceptTask(w http.ResponseWriter, r *http.Request) {
+	// path: /api/v1/agentroom/tasks/{tid}/accept
+	path := strings.TrimPrefix(r.URL.Path, "/api/v1/agentroom/tasks/")
+	tid := strings.TrimSuffix(path, "/accept")
+	if tid == "" || strings.Contains(tid, "/") {
+		web.FailErr(w, r, web.ErrInvalidParam)
+		return
+	}
+	t, err := h.repo.GetTask(tid)
+	if err != nil || t == nil {
+		web.FailErr(w, r, web.ErrNotFound)
+		return
+	}
+	if _, ok := h.authorizeRoom(w, r, t.RoomID); !ok {
+		return
+	}
+	var req struct {
+		Status             string   `json:"status"`
+		Summary            string   `json:"summary"`
+		PassedCriteria     []string `json:"passedCriteria"`
+		FailedCriteria     []string `json:"failedCriteria"`
+		ReworkInstructions string   `json:"reworkInstructions"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		web.FailErr(w, r, web.ErrInvalidBody)
+		return
+	}
+	accept := strings.ToLower(strings.TrimSpace(req.Status))
+	now := agentroom.NowMs()
+	patch := map[string]any{
+		"acceptance_status": accept,
+		"acceptance_note":   strings.TrimSpace(req.Summary),
+		"passed_criteria":   agentroom.JoinLines(req.PassedCriteria),
+		"failed_criteria":   agentroom.JoinLines(req.FailedCriteria),
+		"reviewed_at":       &now,
+	}
+	switch accept {
+	case agentroom.AcceptanceStatusAccepted:
+		patch["status"] = agentroom.TaskStatusDone
+		patch["completed_at"] = &now
+	case agentroom.AcceptanceStatusRework:
+		newCount := t.ReworkCount + 1
+		patch["rework_count"] = newCount
+		instructions := strings.TrimSpace(req.ReworkInstructions)
+		if instructions != "" {
+			note := patch["acceptance_note"].(string)
+			if note != "" {
+				note += "\n\n"
+			}
+			note += "返工要求：" + instructions
+			patch["acceptance_note"] = note
+		}
+		if newCount >= agentroom.DefaultReworkLimit {
+			patch["acceptance_status"] = agentroom.AcceptanceStatusNeedsHuman
+			patch["status"] = agentroom.TaskStatusReview
+		} else {
+			patch["status"] = agentroom.TaskStatusInProgress
+		}
+	case agentroom.AcceptanceStatusNeedsHuman:
+		patch["status"] = agentroom.TaskStatusReview
+	case agentroom.AcceptanceStatusBlocked:
+		patch["status"] = agentroom.TaskStatusBlocked
+	default:
+		web.Fail(w, r, "INVALID_ACCEPTANCE_STATUS",
+			"acceptance status must be accepted|rework|needs_human|blocked",
+			http.StatusBadRequest)
+		return
+	}
+	if err := h.repo.UpdateTask(tid, patch); err != nil {
+		web.FailErr(w, r, web.ErrDBQuery)
+		return
+	}
+	newT, _ := h.repo.GetTask(tid)
+	h.audit(r, t.RoomID, "task.accept", tid, accept)
+	h.broker().Emit(t.RoomID, agentroom.EventRoomUpdate, map[string]any{
+		"roomId": t.RoomID, "patch": map[string]any{"tasksChanged": true},
+	})
+	// v1.0+：accepted → 自动推进依赖链下游任务
+	if accept == agentroom.AcceptanceStatusAccepted {
+		if orch := h.manager.GetIfExists(t.RoomID); orch != nil {
+			orch.TryDispatchDependents(tid)
+		}
+	}
+	if newT == nil {
+		web.OK(w, r, map[string]any{"status": "ok"})
+		return
+	}
+	web.OK(w, r, agentroom.TaskFromModel(newT))
+}
+
+// ── v0.2 GAP G4：任务执行派发与回执 ─────────────────────────────────────
+//
+// API:
+//
+//	POST /api/v1/agentroom/rooms/{rid}/tasks/{tid}/dispatch
+//	     body: { mode: "manual|member_agent|subagent", executorMemberId?: "..." }
+//	     → 创建一条 queued execution；任务状态推进到 in_progress
+//	     → mode=member_agent/subagent 时同步在房间发系统通知 @executor 让其接手
+//
+//	GET  /api/v1/agentroom/tasks/{tid}/executions             → 列出该任务全部执行历史
+//	POST /api/v1/agentroom/executions/{eid}/submit-result     → 完成执行，写入摘要/产物
+//	     body: { summary, artifacts?: [...], blockers?: [...] }
+//	     → execution=completed；任务自动 status=review + result_summary 同步
+//	POST /api/v1/agentroom/executions/{eid}/cancel
+//	     body: { reason? }
+//	     → execution=canceled；任务退回 todo（如果当前还在 in_progress）
+
+// helper：拿房间的 broker 来发广播 + appendSystemNotice
+func (h *AgentRoomHandler) postSystemNotice(roomID, text string) {
+	msg := &database.AgentRoomMessage{
+		ID:        agentroom.GenID("msg"),
+		RoomID:    roomID,
+		Timestamp: agentroom.NowMs(),
+		AuthorID:  "system",
+		Kind:      agentroom.MsgKindSystem,
+		Content:   text,
+	}
+	if err := h.repo.CreateMessage(msg); err != nil {
+		return
+	}
+	h.broker().Emit(roomID, agentroom.EventMessageAppend, map[string]any{
+		"roomId": roomID, "message": agentroom.MessageFromModel(msg),
+	})
+}
+
+// DispatchTask —— POST /rooms/{rid}/tasks/{tid}/dispatch
+func (h *AgentRoomHandler) DispatchTask(w http.ResponseWriter, r *http.Request) {
+	// path: /api/v1/agentroom/rooms/{rid}/tasks/{tid}/dispatch
+	path := strings.TrimPrefix(r.URL.Path, "/api/v1/agentroom/rooms/")
+	parts := strings.Split(strings.TrimSuffix(path, "/dispatch"), "/")
+	if len(parts) != 3 || parts[1] != "tasks" {
+		web.FailErr(w, r, web.ErrInvalidParam)
+		return
+	}
+	roomID := parts[0]
+	tid := parts[2]
+	if _, ok := h.authorizeRoom(w, r, roomID); !ok {
+		return
+	}
+	t, err := h.repo.GetTask(tid)
+	if err != nil || t == nil || t.RoomID != roomID {
+		web.FailErr(w, r, web.ErrNotFound)
+		return
+	}
+	var req struct {
+		Mode             string `json:"mode"`
+		ExecutorMemberID string `json:"executorMemberId"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		web.FailErr(w, r, web.ErrInvalidBody)
+		return
+	}
+	mode := strings.ToLower(strings.TrimSpace(req.Mode))
+	switch mode {
+	case agentroom.TaskExecutionModeManual,
+		agentroom.TaskExecutionModeMemberAgent,
+		agentroom.TaskExecutionModeSubagent:
+		// ok
+	default:
+		web.Fail(w, r, "INVALID_MODE",
+			"mode must be manual|member_agent|subagent",
+			http.StatusBadRequest)
+		return
+	}
+	executor := strings.TrimSpace(req.ExecutorMemberID)
+	if executor == "" {
+		// 默认用 task.assigneeId
+		executor = t.AssigneeID
+	}
+	if (mode == agentroom.TaskExecutionModeMemberAgent || mode == agentroom.TaskExecutionModeSubagent) && executor == "" {
+		web.Fail(w, r, "EXECUTOR_REQUIRED",
+			"member_agent / subagent dispatch requires executorMemberId or task.assigneeId",
+			http.StatusBadRequest)
+		return
+	}
+	// v0.3 主题 D：依赖 DAG 拦截。任何模式（含 manual）派发前都校验。
+	// 全部 done 才放行；存在未完成依赖时回 DEP_NOT_READY，前端可显示阻塞链。
+	if deps := agentroom.TaskFromModel(t).DependsOn; len(deps) > 0 {
+		blocking := []map[string]any{}
+		for _, depID := range deps {
+			dep, _ := h.repo.GetTask(depID)
+			if dep == nil || dep.RoomID != roomID {
+				continue // 跨房间或已删除：保守跳过，不阻塞
+			}
+			if dep.Status != agentroom.TaskStatusDone {
+				blocking = append(blocking, map[string]any{
+					"id": dep.ID, "text": dep.Text, "status": dep.Status,
+				})
+			}
+		}
+		if len(blocking) > 0 {
+			web.FailWith(w, r, "DEP_NOT_READY",
+				"task has unfinished dependencies",
+				http.StatusConflict,
+				map[string]any{"blocking": blocking})
+			return
+		}
+	}
+	// 关闭已存在的活跃 execution，避免并行
+	if active, _ := h.repo.FindActiveTaskExecution(tid); active != nil {
+		_ = h.repo.UpdateTaskExecution(active.ID, map[string]any{
+			"status":       agentroom.TaskExecStatusCanceled,
+			"completed_at": ptrInt64(agentroom.NowMs()),
+			"error_msg":    "superseded by new dispatch",
+		})
+	}
+	now := agentroom.NowMs()
+	exe := &database.AgentRoomTaskExecution{
+		TaskID:           tid,
+		RoomID:           roomID,
+		ExecutorMemberID: executor,
+		Mode:             mode,
+		Status:           agentroom.TaskExecStatusQueued,
+		StartedAt:        &now,
+	}
+	if err := h.repo.CreateTaskExecution(exe); err != nil {
+		web.FailErr(w, r, web.ErrDBQuery)
+		return
+	}
+	// 任务状态推进到 in_progress（保持向下兼容：原 todo/doing 都进 in_progress）
+	patch := map[string]any{}
+	if t.Status == agentroom.TaskStatusTodo ||
+		t.Status == agentroom.TaskStatusDoing ||
+		t.Status == agentroom.TaskStatusAssigned {
+		patch["status"] = agentroom.TaskStatusInProgress
+	}
+	if t.AssigneeID == "" && executor != "" {
+		patch["assignee_id"] = executor
+	}
+	if t.ExecutionMode == "" {
+		patch["execution_mode"] = mode
+	}
+	if len(patch) > 0 {
+		_ = h.repo.UpdateTask(tid, patch)
+	}
+	// v0.3 主题 A：agent / subagent 模式 → 交给 orchestrator 真实运行；
+	// manual 模式不动（execution 保持 queued，等用户在 UI 提交结果）。
+	if mode == agentroom.TaskExecutionModeMemberAgent || mode == agentroom.TaskExecutionModeSubagent {
+		orch := h.manager.GetIfExists(roomID)
+		if orch == nil {
+			// 房间未加载（比如 paused 或刚启动），尝试懒启动
+			orch = h.manager.Get(roomID)
+		}
+		if orch != nil {
+			// 异步派发：handler 立即返回 queued execution；真实跑动在 orchestrator loop 里
+			orch.DispatchTaskAsAgent(tid, exe.ID, executor, mode)
+		}
+	}
+	h.audit(r, roomID, "task.dispatch", tid, exe.ID)
+	h.broker().Emit(roomID, agentroom.EventRoomUpdate, map[string]any{
+		"roomId": roomID, "patch": map[string]any{"tasksChanged": true},
+	})
+	web.OK(w, r, agentroom.TaskExecutionFromModel(exe))
+}
+
+// ListTaskExecutions —— GET /tasks/{tid}/executions
+func (h *AgentRoomHandler) ListTaskExecutions(w http.ResponseWriter, r *http.Request) {
+	// path: /api/v1/agentroom/tasks/{tid}/executions
+	path := strings.TrimPrefix(r.URL.Path, "/api/v1/agentroom/tasks/")
+	tid := strings.TrimSuffix(path, "/executions")
+	if tid == "" || strings.Contains(tid, "/") {
+		web.FailErr(w, r, web.ErrInvalidParam)
+		return
+	}
+	t, err := h.repo.GetTask(tid)
+	if err != nil || t == nil {
+		web.FailErr(w, r, web.ErrNotFound)
+		return
+	}
+	if _, ok := h.authorizeRoom(w, r, t.RoomID); !ok {
+		return
+	}
+	es, err := h.repo.ListTaskExecutions(tid)
+	if err != nil {
+		web.FailErr(w, r, web.ErrDBQuery)
+		return
+	}
+	out := make([]agentroom.TaskExecution, 0, len(es))
+	for i := range es {
+		out = append(out, agentroom.TaskExecutionFromModel(&es[i]))
+	}
+	web.OK(w, r, out)
+}
+
+// SubmitExecutionResult —— POST /executions/{eid}/submit-result
+func (h *AgentRoomHandler) SubmitExecutionResult(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimPrefix(r.URL.Path, "/api/v1/agentroom/executions/")
+	eid := strings.TrimSuffix(path, "/submit-result")
+	if eid == "" || strings.Contains(eid, "/") {
+		web.FailErr(w, r, web.ErrInvalidParam)
+		return
+	}
+	exe, err := h.repo.GetTaskExecution(eid)
+	if err != nil || exe == nil {
+		web.FailErr(w, r, web.ErrNotFound)
+		return
+	}
+	if _, ok := h.authorizeRoom(w, r, exe.RoomID); !ok {
+		return
+	}
+	var req struct {
+		Summary   string   `json:"summary"`
+		Artifacts []string `json:"artifacts"`
+		Blockers  []string `json:"blockers"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		web.FailErr(w, r, web.ErrInvalidBody)
+		return
+	}
+	now := agentroom.NowMs()
+	artifactsJSON, _ := json.Marshal(req.Artifacts)
+	blockersJSON, _ := json.Marshal(req.Blockers)
+	exePatch := map[string]any{
+		"status":         agentroom.TaskExecStatusCompleted,
+		"summary":        strings.TrimSpace(req.Summary),
+		"artifacts_json": string(artifactsJSON),
+		"blockers_json":  string(blockersJSON),
+		"completed_at":   &now,
+	}
+	if err := h.repo.UpdateTaskExecution(eid, exePatch); err != nil {
+		web.FailErr(w, r, web.ErrDBQuery)
+		return
+	}
+	// 同步任务：result_summary + status=review（让 reviewer 接手）
+	taskPatch := map[string]any{
+		"result_summary": strings.TrimSpace(req.Summary),
+		"status":         agentroom.TaskStatusReview,
+	}
+	_ = h.repo.UpdateTask(exe.TaskID, taskPatch)
+	h.audit(r, exe.RoomID, "task.execution.complete", exe.TaskID, eid)
+	h.broker().Emit(exe.RoomID, agentroom.EventRoomUpdate, map[string]any{
+		"roomId": exe.RoomID, "patch": map[string]any{"tasksChanged": true},
+	})
+	newExe, _ := h.repo.GetTaskExecution(eid)
+	if newExe == nil {
+		web.OK(w, r, map[string]any{"status": "ok"})
+		return
+	}
+	web.OK(w, r, agentroom.TaskExecutionFromModel(newExe))
+}
+
+// CancelExecution —— POST /executions/{eid}/cancel
+func (h *AgentRoomHandler) CancelExecution(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimPrefix(r.URL.Path, "/api/v1/agentroom/executions/")
+	eid := strings.TrimSuffix(path, "/cancel")
+	if eid == "" || strings.Contains(eid, "/") {
+		web.FailErr(w, r, web.ErrInvalidParam)
+		return
+	}
+	exe, err := h.repo.GetTaskExecution(eid)
+	if err != nil || exe == nil {
+		web.FailErr(w, r, web.ErrNotFound)
+		return
+	}
+	if _, ok := h.authorizeRoom(w, r, exe.RoomID); !ok {
+		return
+	}
+	var req struct {
+		Reason string `json:"reason"`
+	}
+	_ = json.NewDecoder(r.Body).Decode(&req)
+	now := agentroom.NowMs()
+	patch := map[string]any{
+		"status":       agentroom.TaskExecStatusCanceled,
+		"completed_at": &now,
+	}
+	if reason := strings.TrimSpace(req.Reason); reason != "" {
+		patch["error_msg"] = reason
+	}
+	if err := h.repo.UpdateTaskExecution(eid, patch); err != nil {
+		web.FailErr(w, r, web.ErrDBQuery)
+		return
+	}
+	// 任务回退到 todo（前提：当前还在 in_progress）
+	if t, _ := h.repo.GetTask(exe.TaskID); t != nil && t.Status == agentroom.TaskStatusInProgress {
+		_ = h.repo.UpdateTask(t.ID, map[string]any{"status": agentroom.TaskStatusTodo})
+	}
+	h.audit(r, exe.RoomID, "task.execution.cancel", exe.TaskID, eid)
+	h.broker().Emit(exe.RoomID, agentroom.EventRoomUpdate, map[string]any{
+		"roomId": exe.RoomID, "patch": map[string]any{"tasksChanged": true},
+	})
+	newExe, _ := h.repo.GetTaskExecution(eid)
+	if newExe == nil {
+		web.OK(w, r, map[string]any{"status": "ok"})
+		return
+	}
+	web.OK(w, r, agentroom.TaskExecutionFromModel(newExe))
+}
+
+func ptrInt64(v int64) *int64 { return &v }
 
 // ─────────────────────────────── 干预事件 ───────────────────────────────
 
@@ -2368,8 +3039,19 @@ func (h *AgentRoomHandler) RoomsRouter(w http.ResponseWriter, r *http.Request) {
 		}
 		web.Fail(w, r, "METHOD_NOT_ALLOWED", "method not allowed", http.StatusMethodNotAllowed)
 	case "tasks":
-		if r.Method == http.MethodPost {
+		// /rooms/{id}/tasks                       POST → CreateTask
+		// /rooms/{id}/tasks/promote-decision      POST → PromoteDecisionToTask
+		// /rooms/{id}/tasks/{tid}/dispatch        POST → DispatchTask
+		if len(parts) == 2 && r.Method == http.MethodPost {
 			h.CreateTask(w, r)
+			return
+		}
+		if len(parts) == 3 && parts[2] == "promote-decision" && r.Method == http.MethodPost {
+			h.PromoteDecisionToTask(w, r)
+			return
+		}
+		if len(parts) == 4 && parts[3] == "dispatch" && r.Method == http.MethodPost {
+			h.DispatchTask(w, r)
 			return
 		}
 		web.Fail(w, r, "METHOD_NOT_ALLOWED", "method not allowed", http.StatusMethodNotAllowed)
@@ -2382,6 +3064,19 @@ func (h *AgentRoomHandler) RoomsRouter(w http.ResponseWriter, r *http.Request) {
 	case "metrics":
 		if r.Method == http.MethodGet {
 			h.GetMetrics(w, r)
+			return
+		}
+		web.Fail(w, r, "METHOD_NOT_ALLOWED", "method not allowed", http.StatusMethodNotAllowed)
+	case "lineage":
+		if r.Method == http.MethodGet {
+			h.RoomLineage(w, r)
+			return
+		}
+		web.Fail(w, r, "METHOD_NOT_ALLOWED", "method not allowed", http.StatusMethodNotAllowed)
+	case "clone-from":
+		// /rooms/{newId}/clone-from/{sourceId}
+		if len(parts) == 3 && r.Method == http.MethodPost {
+			h.CloneFromRoom(w, r)
 			return
 		}
 		web.Fail(w, r, "METHOD_NOT_ALLOWED", "method not allowed", http.StatusMethodNotAllowed)
@@ -2832,6 +3527,11 @@ func (h *AgentRoomHandler) MessagesRouter(w http.ResponseWriter, r *http.Request
 		h.RerunMessage(w, r)
 		return
 	}
+	// v0.3 主题 D：决策撤回前的影响分析
+	if len(parts) == 2 && parts[1] == "decision-impact" && r.Method == http.MethodGet {
+		h.DecisionImpact(w, r)
+		return
+	}
 	web.FailErr(w, r, web.ErrNotFound)
 }
 
@@ -2960,11 +3660,48 @@ func (h *AgentRoomHandler) MembersRouter(w http.ResponseWriter, r *http.Request)
 	web.FailErr(w, r, web.ErrNotFound)
 }
 
-// TasksRouter 分发 /api/v1/agentroom/tasks/{tid}。
+// TasksRouter 分发 /api/v1/agentroom/tasks/{tid}[/accept|/executions]。
+//
+//	PATCH/PUT /tasks/{tid}                → UpdateTask
+//	DELETE    /tasks/{tid}                → DeleteTask
+//	POST      /tasks/{tid}/accept         → AcceptTask（验收/返工，v0.2 GAP G3）
+//	GET       /tasks/{tid}/executions     → ListTaskExecutions（v0.2 GAP G4）
 func (h *AgentRoomHandler) TasksRouter(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimPrefix(r.URL.Path, "/api/v1/agentroom/tasks")
 	path = strings.TrimPrefix(path, "/")
-	if path == "" || strings.Contains(path, "/") {
+	if path == "" {
+		web.FailErr(w, r, web.ErrNotFound)
+		return
+	}
+	parts := strings.Split(path, "/")
+	// /tasks/{tid}/accept
+	if len(parts) == 2 && parts[1] == "accept" {
+		if r.Method != http.MethodPost {
+			web.Fail(w, r, "METHOD_NOT_ALLOWED", "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		h.AcceptTask(w, r)
+		return
+	}
+	// /tasks/{tid}/executions
+	if len(parts) == 2 && parts[1] == "executions" {
+		if r.Method != http.MethodGet {
+			web.Fail(w, r, "METHOD_NOT_ALLOWED", "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		h.ListTaskExecutions(w, r)
+		return
+	}
+	// /tasks/{tid}/lineage
+	if len(parts) == 2 && parts[1] == "lineage" {
+		if r.Method != http.MethodGet {
+			web.Fail(w, r, "METHOD_NOT_ALLOWED", "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		h.TaskLineage(w, r)
+		return
+	}
+	if len(parts) != 1 {
 		web.FailErr(w, r, web.ErrNotFound)
 		return
 	}
@@ -2972,13 +3709,45 @@ func (h *AgentRoomHandler) TasksRouter(w http.ResponseWriter, r *http.Request) {
 	case http.MethodPut, http.MethodPatch:
 		h.UpdateTask(w, r)
 	case http.MethodDelete:
+		t, _ := h.repo.GetTask(path)
 		if err := h.repo.DeleteTask(path); err != nil {
 			web.FailErr(w, r, web.ErrDBQuery)
 			return
 		}
+		if t != nil {
+			h.broker().Emit(t.RoomID, agentroom.EventRoomUpdate, map[string]any{
+				"roomId": t.RoomID, "patch": map[string]any{"tasksChanged": true},
+			})
+		}
 		web.OK(w, r, map[string]any{"status": "ok"})
 	default:
 		web.Fail(w, r, "METHOD_NOT_ALLOWED", "method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+// ExecutionsRouter 分发 /api/v1/agentroom/executions/{eid}/{op}。
+//
+//	POST /executions/{eid}/submit-result  → SubmitExecutionResult
+//	POST /executions/{eid}/cancel         → CancelExecution
+func (h *AgentRoomHandler) ExecutionsRouter(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimPrefix(r.URL.Path, "/api/v1/agentroom/executions")
+	path = strings.TrimPrefix(path, "/")
+	if path == "" {
+		web.FailErr(w, r, web.ErrNotFound)
+		return
+	}
+	parts := strings.Split(path, "/")
+	if len(parts) != 2 || r.Method != http.MethodPost {
+		web.FailErr(w, r, web.ErrNotFound)
+		return
+	}
+	switch parts[1] {
+	case "submit-result":
+		h.SubmitExecutionResult(w, r)
+	case "cancel":
+		h.CancelExecution(w, r)
+	default:
+		web.FailErr(w, r, web.ErrNotFound)
 	}
 }
 

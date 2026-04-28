@@ -216,13 +216,72 @@ type AgentRoomTask struct {
 	Text       string    `gorm:"type:text;not null"       json:"text"`
 	AssigneeID string    `gorm:"size:64;index"            json:"assigneeId,omitempty"`
 	CreatorID  string    `gorm:"size:64"                  json:"creatorId"`
-	Status     string    `gorm:"size:16;default:'todo'"   json:"status"`
+	Status     string    `gorm:"size:24;default:'todo'"   json:"status"`
 	DueAt      *int64    `json:"dueAt,omitempty"`
 	CreatedAt  time.Time `gorm:"index"                    json:"-"`
 	UpdatedAt  time.Time `json:"-"`
+
+	// v0.2 工作单升级字段（GAP G1+G3，nullable / 默认值兼容存量数据）
+	ReviewerID       string `gorm:"size:64;index"        json:"reviewerId,omitempty"`       // 审查/验收人 member id
+	Deliverable      string `gorm:"type:text"            json:"deliverable,omitempty"`      // 期望交付物描述
+	DefinitionOfDone string `gorm:"type:text"            json:"definitionOfDone,omitempty"` // DoD 文本，行/分号分隔
+	SourceDecisionID string `gorm:"size:64;index"        json:"sourceDecisionId,omitempty"` // 来源决策消息 id（is_decision=true）
+	SourceMessageID  string `gorm:"size:64;index"        json:"sourceMessageId,omitempty"`  // 来源普通消息 id（与 ref_message_id 同义，更通用）
+	ExecutionMode    string `gorm:"size:24"              json:"executionMode,omitempty"`    // manual | member_agent | subagent
+	ResultSummary    string `gorm:"type:text"            json:"resultSummary,omitempty"`    // 执行/手动结果摘要
+	AcceptanceStatus string `gorm:"size:24"              json:"acceptanceStatus,omitempty"` // ''(未验收) | accepted | rework | needs_human | blocked
+	AcceptanceNote   string `gorm:"type:text"            json:"acceptanceNote,omitempty"`   // 验收说明 / 返工指示
+	PassedCriteria   string `gorm:"type:text"            json:"passedCriteria,omitempty"`   // 已达标 DoD 项 (\n 分隔)
+	FailedCriteria   string `gorm:"type:text"            json:"failedCriteria,omitempty"`   // 未达标 DoD 项 (\n 分隔)
+	ReworkCount      int    `gorm:"default:0"            json:"reworkCount,omitempty"`      // 已返工轮次
+	CompletedAt      *int64 `                            json:"completedAt,omitempty"`      // 验收通过时间
+	ReviewedAt       *int64 `                            json:"reviewedAt,omitempty"`       // 上次提交验收时间
+
+	// v0.3 主题 C：跨房间血缘。续会克隆任务时，新任务的 parentTaskId 指向源会任务的 id；
+	// 配合 AgentRoom.ParentRoomID 形成完整 lineage。
+	ParentTaskID string `gorm:"size:64;index" json:"parentTaskId,omitempty"`
+	RootRoomID   string `gorm:"size:64;index" json:"rootRoomId,omitempty"` // 最初房间 id（多次克隆后仍指向起点）
+
+	// v0.3 主题 D：任务依赖 DAG。前置任务 id 列表（JSON 数组）。
+	// 派发时会校验：所有 dependsOn 中的任务必须 status=done 才能派发；否则返回 DEP_NOT_READY。
+	// 同房间内（跨房间依赖目前不支持）。
+	DependsOnJSON string `gorm:"type:text" json:"-"` // JSON []string of task IDs
 }
 
 func (AgentRoomTask) TableName() string { return "agentroom_tasks" }
+
+// AgentRoomTaskExecution —— 任务执行回执（v0.2 GAP G4）。
+//
+// 一个任务可能被多次派发（rework / retry）；每一次派发产生一行 execution。
+// 当前活跃 execution = status in {queued, running} 的最新一行。
+//
+// status:  queued | running | completed | failed | canceled
+// mode:    manual | member_agent | subagent
+//
+// 设计：
+//   - manual 模式：派发只创建 queued 行，等用户点"开始执行"或直接"提交结果"
+//   - member_agent / subagent：派发同时往房间里发一条系统通知 @对应成员；
+//     真实的 agent 运行时接管延后到 G4-Phase2，此处只承载状态/数据
+type AgentRoomTaskExecution struct {
+	ID               string    `gorm:"primaryKey;size:64"        json:"id"`
+	TaskID           string    `gorm:"size:64;index;not null"    json:"taskId"`
+	RoomID           string    `gorm:"size:64;index;not null"    json:"roomId"`
+	ExecutorMemberID string    `gorm:"size:64;index"             json:"executorMemberId,omitempty"`
+	Mode             string    `gorm:"size:24;not null"          json:"mode"`
+	Status           string    `gorm:"size:24;default:'queued'"  json:"status"`
+	Summary          string    `gorm:"type:text"                 json:"summary,omitempty"`
+	ArtifactsJSON    string    `gorm:"type:text"                 json:"-"`                   // 序列化为 []string
+	BlockersJSON     string    `gorm:"type:text"                 json:"-"`                   // 序列化为 []string
+	RawRunRef        string    `gorm:"size:128"                  json:"rawRunRef,omitempty"` // 上游 session/run id
+	TokenUsage       int64     `gorm:"default:0"                 json:"tokenUsage,omitempty"`
+	ErrorMsg         string    `gorm:"type:text"                 json:"errorMsg,omitempty"`
+	StartedAt        *int64    `                                 json:"startedAt,omitempty"`
+	CompletedAt      *int64    `                                 json:"completedAt,omitempty"`
+	CreatedAt        time.Time `gorm:"index"                     json:"-"`
+	UpdatedAt        time.Time `                                 json:"-"`
+}
+
+func (AgentRoomTaskExecution) TableName() string { return "agentroom_task_executions" }
 
 type AgentRoomIntervention struct {
 	ID        string    `gorm:"primaryKey;size:64"       json:"id"`
@@ -388,14 +447,15 @@ func (AgentRoomParkingLot) TableName() string { return "agentroom_parking_lot" }
 
 // AgentRoomRisk —— 讨论中识别的风险/阻塞。
 type AgentRoomRisk struct {
-	ID        string    `gorm:"primaryKey;size:64"       json:"id"`
-	RoomID    string    `gorm:"size:64;index;not null"   json:"roomId"`
-	Text      string    `gorm:"type:text;not null"       json:"text"`
-	Severity  string    `gorm:"size:16;default:'mid';index" json:"severity"` // low|mid|high
-	OwnerID   string    `gorm:"size:64"                  json:"ownerId,omitempty"`
-	Status    string    `gorm:"size:16;default:'open';index" json:"status"` // open|mitigated|accepted
-	CreatedAt time.Time `gorm:"index"                 json:"createdAt"`
-	UpdatedAt time.Time `                             json:"updatedAt"`
+	ID           string    `gorm:"primaryKey;size:64"            json:"id"`
+	RoomID       string    `gorm:"size:64;index;not null"        json:"roomId"`
+	Text         string    `gorm:"type:text;not null"            json:"text"`
+	Severity     string    `gorm:"size:16;default:'mid';index"   json:"severity"` // low|mid|high
+	OwnerID      string    `gorm:"size:64"                       json:"ownerId,omitempty"`
+	Status       string    `gorm:"size:16;default:'open';index"  json:"status"`                 // open|mitigated|accepted
+	ParentRiskID string    `gorm:"size:64;index"                 json:"parentRiskId,omitempty"` // v0.3 主题 C：跨房间克隆血缘
+	CreatedAt    time.Time `gorm:"index"                         json:"createdAt"`
+	UpdatedAt    time.Time `                                     json:"updatedAt"`
 }
 
 func (AgentRoomRisk) TableName() string { return "agentroom_risks" }
@@ -469,3 +529,36 @@ type AgentRoomPersonaMemory struct {
 }
 
 func (AgentRoomPersonaMemory) TableName() string { return "agentroom_persona_memory" }
+
+// AgentRoomSchedule —— v1.0 定时会议任务。
+// 基于模板或自定义蓝图，按 cron 表达式自动创建房间 → 讨论 → 执行 → 复盘。
+type AgentRoomSchedule struct {
+	ID              string  `gorm:"primaryKey;size:64"        json:"id"`
+	OwnerUserID     uint    `gorm:"index"                     json:"ownerUserId"`
+	Title           string  `gorm:"size:255;not null"         json:"title"`
+	TemplateID      string  `gorm:"size:64"                   json:"templateId,omitempty"`
+	CronExpr        string  `gorm:"size:64;not null"          json:"cronExpr"` // "09:00" daily / cron 5-field
+	Timezone        string  `gorm:"size:64;default:'Asia/Shanghai'" json:"timezone"`
+	Enabled         bool    `gorm:"default:true"              json:"enabled"`
+	InitialPrompt   string  `gorm:"type:text"                 json:"initialPrompt,omitempty"`
+	AutoCloseout    bool    `gorm:"default:true"              json:"autoCloseout"`
+	RoundBudget     int     `gorm:"default:12"                json:"roundBudget"`
+	BudgetCNY       float64 `gorm:"default:1.0"               json:"budgetCNY"`
+	InheritFromLast bool    `gorm:"default:true"              json:"inheritFromLast"`
+	DeadlineAction  string  `gorm:"size:16;default:'summarize'" json:"deadlineAction"` // summarize|pause
+	PolicyOptsJSON  string  `gorm:"type:text"                 json:"-"`
+	// BlueprintJSON：当 TemplateID 为空时，存储完整的 createRoomRequest JSON，
+	// 调度触发时由 handlers.buildRoomFromRequest 重放，从而支持 custom / AI 路径的定时会议。
+	BlueprintJSON string `gorm:"type:text"                 json:"-"`
+	// 运行状态
+	LastRunAt  *time.Time `                                 json:"lastRunAt,omitempty"`
+	LastRoomID string     `gorm:"size:64"                   json:"lastRoomId,omitempty"`
+	LastStatus string     `gorm:"size:16"                   json:"lastStatus,omitempty"` // ok|error|running
+	LastError  string     `gorm:"type:text"                 json:"lastError,omitempty"`
+	NextRunAt  *time.Time `gorm:"index"                     json:"nextRunAt,omitempty"`
+	RunCount   int        `gorm:"default:0"                 json:"runCount"`
+	CreatedAt  time.Time  `                                 json:"-"`
+	UpdatedAt  time.Time  `                                 json:"-"`
+}
+
+func (AgentRoomSchedule) TableName() string { return "agentroom_schedules" }

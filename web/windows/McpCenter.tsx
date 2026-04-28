@@ -5,6 +5,7 @@ import { mcpApi, McpServerConfig, McpServerEntry, McpServerTestResult, McpToolIn
 import { useToast } from '../components/Toast';
 import { useConfirm } from '../components/ConfirmDialog';
 import EmptyState from '../components/EmptyState';
+import NumberStepper from '../components/NumberStepper';
 
 interface McpCenterProps {
   language: Language;
@@ -686,14 +687,14 @@ const EditModal: React.FC<{
                 <label className="text-[10px] font-bold theme-text-muted uppercase tracking-wider mb-1.5 block">
                   {t.connectionTimeout || 'Connection Timeout (ms)'}
                 </label>
-                <input
-                  type="number"
+                <NumberStepper
                   value={connectionTimeoutMs}
-                  onChange={e => setConnectionTimeoutMs(e.target.value ? Number(e.target.value) : '')}
+                  onChange={v => setConnectionTimeoutMs(v === '' ? '' : Number(v))}
                   placeholder={t.connectionTimeoutPlaceholder || '30000'}
                   min={0}
                   step={1000}
-                  className="w-full h-9 px-3 theme-field rounded-lg text-xs font-mono outline-none focus:border-primary sci-input"
+                  className="w-full h-9"
+                  inputClassName="text-xs font-mono"
                 />
                 <p className="text-[10px] theme-text-muted mt-0.5">{t.connectionTimeoutHint || 'Default: 30000ms (30s). Leave empty for default.'}</p>
               </div>

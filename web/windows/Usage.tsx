@@ -5,6 +5,7 @@ import { getTranslation } from '../locales';
 import { gwApi } from '../services/api';
 import { fmtRelativeTime } from '../utils/time';
 import NumberStepper from '../components/NumberStepper';
+import CustomSelect from '../components/CustomSelect';
 
 interface UsageProps {
   language: Language;
@@ -1500,23 +1501,25 @@ const Usage: React.FC<UsageProps> = ({ language, onNavigateToSession }) => {
                 </div>
                 {/* Channel filter dropdown */}
                 {uniqueChannels.length > 0 && (
-                  <select value={selectedChannel || ''} onChange={e => { setSelectedChannel(e.target.value || null); setSessionsPage(1); }}
+                  <CustomSelect
+                    value={selectedChannel || ''}
+                    onChange={v => { setSelectedChannel(v || null); setSessionsPage(1); }}
+                    options={[{ value: '', label: u?.allChannels || 'All Channels' }, ...uniqueChannels.map(ch => ({ value: ch, label: ch }))]}
                     className={`text-[10px] px-2 py-1 rounded-lg border bg-white dark:bg-white/5 dark:text-white/70 outline-none transition-colors ${
                       selectedChannel ? 'border-primary text-primary font-bold' : 'border-slate-200 dark:border-white/10 text-slate-500'
-                    }`}>
-                    <option value="">{u?.allChannels || 'All Channels'}</option>
-                    {uniqueChannels.map(ch => <option key={ch} value={ch}>{ch}</option>)}
-                  </select>
+                    }`}
+                  />
                 )}
                 {/* Agent filter dropdown */}
                 {uniqueAgents.length > 0 && (
-                  <select value={selectedAgent || ''} onChange={e => { setSelectedAgent(e.target.value || null); setSessionsPage(1); }}
+                  <CustomSelect
+                    value={selectedAgent || ''}
+                    onChange={v => { setSelectedAgent(v || null); setSessionsPage(1); }}
+                    options={[{ value: '', label: u?.allAgents || 'All Agents' }, ...uniqueAgents.map(ag => ({ value: ag, label: ag }))]}
                     className={`text-[10px] px-2 py-1 rounded-lg border bg-white dark:bg-white/5 dark:text-white/70 outline-none transition-colors ${
                       selectedAgent ? 'border-primary text-primary font-bold' : 'border-slate-200 dark:border-white/10 text-slate-500'
-                    }`}>
-                    <option value="">{u?.allAgents || 'All Agents'}</option>
-                    {uniqueAgents.map(ag => <option key={ag} value={ag}>{ag}</option>)}
-                  </select>
+                    }`}
+                  />
                 )}
                 <span className="text-[11px] text-slate-500 dark:text-white/50 shrink-0">
                   {filteredSessions.length} {u?.sessionsCount || 'sessions'}

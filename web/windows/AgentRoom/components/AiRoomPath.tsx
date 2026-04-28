@@ -13,6 +13,9 @@ import {
 import { multiAgentApi } from '../../../services/api';
 import CustomSelect from '../../../components/CustomSelect';
 import { POLICY_META } from '../shared';
+import ScheduleToggle from './ScheduleToggle';
+import type { ScheduleToggleRef } from './ScheduleToggle';
+import type { SchedulePayload } from './CreateRoomWizard';
 
 // ─── Types ───
 
@@ -32,6 +35,16 @@ interface AiMember {
   enriching: boolean;
 }
 
+interface AiTask {
+  text: string;
+  deliverable: string;
+  definitionOfDone: string;
+  executorRole: string;
+  reviewerRole: string;
+  dependsOnIndices: number[];
+  enabled: boolean;
+}
+
 interface AiConfig {
   title: string;
   goal: string;
@@ -40,17 +53,30 @@ interface AiConfig {
   conflictMode: '' | 'review' | 'debate';
   roundBudget: number;
   members: AiMember[];
+  initialTasks: AiTask[];
+  defaultDispatchMode: '' | 'member_agent' | 'subagent';
 }
 
 type ConflictMode = '' | 'review' | 'debate';
 
+interface InitialTaskPayload {
+  text: string;
+  deliverable?: string;
+  definitionOfDone?: string;
+  executorRole?: string;
+  reviewerRole?: string;
+  dependsOnIndices?: number[];
+}
+
 type CreateRequest =
   | { kind: 'template'; templateId: string; title?: string; initialPrompt?: string; budgetCNY?: number }
-  | { kind: 'custom'; title: string; goal?: string; members: CustomMemberSpec[]; policy: RoomPolicy; budgetCNY: number; initialPrompt?: string; conflictMode?: ConflictMode; roundBudget?: number; collaborationStyle?: string };
+  | { kind: 'custom'; title: string; goal?: string; members: CustomMemberSpec[]; policy: RoomPolicy; budgetCNY: number; initialPrompt?: string; conflictMode?: ConflictMode; roundBudget?: number; collaborationStyle?: string; initialTasks?: InitialTaskPayload[]; defaultDispatchMode?: string };
 
 interface Props {
   onCreate: (req: CreateRequest) => void | Promise<void>;
+  onCreateSchedule?: (p: SchedulePayload) => void | Promise<void>;
   onCancel: () => void;
+  initialScheduleEnabled?: boolean;
   onBack: () => void;
 }
 
@@ -58,17 +84,19 @@ interface Props {
 
 const PHASE1_PROMPT = `Output ONLY valid JSON. No markdown fences, no explanation.
 
-You are designing a multi-agent meeting room. The user will describe what they want.
-Generate a complete meeting room blueprint.
+You are designing a multi-agent meeting room with task decomposition.
+The user will describe what they want. Generate a meeting room blueprint
+including team members AND an initial task list (work breakdown).
 
 Required JSON (all string values, escape newlines as \\n):
 {
   "title": "<meeting room name, concise>",
   "goal": "<1-2 sentences describing the meeting goal>",
-  "policy": "<one of: free, roundRobin, moderator, debate, reactive>",
+  "policy": "<one of: free, roundRobin, moderator, debate, reactive, planned>",
   "budget": <number 5-30, CNY budget>,
   "conflictMode": "<one of: review, debate, or empty string>",
   "roundBudget": <number 8-20, max conversation rounds>,
+  "defaultDispatchMode": "<one of: member_agent, subagent, or empty string>",
   "members": [
     {
       "role": "<short role title, 2-6 chars>",
@@ -78,6 +106,16 @@ Required JSON (all string values, escape newlines as \\n):
       "thinking": "<one of: off, low, medium, high, or empty string>",
       "isModerator": <true or false, at most one moderator>
     }
+  ],
+  "initialTasks": [
+    {
+      "text": "<task title, concise action item>",
+      "deliverable": "<what this task produces>",
+      "definitionOfDone": "<concrete completion criteria>",
+      "executorRole": "<role name of the member who executes this task>",
+      "reviewerRole": "<role name of the member who reviews this task, can be empty>",
+      "dependsOnIndices": [<0-based indices of tasks this depends on, e.g. [0] means depends on task #1>]
+    }
   ]
 }
 
@@ -85,8 +123,13 @@ Rules:
 - Generate 3-6 members based on user's description and team size hint
 - Each role must be unique and specific to the meeting scenario
 - At most 1 moderator
-- policy should match the scenario (roundRobin for structured, free for brainstorm, moderator for review, debate for debate)
-- budget scales with team size (small=10, medium=15, large=25)`;
+- policy should match the scenario (roundRobin for structured, free for brainstorm, moderator for review, debate for debate, planned for task execution)
+- budget scales with team size (small=10, medium=15, large=25)
+- Generate 2-5 initial tasks that break down the meeting goal into concrete work items
+- Tasks should form a logical execution order; use dependsOnIndices to express dependencies
+- executorRole must match one of the member role names exactly
+- reviewerRole should be a different member; leave empty if no review needed
+- defaultDispatchMode: use "subagent" for code review/research/isolated work; "member_agent" for collaborative discussions; empty for general cases`;
 
 function buildPhase2Prompt(role: string, brief: string, meetingTitle: string, meetingGoal: string): string {
   return `Output ONLY valid JSON. No markdown fences, no explanation.
@@ -146,7 +189,8 @@ function fuzzyMatchRole(roleName: string, profiles: RoleProfile[]): RoleProfile 
   return null;
 }
 
-const VALID_POLICIES: RoomPolicy[] = ['free', 'roundRobin', 'moderator', 'debate', 'reactive', 'parallel'];
+const VALID_POLICIES: RoomPolicy[] = ['free', 'roundRobin', 'moderator', 'debate', 'reactive', 'parallel', 'planned'];
+const VALID_DISPATCH: ('' | 'member_agent' | 'subagent')[] = ['', 'member_agent', 'subagent'];
 
 function sanitizeConfig(raw: any): AiConfig | null {
   if (!raw || typeof raw !== 'object') return null;
@@ -174,6 +218,27 @@ function sanitizeConfig(raw: any): AiConfig | null {
   for (const m of members) {
     if (m.isModerator) { modCount++; if (modCount > 1) m.isModerator = false; }
   }
+  // Parse initial tasks
+  const roleNames = new Set(members.map(m => m.role));
+  const tasks: AiTask[] = [];
+  if (Array.isArray(raw.initialTasks)) {
+    for (const t of raw.initialTasks.slice(0, 10)) {
+      if (!t || typeof t !== 'object' || !t.text) continue;
+      const deps = Array.isArray(t.dependsOnIndices)
+        ? t.dependsOnIndices.filter((d: any) => typeof d === 'number' && d >= 0)
+        : [];
+      tasks.push({
+        text: String(t.text || '').slice(0, 200),
+        deliverable: String(t.deliverable || ''),
+        definitionOfDone: String(t.definitionOfDone || ''),
+        executorRole: roleNames.has(t.executorRole) ? String(t.executorRole) : '',
+        reviewerRole: roleNames.has(t.reviewerRole) ? String(t.reviewerRole) : '',
+        dependsOnIndices: deps,
+        enabled: true,
+      });
+    }
+  }
+  const dm = VALID_DISPATCH.includes(raw.defaultDispatchMode) ? raw.defaultDispatchMode : '';
   return {
     title: String(raw.title || '').slice(0, 60) || 'AI 会议',
     goal: String(raw.goal || ''),
@@ -182,6 +247,8 @@ function sanitizeConfig(raw: any): AiConfig | null {
     conflictMode: ['review', 'debate', ''].includes(raw.conflictMode) ? raw.conflictMode : '',
     roundBudget: Math.max(4, Math.min(30, Number(raw.roundBudget) || 12)),
     members,
+    initialTasks: tasks,
+    defaultDispatchMode: dm,
   };
 }
 
@@ -191,7 +258,8 @@ const sel = 'h-9 px-2 rounded-lg text-[12px] bg-surface-raised border border-bor
 
 // ─── Component ───
 
-const AiRoomPath: React.FC<Props> = ({ onCreate, onCancel, onBack }) => {
+const AiRoomPath: React.FC<Props> = ({ onCreate, onCreateSchedule, onCancel, onBack, initialScheduleEnabled }) => {
+  const scheduleRef = useRef<ScheduleToggleRef>(null);
   const [phase, setPhase] = useState<AiPhase>('input');
   const [desc, setDesc] = useState('');
   const [teamSize, setTeamSize] = useState<'small' | 'medium' | 'large'>('medium');
@@ -474,8 +542,74 @@ const AiRoomPath: React.FC<Props> = ({ onCreate, onCancel, onBack }) => {
   // ── Submit ──
   const submit = useCallback(async () => {
     if (!config || submitting) return;
+    const sched = scheduleRef.current?.getConfig();
+    if (sched?.enabled && sched.validationError) return;
+    if (sched?.enabled && onCreateSchedule) {
+      setSubmitting(true);
+      try {
+        // 把 AI 生成的完整建房请求作为 blueprint 持久化到 schedule。
+        const enabledTasks = config.initialTasks.filter(t => t.enabled && t.text.trim());
+        const taskPayload = enabledTasks.length > 0
+          ? enabledTasks.map(t => ({
+              text: t.text,
+              deliverable: t.deliverable || undefined,
+              definitionOfDone: t.definitionOfDone || undefined,
+              executorRole: t.executorRole || undefined,
+              reviewerRole: t.reviewerRole || undefined,
+              dependsOnIndices: t.dependsOnIndices.length > 0 ? t.dependsOnIndices : undefined,
+            }))
+          : undefined;
+        const blueprint: Record<string, unknown> = {
+          kind: 'custom',
+          title: config.title,
+          goal: config.goal || undefined,
+          members: config.members.map(m => ({
+            role: m.role,
+            roleProfileId: m.matchedProfileId,
+            emoji: m.emoji,
+            model: '',
+            isModerator: m.isModerator,
+            systemPrompt: m.systemPrompt,
+            agentId: '',
+            thinking: m.thinking,
+          })),
+          policy: config.policy,
+          budgetCNY: config.budget,
+          conflictMode: config.conflictMode || undefined,
+          roundBudget: config.roundBudget > 0 ? config.roundBudget : undefined,
+          initialTasks: taskPayload,
+          defaultDispatchMode: config.defaultDispatchMode || undefined,
+        };
+        await onCreateSchedule({
+          title: config.title,
+          blueprint,
+          cronExpr: sched.cronExpr,
+          timezone: sched.timezone,
+          initialPrompt: config.goal || undefined,
+          autoCloseout: sched.autoCloseout,
+          roundBudget: config.roundBudget > 0 ? config.roundBudget : undefined,
+          budgetCNY: config.budget,
+          inheritFromLast: sched.inheritFromLast,
+          deadlineAction: sched.autoCloseout ? 'closeout' : 'summarize',
+        });
+      } finally { setSubmitting(false); }
+      return;
+    }
     setSubmitting(true);
     try {
+      // v1.0+：把 AI 生成的任务清单（启用的）转成后端 initialTasks 格式。
+      // 后端会按 role name 匹配 memberId，复用 seedInitialTasksFromTemplate 逻辑。
+      const enabledTasks = config.initialTasks.filter(t => t.enabled && t.text.trim());
+      const taskPayload: InitialTaskPayload[] | undefined = enabledTasks.length > 0
+        ? enabledTasks.map(t => ({
+            text: t.text,
+            deliverable: t.deliverable || undefined,
+            definitionOfDone: t.definitionOfDone || undefined,
+            executorRole: t.executorRole || undefined,
+            reviewerRole: t.reviewerRole || undefined,
+            dependsOnIndices: t.dependsOnIndices.length > 0 ? t.dependsOnIndices : undefined,
+          }))
+        : undefined;
       await onCreate({
         kind: 'custom',
         title: config.title,
@@ -494,11 +628,13 @@ const AiRoomPath: React.FC<Props> = ({ onCreate, onCancel, onBack }) => {
         budgetCNY: config.budget,
         conflictMode: config.conflictMode || undefined,
         roundBudget: config.roundBudget > 0 ? config.roundBudget : undefined,
+        initialTasks: taskPayload,
+        defaultDispatchMode: config.defaultDispatchMode || undefined,
       });
     } finally {
       setSubmitting(false);
     }
-  }, [config, submitting, onCreate]);
+  }, [config, submitting, onCreate, onCreateSchedule]);
 
   const enrichedCount = config?.members.filter(m => m.enriched).length ?? 0;
   const totalMembers = config?.members.length ?? 0;
@@ -819,6 +955,117 @@ const AiRoomPath: React.FC<Props> = ({ onCreate, onCancel, onBack }) => {
               )}
             </div>
 
+            {/* ─ Initial Tasks (editable) ─ */}
+            {config.initialTasks.length > 0 && (
+              <div className="rounded-xl border border-border bg-surface-sunken/30 p-3.5 space-y-3">
+                <div className="flex items-center gap-2 text-[12px] font-bold text-text">
+                  <span className="material-symbols-outlined text-[16px] text-cyan-500">task_alt</span>初始任务
+                  <span className="ms-auto text-[10.5px] text-text-muted font-normal">
+                    {config.initialTasks.filter(t => t.enabled).length} / {config.initialTasks.length} 项
+                  </span>
+                </div>
+                <div className="space-y-2">
+                  {config.initialTasks.map((t, ti) => (
+                    <div key={ti} className={`rounded-lg border p-2.5 space-y-1.5 transition-all ${
+                      t.enabled ? 'border-border bg-surface' : 'border-border/50 bg-surface-sunken/40 opacity-50'
+                    }`}>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => setConfig(prev => {
+                            if (!prev) return prev;
+                            const next = [...prev.initialTasks];
+                            next[ti] = { ...next[ti], enabled: !next[ti].enabled };
+                            return { ...prev, initialTasks: next };
+                          })}
+                          className={`shrink-0 w-5 h-5 rounded border flex items-center justify-center transition-colors ${
+                            t.enabled
+                              ? 'bg-cyan-500 border-cyan-500 text-white'
+                              : 'border-border bg-surface-raised text-transparent'
+                          }`}
+                        >
+                          <span className="material-symbols-outlined text-[14px]">check</span>
+                        </button>
+                        <input
+                          value={t.text}
+                          onChange={e => setConfig(prev => {
+                            if (!prev) return prev;
+                            const next = [...prev.initialTasks];
+                            next[ti] = { ...next[ti], text: e.target.value };
+                            return { ...prev, initialTasks: next };
+                          })}
+                          className="flex-1 h-7 px-2 rounded bg-surface-raised border border-border text-[11.5px] font-semibold"
+                          placeholder="任务描述"
+                        />
+                        <button
+                          onClick={() => setConfig(prev => {
+                            if (!prev) return prev;
+                            return { ...prev, initialTasks: prev.initialTasks.filter((_, j) => j !== ti) };
+                          })}
+                          className="w-6 h-6 rounded flex items-center justify-center hover:bg-danger/10 text-text-muted hover:text-danger transition-colors"
+                        >
+                          <span className="material-symbols-outlined text-[13px]">close</span>
+                        </button>
+                      </div>
+                      {t.enabled && (
+                        <div className="grid grid-cols-2 gap-2 ps-7">
+                          <div className="space-y-0.5">
+                            <span className="text-[9.5px] text-text-muted">执行者</span>
+                            <CustomSelect
+                              value={t.executorRole}
+                              onChange={v => setConfig(prev => {
+                                if (!prev) return prev;
+                                const next = [...prev.initialTasks];
+                                next[ti] = { ...next[ti], executorRole: v };
+                                return { ...prev, initialTasks: next };
+                              })}
+                              options={[
+                                { value: '', label: '未指定' },
+                                ...config.members.map(m => ({ value: m.role, label: `${m.emoji} ${m.role}` })),
+                              ]}
+                              className="h-7 w-full px-1.5 rounded-md text-[10.5px] bg-surface-raised border border-border"
+                            />
+                          </div>
+                          <div className="space-y-0.5">
+                            <span className="text-[9.5px] text-text-muted">审阅者</span>
+                            <CustomSelect
+                              value={t.reviewerRole}
+                              onChange={v => setConfig(prev => {
+                                if (!prev) return prev;
+                                const next = [...prev.initialTasks];
+                                next[ti] = { ...next[ti], reviewerRole: v };
+                                return { ...prev, initialTasks: next };
+                              })}
+                              options={[
+                                { value: '', label: '无' },
+                                ...config.members.map(m => ({ value: m.role, label: `${m.emoji} ${m.role}` })),
+                              ]}
+                              className="h-7 w-full px-1.5 rounded-md text-[10.5px] bg-surface-raised border border-border"
+                            />
+                          </div>
+                          <input
+                            value={t.deliverable}
+                            onChange={e => setConfig(prev => {
+                              if (!prev) return prev;
+                              const next = [...prev.initialTasks];
+                              next[ti] = { ...next[ti], deliverable: e.target.value };
+                              return { ...prev, initialTasks: next };
+                            })}
+                            placeholder="交付物"
+                            className="col-span-2 h-7 px-2 rounded bg-surface-raised border border-border text-[10.5px] text-text-secondary"
+                          />
+                          {t.dependsOnIndices.length > 0 && (
+                            <div className="col-span-2 text-[9.5px] text-text-muted">
+                              依赖: {t.dependsOnIndices.map(d => `#${d + 1}`).join(', ')}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Tip */}
             <div className="rounded-lg bg-info/5 border border-info/20 p-2.5 text-[10.5px] text-info flex items-start gap-2">
               <span className="material-symbols-outlined text-[14px] mt-0.5 shrink-0">info</span>
@@ -989,6 +1236,51 @@ const AiRoomPath: React.FC<Props> = ({ onCreate, onCancel, onBack }) => {
                 ))}
               </div>
             </div>
+
+            {/* Tasks summary (read-only toggles) */}
+            {config.initialTasks.length > 0 && (
+              <div className="rounded-xl border border-border bg-surface-sunken/30 p-3.5 space-y-3">
+                <div className="flex items-center gap-2 text-[12px] font-bold text-text">
+                  <span className="material-symbols-outlined text-[16px] text-cyan-500">task_alt</span>初始任务
+                  <span className="ms-auto text-[10.5px] text-text-muted font-normal">
+                    {config.initialTasks.filter(t => t.enabled).length} 项启用
+                  </span>
+                </div>
+                <div className="space-y-1.5">
+                  {config.initialTasks.map((t, ti) => (
+                    <div key={ti} className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg transition-all ${
+                      t.enabled ? 'bg-surface border border-border' : 'bg-surface-sunken/40 border border-transparent opacity-40'
+                    }`}>
+                      <button
+                        onClick={() => setConfig(prev => {
+                          if (!prev) return prev;
+                          const next = [...prev.initialTasks];
+                          next[ti] = { ...next[ti], enabled: !next[ti].enabled };
+                          return { ...prev, initialTasks: next };
+                        })}
+                        className={`shrink-0 w-4.5 h-4.5 rounded border flex items-center justify-center transition-colors ${
+                          t.enabled
+                            ? 'bg-cyan-500 border-cyan-500 text-white'
+                            : 'border-border bg-surface-raised text-transparent'
+                        }`}
+                      >
+                        <span className="material-symbols-outlined text-[12px]">check</span>
+                      </button>
+                      <span className={`flex-1 text-[11px] ${t.enabled ? 'text-text' : 'text-text-muted line-through'}`}>{t.text}</span>
+                      {t.executorRole && (
+                        <span className="shrink-0 text-[9.5px] px-1.5 py-0.5 rounded bg-violet-500/10 text-violet-600 dark:text-violet-400 font-semibold">
+                          {config.members.find(m => m.role === t.executorRole)?.emoji || ''} {t.executorRole}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {onCreateSchedule && (
+              <ScheduleToggle ref={scheduleRef} defaultEnabled={initialScheduleEnabled} />
+            )}
           </div>
         )}
       </div>

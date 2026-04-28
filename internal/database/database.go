@@ -107,6 +107,7 @@ func autoMigrate() error {
 		&AgentRoomMessage{},
 		&AgentRoomFact{},
 		&AgentRoomTask{},
+		&AgentRoomTaskExecution{},
 		&AgentRoomIntervention{},
 		&AgentRoomAudit{},
 		&AgentRoomDoc{},
@@ -123,6 +124,8 @@ func autoMigrate() error {
 		&AgentRoomVote{},
 		&AgentRoomVoteBallot{},
 		&AgentRoomRetro{},
+		// v1.0 定时会议
+		&AgentRoomSchedule{},
 	)
 }
 

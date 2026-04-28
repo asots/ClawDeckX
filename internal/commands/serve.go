@@ -852,6 +852,9 @@ func RunServe(args []string) int {
 	router.Handle("*", "/api/v1/agentroom/messages/", agentRoomHandler.MessagesRouter)
 	router.Handle("*", "/api/v1/agentroom/members/", agentRoomHandler.MembersRouter)
 	router.Handle("*", "/api/v1/agentroom/tasks/", agentRoomHandler.TasksRouter)
+	router.Handle("*", "/api/v1/agentroom/executions/", agentRoomHandler.ExecutionsRouter)
+	// v0.3 主题 C：跨房间 dashboard
+	router.GET("/api/v1/agentroom/dashboard", agentRoomHandler.MyDashboard)
 	// v0.6
 	router.Handle("*", "/api/v1/agentroom/artifacts/", agentRoomHandler.ArtifactsRouter)
 	router.Handle("*", "/api/v1/agentroom/playbooks", agentRoomHandler.PlaybooksRouter)
@@ -868,6 +871,15 @@ func RunServe(args []string) int {
 	// v0.4：OpenClaw Gateway 代理（Member 编辑器从这里拉 agents.list；房间向导探测桥接就绪）
 	router.GET("/api/v1/agentroom/gateway/agents", agentRoomHandler.GatewayListAgents)
 	router.GET("/api/v1/agentroom/gateway/status", agentRoomHandler.GatewayStatus)
+	// v1.0 定时会议
+	roomScheduler := agentroom.NewRoomScheduler(agentRoomRepo, agentRoomMgr, agentRoomBroker)
+	roomScheduler.SetBlueprintReplay(agentRoomHandler.ReplayBlueprint)
+	agentRoomHandler.SetScheduler(roomScheduler)
+	roomSchedulerCtx, roomSchedulerCancel := context.WithCancel(context.Background())
+	defer roomSchedulerCancel()
+	go roomScheduler.Start(roomSchedulerCtx)
+	router.Handle("*", "/api/v1/agentroom/schedules", agentRoomHandler.SchedulesRouter)
+	router.Handle("*", "/api/v1/agentroom/schedules/", agentRoomHandler.SchedulesRouter)
 
 	workflowHandler := handlers.NewWorkflowHandler(gwClient)
 	router.POST("/api/v1/workflow/start", web.RequireAdmin(workflowHandler.Start))
