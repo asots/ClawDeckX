@@ -302,8 +302,6 @@ export const ChannelsSection: React.FC<SectionProps> = ({ config, schema, setFie
       if (ch === 'defaults' || migrated[ch]) continue;
       const chCfg = channels[ch];
       if (!chCfg || typeof chCfg !== 'object') continue;
-      // Skip if accounts already exists
-      if (chCfg.accounts && typeof chCfg.accounts === 'object' && Object.keys(chCfg.accounts).length > 0) continue;
       // Check if there are top-level account fields (legacy format)
       const CHANNEL_GLOBAL_KEYS = ['accounts', 'defaultAccount'];
       const legacyKeys = Object.keys(chCfg).filter(k => !CHANNEL_GLOBAL_KEYS.includes(k));
@@ -312,7 +310,8 @@ export const ChannelsSection: React.FC<SectionProps> = ({ config, schema, setFie
       const acctData: Record<string, any> = {};
       for (const k of legacyKeys) acctData[k] = chCfg[k];
       // Write accounts.default with the legacy fields
-      setField(['channels', ch, 'accounts', 'default'], acctData);
+      const currentDefault = chCfg.accounts?.default && typeof chCfg.accounts.default === 'object' ? chCfg.accounts.default : {};
+      setField(['channels', ch, 'accounts', 'default'], { ...acctData, ...currentDefault });
       // Remove legacy top-level fields
       for (const k of legacyKeys) deleteField(['channels', ch, k]);
       setMigrated(prev => ({ ...prev, [ch]: true }));
