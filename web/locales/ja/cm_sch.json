@@ -99,6 +99,8 @@
     "webhook": "Webhook",
     "accountId": "アカウント ID",
     "accountIdPlaceholder": "マルチアカウント時に指定",
+    "threadId": "スレッドID",
+    "threadIdHint": "OpenClaw 2026.4.27+：Telegram フォーラムトピックIDまたは他のスレッド対応チャネルの宛先",
     "bestEffort": "ベストエフォート",
     "bestEffortHint": "配信失敗がジョブ状態に影響しません",
     "loadMore": "さらに読込",

@@ -27,6 +27,7 @@ interface CronForm {
   scheduleKind: ScheduleKind; scheduleAt: string; everyAmount: string; everyUnit: 'minutes' | 'hours' | 'days';
   cronExpr: string; cronTz: string; sessionTarget: SessionTarget; wakeMode: WakeMode;
   payloadKind: PayloadKind; payloadText: string; deliveryMode: DeliveryMode; deliveryChannel: string; deliveryTo: string;
+  deliveryThreadId: string;
   timeoutSeconds: string; model: string; thinking: string; deleteAfterRun: boolean;
   sessionKey: string; accountId: string; bestEffort: boolean;
 }
@@ -36,6 +37,7 @@ const DEFAULT_FORM: CronForm = {
   scheduleKind: 'every', scheduleAt: '', everyAmount: '30', everyUnit: 'minutes',
   cronExpr: '0 7 * * *', cronTz: '', sessionTarget: 'isolated', wakeMode: 'now',
   payloadKind: 'agentTurn', payloadText: '', deliveryMode: 'announce', deliveryChannel: 'last', deliveryTo: '',
+  deliveryThreadId: '',
   timeoutSeconds: '', model: '', thinking: '', deleteAfterRun: false,
   sessionKey: '', accountId: '', bestEffort: false,
 };
@@ -104,6 +106,7 @@ function jobToForm(job: any): CronForm {
     cronExpr, cronTz, sessionTarget: job.sessionTarget || 'isolated', wakeMode: job.wakeMode || 'now',
     payloadKind: p.kind || 'agentTurn', payloadText: p.kind === 'systemEvent' ? (p.text || '') : (p.message || ''),
     deliveryMode: (d.mode as DeliveryMode) || 'announce', deliveryChannel: d.channel || 'last', deliveryTo: d.to || '',
+    deliveryThreadId: d.threadId || '',
     timeoutSeconds: p.timeoutSeconds ? String(p.timeoutSeconds) : '', model: p.model || '', thinking: p.thinking || '',
     deleteAfterRun: !!job.deleteAfterRun, sessionKey: job.sessionKey || '',
     accountId: d.accountId || '', bestEffort: !!d.bestEffort,
@@ -142,6 +145,7 @@ function formToJobPayload(f: CronForm) {
       mode: f.deliveryMode,
       channel: f.deliveryChannel.trim() || 'last',
       to: f.deliveryTo.trim() || undefined,
+      threadId: f.deliveryThreadId.trim() || undefined,
       accountId: f.accountId.trim() || undefined,
       bestEffort: f.bestEffort || undefined,
     } : undefined;
@@ -821,6 +825,10 @@ const Scheduler: React.FC<SchedulerProps> = ({ language }) => {
                       <label className="block">
                         <span className={labelCls}>{s.accountId}</span>
                         <input value={form.accountId} onChange={e => patchForm({ accountId: e.target.value })} placeholder={s.accountIdPlaceholder} className={inputCls} />
+                      </label>
+                      <label className="block" title={s.threadIdHint || 'OpenClaw 2026.4.27+: Telegram forum topic id or other threaded channel destination'}>
+                        <span className={labelCls}>{s.threadId || 'Thread ID'}</span>
+                        <input value={form.deliveryThreadId} onChange={e => patchForm({ deliveryThreadId: e.target.value })} placeholder="forum_topic_id" className={inputCls} />
                       </label>
                     </>}
                   </div>

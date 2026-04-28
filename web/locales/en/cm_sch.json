@@ -99,6 +99,8 @@
     "webhook": "Webhook",
     "accountId": "Account ID",
     "accountIdPlaceholder": "For multi-account setups",
+    "threadId": "Thread ID",
+    "threadIdHint": "OpenClaw 2026.4.27+: Telegram forum topic id or other threaded channel destination",
     "bestEffort": "Best Effort",
     "bestEffortHint": "Delivery failure won't affect job status",
     "loadMore": "Load More",

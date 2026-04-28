@@ -679,7 +679,6 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
     // — Options —
     { cmd: '/model', desc: c.quickModel, icon: 'smart_toy', cat: 'options' },
     { cmd: '/models', desc: c.cmdModels, icon: 'list', cat: 'options' },
-    { cmd: '/models add', desc: c.cmdModelsAdd || 'Register a model from chat', icon: 'add_circle', cat: 'options' },
     { cmd: '/think', desc: c.quickThink, icon: 'psychology', cat: 'options' },
     { cmd: '/verbose', desc: c.catOptions, icon: 'visibility', cat: 'options' },
     { cmd: '/reasoning', desc: c.catOptions, icon: 'neurology', cat: 'options' },
@@ -725,7 +724,13 @@ const Sessions: React.FC<SessionsProps> = ({ language, pendingSessionKey, onSess
     { cmd: '/phone', desc: c.cmdPhone || 'Arm/disarm high-risk phone node commands.', icon: 'smartphone', cat: 'management' },
     // — Media —
     { cmd: '/tts', desc: c.catMedia, icon: 'record_voice_over', cat: 'media' },
+    { cmd: '/tts latest', desc: c.cmdTtsLatest || 'Read aloud latest reply', icon: 'replay', cat: 'media' },
+    { cmd: '/tts chat', desc: c.cmdTtsChat || 'Toggle auto-TTS for this chat', icon: 'voice_chat', cat: 'media' },
+    { cmd: '/tts persona', desc: c.cmdTtsPersona || 'Select TTS persona', icon: 'face', cat: 'media' },
     { cmd: '/voice', desc: c.cmdVoice, icon: 'graphic_eq', cat: 'media' },
+    // — Codex (2026.4.27) —
+    { cmd: '/codex computer-use status', desc: c.cmdCodexComputerUseStatus || 'Codex Computer Use status', icon: 'desktop_windows', cat: 'management' },
+    { cmd: '/codex computer-use install', desc: c.cmdCodexComputerUseInstall || 'Install Codex Computer Use', icon: 'install_desktop', cat: 'management' },
   ], [c]);
 
   // Merge gateway dynamic commands (plugin/skill) into the local slash palette

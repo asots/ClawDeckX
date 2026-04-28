@@ -99,6 +99,8 @@
     "webhook": "Webhook",
     "accountId": "頻道賬號 ID",
     "accountIdPlaceholder": "多賬號時指定",
+    "threadId": "執行緒 ID",
+    "threadIdHint": "OpenClaw 2026.4.27+：Telegram 論壇話題 ID 或其他支援執行緒的頻道目標",
     "bestEffort": "盡力投遞",
     "bestEffortHint": "投遞失敗不影響任務狀態",
     "loadMore": "載入更多",

@@ -109,6 +109,13 @@ const GatewaySection: React.FC<SectionProps> = ({ config, schema, setField, getF
             <TextField label={es.tpUserHeader} tooltip={tip('gateway.auth.trustedProxy.userHeader')} value={g(['auth', 'trustedProxy', 'userHeader']) || ''} onChange={v => s(['auth', 'trustedProxy', 'userHeader'], v)} placeholder="X-Forwarded-User" />
             <ArrayField label={es.tpRequiredHeaders} tooltip={tip('gateway.auth.trustedProxy.requiredHeaders')} value={g(['auth', 'trustedProxy', 'requiredHeaders']) || []} onChange={v => s(['auth', 'trustedProxy', 'requiredHeaders'], v)} placeholder="X-Custom-Header" />
             <ArrayField label={es.tpAllowUsers} tooltip={tip('gateway.auth.trustedProxy.allowUsers')} value={g(['auth', 'trustedProxy', 'allowUsers']) || []} onChange={v => s(['auth', 'trustedProxy', 'allowUsers'], v)} placeholder="admin" />
+            <SwitchField
+              label={es.tpAllowLoopback || 'Allow Loopback Reverse Proxy'}
+              desc={es.tpAllowLoopbackDesc || 'OpenClaw 2026.4.27+: enable explicit loopback trusted-proxy auth for same-host reverse proxies. Required headers and allowlist still apply. Off by default (fail-closed).'}
+              tooltip={tip('gateway.auth.trustedProxy.allowLoopback')}
+              value={g(['auth', 'trustedProxy', 'allowLoopback']) === true}
+              onChange={v => s(['auth', 'trustedProxy', 'allowLoopback'], v)}
+            />
           </>
         )}
       </ConfigSection>
@@ -186,6 +193,14 @@ const GatewaySection: React.FC<SectionProps> = ({ config, schema, setField, getF
       <ConfigSection title={es.gwNodes} icon="hub" iconColor="text-slate-500" defaultOpen={false}>
         <ArrayField label={es.nodeAllowCmds} tooltip={tip('gateway.nodes.allowCommands')} value={g(['nodes', 'allowCommands']) || []} onChange={v => s(['nodes', 'allowCommands'], v)} />
         <ArrayField label={es.nodeDenyCmds} tooltip={tip('gateway.nodes.denyCommands')} value={g(['nodes', 'denyCommands']) || []} onChange={v => s(['nodes', 'denyCommands'], v)} />
+        <ArrayField
+          label={es.nodePairAutoApproveCidrs || 'Auto-approve First Pairing CIDRs'}
+          desc={es.nodePairAutoApproveCidrsDesc || 'OpenClaw 2026.4.24+: explicit trusted CIDRs for first-time node pairing. Operator/browser pairing and upgrade flows always remain manual. Empty disables auto-approve. Use with care.'}
+          tooltip={tip('gateway.nodes.pairing.autoApproveCidrs')}
+          value={g(['nodes', 'pairing', 'autoApproveCidrs']) || []}
+          onChange={v => s(['nodes', 'pairing', 'autoApproveCidrs'], v)}
+          placeholder="10.0.0.0/8"
+        />
       </ConfigSection>
 
       <ConfigSection title={es.webchat || 'WebChat'} icon="chat" iconColor="text-indigo-500" defaultOpen={false}>

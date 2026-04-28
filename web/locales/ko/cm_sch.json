@@ -99,6 +99,8 @@
     "webhook": "Webhook",
     "accountId": "계정 ID",
     "accountIdPlaceholder": "다중 계정 설정용",
+    "threadId": "스레드 ID",
+    "threadIdHint": "OpenClaw 2026.4.27+: Telegram 포럼 토픽 ID 또는 기타 스레드 지원 채널 대상",
     "bestEffort": "최선 노력",
     "bestEffortHint": "전달 실패 시 작업 상태에 영향 없음",
     "loadMore": "더 보기",

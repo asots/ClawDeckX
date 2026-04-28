@@ -32,7 +32,6 @@
   "agents.defaults.humanDelay.maxMs": "2500",
   "agents.defaults.humanDelay.minMs": "800",
   "agents.defaults.imageMaxDimensionPx": "1200",
-  "agents.defaults.llm.idleTimeoutSeconds": "120",
   "agents.defaults.maxConcurrent": "4",
   "agents.defaults.mediaMaxMb": "50",
   "agents.defaults.memorySearch.cache.enabled": "true",

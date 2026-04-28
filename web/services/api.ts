@@ -1372,6 +1372,10 @@ export const gwApi = {
     rpc('node.pair.reject', { requestId }),
   nodePairVerify: (nodeId: string, token: string) =>
     rpc('node.pair.verify', { nodeId, token }),
+  // Remove a stale gateway-owned node pairing record (OpenClaw 2026.4.26+).
+  // Accepts node id, name, or IP — server resolves to the pairing record.
+  nodePairRemove: (params: { node: string }) =>
+    rpc<{ removed: boolean; node?: string }>('node.pair.remove', params),
   // Devices
   devicePairList: () => rpc('device.pair.list'),
   devicePairApprove: (requestId: string) =>

@@ -674,6 +674,25 @@ const Nodes: React.FC<NodesProps> = ({ language }) => {
     });
   }, [fetchDevices, toast]);
 
+  // OpenClaw 2026.4.26+: remove a stale gateway-owned node pairing record.
+  // Accepts node id, name, or IP — we pass the canonical nodeId.
+  const handleNodePairRemove = useCallback((nodeId: string, displayName?: string) => {
+    setConfirmDialog({
+      title: ndRef.current?.confirmRemovePairTitle || ndRef.current?.confirmRemoveTitle || 'Remove Pairing',
+      desc: (ndRef.current?.confirmRemovePairDesc || 'Remove pairing record for {name}? The node will need to re-pair.').replace('{name}', displayName || nodeId),
+      onOk: async () => {
+        try {
+          await gwApi.nodePairRemove({ node: nodeId });
+          toast('success', ndRef.current?.pairRemoved || 'Pairing removed');
+          setSelectedNode(null);
+          setNodeDetail(null);
+          setTimeout(() => { fetchNodes(); fetchDevices(); }, 300);
+        } catch (e: any) { toast('error', String(e)); }
+        setConfirmDialog(null);
+      },
+    });
+  }, [fetchNodes, fetchDevices, toast]);
+
   const handleRotate = useCallback(async (deviceId: string, role: string, scopes?: string[]) => {
     try {
       const res = await gwApi.deviceTokenRotate(deviceId, role, scopes) as any;
@@ -1498,6 +1517,20 @@ const Nodes: React.FC<NodesProps> = ({ language }) => {
                                 <pre className="p-2 bg-black/5 dark:bg-black/30 rounded-lg text-[11px] font-mono text-slate-500 dark:text-white/40 overflow-x-auto max-h-40 custom-scrollbar neon-scrollbar">
                                   {JSON.stringify(node, null, 2)}
                                 </pre>
+                              )}
+
+                              {/* Pairing actions: Remove Pair (OpenClaw 2026.4.26+) */}
+                              {(nodeDetail?.paired || node.paired) && (
+                                <div className="pt-2 border-t border-slate-200/40 dark:border-white/5 flex justify-end">
+                                  <button
+                                    onClick={e => { e.stopPropagation(); handleNodePairRemove(node.nodeId, node.displayName || nodeDetail?.displayName); }}
+                                    className="h-7 px-3 flex items-center gap-1.5 bg-red-500/10 text-red-500 border border-red-500/20 rounded-lg text-[11px] font-bold hover:bg-red-500/20 transition-colors"
+                                    title={nd?.removePairHint || 'Remove this gateway-owned node pairing record'}
+                                  >
+                                    <span className="material-symbols-outlined text-[14px]">link_off</span>
+                                    {nd?.removePair || 'Remove Pair'}
+                                  </button>
+                                </div>
                               )}
                             </div>
                           )}

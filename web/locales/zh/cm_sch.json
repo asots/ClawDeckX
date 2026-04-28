@@ -99,6 +99,8 @@
     "webhook": "Webhook",
     "accountId": "频道账号 ID",
     "accountIdPlaceholder": "多账号时指定",
+    "threadId": "线程 ID",
+    "threadIdHint": "OpenClaw 2026.4.27+：Telegram 论坛话题 ID 或其他支持线程的频道目标",
     "bestEffort": "尽力投递",
     "bestEffortHint": "投递失败不影响任务状态",
     "loadMore": "加载更多",

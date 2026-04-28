@@ -28,7 +28,11 @@ export const AgentsSection: React.FC<SectionProps> = ({ config, schema, setField
   const SANDBOX_ACCESS_OPTIONS = useMemo(() => [{ value: 'none', label: es.optNone || 'None' }, { value: 'ro', label: es.optReadOnly || 'Read Only' }, { value: 'rw', label: es.optReadWrite || 'Read/Write' }], [es]);
   const SANDBOX_SCOPE_OPTIONS = useMemo(() => [{ value: 'session', label: es.optSession || 'Session' }, { value: 'agent', label: es.optAgent || 'Agent' }, { value: 'shared', label: es.optShared || 'Shared' }], [es]);
   const CTX_PRUNING_MODE_OPTIONS = useMemo(() => [{ value: 'off', label: es.optOff }, { value: 'cache-ttl', label: es.optCacheTtl || 'Cache TTL' }], [es]);
-  const CTX_INJECTION_OPTIONS = useMemo(() => [{ value: '', label: es.default }, { value: 'continuation-skip', label: es.optContinuationSkip || 'Continuation Skip' }], [es]);
+  const CTX_INJECTION_OPTIONS = useMemo(() => [
+    { value: '', label: es.default },
+    { value: 'continuation-skip', label: es.optContinuationSkip || 'Continuation Skip' },
+    { value: 'never', label: es.optContextInjectionNever || 'Never (agent owns prompt)' },
+  ], [es]);
 
   const rawAgentList = getField(['agents', 'list']);
   const agentList: any[] = Array.isArray(rawAgentList) ? rawAgentList : [];
@@ -72,6 +76,8 @@ export const AgentsSection: React.FC<SectionProps> = ({ config, schema, setField
         <SwitchField label={es.truncateAfterCompaction || 'Truncate After Compaction'} tooltip={tip('agents.defaults.compaction.truncateAfterCompaction')} value={d(['compaction', 'truncateAfterCompaction']) === true} onChange={v => sd(['compaction', 'truncateAfterCompaction'], v)} />
         <SwitchField label={es.compactionNotifyUser || 'Notify User on Compaction'} tooltip={tip('agents.defaults.compaction.notifyUser')} value={d(['compaction', 'notifyUser']) === true} onChange={v => sd(['compaction', 'notifyUser'], v)} />
         <TextField label={es.compactionProvider || 'Compaction Provider'} tooltip={tip('agents.defaults.compaction.provider')} value={d(['compaction', 'provider']) || ''} onChange={v => sd(['compaction', 'provider'], v)} placeholder={es.phCompactionProvider || 'default'} />
+        <NumberField label={es.compactionMaxActiveTranscriptBytes || 'Max Active Transcript Bytes'} tooltip={tip('agents.defaults.compaction.maxActiveTranscriptBytes')} value={d(['compaction', 'maxActiveTranscriptBytes'])} onChange={v => sd(['compaction', 'maxActiveTranscriptBytes'], v)} min={0} placeholder={def('agents.defaults.compaction.maxActiveTranscriptBytes')} />
+        <ModelField label={es.compactionMemoryFlushModel || 'Pre-compaction Memory Flush Model'} tooltip={tip('agents.defaults.compaction.memoryFlush.model')} value={d(['compaction', 'memoryFlush', 'model'])} onChange={v => sd(['compaction', 'memoryFlush', 'model'], v)} placeholder={es.phProviderModelId} />
         <SwitchField label={es.bootstrapTruncationWarning || 'Bootstrap Truncation Warning'} tooltip={tip('agents.defaults.bootstrapTruncationWarning')} value={d(['bootstrapTruncationWarning']) !== false} onChange={v => sd(['bootstrapTruncationWarning'], v)} />
         <SelectField label={es.contextInjection || 'Context Injection'} tooltip={tip('agents.defaults.contextInjection')} value={d(['contextInjection']) || ''} onChange={v => sd(['contextInjection'], v)} options={CTX_INJECTION_OPTIONS} />
         <TextField label={es.systemPromptOverride || 'System Prompt Override'} tooltip={tip('agents.defaults.systemPromptOverride')} value={d(['systemPromptOverride']) || ''} onChange={v => sd(['systemPromptOverride'], v)} mono={false} multiline />
@@ -155,6 +161,10 @@ export const AgentsSection: React.FC<SectionProps> = ({ config, schema, setField
             <SelectField label={es.verboseDefault} tooltip={tip('agents.list.verbose')} value={agent.verbose || ''} onChange={v => setField(['agents', 'list', String(i), 'verbose'], v)} options={[{ value: '', label: es.default }, ...VERBOSE_OPTIONS]} />
             <SwitchField label={es.fastMode || 'Fast Mode'} tooltip={tip('agents.list.fastMode')} value={agent.fastMode === true} onChange={v => setField(['agents', 'list', String(i), 'fastMode'], v || undefined)} />
             <TextField label={es.subagentModel} tooltip={tip('agents.list.subagentModel')} value={agent.subagents?.model || ''} onChange={v => setField(['agents', 'list', String(i), 'subagents', 'model'], v)} placeholder={es.phUseDefault} />
+            {/* Per-agent TTS override (OpenClaw 2026.4.25+). Falls back to messages.tts when unset. */}
+            <TextField label={es.agentTtsProvider || 'TTS Provider Override'} tooltip={tip('agents.list.tts.provider')} value={agent.tts?.provider || ''} onChange={v => setField(['agents', 'list', String(i), 'tts', 'provider'], v || undefined)} placeholder={es.phUseDefault} />
+            <TextField label={es.agentTtsModel || 'TTS Model Override'} tooltip={tip('agents.list.tts.model')} value={agent.tts?.model || ''} onChange={v => setField(['agents', 'list', String(i), 'tts', 'model'], v || undefined)} placeholder={es.phUseDefault} />
+            <TextField label={es.agentTtsVoice || 'TTS Voice Override'} tooltip={tip('agents.list.tts.voice')} value={agent.tts?.voice || ''} onChange={v => setField(['agents', 'list', String(i), 'tts', 'voice'], v || undefined)} placeholder={es.phUseDefault} />
           </ConfigCard>
         ))}
         <AddButton label={es.addAgent} onClick={() => {
