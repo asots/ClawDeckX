@@ -597,12 +597,12 @@ const Observability: React.FC<ObservabilityProps> = ({ language }) => {
   );
 };
 
-function CopyableField({ label, value, toast, copiedLabel }: { label: string; value: string; toast: (msg: string, type: string) => void; copiedLabel: string }) {
+function CopyableField({ label, value, toast, copiedLabel }: { label: string; value: string; toast: (type: string, msg: string) => void; copiedLabel: string }) {
   const [copied, setCopied] = useState(false);
   const handleCopy = useCallback(() => {
     navigator.clipboard.writeText(value).then(() => {
       setCopied(true);
-      toast(copiedLabel, 'success');
+      toast('success', copiedLabel);
       setTimeout(() => setCopied(false), 2000);
     });
   }, [value, toast, copiedLabel]);
@@ -623,7 +623,7 @@ function CopyableField({ label, value, toast, copiedLabel }: { label: string; va
   );
 }
 
-function ScrapeConfigSection({ config, ob, toast }: { config: PromScrapeConfig; ob: any; toast: (msg: string, type: string) => void }) {
+function ScrapeConfigSection({ config, ob, toast }: { config: PromScrapeConfig; ob: any; toast: (type: string, msg: string) => void }) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const copiedLabel = ob.copied || 'Copied!';
@@ -631,7 +631,7 @@ function ScrapeConfigSection({ config, ob, toast }: { config: PromScrapeConfig; 
   const handleCopyYaml = useCallback(() => {
     navigator.clipboard.writeText(config.yamlSnippet).then(() => {
       setCopied(true);
-      toast(copiedLabel, 'success');
+      toast('success', copiedLabel);
       setTimeout(() => setCopied(false), 2000);
     });
   }, [config.yamlSnippet, toast, copiedLabel]);
