@@ -92,35 +92,22 @@ _2026-04-20_
 
 # v0.2.7
 
-_2026-04-20_
+_2026-04-29_
 
 ## What's Changed
 
-### ✨ New Features / 新功能
+### 🐛 Bug Fixes / 修复
 
-- agentroom: Planned 策略（discussion → executing → review 三阶段 + 执行队列 + `@` 交棒），新 REST/WS + `PlanningPanel` UI
-- agentroom: 房间级安全开关 `readonly` / `mutationDryRun`，`readonly` 由 `scheduler.Pick` 兜底静音，两者在 prompt 同步注入
-- agentroom: 房间 `collaborationStyle` 自由文本每轮注入 system prompt，`PUT /rooms/{id}` 同步接受
-- agentroom: 成员卡新增"上下文压力"进度条（`lastPromptTokens / contextLimit`），内建主流模型窗口查表
-- agentroom: `UI_TIMEZONE` 偏好（localStorage）驱动 `formatTime` / `relativeTime`，Settings → 偏好新增时区卡片
+- merge legacy channel fields into accounts.default
 
-### 🔧 Refactor / 重构
+### ♻️ Refactoring / 重构
 
-- agentroom: `buildContextPrompt` 收敛协作风格 / 安全开关 / 执行棒注入，对其它成员隐藏 owner 指令
-- agentroom: `CreateRoomWizard` Step4 策略列表含 `planned`，`POLICY_META` 与描述同步
-
-### 🧪 Tests / 测试
-
-- 新增 21 个 Go 单测（planning 10 + model_catalog 16，其中重叠），全量通过
-
-### 🗄 Schema
-
-- `agentroom_rooms` += `execution_phase / execution_queue_json / execution_owner_idx / collaboration_style / readonly / mutation_dry_run`
-- `agentroom_members` += `last_prompt_tokens`
-- 新增 WS 事件 `planning.update`
+- unify watchdog probe with live+ready checks
 
 ---
 **Full Changelog**: [v0.2.6...v0.2.7](https://github.com/ClawDeckX/ClawDeckX/compare/v0.2.6...v0.2.7)
+
+
 
 ---
 
@@ -1643,6 +1630,7 @@ _2026-03-15_
 
 
 ---
+
 
 
 
