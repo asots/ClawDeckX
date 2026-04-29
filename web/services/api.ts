@@ -185,7 +185,9 @@ export const gatewayApi = {
     max_fails: number;
     last_ok: string;
     interval_sec?: number;
+    reconnect_backoff_cap_sec?: number;
     reconnect_backoff_cap_ms?: number;
+    restart_grace_sec?: number;
   }>('/api/v1/gateway/health-check'),
   getHealthCheckCached: (ttlMs = 6000, force = false) =>
     getCached<{
@@ -194,13 +196,17 @@ export const gatewayApi = {
       max_fails: number;
       last_ok: string;
       interval_sec?: number;
+      reconnect_backoff_cap_sec?: number;
       reconnect_backoff_cap_ms?: number;
+      restart_grace_sec?: number;
     }>('/api/v1/gateway/health-check', ttlMs, force),
   setHealthCheck: (payload: {
     enabled: boolean;
     interval_sec?: number;
     max_fails?: number;
+    reconnect_backoff_cap_sec?: number;
     reconnect_backoff_cap_ms?: number;
+    restart_grace_sec?: number;
   }) => put('/api/v1/gateway/health-check', payload),
   diagnose: () => post<{
     items: Array<{
@@ -381,6 +387,7 @@ export const auditApi = {
 export const configApi = {
   get: () => get<{ config: Record<string, any>; path: string; parsed: boolean }>('/api/v1/config'),
   update: (config: Record<string, any>) => put('/api/v1/config', { config }),
+  directUpdate: (config: Record<string, any>) => put('/api/v1/config/direct', { config }),
   validate: (config: Record<string, any>) => post<{
     ok: boolean;
     code: string;

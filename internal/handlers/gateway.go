@@ -227,10 +227,12 @@ func (h *GatewayHandler) GetHealthCheck(w http.ResponseWriter, r *http.Request) 
 // SetHealthCheck toggles the health check.
 func (h *GatewayHandler) SetHealthCheck(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		Enabled               bool `json:"enabled"`
-		IntervalSec           *int `json:"interval_sec,omitempty"`
-		MaxFails              *int `json:"max_fails,omitempty"`
-		ReconnectBackoffCapMs *int `json:"reconnect_backoff_cap_ms,omitempty"`
+		Enabled                bool `json:"enabled"`
+		IntervalSec            *int `json:"interval_sec,omitempty"`
+		MaxFails               *int `json:"max_fails,omitempty"`
+		ReconnectBackoffCapSec *int `json:"reconnect_backoff_cap_sec,omitempty"`
+		ReconnectBackoffCapMs  *int `json:"reconnect_backoff_cap_ms,omitempty"`
+		RestartGraceSec        *int `json:"restart_grace_sec,omitempty"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		web.FailErr(w, r, web.ErrInvalidBody)
@@ -245,8 +247,16 @@ func (h *GatewayHandler) SetHealthCheck(w http.ResponseWriter, r *http.Request) 
 		web.Fail(w, r, "INVALID_PARAM", "max_fails must be between 1 and 20", http.StatusBadRequest)
 		return
 	}
-	if req.ReconnectBackoffCapMs != nil && (*req.ReconnectBackoffCapMs < 1000 || *req.ReconnectBackoffCapMs > 120000) {
-		web.Fail(w, r, "INVALID_PARAM", "reconnect_backoff_cap_ms must be between 1000 and 120000", http.StatusBadRequest)
+	if req.ReconnectBackoffCapSec != nil && (*req.ReconnectBackoffCapSec < 1 || *req.ReconnectBackoffCapSec > 6000) {
+		web.Fail(w, r, "INVALID_PARAM", "reconnect_backoff_cap_sec must be between 1 and 6000", http.StatusBadRequest)
+		return
+	}
+	if req.ReconnectBackoffCapMs != nil && (*req.ReconnectBackoffCapMs < 1000 || *req.ReconnectBackoffCapMs > 6000000) {
+		web.Fail(w, r, "INVALID_PARAM", "reconnect_backoff_cap_ms must be between 1000 and 6000000", http.StatusBadRequest)
+		return
+	}
+	if req.RestartGraceSec != nil && (*req.RestartGraceSec < 10 || *req.RestartGraceSec > 600) {
+		web.Fail(w, r, "INVALID_PARAM", "restart_grace_sec must be between 10 and 600", http.StatusBadRequest)
 		return
 	}
 	if req.Enabled && !h.svc.IsRemote() && !openclaw.IsOpenClawInstalled() {
@@ -257,21 +267,28 @@ func (h *GatewayHandler) SetHealthCheck(w http.ResponseWriter, r *http.Request) 
 	intervalSec := 30
 	maxFails := 3
 	backoffCapMs := 30000
+	graceSec := 120
 	if req.IntervalSec != nil {
 		intervalSec = *req.IntervalSec
 	}
 	if req.MaxFails != nil {
 		maxFails = *req.MaxFails
 	}
-	if req.ReconnectBackoffCapMs != nil {
+	if req.ReconnectBackoffCapSec != nil {
+		backoffCapMs = *req.ReconnectBackoffCapSec * 1000
+	} else if req.ReconnectBackoffCapMs != nil {
 		backoffCapMs = *req.ReconnectBackoffCapMs
+	}
+	if req.RestartGraceSec != nil {
+		graceSec = *req.RestartGraceSec
 	}
 	if h.gwClient != nil {
 		h.gwClient.SetHealthCheckEnabled(req.Enabled)
 		h.gwClient.SetHealthCheckIntervalSeconds(intervalSec)
 		h.gwClient.SetHealthCheckMaxFails(maxFails)
 		h.gwClient.SetReconnectBackoffCapMs(backoffCapMs)
-		intervalSec, maxFails, backoffCapMs = h.gwClient.GetHealthCheckConfig()
+		h.gwClient.SetRestartGracePeriod(graceSec)
+		intervalSec, maxFails, backoffCapMs, graceSec = h.gwClient.GetHealthCheckConfig()
 	}
 
 	// persist to settings table
@@ -285,6 +302,7 @@ func (h *GatewayHandler) SetHealthCheck(w http.ResponseWriter, r *http.Request) 
 		"gateway_health_check_interval_sec": strconv.Itoa(intervalSec),
 		"gateway_health_check_max_fails":    strconv.Itoa(maxFails),
 		"gateway_reconnect_backoff_cap_ms":  strconv.Itoa(backoffCapMs),
+		"gateway_restart_grace_sec":         strconv.Itoa(graceSec),
 	})
 
 	h.writeAudit(r, constants.ActionSettingsUpdate, "success",
@@ -294,13 +312,16 @@ func (h *GatewayHandler) SetHealthCheck(w http.ResponseWriter, r *http.Request) 
 		Bool("enabled", req.Enabled).
 		Int("interval_sec", intervalSec).
 		Int("max_fails", maxFails).
-		Int("reconnect_backoff_cap_ms", backoffCapMs).
+		Int("reconnect_backoff_cap_sec", backoffCapMs/1000).
+		Int("restart_grace_sec", graceSec).
 		Msg("watchdog setting updated")
 	web.OK(w, r, map[string]interface{}{
-		"enabled":                  req.Enabled,
-		"interval_sec":             intervalSec,
-		"max_fails":                maxFails,
-		"reconnect_backoff_cap_ms": backoffCapMs,
+		"enabled":                   req.Enabled,
+		"interval_sec":              intervalSec,
+		"max_fails":                 maxFails,
+		"reconnect_backoff_cap_sec": backoffCapMs / 1000,
+		"reconnect_backoff_cap_ms":  backoffCapMs,
+		"restart_grace_sec":         graceSec,
 	})
 }
 

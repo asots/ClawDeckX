@@ -251,6 +251,11 @@ func RunServe(args []string) int {
 				gwClient.SetReconnectBackoffCapMs(backoffCapMs)
 			}
 		}
+		if v, _ := settingRepo.Get("gateway_restart_grace_sec"); v != "" {
+			if graceSec, err := strconv.Atoi(v); err == nil {
+				gwClient.SetRestartGracePeriod(graceSec)
+			}
+		}
 		v, _ := settingRepo.Get("gateway_health_check_enabled")
 		healthCheckApplicable := svc.IsRemote() || openclaw.IsOpenClawInstalled()
 		if v != "false" && healthCheckApplicable {
@@ -549,6 +554,7 @@ func RunServe(args []string) int {
 
 	router.GET("/api/v1/config", configHandler.Get)
 	router.PUT("/api/v1/config", web.RequireAdmin(configHandler.Update))
+	router.PUT("/api/v1/config/direct", web.RequireAdmin(configHandler.DirectUpdate))
 	router.POST("/api/v1/config/validate", web.RequireAdmin(configHandler.Validate))
 	router.POST("/api/v1/config/generate-default", web.RequireAdmin(configHandler.GenerateDefault))
 	router.POST("/api/v1/config/set-key", web.RequireAdmin(configHandler.SetKey))

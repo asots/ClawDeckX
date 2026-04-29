@@ -11,6 +11,7 @@ import { useGatewayEvents } from '../hooks/useGatewayEvents';
 import CustomSelect from '../components/CustomSelect';
 import NumberStepper from '../components/NumberStepper';
 import EventsPanel from './Gateway/EventsPanel';
+import OptimizeWizard from './Gateway/OptimizeWizard';
 import ChannelsPanel from './Gateway/ChannelsPanel';
 import DebugPanel from './Gateway/DebugPanel';
 import DreamsPanel from './Gateway/DreamsPanel';
@@ -155,7 +156,8 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
     last_check: string;
     max_fails: number;
     interval_sec: number;
-    reconnect_backoff_cap_ms: number;
+    reconnect_backoff_cap_sec: number;
+    restart_grace_sec: number;
     grace_until: string;
     grace_remaining_sec: number;
     restarting: boolean;
@@ -179,7 +181,8 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
   const [displayUptimeMs, setDisplayUptimeMs] = useState(0);
   const [watchdogIntervalSec, setWatchdogIntervalSec] = useState('30');
   const [watchdogMaxFails, setWatchdogMaxFails] = useState('3');
-  const [watchdogBackoffCapMs, setWatchdogBackoffCapMs] = useState('30000');
+  const [watchdogBackoffCapSec, setWatchdogBackoffCapSec] = useState('30');
+  const [watchdogGraceSec, setWatchdogGraceSec] = useState('120');
   const [watchdogAdvancedOpen, setWatchdogAdvancedOpen] = useState(false);
   const [watchdogSaving, setWatchdogSaving] = useState(false);
 
@@ -198,6 +201,7 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
 
   // 按钮操作状态
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [showOptimizeWizard, setShowOptimizeWizard] = useState(false);
 
 
 
@@ -287,6 +291,9 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
     });
   }, [logLimit]);
 
+  const watchdogAdvancedOpenRef = useRef(false);
+  watchdogAdvancedOpenRef.current = watchdogAdvancedOpen;
+
   const fetchHealthCheck = useCallback((force = false) => {
     gatewayApi.getHealthCheckCached(6000, force).then((data: any) => {
       setHealthCheckEnabled(!!data?.enabled);
@@ -296,7 +303,8 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
         last_check: data?.last_check || '',
         max_fails: data?.max_fails || 3,
         interval_sec: data?.interval_sec || 30,
-        reconnect_backoff_cap_ms: data?.reconnect_backoff_cap_ms || 30000,
+        reconnect_backoff_cap_sec: data?.reconnect_backoff_cap_sec ?? (data?.reconnect_backoff_cap_ms ? Math.round(data.reconnect_backoff_cap_ms / 1000) : 30),
+        restart_grace_sec: data?.restart_grace_sec ?? 120,
         grace_until: data?.grace_until || '',
         grace_remaining_sec: data?.grace_remaining_sec || 0,
         restarting: !!data?.restarting,
@@ -309,9 +317,12 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
         notify_last_ago_sec: data?.notify_last_ago_sec || 0,
         probe: data?.probe,
       });
-      setWatchdogIntervalSec(String(data?.interval_sec ?? 30));
-      setWatchdogMaxFails(String(data?.max_fails ?? 3));
-      setWatchdogBackoffCapMs(String(data?.reconnect_backoff_cap_ms ?? 30000));
+      if (!watchdogAdvancedOpenRef.current) {
+        setWatchdogIntervalSec(String(data?.interval_sec ?? 30));
+        setWatchdogMaxFails(String(data?.max_fails ?? 3));
+        setWatchdogBackoffCapSec(String(data?.reconnect_backoff_cap_sec ?? (data?.reconnect_backoff_cap_ms ? Math.round(data.reconnect_backoff_cap_ms / 1000) : 30)));
+        setWatchdogGraceSec(String(data?.restart_grace_sec ?? 120));
+      }
     }).catch(() => {});
   }, []);
 
@@ -604,12 +615,14 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
     try {
       const intervalSec = Number.parseInt(watchdogIntervalSec, 10);
       const maxFails = Number.parseInt(watchdogMaxFails, 10);
-      const backoffCapMs = Number.parseInt(watchdogBackoffCapMs, 10);
+      const backoffCapSec = Number.parseInt(watchdogBackoffCapSec, 10);
+      const graceSec = Number.parseInt(watchdogGraceSec, 10);
       const data: any = await gatewayApi.setHealthCheck({
         enabled: !healthCheckEnabled,
         interval_sec: Number.isFinite(intervalSec) ? intervalSec : 30,
         max_fails: Number.isFinite(maxFails) ? maxFails : 3,
-        reconnect_backoff_cap_ms: Number.isFinite(backoffCapMs) ? backoffCapMs : 30000,
+        reconnect_backoff_cap_sec: Number.isFinite(backoffCapSec) ? backoffCapSec : 30,
+        restart_grace_sec: Number.isFinite(graceSec) ? graceSec : 120,
       });
       setHealthCheckEnabled(!!data?.enabled);
       setHealthStatus({
@@ -618,7 +631,8 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
         last_check: data?.last_check || '',
         max_fails: data?.max_fails || 3,
         interval_sec: data?.interval_sec || 30,
-        reconnect_backoff_cap_ms: data?.reconnect_backoff_cap_ms || 30000,
+        reconnect_backoff_cap_sec: data?.reconnect_backoff_cap_sec ?? 30,
+        restart_grace_sec: data?.restart_grace_sec ?? 120,
         grace_until: data?.grace_until || '',
         grace_remaining_sec: data?.grace_remaining_sec || 0,
         restarting: !!data?.restarting,
@@ -633,15 +647,17 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
       });
       setWatchdogIntervalSec(String(data?.interval_sec ?? intervalSec));
       setWatchdogMaxFails(String(data?.max_fails ?? maxFails));
-      setWatchdogBackoffCapMs(String(data?.reconnect_backoff_cap_ms ?? backoffCapMs));
+      setWatchdogBackoffCapSec(String(data?.reconnect_backoff_cap_sec ?? backoffCapSec));
+      setWatchdogGraceSec(String(data?.restart_grace_sec ?? graceSec));
       toast('success', gw.patchOk || 'Saved');
     } catch (err: any) { toast('error', err?.message || ''); }
-  }, [healthCheckEnabled, watchdogIntervalSec, watchdogMaxFails, watchdogBackoffCapMs, toast, gw]);
+  }, [healthCheckEnabled, watchdogIntervalSec, watchdogMaxFails, watchdogBackoffCapSec, watchdogGraceSec, toast, gw]);
 
   const saveWatchdogAdvanced = useCallback(async () => {
     const intervalSec = Number.parseInt(watchdogIntervalSec, 10);
     const maxFails = Number.parseInt(watchdogMaxFails, 10);
-    const backoffCapMs = Number.parseInt(watchdogBackoffCapMs, 10);
+    const backoffCapSec = Number.parseInt(watchdogBackoffCapSec, 10);
+    const graceSec = Number.parseInt(watchdogGraceSec, 10);
 
     if (!Number.isFinite(intervalSec) || intervalSec < 5 || intervalSec > 300) {
       toast('error', gw.watchdogIntervalInvalid || 'Interval must be between 5 and 300 seconds');
@@ -651,8 +667,12 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
       toast('error', gw.watchdogMaxFailsInvalid || 'Max fails must be between 1 and 20');
       return;
     }
-    if (!Number.isFinite(backoffCapMs) || backoffCapMs < 1000 || backoffCapMs > 120000) {
-      toast('error', gw.watchdogBackoffInvalid || 'Backoff cap must be between 1000 and 120000 ms');
+    if (!Number.isFinite(backoffCapSec) || backoffCapSec < 1 || backoffCapSec > 6000) {
+      toast('error', gw.watchdogBackoffInvalid || 'Backoff cap must be between 1 and 6000 seconds');
+      return;
+    }
+    if (!Number.isFinite(graceSec) || graceSec < 10 || graceSec > 600) {
+      toast('error', gw.watchdogGraceInvalid || 'Restart grace must be between 10 and 600 seconds');
       return;
     }
 
@@ -662,11 +682,13 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
         enabled: healthCheckEnabled,
         interval_sec: intervalSec,
         max_fails: maxFails,
-        reconnect_backoff_cap_ms: backoffCapMs,
+        reconnect_backoff_cap_sec: backoffCapSec,
+        restart_grace_sec: graceSec,
       });
       setWatchdogIntervalSec(String(data?.interval_sec ?? intervalSec));
       setWatchdogMaxFails(String(data?.max_fails ?? maxFails));
-      setWatchdogBackoffCapMs(String(data?.reconnect_backoff_cap_ms ?? backoffCapMs));
+      setWatchdogBackoffCapSec(String(data?.reconnect_backoff_cap_sec ?? backoffCapSec));
+      setWatchdogGraceSec(String(data?.restart_grace_sec ?? graceSec));
       setHealthCheckEnabled(!!data?.enabled);
       toast('success', gw.patchOk || 'Saved');
     } catch (err: any) {
@@ -674,7 +696,7 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
     } finally {
       setWatchdogSaving(false);
     }
-  }, [healthCheckEnabled, watchdogIntervalSec, watchdogMaxFails, watchdogBackoffCapMs, toast, gw]);
+  }, [healthCheckEnabled, watchdogIntervalSec, watchdogMaxFails, watchdogBackoffCapSec, watchdogGraceSec, toast, gw]);
 
   // System Event — extracted to avoid duplicate code
   const handleSendSystemEvent = useCallback(async () => {
@@ -778,8 +800,8 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
     const liveOk = probe?.live?.ok === true;
     const readyOk = probe?.ready?.ok === true;
     const hasProbe = !!probe;
-    const fullyHealthy = phase === 'healthy' && tcpOk && liveOk && readyOk;
-    const hasFailedProbe = hasProbe && (!tcpOk || !liveOk || !readyOk);
+    const fullyHealthy = liveOk || (phase === 'healthy' && tcpOk);
+    const hasFailedProbe = hasProbe && (!tcpOk || !liveOk);
     return { phase, hasProbe, tcpOk, liveOk, readyOk, fullyHealthy, hasFailedProbe };
   }, [healthStatus]);
 
@@ -1000,6 +1022,17 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* 一键优化向导 */}
+      {showOptimizeWizard && (
+        <OptimizeWizard
+          language={language}
+          t={t}
+          wsConnected={gwWsConnected === true}
+          onClose={() => setShowOptimizeWizard(false)}
+          onApplied={() => refreshAll(true)}
+        />
       )}
 
       {/* 状态与控制区 — 紧凑布局 */}
@@ -1368,6 +1401,7 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
                   if (phase === 'restarting') return <><span className="material-symbols-outlined text-[12px] text-mac-red animate-spin">progress_activity</span><span className="text-[11px] font-bold text-mac-red">{gw.wdRestarting || 'Restarting...'}</span></>;
                   if (phase === 'grace') return <><span className="material-symbols-outlined text-[12px] text-amber-500">hourglass_top</span><span className="text-[11px] font-bold text-amber-500">{gw.wdGraceShort || 'Grace'} {(healthStatus?.grace_remaining_sec ?? 0) > 0 ? `${healthStatus!.grace_remaining_sec}s` : ''}</span></>;
                   if (phase === 'degraded') return <><span className="material-symbols-outlined text-[12px] text-mac-red">heart_broken</span><span className="text-[11px] font-bold text-mac-red">{gw.hbUnhealthy} ({healthStatus!.fail_count}/{healthStatus!.max_fails})</span></>;
+                  if (gatewayProbeState.fullyHealthy) return <><span className="material-symbols-outlined text-[12px] text-mac-green animate-pulse">favorite</span><span className="text-[11px] font-bold text-mac-green">{gw.hbHealthy}{!gatewayProbeState.readyOk ? <span className="font-normal theme-text-muted ms-1 text-[9px]">Ready...</span> : (healthStatus?.next_check_in_sec ?? 0) > 0 ? <span className="font-normal theme-text-muted ms-1 text-[9px] font-mono">{healthStatus!.next_check_in_sec}s</span> : null}</span></>;
                   if (phase === 'probing') return <><span className="material-symbols-outlined text-[12px] text-mac-yellow animate-spin">progress_activity</span><span className="text-[11px] theme-text-muted">{gw.hbProbing}</span></>;
                   if (!gatewayProbeState.fullyHealthy) return <><span className="material-symbols-outlined text-[12px] text-amber-500">warning</span><span className="text-[11px] font-bold text-amber-500">{gatewayProbeState.hasFailedProbe ? (gw.hbUnhealthy || 'Unhealthy') : (gw.hbProbing || 'Probing')}</span></>;
                   return <><span className="material-symbols-outlined text-[12px] text-mac-green animate-pulse">favorite</span><span className="text-[11px] font-bold text-mac-green">{gw.hbHealthy}{(healthStatus?.next_check_in_sec ?? 0) > 0 ? <span className="font-normal theme-text-muted ms-1 text-[9px] font-mono">{healthStatus!.next_check_in_sec}s</span> : ''}</span></>;
@@ -1588,70 +1622,84 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
                 <span className="material-symbols-outlined text-[14px]">tune</span>
                 {gw.watchdogAdvanced || 'Advanced'}
               </button>
+              <div className="w-px h-4 bg-slate-200 dark:bg-white/10 mx-0.5" />
+              <button
+                onClick={() => setShowOptimizeWizard(true)}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 transition-all"
+              >
+                <span className="material-symbols-outlined text-[14px]">bolt</span>
+                {gw.optimize?.btn || 'Optimize'}
+              </button>
             </div>
           );
         })()}
         {watchdogAdvancedOpen && (
-          <div className="mt-1 rounded-lg border border-slate-200 dark:border-white/10 theme-panel p-2">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-              <label className="text-[10px] theme-text-secondary">
-                {gw.watchdogInterval || 'Interval(s)'}
+          <div className="mt-1 rounded-lg border border-slate-200 dark:border-white/10 theme-panel p-1.5">
+            <div className="flex flex-wrap items-end gap-x-2 gap-y-1.5">
+              <label className="text-[10px] theme-text-secondary whitespace-nowrap">
+                <span className="block mb-0.5">{gw.watchdogInterval || 'Interval(s)'}</span>
                 <NumberStepper
                   value={watchdogIntervalSec}
                   onChange={setWatchdogIntervalSec}
-                  min={5}
-                  max={300}
-                  step={1}
-                  className="mt-1 h-7 max-w-[180px]"
-                  inputClassName="text-[10px] px-1"
-                  buttonClassName="!w-6 text-[11px]"
+                  min={5} max={300} step={1}
+                  className="h-6 w-[100px]"
+                  inputClassName="text-[10px] px-0.5"
+                  buttonClassName="!w-5 text-[10px]"
                 />
               </label>
-              <label className="text-[10px] theme-text-secondary">
-                {gw.watchdogMaxFails || 'Max fails'}
+              <label className="text-[10px] theme-text-secondary whitespace-nowrap">
+                <span className="block mb-0.5">{gw.watchdogMaxFails || 'Max fails'}</span>
                 <NumberStepper
                   value={watchdogMaxFails}
                   onChange={setWatchdogMaxFails}
-                  min={1}
-                  max={20}
-                  step={1}
-                  className="mt-1 h-7 max-w-[180px]"
-                  inputClassName="text-[10px] px-1"
-                  buttonClassName="!w-6 text-[11px]"
+                  min={1} max={20} step={1}
+                  className="h-6 w-[80px]"
+                  inputClassName="text-[10px] px-0.5"
+                  buttonClassName="!w-5 text-[10px]"
                 />
               </label>
-              <label className="text-[10px] theme-text-secondary">
-                {gw.watchdogBackoffCap || 'Backoff cap(ms)'}
+              <label className="text-[10px] theme-text-secondary whitespace-nowrap">
+                <span className="block mb-0.5">{gw.watchdogBackoffCap || 'Backoff cap(s)'}</span>
                 <NumberStepper
-                  value={watchdogBackoffCapMs}
-                  onChange={setWatchdogBackoffCapMs}
-                  min={1000}
-                  max={120000}
-                  step={1000}
-                  className="mt-1 h-7 max-w-[180px]"
-                  inputClassName="text-[10px] px-1"
-                  buttonClassName="!w-6 text-[11px]"
+                  value={watchdogBackoffCapSec}
+                  onChange={setWatchdogBackoffCapSec}
+                  min={1} max={6000} step={5}
+                  className="h-6 w-[100px]"
+                  inputClassName="text-[10px] px-0.5"
+                  buttonClassName="!w-5 text-[10px]"
                 />
               </label>
-            </div>
-            <div className="mt-2 flex items-center justify-end gap-2">
-              <button
-                onClick={() => {
-                  setWatchdogIntervalSec('30');
-                  setWatchdogMaxFails('3');
-                  setWatchdogBackoffCapMs('30000');
-                }}
-                className="px-2 py-1 rounded text-[10px] font-bold theme-field theme-text-secondary"
-              >
-                {gw.watchdogResetDefaults || 'Defaults'}
-              </button>
-              <button
-                onClick={() => { void saveWatchdogAdvanced(); }}
-                disabled={watchdogSaving}
-                className="px-2 py-1 rounded text-[10px] font-bold bg-primary text-white disabled:opacity-50"
-              >
-                {watchdogSaving ? (gw.saving || 'Saving...') : (gw.watchdogApply || gw.save || 'Apply')}
-              </button>
+              <label className="text-[10px] theme-text-secondary whitespace-nowrap">
+                <span className="block mb-0.5">{gw.watchdogGrace || 'Restart grace(s)'}</span>
+                <NumberStepper
+                  value={watchdogGraceSec}
+                  onChange={setWatchdogGraceSec}
+                  min={10} max={600} step={10}
+                  className="h-6 w-[100px]"
+                  inputClassName="text-[10px] px-0.5"
+                  buttonClassName="!w-5 text-[10px]"
+                />
+              </label>
+              <div className="flex items-end gap-1.5 ms-auto">
+                <button
+                  onClick={() => {
+                    setWatchdogIntervalSec('30');
+                    setWatchdogMaxFails('3');
+                    setWatchdogBackoffCapSec('30');
+                    setWatchdogGraceSec('120');
+                  }}
+                  className="h-6 px-2 rounded text-[10px] font-bold theme-field theme-text-secondary whitespace-nowrap"
+                >
+                  {gw.watchdogResetDefaults || 'Defaults'}
+                </button>
+                <button
+                  onClick={() => { void saveWatchdogAdvanced(); }}
+                  disabled={watchdogSaving}
+                  className="h-6 px-2 rounded text-[10px] font-bold bg-primary text-white disabled:opacity-50 whitespace-nowrap"
+                >
+                  {watchdogSaving ? (gw.saving || '...') : (gw.watchdogApply || gw.save || 'Apply')}
+                </button>
+              </div>
             </div>
           </div>
         )}

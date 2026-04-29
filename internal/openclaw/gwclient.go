@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math/rand/v2"
+	"net"
 	"net/url"
 	"os"
 	"runtime"
@@ -120,17 +121,12 @@ type GWClientConfig struct {
 
 type GWEventHandler func(event string, payload json.RawMessage)
 
-// restartGracePeriod is the initial quiet period after a watchdog-triggered
+// defaultRestartGracePeriod is the initial quiet period after a watchdog-triggered
 // restart during which health checks are fully skipped.  After it expires,
 // checks resume but failures do NOT count toward the restart threshold until
 // the gateway has been healthy at least once (healthPostRestartPending).
-const restartGracePeriod = 30 * time.Second
-
-// restartHardDeadline is the absolute maximum time after a restart during
-// which we tolerate failures without triggering another restart.  If the
-// gateway never becomes healthy within this window, the watchdog will
-// restart it again.
-const restartHardDeadline = 180 * time.Second
+// Configurable via SetRestartGracePeriod.
+const defaultRestartGracePeriod = 120 * time.Second
 
 type GWClient struct {
 	cfg           GWClientConfig
@@ -173,11 +169,11 @@ type GWClient struct {
 	healthFailCount             int           // current consecutive failure count
 	healthLastOK                time.Time     // last success time
 	healthLastCheck             time.Time     // last time a probe ran (success or fail)
-	healthLastProbe             GatewayProbeSnapshot
-	healthRestarting            bool      // true while a restart is in progress
-	healthGraceUntil            time.Time // skip health checks until this time (post-restart grace period)
-	healthPostRestartPending    bool      // true after restart until first successful health check
-	healthPostRestartDeadline   time.Time // hard deadline: if gateway never healthy by this time, allow re-restart
+	healthRestarting            bool          // true while a restart is in progress
+	healthGraceUntil            time.Time     // skip health checks until this time (post-restart grace period)
+	healthRestartGracePeriod    time.Duration // configurable grace period (default 120s)
+	healthPostRestartPending    bool          // true after restart until first successful health check
+	healthPostRestartDeadline   time.Time     // hard deadline: if gateway never healthy by this time, allow re-restart
 	healthStopCh                chan struct{}
 	healthRunning               bool
 	onRestart                   func() error                           // restart callback (injected externally)
@@ -203,15 +199,16 @@ type GWClient struct {
 
 func NewGWClient(cfg GWClientConfig) *GWClient {
 	return &GWClient{
-		cfg:            cfg,
-		pending:        make(map[string]chan *ResponseFrame),
-		stopCh:         make(chan struct{}),
-		backoffMs:      1000,
-		backoffCapMs:   30000,
-		tickInterval:   30 * time.Second,
-		healthInterval: 30 * time.Second,
-		healthMaxFails: 3,
-		reconnectNowCh: make(chan struct{}, 1),
+		cfg:                      cfg,
+		pending:                  make(map[string]chan *ResponseFrame),
+		stopCh:                   make(chan struct{}),
+		backoffMs:                1000,
+		backoffCapMs:             30000,
+		tickInterval:             30 * time.Second,
+		healthInterval:           30 * time.Second,
+		healthMaxFails:           3,
+		healthRestartGracePeriod: defaultRestartGracePeriod,
+		reconnectNowCh:           make(chan struct{}, 1),
 	}
 }
 
@@ -360,7 +357,7 @@ func (c *GWClient) HealthStatus() map[string]interface{} {
 	postRestartPending := c.healthPostRestartPending
 	healthLastCheckTime := c.healthLastCheck
 	healthInterval := c.healthInterval
-	healthLastProbe := c.healthLastProbe
+	gracePeriodSec := int(c.healthRestartGracePeriod / time.Second)
 	// Notification status snapshot
 	nfyChannels := make([]string, len(c.notifyChannels))
 	copy(nfyChannels, c.notifyChannels)
@@ -371,6 +368,8 @@ func (c *GWClient) HealthStatus() map[string]interface{} {
 
 	c.mu.Lock()
 	backoffCapMs := c.backoffCapMs
+	host := c.cfg.Host
+	port := c.cfg.Port
 	c.mu.Unlock()
 
 	graceStr := ""
@@ -419,20 +418,22 @@ func (c *GWClient) HealthStatus() map[string]interface{} {
 	}
 
 	return map[string]interface{}{
-		"enabled":                  enabled,
-		"fail_count":               failCount,
-		"max_fails":                maxFails,
-		"last_ok":                  lastOK,
-		"last_check":               lastCheck,
-		"interval_sec":             intervalSec,
-		"reconnect_backoff_cap_ms": backoffCapMs,
-		"grace_until":              graceStr,
-		"grace_remaining_sec":      graceRemainingSec,
-		"restarting":               restarting,
-		"post_restart_pending":     postRestartPending,
-		"next_check_in_sec":        nextCheckInSec,
-		"phase":                    phase,
-		"probe":                    healthLastProbe,
+		"enabled":                   enabled,
+		"fail_count":                failCount,
+		"max_fails":                 maxFails,
+		"last_ok":                   lastOK,
+		"last_check":                lastCheck,
+		"interval_sec":              intervalSec,
+		"reconnect_backoff_cap_sec": backoffCapMs / 1000,
+		"reconnect_backoff_cap_ms":  backoffCapMs,
+		"restart_grace_sec":         gracePeriodSec,
+		"grace_until":               graceStr,
+		"grace_remaining_sec":       graceRemainingSec,
+		"restarting":                restarting,
+		"post_restart_pending":      postRestartPending,
+		"next_check_in_sec":         nextCheckInSec,
+		"phase":                     phase,
+		"probe":                     ProbeGateway(host, port),
 		// Notification status
 		"notify_channels":     nfyChannels,
 		"notify_sending":      nfySending,
@@ -501,9 +502,10 @@ func (c *GWClient) healthCheckLoop() {
 			continue
 		}
 
-		wsPingOK := false
+		healthy := false
 		c.mu.Lock()
 		wsConnected := c.connected && c.conn != nil
+		allowTCPFallback := wsConnected
 		// Tick stall detection: if connected but no tick received for 3× tick interval,
 		// the connection is likely silently dead (NAT timeout, proxy drop, etc.)
 		if wsConnected && !c.lastTick.IsZero() {
@@ -529,7 +531,7 @@ func (c *GWClient) healthCheckLoop() {
 				time.Now().Add(3*time.Second),
 			)
 			if err == nil {
-				wsPingOK = true
+				healthy = true
 				logger.Gateway.Debug().Msg(i18n.T(i18n.MsgLogHeartbeatWsPingOk))
 			} else {
 				logger.Gateway.Debug().Err(err).Msg(i18n.T(i18n.MsgLogHeartbeatWsPingFail))
@@ -537,42 +539,17 @@ func (c *GWClient) healthCheckLoop() {
 		}
 		c.mu.Unlock()
 
-		probe := ProbeGateway(c.cfg.Host, c.cfg.Port)
-		c.healthMu.Lock()
-		c.healthLastProbe = probe
-		c.healthMu.Unlock()
-
-		// For watchdog purposes the gateway is healthy when WS ping succeeds
-		// or /health returns 200.  /ready may lag after a restart (plugins
-		// loading, channels reconnecting) and must not block recovery.
-		healthy := wsPingOK || probe.Live.OK
-		if healthy {
-			logger.Gateway.Debug().
-				Str("stage", probe.Stage).
-				Bool("ws_ping_ok", wsPingOK).
-				Int("health_status", probe.Live.StatusCode).
-				Int("ready_status", probe.Ready.StatusCode).
-				Msg("watchdog gateway probe passed")
-		} else {
-			logEvt := logger.Gateway.Debug().
-				Str("stage", probe.Stage).
-				Bool("tcp_reachable", probe.TCPReachable).
-				Bool("ws_connected", wsConnected).
-				Bool("ws_ping_ok", wsPingOK).
-				Bool("health_ok", probe.Live.OK).
-				Int("health_status", probe.Live.StatusCode).
-				Bool("ready_ok", probe.Ready.OK).
-				Int("ready_status", probe.Ready.StatusCode)
-			if probe.TCPError != "" {
-				logEvt = logEvt.Str("tcp_error", probe.TCPError)
+		if !healthy && allowTCPFallback {
+			tcpAddr := net.JoinHostPort(c.cfg.Host, fmt.Sprintf("%d", c.cfg.Port))
+			if conn, tcpErr := net.DialTimeout("tcp", tcpAddr, 3*time.Second); tcpErr == nil {
+				_ = conn.Close()
+				healthy = true
+				logger.Gateway.Debug().Msg(i18n.T(i18n.MsgLogHeartbeatTcpOk))
+			} else {
+				logger.Gateway.Debug().Err(tcpErr).Msg(i18n.T(i18n.MsgLogHeartbeatTcpFail))
 			}
-			if probe.Live.Error != "" {
-				logEvt = logEvt.Str("health_error", probe.Live.Error)
-			}
-			if probe.Ready.Error != "" {
-				logEvt = logEvt.Str("ready_error", probe.Ready.Error)
-			}
-			logEvt.Msg("watchdog gateway probe failed")
+		} else if !healthy && !wsConnected {
+			logger.Gateway.Debug().Msg("watchdog detected websocket disconnected; skipping TCP-only healthy fallback")
 		}
 
 		c.healthMu.Lock()
@@ -585,9 +562,12 @@ func (c *GWClient) healthCheckLoop() {
 			}
 			c.healthFailCount = 0
 			c.healthLastOK = time.Now()
-			// Gateway is healthy — clear post-restart pending state so future
-			// failures count normally toward the restart threshold.
-			c.healthPostRestartPending = false
+			// Clear post-restart pending on first successful check
+			if c.healthPostRestartPending {
+				logger.Gateway.Info().Msg("gateway healthy after restart, clearing post-restart pending")
+				c.healthPostRestartPending = false
+				c.healthPostRestartDeadline = time.Time{}
+			}
 		} else {
 			c.healthFailCount++
 			logger.Gateway.Warn().
@@ -595,24 +575,28 @@ func (c *GWClient) healthCheckLoop() {
 				Int("max_fails", c.healthMaxFails).
 				Msg(i18n.T(i18n.MsgLogHeartbeatFailed))
 
-			// After a restart, don't trigger another restart until the gateway
-			// has been healthy at least once — unless the hard deadline passes.
-			if c.healthPostRestartPending && time.Now().Before(c.healthPostRestartDeadline) {
-				logger.Gateway.Debug().
-					Time("deadline", c.healthPostRestartDeadline).
-					Msg("post-restart pending: suppressing restart threshold")
-				c.healthMu.Unlock()
-				continue
+			// During post-restart pending: suppress restart unless hard deadline exceeded
+			if c.healthPostRestartPending {
+				if !c.healthPostRestartDeadline.IsZero() && time.Now().After(c.healthPostRestartDeadline) {
+					logger.Gateway.Warn().Msg("post-restart hard deadline exceeded, gateway never became healthy")
+					c.healthPostRestartPending = false
+					c.healthPostRestartDeadline = time.Time{}
+					// Fall through to normal restart logic below
+				} else {
+					// Still within tolerance window — do not count toward restart
+					c.healthFailCount = 0
+					c.healthMu.Unlock()
+					continue
+				}
 			}
 
 			if c.healthFailCount >= c.healthMaxFails && c.onRestart != nil {
+				gracePeriod := c.healthRestartGracePeriod
 				logger.Gateway.Warn().
 					Int("consecutive_fails", c.healthFailCount).
 					Msg(i18n.T(i18n.MsgLogHeartbeatThresholdRestart))
 				c.healthFailCount = 0
-				c.healthGraceUntil = time.Now().Add(restartGracePeriod)
-				c.healthPostRestartPending = true
-				c.healthPostRestartDeadline = time.Now().Add(restartHardDeadline)
+				c.healthGraceUntil = time.Now().Add(gracePeriod)
 				c.healthRestarting = true
 				restartFn := c.onRestart
 				notifyFn := c.onNotify
@@ -639,9 +623,15 @@ func (c *GWClient) healthCheckLoop() {
 				// Reset grace period AFTER restart completes so the full
 				// duration starts from now, not from before the (blocking)
 				// restart call which may have consumed most of the window.
-				c.healthGraceUntil = time.Now().Add(restartGracePeriod)
+				c.healthGraceUntil = time.Now().Add(gracePeriod)
+				// Activate post-restart pending: failures won't trigger another
+				// restart until the gateway is healthy or the hard deadline passes.
 				c.healthPostRestartPending = true
-				c.healthPostRestartDeadline = time.Now().Add(restartHardDeadline)
+				c.healthPostRestartDeadline = time.Now().Add(gracePeriod * 3)
+				logger.Gateway.Info().
+					Dur("grace_period", gracePeriod).
+					Time("hard_deadline", c.healthPostRestartDeadline).
+					Msg("post-restart grace + pending activated")
 				c.healthMu.Unlock()
 				continue
 			}
@@ -691,8 +681,8 @@ func (c *GWClient) SetReconnectBackoffCapMs(capMs int) {
 	if capMs < 1000 {
 		capMs = 1000
 	}
-	if capMs > 120000 {
-		capMs = 120000
+	if capMs > 6000000 {
+		capMs = 6000000
 	}
 
 	c.mu.Lock()
@@ -703,10 +693,24 @@ func (c *GWClient) SetReconnectBackoffCapMs(capMs int) {
 	c.mu.Unlock()
 }
 
-func (c *GWClient) GetHealthCheckConfig() (intervalSec int, maxFails int, backoffCapMs int) {
+func (c *GWClient) SetRestartGracePeriod(seconds int) {
+	if seconds < 10 {
+		seconds = 10
+	}
+	if seconds > 600 {
+		seconds = 600
+	}
+
+	c.healthMu.Lock()
+	c.healthRestartGracePeriod = time.Duration(seconds) * time.Second
+	c.healthMu.Unlock()
+}
+
+func (c *GWClient) GetHealthCheckConfig() (intervalSec int, maxFails int, backoffCapMs int, graceSec int) {
 	c.healthMu.Lock()
 	intervalSec = int(c.healthInterval / time.Second)
 	maxFails = c.healthMaxFails
+	graceSec = int(c.healthRestartGracePeriod / time.Second)
 	c.healthMu.Unlock()
 
 	c.mu.Lock()
@@ -1154,8 +1158,7 @@ func (c *GWClient) readLoop(conn *websocket.Conn) error {
 	}()
 
 	connectNonce := ""
-	connectSent := true
-	go c.sendConnect(conn, connectNonce)
+	connectSent := false
 
 	for {
 		_, message, err := conn.ReadMessage()
@@ -1275,7 +1278,7 @@ func (c *GWClient) sendConnect(conn *websocket.Conn, nonce string) {
 	identity, err := LoadOrCreateDeviceIdentity("")
 	if err != nil {
 		logger.Log.Error().Err(err).Msg(i18n.T(i18n.MsgLogDeviceIdentityLoadFail))
-	} else if nonce != "" {
+	} else {
 		signedAt := time.Now().UnixMilli()
 		scopesStr := ""
 		if len(params.Scopes) > 0 {
