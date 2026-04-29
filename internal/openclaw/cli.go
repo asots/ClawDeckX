@@ -338,7 +338,7 @@ func ForceRemoveOpenClaw(pkg string) error {
 
 	// Remove the package directory
 	pkgDir := filepath.Join(npmGlobalDir, "node_modules", pkg)
-	if err := os.RemoveAll(pkgDir); err != nil {
+	if err := forceRemoveDir(pkgDir); err != nil {
 		return fmt.Errorf("failed to remove %s: %w", pkgDir, err)
 	}
 
@@ -355,10 +355,41 @@ func ForceRemoveOpenClaw(pkg string) error {
 	entries, _ := os.ReadDir(filepath.Join(npmGlobalDir, "node_modules"))
 	for _, e := range entries {
 		if strings.HasPrefix(e.Name(), "."+pkg+"-") {
-			_ = os.RemoveAll(filepath.Join(npmGlobalDir, "node_modules", e.Name()))
+			_ = forceRemoveDir(filepath.Join(npmGlobalDir, "node_modules", e.Name()))
 		}
 	}
 
+	return nil
+}
+
+// forceRemoveDir removes a directory, falling back to `cmd /c rd /s /q` on
+// Windows when Go's os.RemoveAll fails (e.g., file held by Defender/indexer).
+func forceRemoveDir(dir string) error {
+	if _, err := os.Stat(dir); err != nil {
+		return nil // already gone
+	}
+	if err := os.RemoveAll(dir); err == nil {
+		return nil
+	}
+	if runtime.GOOS != "windows" {
+		return os.RemoveAll(dir) // retry once on Unix
+	}
+	// Windows: rd /s /q is more aggressive than Go's RemoveAll and can
+	// remove files that are transiently locked by Defender/indexer.
+	c := exec.Command("cmd", "/c", "rd", "/s", "/q", dir)
+	executil.HideWindow(c)
+	_ = c.Run()
+	// If still present, try takeown + icacls + rd (mirrors uninstall script)
+	if _, err := os.Stat(dir); err == nil {
+		_ = exec.Command("cmd", "/c", "takeown", "/F", dir, "/R", "/D", "Y").Run()
+		_ = exec.Command("cmd", "/c", "icacls", dir, "/grant", os.Getenv("USERNAME")+":F", "/T", "/C", "/Q").Run()
+		c2 := exec.Command("cmd", "/c", "rd", "/s", "/q", dir)
+		executil.HideWindow(c2)
+		_ = c2.Run()
+	}
+	if _, err := os.Stat(dir); err == nil {
+		return fmt.Errorf("directory still exists after force removal: %s", dir)
+	}
 	return nil
 }
 

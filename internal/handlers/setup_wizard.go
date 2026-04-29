@@ -234,6 +234,7 @@ type AutoInstallRequest struct {
 	Model             string `json:"model,omitempty"`
 	BaseURL           string `json:"baseUrl,omitempty"`
 	Registry          string `json:"registry,omitempty"`
+	Tag               string `json:"tag,omitempty"`
 	InstallZeroTier   bool   `json:"installZeroTier,omitempty"`
 	ZerotierNetworkId string `json:"zerotierNetworkId,omitempty"`
 	InstallTailscale  bool   `json:"installTailscale,omitempty"`
@@ -277,6 +278,7 @@ func (h *SetupWizardHandler) AutoInstall(w http.ResponseWriter, r *http.Request)
 		Model:             req.Model,
 		BaseURL:           req.BaseURL,
 		Version:           "openclaw",
+		Tag:               req.Tag,
 		Registry:          req.Registry,
 		InstallZeroTier:   req.InstallZeroTier,
 		ZerotierNetworkId: req.ZerotierNetworkId,

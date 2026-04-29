@@ -22,6 +22,7 @@ type InstallConfig struct {
 	Model             string `json:"model,omitempty"`
 	BaseURL           string `json:"baseUrl,omitempty"`
 	Version           string `json:"version,omitempty"`           // "openclaw"
+	Tag               string `json:"tag,omitempty"`               // npm tag / version (e.g. "v2026.4.22"); empty = @latest
 	Registry          string `json:"registry,omitempty"`          // npm registry
 	SkipConfig        bool   `json:"skipConfig,omitempty"`        // skip config
 	SkipGateway       bool   `json:"skipGateway,omitempty"`       // skip starting Gateway
@@ -281,7 +282,7 @@ func (i *Installer) InstallOpenClawWithConfig(ctx context.Context, config Instal
 
 	if i.env.Tools["npm"].Installed || detectTool("npm", "--version").Installed {
 		i.emitter.EmitLog(i18n.T(i18n.MsgInstallerNpmGlobalInstalling))
-		if err := i.installViaNpmWithOptions(ctx, "openclaw", config.Registry); err == nil {
+		if err := i.installViaNpmWithTag(ctx, "openclaw", config.Registry, config.Tag); err == nil {
 			openclaw.InvalidateDiscoveryCache()
 			if detectOpenClawWithFallback().Installed {
 				i.emitter.EmitLog(i18n.T(i18n.MsgInstallerOpenclawNpmSuccess))
@@ -501,6 +502,33 @@ func (i *Installer) installViaNpmWithTag(ctx context.Context, version string, re
 	}
 	pkgName := version + "@" + tagSpec
 	i.emitter.EmitLog(i18n.T(i18n.MsgInstallerInstallingPackage, map[string]interface{}{"Package": pkgName}))
+
+	// Windows: force-remove the old package directory before npm install.
+	// This completely avoids npm's "retire" rename step (rename old dir →
+	// .pkg-XXXX) which is the primary source of errno -4094 / EBUSY failures
+	// when Defender, VS Code, or indexers hold file handles. We skip
+	// `npm uninstall -g` because it also performs internal renames that hit
+	// the same lock issue — instead we delete the files directly via OS calls
+	// (os.RemoveAll → rd /s /q → takeown+icacls fallback).
+	if runtime.GOOS == "windows" {
+		npmPrefix := openclaw.ResolveNpmGlobalDir()
+		if npmPrefix != "" {
+			pkgDir := filepath.Join(npmPrefix, "node_modules", version)
+			if _, err := os.Stat(pkgDir); err == nil {
+				i.emitter.EmitLog("Pre-removing old package directory to avoid retire rename locks...")
+				if rerr := openclaw.ForceRemoveOpenClaw(version); rerr != nil {
+					i.emitter.EmitLog("⚠ Force remove failed: " + rerr.Error())
+				}
+			}
+			// Clean leftover .pkg-XXXX retire directories from any previous failed attempts
+			entries, _ := os.ReadDir(filepath.Join(npmPrefix, "node_modules"))
+			for _, e := range entries {
+				if strings.HasPrefix(e.Name(), "."+version+"-") {
+					_ = os.RemoveAll(filepath.Join(npmPrefix, "node_modules", e.Name()))
+				}
+			}
+		}
+	}
 
 	// Build ordered list of registries to try: user-selected first, then fallbacks
 	registries := buildRegistryFallbackList(registry)

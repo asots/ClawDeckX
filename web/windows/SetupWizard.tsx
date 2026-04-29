@@ -3,8 +3,10 @@ import { Language } from '../types';
 import { getTranslation } from '../locales';
 import { get, post } from '../services/request';
 import { useConfirm } from '../components/ConfirmDialog';
+import CustomSelect from '../components/CustomSelect';
 import { getNPMRegistryURL, isLikelyInChina, NPM_REGISTRY_MIRRORS } from '../services/network';
 import { useOpenClawUpdate } from '../hooks/useOpenClawUpdate';
+import { hostInfoApi, ReleaseSummary } from '../services/api';
 
 interface SetupWizardProps {
   language: Language;
@@ -111,6 +113,11 @@ const SetupWizard: React.FC<SetupWizardProps> = ({ language, onClose, onOpenEdit
   const [sudoPassword, setSudoPassword] = useState('');
   const [disableAutoOpen, setDisableAutoOpen] = useState<boolean>(() => localStorage.getItem(SETUP_WIZARD_AUTO_OPEN_DISABLED_KEY) === '1');
 
+  // 版本选择
+  const [selectedTag, setSelectedTag] = useState(''); // '' = latest
+  const [ocReleaseList, setOcReleaseList] = useState<ReleaseSummary[]>([]);
+  const [loadingReleases, setLoadingReleases] = useState(false);
+
   useEffect(() => {
     localStorage.setItem(SETUP_WIZARD_AUTO_OPEN_DISABLED_KEY, disableAutoOpen ? '1' : '0');
   }, [disableAutoOpen]);
@@ -199,12 +206,28 @@ const SetupWizard: React.FC<SetupWizardProps> = ({ language, onClose, onOpenEdit
       });
   }, []);
 
+  // 加载 OpenClaw 版本列表
+  const loadOcReleaseList = useCallback(async () => {
+    setLoadingReleases(true);
+    try {
+      const list = await hostInfoApi.openclawReleases(50);
+      const arr = (Array.isArray(list) ? list : []).filter(r => !r.prerelease);
+      setOcReleaseList(arr);
+    } catch {
+      // ignore — user can still install latest
+    }
+    setLoadingReleases(false);
+  }, []);
+
+  useEffect(() => { loadOcReleaseList(); }, [loadOcReleaseList]);
+
   // 一键安装
   const startAutoInstall = useCallback(async () => {
     setPhase('install');
 
     const installConfig = {
       version: 'openclaw',
+      tag: selectedTag || undefined,
       registry: selectedRegistry,
       installZeroTier,
       zerotierNetworkId: installZeroTier && zerotierNetworkId ? zerotierNetworkId : undefined,
@@ -300,7 +323,7 @@ const SetupWizard: React.FC<SetupWizardProps> = ({ language, onClose, onOpenEdit
     } finally {
       setIsInstalling(false);
     }
-  }, [selectedRegistry, installZeroTier, zerotierNetworkId, installTailscale]);
+  }, [selectedTag, selectedRegistry, installZeroTier, zerotierNetworkId, installTailscale]);
 
 
 
@@ -618,6 +641,38 @@ const SetupWizard: React.FC<SetupWizardProps> = ({ language, onClose, onOpenEdit
                     <h4 className="text-sm font-bold text-[var(--color-text)] dark:text-white/80">
                       {sw.installOpts}
                     </h4>
+
+                    {/* 版本选择 */}
+                    <div>
+                      <label className="text-xs theme-text-secondary mb-2 block">{sw.versionSelect || 'Version'}</label>
+                      <div className="flex items-center gap-3">
+                        <CustomSelect
+                          value={selectedTag}
+                          onChange={setSelectedTag}
+                          disabled={loadingReleases}
+                          placeholder={loadingReleases ? '...' : (sw.versionLatest || 'Latest')}
+                          options={[
+                            { value: '', label: sw.versionLatest || 'Latest' },
+                            ...ocReleaseList.map(r => ({
+                              value: r.tagName,
+                              label: r.tagName + (r.name && r.name !== r.tagName ? ` — ${r.name}` : ''),
+                            })),
+                          ]}
+                          className="flex-1"
+                        />
+                        <button
+                          onClick={() => loadOcReleaseList()}
+                          disabled={loadingReleases}
+                          className="p-2 rounded-lg theme-field hover:bg-slate-200 dark:hover:bg-white/10 transition-colors disabled:opacity-50"
+                          title={sw.versionRefresh || 'Refresh'}
+                        >
+                          <span className={`material-symbols-outlined text-[16px] theme-text-secondary ${loadingReleases ? 'animate-spin' : ''}`}>refresh</span>
+                        </button>
+                      </div>
+                      {selectedTag && (
+                        <p className="text-[10px] theme-text-muted mt-1">{sw.versionSpecificHint || 'Will install this specific version instead of latest.'}</p>
+                      )}
+                    </div>
 
                     {/* 高级设置（可折叠） */}
                     <div className="border border-slate-200 dark:border-white/10 rounded-xl overflow-hidden">
