@@ -13,6 +13,7 @@ import { templateSystem } from '../services/template-system';
 import type { KnowledgeItem } from '../services/template-system';
 import type { ManagerWSStatus } from '../services/manager-ws';
 import { copyToClipboard } from '../utils/clipboard';
+import OptimizeWizard from './Gateway/OptimizeWizard';
 
 type TabId = 'diagnose' | 'testing';
 type TimeRange = '1h' | '6h' | '24h';
@@ -328,6 +329,7 @@ const Doctor: React.FC<DoctorProps> = ({ language }) => {
   const [expandedSummaryGroups, setExpandedSummaryGroups] = useState<string[]>([]);
   const [expandedSecurityItems, setExpandedSecurityItems] = useState<Set<string>>(new Set());
   const [securityAuditCollapsed, setSecurityAuditCollapsed] = useState(false);
+  const [showOptimizeWizard, setShowOptimizeWizard] = useState(false);
   const [securityGuideDismissed, setSecurityGuideDismissed] = useState(() => {
     if (typeof window === 'undefined') return false;
     return window.localStorage.getItem('doctor.securityGuideDismissed') === '1';
@@ -1506,6 +1508,10 @@ const Doctor: React.FC<DoctorProps> = ({ language }) => {
                 <span className="material-symbols-outlined text-[14px]">terminal</span>
                 {fixing ? text.fixing : text.fix}
               </button>
+              <button onClick={() => setShowOptimizeWizard(true)} className="h-8 px-3 rounded-lg text-[11px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 hover:bg-amber-500/20 flex items-center gap-1.5 transition-all">
+                <span className="material-symbols-outlined text-[14px]">bolt</span>
+                {(t as any).gw?.optimize?.btn || 'Optimize'}
+              </button>
             </div>
           )}
         </div>
@@ -2426,6 +2432,15 @@ const Doctor: React.FC<DoctorProps> = ({ language }) => {
             </div>
           </div>
         </div>
+      )}
+      {showOptimizeWizard && (
+        <OptimizeWizard
+          language={language}
+          t={t}
+          wsConnected={wsConnected}
+          onClose={() => setShowOptimizeWizard(false)}
+          onApplied={() => {}}
+        />
       )}
     </div>
   );

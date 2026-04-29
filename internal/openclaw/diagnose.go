@@ -1,4 +1,4 @@
-﻿package openclaw
+package openclaw
 
 import (
 	"ClawDeckX/internal/executil"
@@ -35,6 +35,112 @@ type DiagnoseResult struct {
 	Items   []DiagnoseItem `json:"items"`
 	Summary string         `json:"summary"` // pass | fail | warn
 	Message string         `json:"message"`
+}
+
+type GatewayProbeHTTPResult struct {
+	OK         bool                   `json:"ok"`
+	StatusCode int                    `json:"status_code,omitempty"`
+	LatencyMs  int64                  `json:"latency_ms,omitempty"`
+	Error      string                 `json:"error,omitempty"`
+	Body       map[string]interface{} `json:"body,omitempty"`
+}
+
+type GatewayProbeSnapshot struct {
+	Host         string                 `json:"host"`
+	Port         int                    `json:"port"`
+	Addr         string                 `json:"addr"`
+	CheckedAt    string                 `json:"checked_at"`
+	TCPReachable bool                   `json:"tcp_reachable"`
+	TCPLatencyMs int64                  `json:"tcp_latency_ms,omitempty"`
+	TCPError     string                 `json:"tcp_error,omitempty"`
+	Live         GatewayProbeHTTPResult `json:"live"`
+	Ready        GatewayProbeHTTPResult `json:"ready"`
+	Stage        string                 `json:"stage"`
+	Summary      string                 `json:"summary"`
+}
+
+func ProbeGateway(host string, port int) GatewayProbeSnapshot {
+	if host == "" {
+		host = "127.0.0.1"
+	}
+	if port == 0 {
+		port = 18789
+	}
+	addr := net.JoinHostPort(host, strconv.Itoa(port))
+	snap := GatewayProbeSnapshot{
+		Host:      host,
+		Port:      port,
+		Addr:      addr,
+		CheckedAt: time.Now().Format(time.RFC3339),
+		Stage:     "port",
+	}
+
+	start := time.Now()
+	conn, err := net.DialTimeout("tcp", addr, 2*time.Second)
+	snap.TCPLatencyMs = time.Since(start).Milliseconds()
+	if err != nil {
+		snap.TCPError = err.Error()
+		snap.Summary = i18n.T(i18n.MsgDiagnosePortNotListening)
+		return snap
+	}
+	snap.TCPReachable = true
+	_ = conn.Close()
+
+	type probeResult struct {
+		path   string
+		result GatewayProbeHTTPResult
+	}
+	resultCh := make(chan probeResult, 2)
+	go func() {
+		resultCh <- probeResult{path: "/health", result: probeGatewayHTTP(addr, "/health")}
+	}()
+	go func() {
+		resultCh <- probeResult{path: "/ready", result: probeGatewayHTTP(addr, "/ready")}
+	}()
+	for i := 0; i < 2; i++ {
+		result := <-resultCh
+		if result.path == "/health" {
+			snap.Live = result.result
+		} else {
+			snap.Ready = result.result
+		}
+	}
+	if !snap.Live.OK {
+		snap.Stage = "http_live"
+		snap.Summary = i18n.T(i18n.MsgDiagnoseGatewayHealthSuggestion)
+		return snap
+	}
+	if !snap.Ready.OK {
+		snap.Stage = "http_ready"
+		snap.Summary = i18n.T(i18n.MsgDiagnoseGatewayStartingSuggestion)
+		return snap
+	}
+	snap.Stage = "ready"
+	snap.Summary = i18n.T(i18n.MsgDiagnoseGatewayRunningOk)
+	return snap
+}
+
+func probeGatewayHTTP(addr string, path string) GatewayProbeHTTPResult {
+	start := time.Now()
+	client := &http.Client{Timeout: 3 * time.Second}
+	resp, err := client.Get(fmt.Sprintf("http://%s%s", addr, path))
+	latencyMs := time.Since(start).Milliseconds()
+	if err != nil {
+		return GatewayProbeHTTPResult{OK: false, LatencyMs: latencyMs, Error: err.Error()}
+	}
+	defer resp.Body.Close()
+	result := GatewayProbeHTTPResult{
+		OK:         resp.StatusCode >= 200 && resp.StatusCode < 300,
+		StatusCode: resp.StatusCode,
+		LatencyMs:  latencyMs,
+	}
+	if path == "/ready" {
+		var body map[string]interface{}
+		if err := json.NewDecoder(resp.Body).Decode(&body); err == nil {
+			result.Body = body
+		}
+	}
+	return result
 }
 
 func DiagnoseGateway(host string, port int) *DiagnoseResult {

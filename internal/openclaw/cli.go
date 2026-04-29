@@ -62,7 +62,14 @@ func ConfigGet(key string) (string, error) {
 func ConfigSet(key string, value string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	_, err := RunCLI(ctx, "config", "set", key, value, "--json")
+	out, err := RunCLI(ctx, "config", "set", key, value, "--json")
+	if err != nil {
+		// openclaw config set may exit non-zero but still succeed.
+		// Detect success by checking for "Updated" + "Restart the gateway" in output.
+		if strings.Contains(out, "Updated") && strings.Contains(out, "gateway") {
+			return nil
+		}
+	}
 	return err
 }
 

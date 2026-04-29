@@ -37,7 +37,7 @@ interface ServicePanelProps {
     last_check: string;
     max_fails: number;
     interval_sec: number;
-    reconnect_backoff_cap_ms: number;
+    reconnect_backoff_cap_sec: number;
     grace_until: string;
     grace_remaining_sec: number;
     restarting: boolean;

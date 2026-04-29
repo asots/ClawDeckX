@@ -110,6 +110,94 @@ func (h *ConfigHandler) Update(w http.ResponseWriter, r *http.Request) {
 	web.OK(w, r, map[string]string{"message": "ok"})
 }
 
+// DirectUpdate merges partial config directly into the JSON file.
+// Used when the gateway is not running (openclaw CLI may not be available).
+// Only changed top-level keys should be sent; they are deep-merged into the existing file.
+// PUT /api/v1/config/direct
+func (h *ConfigHandler) DirectUpdate(w http.ResponseWriter, r *http.Request) {
+	path := configPath()
+	if path == "" {
+		web.FailErr(w, r, web.ErrConfigPathError)
+		return
+	}
+
+	var req struct {
+		Config map[string]interface{} `json:"config"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		web.FailErr(w, r, web.ErrInvalidBody)
+		return
+	}
+	if req.Config == nil {
+		web.FailErr(w, r, web.ErrConfigEmpty)
+		return
+	}
+
+	// Read existing file
+	existing := make(map[string]interface{})
+	data, err := os.ReadFile(path)
+	if err != nil && !os.IsNotExist(err) {
+		web.FailErr(w, r, web.ErrConfigReadFailed)
+		return
+	}
+	if len(data) > 0 {
+		if err := json.Unmarshal(data, &existing); err != nil {
+			logger.Config.Error().Err(err).Msg("config file parse failed for direct update")
+			web.FailErr(w, r, web.ErrConfigReadFailed, "JSON parse error: "+err.Error())
+			return
+		}
+	}
+
+	// Deep-merge each top-level key
+	for key, val := range req.Config {
+		if valMap, ok := val.(map[string]interface{}); ok {
+			if existMap, ok2 := existing[key].(map[string]interface{}); ok2 {
+				deepMerge(existMap, valMap)
+				existing[key] = existMap
+				continue
+			}
+		}
+		existing[key] = val
+	}
+
+	// Write back with indentation
+	out, err := json.MarshalIndent(existing, "", "  ")
+	if err != nil {
+		web.FailErr(w, r, web.ErrConfigWriteFailed, err.Error())
+		return
+	}
+	out = append(out, '\n')
+	if err := os.WriteFile(path, out, 0644); err != nil {
+		web.FailErr(w, r, web.ErrConfigWriteFailed, err.Error())
+		return
+	}
+
+	h.auditRepo.Create(&database.AuditLog{
+		UserID:   web.GetUserID(r),
+		Username: web.GetUsername(r),
+		Action:   constants.ActionConfigUpdate,
+		Result:   "success",
+		Detail:   "direct file write",
+		IP:       r.RemoteAddr,
+	})
+
+	logger.Config.Info().Str("user", web.GetUsername(r)).Str("path", path).Msg("OpenClaw config updated (direct)")
+	web.OK(w, r, map[string]string{"message": "ok"})
+}
+
+// deepMerge recursively merges src into dst. src values override dst.
+func deepMerge(dst, src map[string]interface{}) {
+	for k, sv := range src {
+		if svMap, ok := sv.(map[string]interface{}); ok {
+			if dvMap, ok2 := dst[k].(map[string]interface{}); ok2 {
+				deepMerge(dvMap, svMap)
+				continue
+			}
+		}
+		dst[k] = sv
+	}
+}
+
 // SetKey sets a single config key.
 // POST /api/v1/config/set-key
 func (h *ConfigHandler) SetKey(w http.ResponseWriter, r *http.Request) {
