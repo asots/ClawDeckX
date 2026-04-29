@@ -50,7 +50,30 @@ const REDACT_OPTIONS = [
   { value: 'tools', label: 'tools (recommended)' },
 ];
 
-const TOTAL_STEPS = 4;
+const EXEC_SECURITY_OPTIONS = [
+  { value: 'deny', label: 'deny (safest)' },
+  { value: 'allowlist', label: 'allowlist (recommended)' },
+  { value: 'full', label: 'full (unrestricted)' },
+];
+
+const EXEC_ASK_OPTIONS = [
+  { value: 'always', label: 'always' },
+  { value: 'on-miss', label: 'on-miss (recommended)' },
+  { value: 'off', label: 'off' },
+];
+
+const CONTEXT_INJECTION_OPTIONS = [
+  { value: 'always', label: 'always (default)' },
+  { value: 'continuation-skip', label: 'continuation-skip (saves tokens)' },
+  { value: 'never', label: 'never' },
+];
+
+const SESSION_MAINTENANCE_OPTIONS = [
+  { value: 'warn', label: 'warn (default)' },
+  { value: 'enforce', label: 'enforce (auto-cleanup)' },
+];
+
+const TOTAL_STEPS = 6;
 
 // ---------------------------------------------------------------------------
 // Types
@@ -73,12 +96,25 @@ interface WizardState {
   pruningTtl: string;
   compactionMode: string;
   compactionNotify: boolean;
+  compactionTruncate: boolean;
+  compactionMaxHistoryShare: string;
+  contextInjection: string;
   maxConcurrent: string;
   timeoutSeconds: string;
   thinkingDefault: string;
+  imageMaxDimensionPx: string;
   updateCheckOnStart: boolean;
   redactSensitive: string;
   localModelLean: boolean;
+  execSecurity: string;
+  execAsk: string;
+  execStrictInlineEval: boolean;
+  execTimeoutSec: string;
+  fsWorkspaceOnly: boolean;
+  loopDetectionEnabled: boolean;
+  sessionMaintenanceMode: string;
+  sessionMaxDiskBytes: string;
+  webSearchMaxResults: string;
   proxyEnabled: boolean;
   proxyUrl: string;
 }
@@ -114,12 +150,25 @@ const OptimizeWizard: React.FC<Props> = ({ language, t, wsConnected, onClose, on
     pruningTtl: '',
     compactionMode: '',
     compactionNotify: false,
+    compactionTruncate: false,
+    compactionMaxHistoryShare: '',
+    contextInjection: 'always',
     maxConcurrent: '1',
     timeoutSeconds: '',
     thinkingDefault: '',
+    imageMaxDimensionPx: '',
     updateCheckOnStart: true,
     redactSensitive: '',
     localModelLean: false,
+    execSecurity: 'deny',
+    execAsk: 'on-miss',
+    execStrictInlineEval: false,
+    execTimeoutSec: '',
+    fsWorkspaceOnly: false,
+    loopDetectionEnabled: false,
+    sessionMaintenanceMode: 'warn',
+    sessionMaxDiskBytes: '',
+    webSearchMaxResults: '',
     proxyEnabled: false,
     proxyUrl: '',
   });
@@ -147,12 +196,25 @@ const OptimizeWizard: React.FC<Props> = ({ language, t, wsConnected, onClose, on
         pruningTtl: String(deepGet(cfg, 'agents.defaults.contextPruning.ttl') || ''),
         compactionMode: deepGet(cfg, 'agents.defaults.compaction.mode') || '',
         compactionNotify: !!deepGet(cfg, 'agents.defaults.compaction.notifyUser'),
+        compactionTruncate: !!deepGet(cfg, 'agents.defaults.compaction.truncateAfterCompaction'),
+        compactionMaxHistoryShare: String(deepGet(cfg, 'agents.defaults.compaction.maxHistoryShare') || ''),
+        contextInjection: deepGet(cfg, 'agents.defaults.contextInjection') || 'always',
         maxConcurrent: String(deepGet(cfg, 'agents.defaults.maxConcurrent') || '1'),
         timeoutSeconds: String(deepGet(cfg, 'agents.defaults.timeoutSeconds') || ''),
         thinkingDefault: deepGet(cfg, 'agents.defaults.thinkingDefault') || '',
+        imageMaxDimensionPx: String(deepGet(cfg, 'agents.defaults.imageMaxDimensionPx') || ''),
         updateCheckOnStart: deepGet(cfg, 'update.checkOnStart') !== false,
         redactSensitive: deepGet(cfg, 'logging.redactSensitive') || '',
         localModelLean: !!deepGet(cfg, 'agents.defaults.experimental.localModelLean'),
+        execSecurity: deepGet(cfg, 'tools.exec.security') || 'deny',
+        execAsk: deepGet(cfg, 'tools.exec.ask') || 'on-miss',
+        execStrictInlineEval: !!deepGet(cfg, 'tools.exec.strictInlineEval'),
+        execTimeoutSec: String(deepGet(cfg, 'tools.exec.timeoutSec') || ''),
+        fsWorkspaceOnly: !!deepGet(cfg, 'tools.fs.workspaceOnly'),
+        loopDetectionEnabled: !!deepGet(cfg, 'tools.loopDetection.enabled'),
+        sessionMaintenanceMode: deepGet(cfg, 'session.maintenance.mode') || 'warn',
+        sessionMaxDiskBytes: String(deepGet(cfg, 'session.maintenance.maxDiskBytes') || ''),
+        webSearchMaxResults: String(deepGet(cfg, 'tools.web.search.maxResults') || ''),
         proxyEnabled: !!deepGet(cfg, 'proxy.enabled'),
         proxyUrl: deepGet(cfg, 'proxy.proxyUrl') || '',
       };
@@ -174,12 +236,25 @@ const OptimizeWizard: React.FC<Props> = ({ language, t, wsConnected, onClose, on
     if (ws.pruningTtl !== origWs.pruningTtl) n++;
     if (ws.compactionMode !== origWs.compactionMode) n++;
     if (ws.compactionNotify !== origWs.compactionNotify) n++;
+    if (ws.compactionTruncate !== origWs.compactionTruncate) n++;
+    if (ws.compactionMaxHistoryShare !== origWs.compactionMaxHistoryShare) n++;
+    if (ws.contextInjection !== origWs.contextInjection) n++;
     if (ws.maxConcurrent !== origWs.maxConcurrent) n++;
     if (ws.timeoutSeconds !== origWs.timeoutSeconds) n++;
     if (ws.thinkingDefault !== origWs.thinkingDefault) n++;
+    if (ws.imageMaxDimensionPx !== origWs.imageMaxDimensionPx) n++;
     if (ws.updateCheckOnStart !== origWs.updateCheckOnStart) n++;
     if (ws.redactSensitive !== origWs.redactSensitive) n++;
     if (ws.localModelLean !== origWs.localModelLean) n++;
+    if (ws.execSecurity !== origWs.execSecurity) n++;
+    if (ws.execAsk !== origWs.execAsk) n++;
+    if (ws.execStrictInlineEval !== origWs.execStrictInlineEval) n++;
+    if (ws.execTimeoutSec !== origWs.execTimeoutSec) n++;
+    if (ws.fsWorkspaceOnly !== origWs.fsWorkspaceOnly) n++;
+    if (ws.loopDetectionEnabled !== origWs.loopDetectionEnabled) n++;
+    if (ws.sessionMaintenanceMode !== origWs.sessionMaintenanceMode) n++;
+    if (ws.sessionMaxDiskBytes !== origWs.sessionMaxDiskBytes) n++;
+    if (ws.webSearchMaxResults !== origWs.webSearchMaxResults) n++;
     if (ws.proxyEnabled !== origWs.proxyEnabled) n++;
     if (ws.proxyUrl !== origWs.proxyUrl) n++;
     return n;
@@ -205,6 +280,15 @@ const OptimizeWizard: React.FC<Props> = ({ language, t, wsConnected, onClose, on
       pruningTtl: prev.pruningTtl || '30',
       compactionMode: prev.compactionMode || 'safeguard',
       compactionNotify: true,
+      compactionTruncate: true,
+      contextInjection: 'continuation-skip',
+      execSecurity: prev.execSecurity === 'full' ? 'allowlist' : prev.execSecurity,
+      execAsk: prev.execAsk === 'off' ? 'on-miss' : prev.execAsk,
+      execStrictInlineEval: true,
+      fsWorkspaceOnly: true,
+      loopDetectionEnabled: true,
+      sessionMaintenanceMode: 'enforce',
+      sessionMaxDiskBytes: prev.sessionMaxDiskBytes || '500mb',
     }));
   }, []);
 
@@ -256,14 +340,18 @@ const OptimizeWizard: React.FC<Props> = ({ language, t, wsConnected, onClose, on
         patch.models = existingModels;
       }
 
-      // 3) Agents (context pruning, compaction, perf, lean mode)
+      // 3) Agents (context pruning, compaction, perf, lean mode, contextInjection, imageMaxDimensionPx)
       const agentsChanged = ws.pruningMode !== origWs.pruningMode
         || ws.pruningTtl !== origWs.pruningTtl
         || ws.compactionMode !== origWs.compactionMode
         || ws.compactionNotify !== origWs.compactionNotify
+        || ws.compactionTruncate !== origWs.compactionTruncate
+        || ws.compactionMaxHistoryShare !== origWs.compactionMaxHistoryShare
+        || ws.contextInjection !== origWs.contextInjection
         || ws.maxConcurrent !== origWs.maxConcurrent
         || ws.timeoutSeconds !== origWs.timeoutSeconds
         || ws.thinkingDefault !== origWs.thinkingDefault
+        || ws.imageMaxDimensionPx !== origWs.imageMaxDimensionPx
         || ws.localModelLean !== origWs.localModelLean;
 
       if (agentsChanged) {
@@ -287,7 +375,8 @@ const OptimizeWizard: React.FC<Props> = ({ language, t, wsConnected, onClose, on
         }
 
         // Compaction
-        if (ws.compactionMode !== origWs.compactionMode || ws.compactionNotify !== origWs.compactionNotify) {
+        if (ws.compactionMode !== origWs.compactionMode || ws.compactionNotify !== origWs.compactionNotify
+          || ws.compactionTruncate !== origWs.compactionTruncate || ws.compactionMaxHistoryShare !== origWs.compactionMaxHistoryShare) {
           if (!agents.defaults) agents.defaults = {};
           if (!agents.defaults.compaction) agents.defaults.compaction = {};
           if (ws.compactionMode) {
@@ -297,7 +386,21 @@ const OptimizeWizard: React.FC<Props> = ({ language, t, wsConnected, onClose, on
           }
           agents.defaults.compaction.notifyUser = ws.compactionNotify || undefined;
           if (!agents.defaults.compaction.notifyUser) delete agents.defaults.compaction.notifyUser;
+          agents.defaults.compaction.truncateAfterCompaction = ws.compactionTruncate || undefined;
+          if (!agents.defaults.compaction.truncateAfterCompaction) delete agents.defaults.compaction.truncateAfterCompaction;
+          const mhs = parseFloat(ws.compactionMaxHistoryShare);
+          if (mhs > 0 && mhs <= 1) agents.defaults.compaction.maxHistoryShare = mhs; else delete agents.defaults.compaction.maxHistoryShare;
           if (Object.keys(agents.defaults.compaction).length === 0) delete agents.defaults.compaction;
+        }
+
+        // Context injection
+        if (ws.contextInjection !== origWs.contextInjection) {
+          if (!agents.defaults) agents.defaults = {};
+          if (ws.contextInjection && ws.contextInjection !== 'always') {
+            agents.defaults.contextInjection = ws.contextInjection;
+          } else {
+            delete agents.defaults.contextInjection;
+          }
         }
 
         // Performance
@@ -314,6 +417,13 @@ const OptimizeWizard: React.FC<Props> = ({ language, t, wsConnected, onClose, on
         if (ws.thinkingDefault !== origWs.thinkingDefault) {
           if (!agents.defaults) agents.defaults = {};
           if (ws.thinkingDefault) agents.defaults.thinkingDefault = ws.thinkingDefault; else delete agents.defaults.thinkingDefault;
+        }
+
+        // Image max dimension
+        if (ws.imageMaxDimensionPx !== origWs.imageMaxDimensionPx) {
+          if (!agents.defaults) agents.defaults = {};
+          const v = parseInt(ws.imageMaxDimensionPx, 10);
+          if (v > 0) agents.defaults.imageMaxDimensionPx = v; else delete agents.defaults.imageMaxDimensionPx;
         }
 
         // Lean mode
@@ -346,7 +456,72 @@ const OptimizeWizard: React.FC<Props> = ({ language, t, wsConnected, onClose, on
         patch.logging = existingLogging;
       }
 
-      // 6) Proxy
+      // 6) Tools (exec, fs, loopDetection, web search)
+      const toolsChanged = ws.execSecurity !== origWs.execSecurity
+        || ws.execAsk !== origWs.execAsk
+        || ws.execStrictInlineEval !== origWs.execStrictInlineEval
+        || ws.execTimeoutSec !== origWs.execTimeoutSec
+        || ws.fsWorkspaceOnly !== origWs.fsWorkspaceOnly
+        || ws.loopDetectionEnabled !== origWs.loopDetectionEnabled
+        || ws.webSearchMaxResults !== origWs.webSearchMaxResults;
+
+      if (toolsChanged) {
+        let tools = JSON.parse(JSON.stringify(full.tools || {}));
+        if (ws.execSecurity !== origWs.execSecurity || ws.execAsk !== origWs.execAsk
+          || ws.execStrictInlineEval !== origWs.execStrictInlineEval || ws.execTimeoutSec !== origWs.execTimeoutSec) {
+          if (!tools.exec) tools.exec = {};
+          tools.exec.security = ws.execSecurity || undefined;
+          if (!tools.exec.security || tools.exec.security === 'deny') delete tools.exec.security;
+          tools.exec.ask = ws.execAsk || undefined;
+          if (!tools.exec.ask || tools.exec.ask === 'on-miss') delete tools.exec.ask;
+          tools.exec.strictInlineEval = ws.execStrictInlineEval || undefined;
+          if (!tools.exec.strictInlineEval) delete tools.exec.strictInlineEval;
+          const et = parseInt(ws.execTimeoutSec, 10);
+          if (et > 0) tools.exec.timeoutSec = et; else delete tools.exec.timeoutSec;
+          if (Object.keys(tools.exec).length === 0) delete tools.exec;
+        }
+        if (ws.fsWorkspaceOnly !== origWs.fsWorkspaceOnly) {
+          if (!tools.fs) tools.fs = {};
+          tools.fs.workspaceOnly = ws.fsWorkspaceOnly || undefined;
+          if (!tools.fs.workspaceOnly) delete tools.fs.workspaceOnly;
+          if (Object.keys(tools.fs).length === 0) delete tools.fs;
+        }
+        if (ws.loopDetectionEnabled !== origWs.loopDetectionEnabled) {
+          if (!tools.loopDetection) tools.loopDetection = {};
+          tools.loopDetection.enabled = ws.loopDetectionEnabled || undefined;
+          if (!tools.loopDetection.enabled) delete tools.loopDetection.enabled;
+          if (Object.keys(tools.loopDetection).length === 0) delete tools.loopDetection;
+        }
+        if (ws.webSearchMaxResults !== origWs.webSearchMaxResults) {
+          if (!tools.web) tools.web = {};
+          if (!tools.web.search) tools.web.search = {};
+          const mr = parseInt(ws.webSearchMaxResults, 10);
+          if (mr > 0) tools.web.search.maxResults = mr; else delete tools.web.search.maxResults;
+          if (Object.keys(tools.web.search).length === 0) delete tools.web.search;
+          if (Object.keys(tools.web).length === 0) delete tools.web;
+        }
+        patch.tools = tools;
+      }
+
+      // 7) Session maintenance
+      if (ws.sessionMaintenanceMode !== origWs.sessionMaintenanceMode || ws.sessionMaxDiskBytes !== origWs.sessionMaxDiskBytes) {
+        let session = JSON.parse(JSON.stringify(full.session || {}));
+        if (!session.maintenance) session.maintenance = {};
+        if (ws.sessionMaintenanceMode && ws.sessionMaintenanceMode !== 'warn') {
+          session.maintenance.mode = ws.sessionMaintenanceMode;
+        } else {
+          delete session.maintenance.mode;
+        }
+        if (ws.sessionMaxDiskBytes) {
+          session.maintenance.maxDiskBytes = ws.sessionMaxDiskBytes;
+        } else {
+          delete session.maintenance.maxDiskBytes;
+        }
+        if (Object.keys(session.maintenance).length === 0) delete session.maintenance;
+        patch.session = session;
+      }
+
+      // 8) Proxy
       if (ws.proxyEnabled !== origWs.proxyEnabled || ws.proxyUrl !== origWs.proxyUrl) {
         if (ws.proxyEnabled && ws.proxyUrl) {
           patch.proxy = { enabled: true, proxyUrl: ws.proxyUrl };
@@ -378,8 +553,10 @@ const OptimizeWizard: React.FC<Props> = ({ language, t, wsConnected, onClose, on
   // Step definitions
   const STEPS = useMemo(() => [
     { key: 'plugins', icon: 'extension', label: opt.stepPlugins || 'Plugins' },
+    { key: 'security', icon: 'shield', label: opt.stepSecurity || 'Security' },
     { key: 'context', icon: 'compress', label: opt.stepContext || 'Context' },
     { key: 'perf', icon: 'speed', label: opt.stepPerf || 'Performance' },
+    { key: 'maintenance', icon: 'cleaning_services', label: opt.stepMaintenance || 'Cleanup' },
     { key: 'proxy', icon: 'vpn_lock', label: opt.stepProxy || 'Proxy' },
   ], [opt]);
 
@@ -530,6 +707,38 @@ const OptimizeWizard: React.FC<Props> = ({ language, t, wsConnected, onClose, on
           <p className="text-[9px] theme-text-muted">{opt.compactionNotifyHint || 'Show brief notices when compaction starts and completes.'}</p>
         </div>
       </div>
+      <div className="flex items-center gap-3 px-3 py-2 rounded-xl border border-slate-200/60 dark:border-white/[0.06]">
+        <Toggle on={ws.compactionTruncate} onToggle={() => setWs(p => ({ ...p, compactionTruncate: !p.compactionTruncate }))} />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-[11px] font-bold text-[var(--color-text)] dark:text-white">{opt.compactionTruncate || 'Truncate after compaction'}</span>
+            <ConfigHint path="agents.defaults.compaction.truncateAfterCompaction" />
+          </div>
+          <p className="text-[9px] theme-text-muted">{opt.compactionTruncateHint || 'Rotate transcript file after compaction to prevent unbounded growth.'}</p>
+        </div>
+      </div>
+      <FieldLabel label={opt.compactionMaxHistory || 'Max History Share'} hint="agents.defaults.compaction.maxHistoryShare">
+        <div className="flex items-center gap-2">
+          <input
+            type="text"
+            value={ws.compactionMaxHistoryShare}
+            onChange={e => setWs(p => ({ ...p, compactionMaxHistoryShare: e.target.value.replace(/[^0-9.]/g, '') }))}
+            placeholder="0.5"
+            className="w-20 sci-input px-3 py-1.5 rounded-lg text-[11px] font-mono"
+          />
+          <span className="text-[10px] theme-text-secondary">{opt.compactionMaxHistoryUnit || '0.1–0.9 (default 0.5)'}</span>
+        </div>
+      </FieldLabel>
+      <div className="w-full h-px bg-slate-200 dark:bg-white/5" />
+      <FieldLabel label={opt.contextInjectionLabel || 'Context Injection'} hint="agents.defaults.contextInjection">
+        <CustomSelect
+          value={ws.contextInjection}
+          onChange={(v: string) => setWs(p => ({ ...p, contextInjection: v }))}
+          options={CONTEXT_INJECTION_OPTIONS}
+          className="max-w-[280px]"
+        />
+        <p className="text-[9px] theme-text-muted mt-1">{opt.contextInjectionHint || '"continuation-skip" skips re-injecting AGENTS.md on follow-up turns, saving tokens on long conversations.'}</p>
+      </FieldLabel>
     </div>
   );
 
@@ -559,6 +768,45 @@ const OptimizeWizard: React.FC<Props> = ({ language, t, wsConnected, onClose, on
           />
           <span className="text-[10px] theme-text-secondary">{opt.seconds || 'seconds'}</span>
         </div>
+      </FieldLabel>
+      <FieldLabel label={opt.imageMaxDimLabel || 'Image Max Dimension'} hint="agents.defaults.imageMaxDimensionPx">
+        <div className="flex items-center gap-2">
+          <input
+            type="text"
+            value={ws.imageMaxDimensionPx}
+            onChange={e => setWs(p => ({ ...p, imageMaxDimensionPx: e.target.value.replace(/[^0-9]/g, '') }))}
+            placeholder="1200"
+            className="w-24 sci-input px-3 py-1.5 rounded-lg text-[11px] font-mono"
+          />
+          <span className="text-[10px] theme-text-secondary">{opt.imageMaxDimUnit || 'px (default 1200)'}</span>
+        </div>
+        <p className="text-[9px] theme-text-muted mt-1">{opt.imageMaxDimHint || 'Lower values reduce token usage for image-heavy conversations.'}</p>
+      </FieldLabel>
+      <FieldLabel label={opt.execTimeoutLabel || 'Exec Timeout'} hint="tools.exec.timeoutSec">
+        <div className="flex items-center gap-2">
+          <input
+            type="text"
+            value={ws.execTimeoutSec}
+            onChange={e => setWs(p => ({ ...p, execTimeoutSec: e.target.value.replace(/[^0-9]/g, '') }))}
+            placeholder={opt.timeoutDefault || 'unset (no limit)'}
+            className="w-28 sci-input px-3 py-1.5 rounded-lg text-[11px] font-mono"
+          />
+          <span className="text-[10px] theme-text-secondary">{opt.seconds || 'seconds'}</span>
+        </div>
+        <p className="text-[9px] theme-text-muted mt-1">{opt.execTimeoutHint || 'Auto-kill exec commands after this duration. Prevents runaway processes.'}</p>
+      </FieldLabel>
+      <FieldLabel label={opt.webSearchMaxLabel || 'Web Search Max Results'} hint="tools.web.search.maxResults">
+        <NumberStepper
+          value={ws.webSearchMaxResults}
+          onChange={(v: string) => setWs(p => ({ ...p, webSearchMaxResults: v }))}
+          min={1}
+          max={10}
+          step={1}
+          className="h-8 max-w-[180px]"
+          inputClassName="text-[11px] px-1"
+          buttonClassName="!w-7 text-[12px]"
+        />
+        <p className="text-[9px] theme-text-muted mt-1">{opt.webSearchMaxHint || 'Fewer results = less context tokens. Default: 10, recommended: 5.'}</p>
       </FieldLabel>
       <div className="w-full h-px bg-slate-200 dark:bg-white/5" />
       <FieldLabel label={opt.thinkingLevel || 'Default Thinking Level'} hint="agents.defaults.thinkingDefault">
@@ -617,6 +865,116 @@ const OptimizeWizard: React.FC<Props> = ({ language, t, wsConnected, onClose, on
     </div>
   );
 
+  const renderSecurity = () => (
+    <div className="space-y-4">
+      <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl bg-amber-500/5 border border-amber-500/15">
+        <span className="material-symbols-outlined text-[14px] text-amber-500 mt-px shrink-0">shield</span>
+        <p className="text-[10px] text-amber-600 dark:text-amber-400 leading-relaxed">{opt.securityHint || 'Control what the AI agent can execute on your system. These settings are critical for preventing unintended actions.'}</p>
+      </div>
+      <FieldLabel label={opt.execSecurityLabel || 'Exec Security Mode'} hint="tools.exec.security">
+        <CustomSelect
+          value={ws.execSecurity}
+          onChange={(v: string) => setWs(p => ({ ...p, execSecurity: v }))}
+          options={EXEC_SECURITY_OPTIONS}
+          className="max-w-[260px]"
+        />
+        <p className="text-[9px] theme-text-muted mt-1">{opt.execSecurityHint || '"deny" blocks all exec. "allowlist" permits only approved commands. "full" allows everything (dangerous).'}</p>
+      </FieldLabel>
+      <FieldLabel label={opt.execAskLabel || 'Exec Approval Policy'} hint="tools.exec.ask">
+        <CustomSelect
+          value={ws.execAsk}
+          onChange={(v: string) => setWs(p => ({ ...p, execAsk: v }))}
+          options={EXEC_ASK_OPTIONS}
+          className="max-w-[260px]"
+        />
+        <p className="text-[9px] theme-text-muted mt-1">{opt.execAskHint || '"on-miss" asks for approval only when a command is not in the allowlist. "always" asks every time.'}</p>
+      </FieldLabel>
+      <div className="w-full h-px bg-slate-200 dark:bg-white/5" />
+      {(() => {
+        const on = ws.execStrictInlineEval;
+        const changed = on !== origWs.execStrictInlineEval;
+        const toggle = () => setWs(p => ({ ...p, execStrictInlineEval: !on }));
+        return (
+          <div className={`flex items-center gap-3 px-3 py-2 rounded-xl border transition-all cursor-pointer ${changed ? 'border-primary/30 bg-primary/5' : 'border-slate-200/60 dark:border-white/[0.06] hover:border-slate-300 dark:hover:border-white/10'}`} onClick={toggle}>
+            <Toggle on={on} onToggle={toggle} />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-[11px] font-bold text-[var(--color-text)] dark:text-white">{opt.execStrictInlineLabel || 'Strict Inline Eval'}</span>
+                <ConfigHint path="tools.exec.strictInlineEval" />
+              </div>
+              <p className="text-[9px] theme-text-muted">{opt.execStrictInlineHint || 'Require approval for python -c, node -e, etc. Prevents allowlist bypass via inline code.'}</p>
+            </div>
+          </div>
+        );
+      })()}
+      {(() => {
+        const on = ws.fsWorkspaceOnly;
+        const changed = on !== origWs.fsWorkspaceOnly;
+        const toggle = () => setWs(p => ({ ...p, fsWorkspaceOnly: !on }));
+        return (
+          <div className={`flex items-center gap-3 px-3 py-2 rounded-xl border transition-all cursor-pointer ${changed ? 'border-primary/30 bg-primary/5' : 'border-slate-200/60 dark:border-white/[0.06] hover:border-slate-300 dark:hover:border-white/10'}`} onClick={toggle}>
+            <Toggle on={on} onToggle={toggle} />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-[11px] font-bold text-[var(--color-text)] dark:text-white">{opt.fsWorkspaceLabel || 'Restrict FS to Workspace'}</span>
+                <ConfigHint path="tools.fs.workspaceOnly" />
+              </div>
+              <p className="text-[9px] theme-text-muted">{opt.fsWorkspaceHint || 'Limit read/write/edit to the agent workspace directory. Prevents access to system files.'}</p>
+            </div>
+          </div>
+        );
+      })()}
+      {(() => {
+        const on = ws.loopDetectionEnabled;
+        const changed = on !== origWs.loopDetectionEnabled;
+        const toggle = () => setWs(p => ({ ...p, loopDetectionEnabled: !on }));
+        return (
+          <div className={`flex items-center gap-3 px-3 py-2 rounded-xl border transition-all cursor-pointer ${changed ? 'border-primary/30 bg-primary/5' : 'border-slate-200/60 dark:border-white/[0.06] hover:border-slate-300 dark:hover:border-white/10'}`} onClick={toggle}>
+            <Toggle on={on} onToggle={toggle} />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-[11px] font-bold text-[var(--color-text)] dark:text-white">{opt.loopDetectionLabel || 'Tool Loop Detection'}</span>
+                <ConfigHint path="tools.loopDetection.enabled" />
+              </div>
+              <p className="text-[9px] theme-text-muted">{opt.loopDetectionHint || 'Detect and block repetitive tool-call loops. Prevents infinite cycles that waste tokens.'}</p>
+            </div>
+          </div>
+        );
+      })()}
+    </div>
+  );
+
+  const renderMaintenance = () => (
+    <div className="space-y-4">
+      <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl bg-blue-500/5 border border-blue-500/15">
+        <span className="material-symbols-outlined text-[14px] text-blue-500 mt-px shrink-0">cleaning_services</span>
+        <p className="text-[10px] text-blue-600 dark:text-blue-400 leading-relaxed">{opt.maintenanceHint || 'Automatic session cleanup prevents disk bloat from long-running gateway instances. Recommended for always-on deployments.'}</p>
+      </div>
+      <FieldLabel label={opt.sessionMaintModeLabel || 'Session Maintenance Mode'} hint="session.maintenance.mode">
+        <CustomSelect
+          value={ws.sessionMaintenanceMode}
+          onChange={(v: string) => setWs(p => ({ ...p, sessionMaintenanceMode: v }))}
+          options={SESSION_MAINTENANCE_OPTIONS}
+          className="max-w-[260px]"
+        />
+        <p className="text-[9px] theme-text-muted mt-1">{opt.sessionMaintModeHint || '"warn" only logs warnings. "enforce" auto-deletes expired sessions and enforces disk budget.'}</p>
+      </FieldLabel>
+      <FieldLabel label={opt.sessionDiskBudgetLabel || 'Session Disk Budget'} hint="session.maintenance.maxDiskBytes">
+        <div className="flex items-center gap-2">
+          <input
+            type="text"
+            value={ws.sessionMaxDiskBytes}
+            onChange={e => setWs(p => ({ ...p, sessionMaxDiskBytes: e.target.value }))}
+            placeholder="500mb"
+            className="w-28 sci-input px-3 py-1.5 rounded-lg text-[11px] font-mono"
+          />
+          <span className="text-[10px] theme-text-secondary">{opt.sessionDiskBudgetUnit || 'e.g. 500mb, 1gb'}</span>
+        </div>
+        <p className="text-[9px] theme-text-muted mt-1">{opt.sessionDiskBudgetHint || 'Max disk space for session files per agent. Oldest sessions cleaned first when exceeded.'}</p>
+      </FieldLabel>
+    </div>
+  );
+
   const renderProxy = () => (
     <div className="space-y-4">
       <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl bg-blue-500/5 border border-blue-500/15">
@@ -645,13 +1003,13 @@ const OptimizeWizard: React.FC<Props> = ({ language, t, wsConnected, onClose, on
     </div>
   );
 
-  const STEP_RENDERERS = [renderPlugins, renderContext, renderPerf, renderProxy];
+  const STEP_RENDERERS = [renderPlugins, renderSecurity, renderContext, renderPerf, renderMaintenance, renderProxy];
 
   return (
-    <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm" onClick={onClose}>
-      <div className="w-[90%] max-w-xl rounded-2xl shadow-2xl theme-panel overflow-hidden sci-card animate-fade-in" onClick={e => e.stopPropagation()}>
+    <div className="absolute inset-0 z-50 flex items-center justify-center pt-10 pb-4 bg-black/30 backdrop-blur-sm" onClick={onClose}>
+      <div className="w-[90%] max-w-2xl max-h-full rounded-2xl shadow-2xl theme-panel overflow-hidden sci-card animate-fade-in flex flex-col" onClick={e => e.stopPropagation()}>
         {/* Header */}
-        <div className="px-5 py-3.5 border-b border-slate-200 dark:border-white/10 flex items-center justify-between">
+        <div className="px-5 py-3.5 border-b border-slate-200 dark:border-white/10 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-primary/15 flex items-center justify-center">
               <span className="material-symbols-outlined text-[18px] text-primary">bolt</span>
@@ -667,7 +1025,7 @@ const OptimizeWizard: React.FC<Props> = ({ language, t, wsConnected, onClose, on
         </div>
 
         {/* Step bar */}
-        <div className="px-5 py-2 border-b border-slate-200 dark:border-white/5 flex items-center gap-1 overflow-x-auto no-scrollbar">
+        <div className="px-5 py-2 border-b border-slate-200 dark:border-white/5 flex items-center gap-1 overflow-x-auto no-scrollbar shrink-0">
           {STEPS.map((s, i) => (
             <button
               key={s.key}
@@ -688,7 +1046,7 @@ const OptimizeWizard: React.FC<Props> = ({ language, t, wsConnected, onClose, on
         </div>
 
         {/* Body */}
-        <div className="p-5 max-h-[55vh] overflow-y-auto neon-scrollbar">
+        <div className="p-5 flex-1 min-h-0 overflow-y-auto neon-scrollbar">
           {loading ? (
             <div className="flex items-center justify-center py-10 gap-2">
               <span className="material-symbols-outlined text-[18px] text-primary animate-spin">progress_activity</span>
@@ -706,7 +1064,7 @@ const OptimizeWizard: React.FC<Props> = ({ language, t, wsConnected, onClose, on
         </div>
 
         {/* Footer */}
-        <div className="px-5 py-3 border-t border-slate-200 dark:border-white/10 flex items-center justify-between theme-panel">
+        <div className="px-5 py-3 border-t border-slate-200 dark:border-white/10 flex items-center justify-between theme-panel shrink-0">
           <div className="text-[10px] theme-text-secondary">
             {hasChanges && (
               <span className="flex items-center gap-1 text-primary font-bold">

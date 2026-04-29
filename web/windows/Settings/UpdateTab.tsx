@@ -162,10 +162,11 @@ const UpdateTab: React.FC<UpdateTabProps> = ({ s, language, inputCls, rowCls }) 
   }, [updateChannel]);
 
   // 加载 release 列表（用于"指定版本"下拉）。失败静默：下拉会空，不影响主流程。
-  const loadReleaseList = useCallback(async () => {
+  // force=true 绕过 getCached 的 10 分钟 TTL，由刷新按钮 / 升级完成后调用。
+  const loadReleaseList = useCallback(async (force = false) => {
     setLoadingReleases(true);
     try {
-      const list = await selfUpdateApi.releases(20);
+      const list = await selfUpdateApi.releases(20, force);
       setReleaseList(Array.isArray(list) ? list : []);
     } catch { /* ignore */ }
     setLoadingReleases(false);
@@ -173,11 +174,12 @@ const UpdateTab: React.FC<UpdateTabProps> = ({ s, language, inputCls, rowCls }) 
 
   // 加载 OpenClaw release 列表。与 ClawDeckX 对称；后端会按本地已装版本标记 current/older。
   // 失败不影响主流程，但通过 console 打点便于定位（例如 GitHub rate limit / 网络）。
-  const loadOcReleaseList = useCallback(async () => {
+  // force=true 绕过 getCached 的 10 分钟 TTL，由刷新按钮 / 升级完成后调用。
+  const loadOcReleaseList = useCallback(async (force = false) => {
     setOcLoadingReleases(true);
     try {
-      const list = await hostInfoApi.openclawReleases(20);
-      const arr = Array.isArray(list) ? list : [];
+      const list = await hostInfoApi.openclawReleases(50, force);
+      const arr = (Array.isArray(list) ? list : []).filter(r => !r.prerelease);
       setOcReleaseList(arr);
       if (arr.length === 0) {
         console.warn('[UpdateTab] openclaw releases returned empty list');
@@ -431,7 +433,7 @@ const UpdateTab: React.FC<UpdateTabProps> = ({ s, language, inputCls, rowCls }) 
         const res = await hostInfoApi.checkUpdate();
         setOcUpdateInfo({ ...res, available: false });
         // 装完新版本后重新拉 release 列表（current/older 标记需要刷新）。
-        loadOcReleaseList();
+        loadOcReleaseList(true);
       }
     } catch {
       toast('error', isDockerRuntime ? (sRef.current.runtimeUpdateFailed || sRef.current.openclawUpdateFailed) : sRef.current.openclawUpdateFailed);
@@ -672,7 +674,7 @@ const UpdateTab: React.FC<UpdateTabProps> = ({ s, language, inputCls, rowCls }) 
             onChange={(v) => void handleSelectTag(v)}
             releases={releaseList}
             loading={loadingReleases}
-            onRefresh={() => void loadReleaseList()}
+            onRefresh={() => void loadReleaseList(true)}
             labels={versionPickerLabels}
           />
 
@@ -1146,7 +1148,7 @@ const UpdateTab: React.FC<UpdateTabProps> = ({ s, language, inputCls, rowCls }) 
                     onChange={handleSelectOcTag}
                     releases={ocReleaseList}
                     loading={ocLoadingReleases}
-                    onRefresh={() => void loadOcReleaseList()}
+                    onRefresh={() => void loadOcReleaseList(true)}
                     labels={versionPickerLabels}
                   />
                 )}
@@ -1183,7 +1185,7 @@ const UpdateTab: React.FC<UpdateTabProps> = ({ s, language, inputCls, rowCls }) 
                 onChange={handleSelectOcTag}
                 releases={ocReleaseList}
                 loading={ocLoadingReleases}
-                onRefresh={() => void loadOcReleaseList()}
+                onRefresh={() => void loadOcReleaseList(true)}
                 labels={versionPickerLabels}
               />
               {ocSelectedTag && (

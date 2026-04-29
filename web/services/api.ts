@@ -32,7 +32,8 @@ export const hostInfoApi = {
   checkUpdate: () => get<any>('/api/v1/host-info/check-update'),
   deviceId: () => get<{ deviceId: string }>('/api/v1/host-info/device-id'),
   // 与 selfUpdateApi.releases 对称；返回 GitHub openclaw/openclaw 最近 release 列表。
-  openclawReleases: (limit = 20) => get<ReleaseSummary[]>(`/api/v1/host-info/openclaw-releases?limit=${limit}`),
+  // 10 分钟缓存，减少 GitHub API 调用避免限流；force=true 由刷新按钮触发。
+  openclawReleases: (limit = 20, force = false) => getCached<ReleaseSummary[]>(`/api/v1/host-info/openclaw-releases?limit=${limit}`, 10 * 60 * 1000, force),
 };
 
 // ==================== 自更新 ====================
@@ -83,8 +84,8 @@ export const selfUpdateApi = {
   /** 无 tag = 最新 stable；传 tag 则精确拉取该版本的 release（支持降级）。 */
   check: (tag?: string) => get<UpdateCheckResult>(`/api/v1/self-update/check${tag ? `?tag=${encodeURIComponent(tag)}` : ''}`),
   checkChannel: (channel: string) => get<UpdateCheckResult>(`/api/v1/self-update/check-channel?channel=${channel}`),
-  /** 列出最近 N 个 release（含 prerelease），用于"指定版本升级"下拉。 */
-  releases: (limit = 20) => get<ReleaseSummary[]>(`/api/v1/self-update/releases?limit=${limit}`),
+  /** 列出最近 N 个 release（含 prerelease），用于"指定版本升级"下拉。10 分钟缓存。 */
+  releases: (limit = 20, force = false) => getCached<ReleaseSummary[]>(`/api/v1/self-update/releases?limit=${limit}`, 10 * 60 * 1000, force),
   history: () => get<UpdateHistoryEntry[]>('/api/v1/self-update/history'),
   translateNotes: (text: string, lang: string, product?: string, version?: string) => post<{ translated: string; status: string }>('/api/v1/self-update/translate-notes', { text, lang, product, version }),
   dismissUpdate: async (product: 'clawdeckx' | 'openclaw', version: string) => {
