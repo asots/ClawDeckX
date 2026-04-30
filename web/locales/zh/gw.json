@@ -340,6 +340,7 @@
     "apply": "应用",
     "applying": "正在应用...",
     "applied": "插件优化已应用，重启网关后生效。",
+    "appliedDirect": "已写入配置文件（网关未响应），重启网关后生效。",
     "applyFailed": "应用失败",
     "pendingChanges": "有待应用的更改",
     "restartHint": "更改在重启网关后生效。核心插件（anthropic、openai 等）未显示——它们按需加载，不影响启动时间。",

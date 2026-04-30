@@ -340,6 +340,7 @@
     "apply": "Apply",
     "applying": "Applying...",
     "applied": "Plugin optimization applied. Restart gateway to take effect.",
+    "appliedDirect": "Saved to config file (gateway not responding). Restart gateway to take effect.",
     "applyFailed": "Failed to apply",
     "pendingChanges": "Pending changes",
     "restartHint": "Changes take effect after gateway restart. Core plugins (anthropic, openai, etc.) are not shown — they load on-demand and do not affect startup time.",

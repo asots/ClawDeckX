@@ -532,13 +532,31 @@ const OptimizeWizard: React.FC<Props> = ({ language, t, wsConnected, onClose, on
         }
       }
 
-      // Gateway connected → CLI-based write; disconnected → direct file write
+      // Gateway connected → CLI-based write (with timeout fallback to direct file write
+      // so users don't get blocked on slow gateway startup); disconnected → direct file write.
+      let viaDirect = !wsConnected;
       if (wsConnected) {
-        await configApi.update(patch);
+        try {
+          await Promise.race([
+            configApi.update(patch),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('GW_APPLY_TIMEOUT')), 6000)),
+          ]);
+        } catch (err: any) {
+          if (err?.message === 'GW_APPLY_TIMEOUT') {
+            await configApi.directUpdate(patch);
+            viaDirect = true;
+          } else {
+            throw err;
+          }
+        }
       } else {
         await configApi.directUpdate(patch);
       }
-      toast('success', opt.applied || 'Optimization applied. Restart gateway to take effect.');
+      if (viaDirect) {
+        toast('warning', opt.appliedDirect || 'Saved to config file. Restart gateway to take effect.');
+      } else {
+        toast('success', opt.applied || 'Optimization applied. Restart gateway to take effect.');
+      }
       origConfigRef.current = { ...full, ...patch };
       setOrigWs({ ...ws });
       onApplied();
@@ -548,7 +566,7 @@ const OptimizeWizard: React.FC<Props> = ({ language, t, wsConnected, onClose, on
     } finally {
       setSaving(false);
     }
-  }, [hasChanges, changeCount, ws, origWs, confirm, toast, opt, onApplied, onClose]);
+  }, [hasChanges, changeCount, ws, origWs, wsConnected, confirm, toast, opt, onApplied, onClose]);
 
   // Step definitions
   const STEPS = useMemo(() => [

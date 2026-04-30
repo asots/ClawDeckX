@@ -340,6 +340,7 @@
     "apply": "套用",
     "applying": "正在套用...",
     "applied": "插件優化已套用，重啟閘道後生效。",
+    "appliedDirect": "已寫入設定檔（閘道未回應），重啟閘道後生效。",
     "applyFailed": "套用失敗",
     "pendingChanges": "有待套用的變更",
     "restartHint": "變更在重啟閘道後生效。核心插件（anthropic、openai 等）未顯示——它們按需載入，不影響啟動時間。",
