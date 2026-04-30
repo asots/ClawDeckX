@@ -958,7 +958,7 @@ const SetupWizard: React.FC<SetupWizardProps> = ({ language, onClose, onOpenEdit
                       </div>
                     )}
                     {/* 日志输出 */}
-                    <div ref={updateLogRef} className="max-h-32 overflow-y-auto p-3 font-mono text-[11px] theme-text-secondary space-y-0.5">
+                    <div ref={updateLogRef} className="max-h-32 overflow-y-auto p-3 font-mono text-[11px] theme-text-secondary space-y-0.5 select-text cursor-text">
                       {updateLogs.length === 0 && isUpdating && (
                         <div className="theme-text-muted">{sw.waitingOutput}</div>
                       )}
@@ -1003,7 +1003,7 @@ const SetupWizard: React.FC<SetupWizardProps> = ({ language, onClose, onOpenEdit
             </div>
 
             {/* 日志输出 */}
-            <div className="h-48 overflow-y-auto theme-field rounded-lg p-3 font-mono text-xs text-green-500 dark:text-green-400 custom-scrollbar neon-scrollbar">
+            <div className="h-48 overflow-y-auto theme-field rounded-lg p-3 font-mono text-xs text-green-500 dark:text-green-400 custom-scrollbar neon-scrollbar select-text cursor-text">
               {logs.map((log, i) => (
                 <div key={i} className="whitespace-pre-wrap">{log}</div>
               ))}

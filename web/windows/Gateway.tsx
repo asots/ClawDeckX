@@ -1389,6 +1389,20 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
                 <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-mac-green font-mono font-bold">{fmtUptime(displayUptimeMs)}</span>
               )}
             </div>
+            {/* 编辑网关连接参数 */}
+            <button
+              onClick={() => {
+                if (activeProfile) {
+                  openEditForm(activeProfile);
+                } else {
+                  openAddForm();
+                }
+              }}
+              className="p-1.5 rounded-lg hover:bg-slate-200/60 dark:hover:bg-white/[0.06] transition-colors shrink-0"
+              title={gw.editGateway || 'Edit Gateway'}
+            >
+              <span className="material-symbols-outlined text-[16px] theme-text-secondary">edit</span>
+            </button>
           </div>
           {/* Detail row: address + watchdog + WS + probe chips */}
           <div className="flex items-center gap-1.5 flex-wrap">

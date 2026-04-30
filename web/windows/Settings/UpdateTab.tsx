@@ -1220,7 +1220,7 @@ const UpdateTab: React.FC<UpdateTabProps> = ({ s, language, inputCls, rowCls }) 
                   {effectiveOcUpdating && <span className="text-[9px] text-slate-400 dark:text-white/40">{effectiveOcProgress}%</span>}
                 </div>
               )}
-              <div ref={ocUpdateLogRef} className="max-h-28 overflow-y-auto px-3 py-2 font-mono text-[10px] text-slate-500 dark:text-white/50 space-y-0.5">
+              <div ref={ocUpdateLogRef} className="max-h-28 overflow-y-auto px-3 py-2 font-mono text-[10px] text-slate-500 dark:text-white/50 space-y-0.5 select-text cursor-text">
                 {effectiveOcLogs.length === 0 && effectiveOcUpdating && <div className="text-slate-400 dark:text-white/35">...</div>}
                 {effectiveOcLogs.map((line, i) => <div key={i} className="break-all leading-relaxed">{line}</div>)}
               </div>
