@@ -234,6 +234,11 @@
       "expiresIn": "剩余",
       "showAll": "显示全部 ({{n}})",
       "collapse": "收起"
-    }
+    },
+    "eventLoop": "事件循环",
+    "eventLoopOk": "正常",
+    "eventLoopDegraded": "性能降级",
+    "eventLoopP99": "p99",
+    "eventLoopUtil": "利用率"
   }
 }

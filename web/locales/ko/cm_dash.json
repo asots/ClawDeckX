@@ -234,6 +234,11 @@
       "expiresIn": "남음",
       "showAll": "모두 보기 ({{n}})",
       "collapse": "접기"
-    }
+    },
+    "eventLoop": "이벤트 루프",
+    "eventLoopOk": "정상",
+    "eventLoopDegraded": "성능 저하",
+    "eventLoopP99": "p99",
+    "eventLoopUtil": "사용률"
   }
 }

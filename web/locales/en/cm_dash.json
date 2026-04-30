@@ -234,6 +234,11 @@
       "expiresIn": "Expires in",
       "showAll": "Show all ({{n}})",
       "collapse": "Show less"
-    }
+    },
+    "eventLoop": "Event Loop",
+    "eventLoopOk": "Healthy",
+    "eventLoopDegraded": "Degraded",
+    "eventLoopP99": "p99",
+    "eventLoopUtil": "utilization"
   }
 }

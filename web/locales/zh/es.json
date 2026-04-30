@@ -1816,5 +1816,14 @@
     "kind_secret": "密钥",
     "kind_archive": "归档",
     "kind_other": "其他"
-  }
+  },
+  "visibleReplies": "可见回复",
+  "visibleRepliesDesc": "要求可见输出通过 message(action=send) 发送",
+  "groupVisibleReplies": "群组可见回复",
+  "groupVisibleRepliesDesc": "群组/频道聊天的可见回复覆盖",
+  "replyVisibility": "回复可见性",
+  "commitments": "跟进承诺",
+  "commitmentsDesc": "自动推断跟进承诺，通过心跳投递",
+  "commitmentsEnabled": "启用跟进承诺",
+  "commitmentsMaxPerDay": "每日上限"
 }

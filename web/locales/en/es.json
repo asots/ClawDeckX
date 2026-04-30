@@ -1816,5 +1816,14 @@
     "kind_secret": "Secrets",
     "kind_archive": "Archive",
     "kind_other": "Other"
-  }
+  },
+  "visibleReplies": "Visible Replies",
+  "visibleRepliesDesc": "Require visible output to go through message(action=send)",
+  "groupVisibleReplies": "Group Visible Replies",
+  "groupVisibleRepliesDesc": "Override visible replies for group/channel chats",
+  "replyVisibility": "Reply Visibility",
+  "commitments": "Commitments",
+  "commitmentsDesc": "Automatic inferred follow-up commitments with heartbeat delivery",
+  "commitmentsEnabled": "Enable Commitments",
+  "commitmentsMaxPerDay": "Max Per Day"
 }

@@ -234,6 +234,11 @@
       "expiresIn": "残り",
       "showAll": "すべて表示 ({{n}})",
       "collapse": "折りたたむ"
-    }
+    },
+    "eventLoop": "イベントループ",
+    "eventLoopOk": "正常",
+    "eventLoopDegraded": "劣化",
+    "eventLoopP99": "p99",
+    "eventLoopUtil": "使用率"
   }
 }

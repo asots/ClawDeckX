@@ -1816,5 +1816,14 @@
     "kind_secret": "Secrets",
     "kind_archive": "Archive",
     "kind_other": "Other"
-  }
+  },
+  "visibleReplies": "표시 답장",
+  "visibleRepliesDesc": "표시 출력을 message(action=send)를 통해 전송",
+  "groupVisibleReplies": "그룹 표시 답장",
+  "groupVisibleRepliesDesc": "그룹/채널 채팅의 표시 답장 재정의",
+  "replyVisibility": "답장 표시",
+  "commitments": "후속 약속",
+  "commitmentsDesc": "하트비트를 통한 자동 후속 약속",
+  "commitmentsEnabled": "후속 약속 활성화",
+  "commitmentsMaxPerDay": "일일 최대"
 }

@@ -1816,5 +1816,14 @@
     "kind_secret": "Secrets",
     "kind_archive": "Archive",
     "kind_other": "Other"
-  }
+  },
+  "visibleReplies": "可視リプライ",
+  "visibleRepliesDesc": "可視出力を message(action=send) 経由にする",
+  "groupVisibleReplies": "グループ可視リプライ",
+  "groupVisibleRepliesDesc": "グループ/チャンネルチャットの可視リプライ上書き",
+  "replyVisibility": "リプライ表示",
+  "commitments": "フォローアップ",
+  "commitmentsDesc": "自動推論フォローアップをハートビートで配信",
+  "commitmentsEnabled": "フォローアップを有効化",
+  "commitmentsMaxPerDay": "1日の上限"
 }

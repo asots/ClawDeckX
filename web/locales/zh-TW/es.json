@@ -1816,5 +1816,14 @@
     "kind_secret": "金鑰",
     "kind_archive": "歸檔",
     "kind_other": "其他"
-  }
+  },
+  "visibleReplies": "可見回覆",
+  "visibleRepliesDesc": "要求可見輸出透過 message(action=send) 發送",
+  "groupVisibleReplies": "群組可見回覆",
+  "groupVisibleRepliesDesc": "群組/頻道聊天的可見回覆覆蓋",
+  "replyVisibility": "回覆可見性",
+  "commitments": "跟進承諾",
+  "commitmentsDesc": "自動推斷跟進承諾，透過心跳投遞",
+  "commitmentsEnabled": "啟用跟進承諾",
+  "commitmentsMaxPerDay": "每日上限"
 }

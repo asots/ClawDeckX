@@ -234,6 +234,11 @@
       "expiresIn": "剩餘",
       "showAll": "顯示全部 ({{n}})",
       "collapse": "收合"
-    }
+    },
+    "eventLoop": "事件循環",
+    "eventLoopOk": "正常",
+    "eventLoopDegraded": "效能降級",
+    "eventLoopP99": "p99",
+    "eventLoopUtil": "利用率"
   }
 }
