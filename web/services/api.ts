@@ -135,11 +135,13 @@ export interface ServerConfig {
   port: number;
   cors_origins: string[];
   clawhub_query_url: string;
+  clawhub_source: 'convex' | 'volces';
   skillhub_data_url: string;
 }
 export const serverConfigApi = {
   get: () => get<ServerConfig>('/api/v1/server-config'),
   update: (data: ServerConfig) => put<ServerConfig & { restart: boolean }>('/api/v1/server-config', data),
+  restart: () => post<{ message: string }>('/api/v1/server-config/restart'),
 };
 
 // ==================== 总览 ====================
@@ -180,6 +182,15 @@ export const gatewayApi = {
       `/api/v1/gateway/log?${qs.toString()}`
     );
   },
+  getReadyz: () => get<{
+    status: string;
+    eventLoop?: {
+      delay?: { p50?: number; p99?: number; max?: number };
+      utilization?: number;
+      degraded?: boolean;
+    };
+    [key: string]: any;
+  }>('/api/v1/gateway/readyz'),
   getHealthCheck: () => get<{
     enabled: boolean;
     fail_count: number;
@@ -855,10 +866,40 @@ export interface PromScrapeConfig {
   token: string;
   yamlSnippet: string;
 }
+export type GatewayObservedPhase =
+  | 'stopped'
+  | 'starting'
+  | 'tcp_open'
+  | 'http_live'
+  | 'http_ready'
+  | 'pairing'
+  | 'auth_refresh'
+  | 'ws_connected'
+  | 'rpc_ready'
+  | 'restarting'
+  | 'grace';
+export interface GatewayObservedState {
+  phase: GatewayObservedPhase | string;
+  ready: boolean;
+  recovering: boolean;
+  checked_at: string;
+  host: string;
+  port: number;
+  remote: boolean;
+  service?: Record<string, any>;
+  watchdog?: Record<string, any>;
+  ws?: Record<string, any>;
+  probe?: Record<string, any>;
+  rpc?: { ready?: boolean; error?: string };
+  grace_remaining_sec?: number;
+}
 export const observabilityApi = {
   metricsJson: () => get<PromParseResult>('/api/v1/observability/metrics?format=json'),
   metricsJsonCached: (ttlMs = 5000, force = false) =>
     getCached<PromParseResult>('/api/v1/observability/metrics?format=json', ttlMs, force),
+  gatewayState: () => get<GatewayObservedState>('/api/v1/observability/gateway-state'),
+  gatewayStateCached: (ttlMs = 3000, force = false) =>
+    getCached<GatewayObservedState>('/api/v1/observability/gateway-state', ttlMs, force),
   scrapeConfig: () => get<PromScrapeConfig>('/api/v1/observability/scrape-config'),
   enablePlugin: () => post<{ enabled?: boolean; already_enabled?: boolean; version_too_low?: boolean; current_version?: string; min_version?: string }>('/api/v1/observability/enable-plugin'),
 };
@@ -1549,6 +1590,8 @@ export const gwApi = {
     rpc<{ ok: boolean; message?: string }>('doctor.memory.resetDreamDiary'),
   memoryResetGroundedShortTerm: () =>
     rpc<{ ok: boolean; message?: string }>('doctor.memory.resetGroundedShortTerm'),
+  memoryRemHarness: () =>
+    rpc<{ path?: string; found: boolean; content?: string }>('doctor.memory.remHarness'),
   // Tools catalog
   toolsCatalog: (params?: { agentId?: string; includePlugins?: boolean }) =>
     rpc<{

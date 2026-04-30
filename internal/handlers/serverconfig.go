@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
+	"time"
 
 	"ClawDeckX/internal/i18n"
 	"ClawDeckX/internal/logger"
@@ -23,6 +24,7 @@ type serverConfigPayload struct {
 	Port            int      `json:"port"`
 	CORSOrigins     []string `json:"cors_origins"`
 	ClawHubQueryURL string   `json:"clawhub_query_url"`
+	ClawHubSource   string   `json:"clawhub_source"`
 	SkillHubDataURL string   `json:"skillhub_data_url"`
 }
 
@@ -39,6 +41,7 @@ func (h *ServerConfigHandler) Get(w http.ResponseWriter, r *http.Request) {
 		Port:            cfg.Server.Port,
 		CORSOrigins:     cfg.Server.CORSOrigins,
 		ClawHubQueryURL: cfg.Server.ClawHubQueryURL,
+		ClawHubSource:   cfg.Server.ClawHubSource,
 		SkillHubDataURL: cfg.Server.SkillHubDataURL,
 	})
 }
@@ -80,6 +83,11 @@ func (h *ServerConfigHandler) Update(w http.ResponseWriter, r *http.Request) {
 	if cfg.Server.ClawHubQueryURL == "" {
 		cfg.Server.ClawHubQueryURL = webconfig.Default().Server.ClawHubQueryURL
 	}
+	src := strings.ToLower(strings.TrimSpace(payload.ClawHubSource))
+	if src != "convex" && src != "volces" {
+		src = "convex"
+	}
+	cfg.Server.ClawHubSource = src
 	cfg.Server.SkillHubDataURL = strings.TrimSpace(payload.SkillHubDataURL)
 	if cfg.Server.SkillHubDataURL == "" {
 		cfg.Server.SkillHubDataURL = webconfig.Default().Server.SkillHubDataURL
@@ -93,6 +101,7 @@ func (h *ServerConfigHandler) Update(w http.ResponseWriter, r *http.Request) {
 	logger.Log.Info().
 		Str("bind", bind).
 		Int("port", payload.Port).
+		Str("clawhub_source", cfg.Server.ClawHubSource).
 		Msg(i18n.T(i18n.MsgLogServerConfigUpdated))
 
 	web.OK(w, r, map[string]any{
@@ -100,7 +109,26 @@ func (h *ServerConfigHandler) Update(w http.ResponseWriter, r *http.Request) {
 		"port":              payload.Port,
 		"cors_origins":      payload.CORSOrigins,
 		"clawhub_query_url": cfg.Server.ClawHubQueryURL,
+		"clawhub_source":    cfg.Server.ClawHubSource,
 		"skillhub_data_url": cfg.Server.SkillHubDataURL,
 		"restart":           true,
 	})
+}
+
+// Restart restarts the ClawDeckX process so the latest server config takes
+// effect. It defers the actual restart by ~1.5s so the HTTP response can flush.
+// POST /api/v1/server-config/restart
+func (h *ServerConfigHandler) Restart(w http.ResponseWriter, r *http.Request) {
+	logger.Log.Info().
+		Str("user", web.GetUsername(r)).
+		Msg("ClawDeckX self-restart requested via API")
+
+	web.OK(w, r, map[string]any{
+		"message": "restarting",
+	})
+
+	go func() {
+		time.Sleep(1500 * time.Millisecond)
+		restartSelf()
+	}()
 }

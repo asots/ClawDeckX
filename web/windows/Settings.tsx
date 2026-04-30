@@ -88,8 +88,8 @@ const Settings: React.FC<SettingsProps> = ({ language, onLogout, pendingTab, onT
   const [eventActiveChannels, setEventActiveChannels] = useState<string[]>([]);
 
   // ── 访问安全 ──
-  const [srvCfg, setSrvCfg] = useState<ServerConfig>({ bind: '0.0.0.0', port: 18788, cors_origins: [], clawhub_query_url: 'https://wry-manatee-359.convex.cloud/api/query', skillhub_data_url: 'https://cloudcache.tencentcs.com/qcloud/tea/app/data/skills.33d56946.json' });
-  const [srvCfgOriginal, setSrvCfgOriginal] = useState<ServerConfig>({ bind: '0.0.0.0', port: 18788, cors_origins: [], clawhub_query_url: 'https://wry-manatee-359.convex.cloud/api/query', skillhub_data_url: 'https://cloudcache.tencentcs.com/qcloud/tea/app/data/skills.33d56946.json' });
+  const [srvCfg, setSrvCfg] = useState<ServerConfig>({ bind: '0.0.0.0', port: 18788, cors_origins: [], clawhub_query_url: 'https://wry-manatee-359.convex.cloud', clawhub_source: 'convex', skillhub_data_url: 'https://cloudcache.tencentcs.com/qcloud/tea/app/data/skills.33d56946.json' });
+  const [srvCfgOriginal, setSrvCfgOriginal] = useState<ServerConfig>({ bind: '0.0.0.0', port: 18788, cors_origins: [], clawhub_query_url: 'https://wry-manatee-359.convex.cloud', clawhub_source: 'convex', skillhub_data_url: 'https://cloudcache.tencentcs.com/qcloud/tea/app/data/skills.33d56946.json' });
   const [srvCfgSaving, setSrvCfgSaving] = useState(false);
   const [srvCfgDirty, setSrvCfgDirty] = useState(false);
   const [srvCfgRestart, setSrvCfgRestart] = useState(false);
@@ -245,7 +245,8 @@ const Settings: React.FC<SettingsProps> = ({ language, onLogout, pendingTab, onT
         bind: data.bind || '0.0.0.0',
         port: data.port || 18788,
         cors_origins: data.cors_origins || [],
-        clawhub_query_url: data.clawhub_query_url || 'https://wry-manatee-359.convex.cloud/api/query',
+        clawhub_query_url: data.clawhub_query_url || 'https://wry-manatee-359.convex.cloud',
+        clawhub_source: (data.clawhub_source === 'volces' ? 'volces' : 'convex'),
         skillhub_data_url: data.skillhub_data_url || 'https://cloudcache.tencentcs.com/qcloud/tea/app/data/skills.33d56946.json',
       };
       setSrvCfg(cfg);

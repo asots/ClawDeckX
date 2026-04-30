@@ -20,6 +20,7 @@ type ServerConfig struct {
 	Bind            string   `json:"bind"`
 	CORSOrigins     []string `json:"cors_origins"`
 	ClawHubQueryURL string   `json:"clawhub_query_url"`
+	ClawHubSource   string   `json:"clawhub_source"` // "convex" (官方) | "volces" (国内镜像)
 	SkillHubDataURL string   `json:"skillhub_data_url"`
 }
 
@@ -134,6 +135,7 @@ func Default() Config {
 			Bind:            "0.0.0.0",
 			CORSOrigins:     []string{},
 			ClawHubQueryURL: "https://wry-manatee-359.convex.cloud",
+			ClawHubSource:   "convex",
 			SkillHubDataURL: "https://cloudcache.tencentcs.com/qcloud/tea/app/data/skills.33d56946.json",
 		},
 		Auth: AuthConfig{
@@ -200,6 +202,9 @@ func Load() (Config, error) {
 			return Default(), err
 		}
 		fmt.Fprintf(os.Stderr, "[webconfig] loaded config from %s (jwt_secret present: %v)\n", path, cfg.Auth.JWTSecret != "")
+	}
+	if strings.TrimSpace(cfg.Server.ClawHubSource) == "" {
+		cfg.Server.ClawHubSource = "convex"
 	}
 	if cfg.Server.SkillHubDataURL == "" {
 		if cfg.SkillHub != nil && strings.TrimSpace(cfg.SkillHub.DataURL) != "" {

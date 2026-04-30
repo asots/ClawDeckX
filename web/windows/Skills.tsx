@@ -10,9 +10,11 @@ import { useConfirm } from '../components/ConfirmDialog';
 import CustomSelect from '../components/CustomSelect';
 import TranslateModelPicker from '../components/TranslateModelPicker';
 import EmptyState from '../components/EmptyState';
+import { MarkdownRenderer } from '../components/MarkdownRenderer';
 import PluginCenter from './PluginCenter';
 import SkillHub from './SkillHub';
 import McpCenter from './McpCenter';
+import CLICenter from './CLICenter';
 import { copyToClipboard } from '../utils/clipboard';
 import { pickLocalizedText } from '../utils/localizedContent';
 
@@ -32,7 +34,7 @@ interface SkillStatus {
 
 interface SkillsConfig { [key: string]: { enabled?: boolean; apiKey?: string; env?: Record<string, string> } }
 
-type TabId = 'all' | 'market' | 'plugins' | 'skillhub' | 'mcp';
+type TabId = 'all' | 'market' | 'plugins' | 'cli' | 'skillhub' | 'mcp';
 type FilterId = 'all' | 'eligible' | 'missing';
 
 type SkillMessage = { kind: 'success' | 'error'; message: string };
@@ -500,23 +502,38 @@ const SourceConfigModal: React.FC<{
 }> = ({ language, onClose, onSaved }) => {
   const t = getTranslation(language);
   const sk = (t as any).sk || {};
+  const { confirm } = useConfirm();
+  const { toast } = useToast();
+  const CONVEX_DEFAULT_URL = 'https://wry-manatee-359.convex.cloud';
+  const VOLCES_DEFAULT_URL = 'https://skills.volces.com';
   const [clawHubUrl, setClawHubUrl] = useState('');
+  const [clawHubSource, setClawHubSource] = useState<'convex' | 'volces'>('convex');
   const [skillHubUrl, setSkillHubUrl] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
-  const originalRef = useRef({ clawHubUrl: '', skillHubUrl: '' });
+  const originalRef = useRef({ clawHubUrl: '', clawHubSource: 'convex' as 'convex' | 'volces', skillHubUrl: '' });
 
   useEffect(() => {
     serverConfigApi.get().then((cfg) => {
       const ch = cfg.clawhub_query_url || '';
+      const cs = (cfg.clawhub_source === 'volces' ? 'volces' : 'convex') as 'convex' | 'volces';
       const sh = cfg.skillhub_data_url || '';
       setClawHubUrl(ch);
+      setClawHubSource(cs);
       setSkillHubUrl(sh);
-      originalRef.current = { clawHubUrl: ch, skillHubUrl: sh };
+      originalRef.current = { clawHubUrl: ch, clawHubSource: cs, skillHubUrl: sh };
       setLoading(false);
     }).catch(() => setLoading(false));
   }, []);
+
+  const recomputeDirty = (next: { clawHubUrl: string; clawHubSource: 'convex' | 'volces'; skillHubUrl: string }) => {
+    setDirty(
+      next.clawHubUrl !== originalRef.current.clawHubUrl ||
+      next.clawHubSource !== originalRef.current.clawHubSource ||
+      next.skillHubUrl !== originalRef.current.skillHubUrl
+    );
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -525,9 +542,40 @@ const SourceConfigModal: React.FC<{
       await serverConfigApi.update({
         ...cfg,
         clawhub_query_url: clawHubUrl.trim() || cfg.clawhub_query_url,
+        clawhub_source: clawHubSource,
         skillhub_data_url: skillHubUrl.trim() || cfg.skillhub_data_url,
       });
       onSaved();
+      // Offer to auto-restart so the new source takes effect immediately.
+      const ok = await confirm({
+        title: sk.sourceConfigRestartTitle || 'Restart ClawDeckX?',
+        message: sk.sourceConfigRestartPrompt || 'Saved. Restart ClawDeckX now to apply the new data source? The page will reconnect automatically.',
+        confirmText: sk.sourceConfigRestartNow || 'Restart now',
+        cancelText: sk.sourceConfigRestartLater || 'Later',
+      });
+      if (ok) {
+        try {
+          await serverConfigApi.restart();
+          toast('info', sk.sourceConfigRestarting || 'Restarting ClawDeckX, the page will reconnect shortly...');
+          // Poll the API until it comes back, then reload.
+          const startedAt = Date.now();
+          const poll = async () => {
+            try {
+              await serverConfigApi.get();
+              window.location.reload();
+            } catch {
+              if (Date.now() - startedAt > 30000) {
+                toast('warning', sk.sourceConfigRestartTimeout || 'Restart is taking longer than expected. Please reload the page manually.');
+                return;
+              }
+              setTimeout(poll, 1500);
+            }
+          };
+          setTimeout(poll, 2500);
+        } catch {
+          toast('warning', sk.sourceConfigRestartFailed || 'Failed to trigger restart. Please restart ClawDeckX manually.');
+        }
+      }
       onClose();
     } catch { /* ignore */ }
     setSaving(false);
@@ -536,8 +584,23 @@ const SourceConfigModal: React.FC<{
   const updateField = (field: 'clawHubUrl' | 'skillHubUrl', value: string) => {
     if (field === 'clawHubUrl') setClawHubUrl(value);
     else setSkillHubUrl(value);
-    const next = { clawHubUrl: field === 'clawHubUrl' ? value : clawHubUrl, skillHubUrl: field === 'skillHubUrl' ? value : skillHubUrl };
-    setDirty(next.clawHubUrl !== originalRef.current.clawHubUrl || next.skillHubUrl !== originalRef.current.skillHubUrl);
+    recomputeDirty({
+      clawHubUrl: field === 'clawHubUrl' ? value : clawHubUrl,
+      clawHubSource,
+      skillHubUrl: field === 'skillHubUrl' ? value : skillHubUrl,
+    });
+  };
+
+  const applyPreset = (preset: 'convex' | 'volces') => {
+    const url = preset === 'volces' ? VOLCES_DEFAULT_URL : CONVEX_DEFAULT_URL;
+    setClawHubSource(preset);
+    setClawHubUrl(url);
+    recomputeDirty({ clawHubUrl: url, clawHubSource: preset, skillHubUrl });
+  };
+
+  const updateSource = (value: 'convex' | 'volces') => {
+    setClawHubSource(value);
+    recomputeDirty({ clawHubUrl, clawHubSource: value, skillHubUrl });
   };
 
   const inputCls = "w-full h-9 theme-field rounded-lg px-3 text-[13px] font-mono focus:ring-2 focus:ring-primary/30 outline-none transition-all sci-input";
@@ -566,12 +629,38 @@ const SourceConfigModal: React.FC<{
           ) : (
             <>
               <div>
+                <label className={labelCls}>{sk.sourceConfigClawHubSourceLabel || 'ClawHub Source'}</label>
+                <div className="mt-1.5">
+                  <CustomSelect
+                    value={clawHubSource}
+                    onChange={(v) => updateSource(v as 'convex' | 'volces')}
+                    options={[
+                      { value: 'convex', label: sk.sourceConfigSourceOfficial || 'Official (Convex)' },
+                      { value: 'volces', label: sk.sourceConfigSourceVolces || 'China Mirror (volces.com)' },
+                    ]}
+                  />
+                </div>
+                <div className="flex items-center gap-2 mt-2">
+                  <button type="button" onClick={() => applyPreset('convex')}
+                    className="h-7 px-3 text-[11px] font-medium rounded-md theme-field hover:bg-primary/10 hover:text-primary transition-all flex items-center gap-1">
+                    <span className="material-symbols-outlined text-[12px]">public</span>
+                    {sk.sourceConfigPresetOfficial || 'Use official'}
+                  </button>
+                  <button type="button" onClick={() => applyPreset('volces')}
+                    className="h-7 px-3 text-[11px] font-medium rounded-md theme-field hover:bg-primary/10 hover:text-primary transition-all flex items-center gap-1">
+                    <span className="material-symbols-outlined text-[12px]">flag</span>
+                    {sk.sourceConfigPresetVolces || 'Use China mirror'}
+                  </button>
+                </div>
+                <p className="text-[10px] text-slate-400 dark:text-white/20 mt-1.5">{sk.sourceConfigClawHubSourceHint || 'Switch between official Convex source and China mirror. Use a preset to also reset the base URL.'}</p>
+              </div>
+              <div>
                 <label className={labelCls}>{sk.sourceConfigClawHubLabel || 'ClawHub Base URL'}</label>
                 <input type="url" value={clawHubUrl}
                   onChange={e => updateField('clawHubUrl', e.target.value)}
                   className={`${inputCls} mt-1.5`}
-                  placeholder="https://wry-manatee-359.convex.cloud" />
-                <p className="text-[10px] text-slate-400 dark:text-white/20 mt-1.5">{sk.sourceConfigClawHubHint || 'ClawHub Convex base URL. API paths are appended automatically. Changes require restart.'}</p>
+                  placeholder={clawHubSource === 'volces' ? VOLCES_DEFAULT_URL : CONVEX_DEFAULT_URL} />
+                <p className="text-[10px] text-slate-400 dark:text-white/20 mt-1.5">{clawHubSource === 'volces' ? (sk.sourceConfigClawHubHintVolces || 'China mirror base URL (e.g. https://skills.volces.com). Changes require restart.') : (sk.sourceConfigClawHubHint || 'ClawHub Convex base URL. API paths are appended automatically. Changes require restart.')}</p>
               </div>
               <div>
                 <label className={labelCls}>SkillHub Data URL</label>
@@ -1383,6 +1472,7 @@ const Skills: React.FC<SkillsProps> = ({ language }) => {
   const tabs: { id: TabId; label: string; count?: number }[] = [
     { id: 'all', label: sk.skillsTab || sk.allSkills, count: skills.length },
     { id: 'plugins', label: sk.pluginCenter || 'Plugins' },
+    { id: 'cli', label: sk.cliCenter || 'CLI' },
     { id: 'mcp', label: sk.mcpCenter || 'MCP' },
     { id: 'market', label: 'ClawHub' },
     { id: 'skillhub', label: 'SkillHub' },
@@ -1421,7 +1511,7 @@ const Skills: React.FC<SkillsProps> = ({ language }) => {
         </div>
 
         {/* 搜索栏 */}
-        {activeTab !== 'plugins' && activeTab !== 'skillhub' && activeTab !== 'mcp' && (
+        {activeTab !== 'plugins' && activeTab !== 'skillhub' && activeTab !== 'mcp' && activeTab !== 'cli' && (
         <div className="p-3 flex flex-row items-center gap-2">
           {activeTab !== 'market' ? (
             <>
@@ -1644,8 +1734,13 @@ const Skills: React.FC<SkillsProps> = ({ language }) => {
         <McpCenter language={language} />
       )}
 
+      {/* CLI 工具中心 */}
+      {activeTab === 'cli' && (
+        <CLICenter language={language} />
+      )}
+
       {/* 内容区 */}
-      {activeTab !== 'plugins' && activeTab !== 'skillhub' && activeTab !== 'mcp' && (
+      {activeTab !== 'plugins' && activeTab !== 'skillhub' && activeTab !== 'mcp' && activeTab !== 'cli' && (
       <div className="flex-1 overflow-y-auto p-4 md:p-6 custom-scrollbar neon-scrollbar">
         <div className="max-w-6xl mx-auto">
           {/* 加载/错误状态 */}
@@ -1845,7 +1940,9 @@ const Skills: React.FC<SkillsProps> = ({ language }) => {
                       const mTrans = translations[marketKey];
                       const mTransReady = autoTranslate && language !== 'en' && mTrans?.status === 'cached';
                       const rawMarketName = pickLocalizedText(language, { value: item.displayName || item.name || slug });
-                      const rawMarketDesc = pickLocalizedText(language, { value: item.summary || item.description || '' });
+                      // Prefer DisplayDescription (volces metaContent — friendlier Chinese tagline)
+                      // when present; fall back to summary/description.
+                      const rawMarketDesc = pickLocalizedText(language, { value: item.displayDescription || item.summary || item.description || '' });
                       const stats = item.stats || {};
                       const ver = item.latestVersion?.version || item.tags?.latest || '';
                       const isInstalled = marketInstalledSlugs.has(slug) || skills.some(s => s.skillKey === slug || s.name === slug);
@@ -2130,10 +2227,23 @@ const Skills: React.FC<SkillsProps> = ({ language }) => {
         const mdSlug = md.slug || '';
         const mdRawName = pickLocalizedText(language, { value: md.displayName || md.name || mdSlug });
         const mdRawDesc = pickLocalizedText(language, { value: md.description || md.summary || '' });
+        const mdDisplayDesc = (typeof md.displayDescription === 'string' ? md.displayDescription : '').trim();
         const mdVer = md.latestVersion?.version || md.tags?.latest || '';
-        const mdAuthor = md.author ? (typeof md.author === 'string' ? md.author : md.author?.name) : '';
+        const mdAuthor = md.author
+          ? (typeof md.author === 'string' ? md.author : md.author?.name)
+          : (md.owner ? (typeof md.owner === 'string' ? md.owner : (md.owner?.displayName || md.owner?.handle)) : (md.ownerHandle || ''));
         const mdStats = md.stats || {};
-        const mdTags = md.tags && typeof md.tags === 'object' ? Object.keys(md.tags).filter((t: string) => t !== 'latest') : [];
+        const mdTagsFromObj = md.tags && typeof md.tags === 'object' && !Array.isArray(md.tags) ? Object.keys(md.tags).filter((t: string) => t !== 'latest') : [];
+        const mdTagsFromArr = Array.isArray(md.tags) ? md.tags.filter((t: any) => typeof t === 'string') : [];
+        const mdKeywords = Array.isArray(md.keywords) ? md.keywords.filter((t: any) => typeof t === 'string') : [];
+        const mdTags: string[] = Array.from(new Set([...mdTagsFromObj, ...mdTagsFromArr, ...mdKeywords]));
+        const mdLicense = (typeof md.license === 'string' ? md.license : (md.latestVersion?.license || '')) as string;
+        const mdFiles: string[] = Array.isArray(md.files) ? md.files.filter((f: any) => typeof f === 'string') : [];
+        const mdReadme = (typeof md.readme === 'string' ? md.readme : (typeof md.skillMd === 'string' ? md.skillMd : '')) as string;
+        const mdLatestCommit = (typeof md.latestCommit === 'string' ? md.latestCommit : (md.latestVersion?.commit || '')) as string;
+        const mdHomepageURL = mdLatestCommit
+          ? mdLatestCommit.replace(/\/commit\/[a-f0-9]+$/i, '')
+          : `https://clawhub.ai/skills/${encodeURIComponent(mdSlug)}`;
         const mdIsInstalled = marketInstalledSlugs.has(mdSlug) || skills.some(s => s.skillKey === mdSlug || s.name === mdSlug);
         const mdTrans = translations[`market:${mdSlug}`];
         const mdShowTrans = autoTranslate && language !== 'en' && mdTrans?.status === 'cached';
@@ -2141,7 +2251,7 @@ const Skills: React.FC<SkillsProps> = ({ language }) => {
         const mdDesc = mdShowTrans && mdTrans?.description ? mdTrans.description : mdRawDesc;
         return (
           <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setMarketDetail(null)}>
-            <div className="w-full max-w-lg mx-4 bg-white dark:bg-[#1c1e24] rounded-2xl shadow-2xl border border-slate-200 dark:border-white/10 overflow-hidden max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="w-full max-w-2xl mx-4 bg-white dark:bg-[#1c1e24] rounded-2xl shadow-2xl border border-slate-200 dark:border-white/10 overflow-hidden max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
               {/* Header */}
               <div className="px-5 py-4 border-b border-slate-200 dark:border-white/5 flex items-center gap-3 shrink-0">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/15 to-purple-500/15 flex items-center justify-center shrink-0 border border-slate-200/50 dark:border-white/5">
@@ -2161,6 +2271,12 @@ const Skills: React.FC<SkillsProps> = ({ language }) => {
               </div>
               {/* Body */}
               <div className="flex-1 overflow-y-auto p-5 space-y-4 custom-scrollbar neon-scrollbar">
+                {/* Display description (volces metaContent.DisplayDescription) — short tagline */}
+                {mdDisplayDesc && mdDisplayDesc !== mdDesc && (
+                  <div className="px-3 py-2 rounded-lg bg-primary/5 border border-primary/15 text-[12px] text-primary/90 dark:text-primary/80 leading-relaxed">
+                    {mdDisplayDesc}
+                  </div>
+                )}
                 {/* Description */}
                 {mdDesc && <p className="text-[12px] text-slate-600 dark:text-white/50 leading-relaxed">{mdDesc}</p>}
                 {/* Status badges */}
@@ -2168,7 +2284,13 @@ const Skills: React.FC<SkillsProps> = ({ language }) => {
                   {mdIsInstalled
                     ? <span className="text-[10px] px-2 py-0.5 rounded-full bg-mac-green/15 text-mac-green font-bold">{sk.installed}</span>
                     : <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-white/5 text-slate-500 font-bold">{sk.marketplace}</span>}
-                  {mdTags.slice(0, 6).map((tag: string) => (
+                  {mdLicense && (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 font-mono flex items-center gap-1">
+                      <span className="material-symbols-outlined text-[10px]">balance</span>
+                      {mdLicense}
+                    </span>
+                  )}
+                  {mdTags.slice(0, 8).map((tag: string) => (
                     <span key={tag} className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-white/40">{tag}</span>
                   ))}
                 </div>
@@ -2206,24 +2328,62 @@ const Skills: React.FC<SkillsProps> = ({ language }) => {
                     <span className="text-[11px] text-slate-400">{sk.loading}</span>
                   </div>
                 )}
-                {/* README (from API detail) */}
-                {md.readme && (
+                {/* README / SKILL.md — rendered as Markdown when content is present */}
+                {mdReadme && (
                   <div>
-                    <h4 className="text-[10px] font-bold text-slate-500 dark:text-white/40 uppercase tracking-wider mb-1.5">README</h4>
-                    <div className="text-[11px] text-slate-500 dark:text-white/40 leading-relaxed whitespace-pre-wrap font-mono bg-slate-50 dark:bg-black/20 rounded-lg p-3 max-h-[250px] overflow-y-auto custom-scrollbar neon-scrollbar">{md.readme}</div>
+                    <h4 className="text-[10px] font-bold text-slate-500 dark:text-white/40 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                      <span className="material-symbols-outlined text-[12px]">description</span>
+                      {md.skillMd ? 'SKILL.md' : 'README'}
+                    </h4>
+                    <div className="text-[12px] text-slate-700 dark:text-white/70 leading-relaxed bg-slate-50 dark:bg-black/20 rounded-lg p-4 max-h-[360px] overflow-y-auto custom-scrollbar neon-scrollbar">
+                      <MarkdownRenderer content={mdReadme} />
+                    </div>
                   </div>
+                )}
+                {/* Files (volces metaContent.Files) */}
+                {mdFiles.length > 0 && (
+                  <details className="group">
+                    <summary className="text-[10px] font-bold text-slate-500 dark:text-white/40 uppercase tracking-wider mb-1.5 flex items-center gap-1.5 cursor-pointer select-none hover:text-primary">
+                      <span className="material-symbols-outlined text-[12px] group-open:rotate-90 transition-transform">chevron_right</span>
+                      <span>{sk.filesLabel || 'Files'} ({mdFiles.length})</span>
+                    </summary>
+                    <div className="mt-2 space-y-0.5 bg-slate-50 dark:bg-black/20 rounded-lg p-3 max-h-[180px] overflow-y-auto custom-scrollbar neon-scrollbar">
+                      {mdFiles.map((f) => (
+                        <div key={f} className="text-[11px] text-slate-500 dark:text-white/40 font-mono flex items-center gap-1.5">
+                          <span className="material-symbols-outlined text-[11px] text-slate-400">draft</span>
+                          {f}
+                        </div>
+                      ))}
+                    </div>
+                  </details>
                 )}
                 {/* Versions */}
                 {md.versions && Array.isArray(md.versions) && md.versions.length > 0 && (
                   <div>
-                    <h4 className="text-[10px] font-bold text-slate-500 dark:text-white/40 uppercase tracking-wider mb-1.5">{sk.versionHistory || 'Versions'}</h4>
-                    <div className="space-y-1 max-h-[120px] overflow-y-auto custom-scrollbar neon-scrollbar">
-                      {md.versions.slice(0, 10).map((v: any, i: number) => (
-                        <div key={i} className="text-[10px] text-slate-500 dark:text-white/40 font-mono flex gap-2">
-                          <span>v{v.version || v}</span>
-                          {v.createdAt && <span className="text-slate-400">{new Date(v.createdAt).toLocaleDateString()}</span>}
-                        </div>
-                      ))}
+                    <h4 className="text-[10px] font-bold text-slate-500 dark:text-white/40 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                      <span className="material-symbols-outlined text-[12px]">history</span>
+                      {sk.versionHistory || 'Versions'}
+                    </h4>
+                    <div className="space-y-1 max-h-[160px] overflow-y-auto custom-scrollbar neon-scrollbar">
+                      {md.versions.slice(0, 12).map((v: any, i: number) => {
+                        const ver = v.version || v;
+                        const date = v.publishedAt || v.createdAt;
+                        const commit = typeof v.commit === 'string' ? v.commit : '';
+                        return (
+                          <div key={i} className="text-[11px] flex items-center gap-2 py-1 border-b border-slate-100 dark:border-white/5 last:border-0">
+                            <span className="font-mono text-slate-700 dark:text-white/60 font-bold">v{ver}</span>
+                            {date && <span className="text-slate-400 dark:text-white/30 text-[10px]">{new Date(date).toLocaleDateString()}</span>}
+                            {commit && (
+                              <a href={commit} target="_blank" rel="noopener noreferrer"
+                                className="ms-auto flex items-center gap-1 text-primary/70 hover:text-primary transition-colors text-[10px] font-mono"
+                                onClick={(e) => e.stopPropagation()}>
+                                <span className="material-symbols-outlined text-[12px]">commit</span>
+                                {commit.match(/commit\/([a-f0-9]{7})/i)?.[1] || sk.viewCommit || 'commit'}
+                              </a>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -2248,7 +2408,7 @@ const Skills: React.FC<SkillsProps> = ({ language }) => {
                     {sk.sendToAgent}
                   </button>
                 )}
-                <a href={`https://clawhub.ai/skills/${encodeURIComponent(mdSlug)}`} target="_blank" rel="noopener noreferrer"
+                <a href={mdHomepageURL} target="_blank" rel="noopener noreferrer"
                   className="h-8 px-4 bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-white/60 text-[11px] font-bold rounded-lg hover:bg-slate-200 dark:hover:bg-white/10 flex items-center gap-1.5 ms-auto">
                   <span className="material-symbols-outlined text-[14px]">open_in_new</span>{sk.homepage}
                 </a>

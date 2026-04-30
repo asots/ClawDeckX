@@ -150,12 +150,122 @@ func (h *ClawHubHandler) clawHubBaseURL() string {
 	return strings.TrimRight(webconfig.Default().Server.ClawHubQueryURL, "/")
 }
 
-// clawHubHTTPBaseURL returns the Convex HTTP actions base URL (.convex.site)
-// derived from the Convex query URL (.convex.cloud). HTTP actions like search
-// and skill detail are served on the .convex.site domain.
+// clawHubSource returns the configured upstream source: "convex" (official) or
+// "volces" (China mirror). Anything unrecognized falls back to "convex".
+func (h *ClawHubHandler) clawHubSource() string {
+	cfg, err := webconfig.Load()
+	if err == nil {
+		src := strings.ToLower(strings.TrimSpace(cfg.Server.ClawHubSource))
+		if src == "volces" {
+			return "volces"
+		}
+	}
+	return "convex"
+}
+
+// clawHubHTTPBaseURL returns the HTTP actions base URL for GET-style endpoints
+// (search, detail). For Convex, this is the .convex.site domain derived from
+// the .convex.cloud query URL. For volces, the same base URL serves both.
 func (h *ClawHubHandler) clawHubHTTPBaseURL() string {
 	base := h.clawHubBaseURL()
+	if h.clawHubSource() == "volces" {
+		return base
+	}
 	return strings.Replace(base, ".convex.cloud", ".convex.site", 1)
+}
+
+// mapClawHubVolcesItem normalizes a volces search/list result entry so it
+// matches the shape expected by the frontend (latestVersion.version, etc.).
+func mapClawHubVolcesItem(entry map[string]interface{}) map[string]interface{} {
+	item := map[string]interface{}{}
+	for k, v := range entry {
+		item[k] = v
+	}
+	// Synthesize latestVersion if absent (frontend reads item.latestVersion?.version).
+	if _, ok := item["latestVersion"]; !ok {
+		if ver, ok := entry["version"]; ok {
+			item["latestVersion"] = map[string]interface{}{"version": ver}
+		}
+	}
+	// Synthesize stats if absent so downstream `item.stats || {}` is harmless.
+	if _, ok := item["stats"]; !ok {
+		item["stats"] = map[string]interface{}{}
+	}
+	// Lift selected metaContent fields to the top level so cards (and the
+	// detail modal before its enriched fetch returns) can render the friendlier
+	// Chinese DisplayDescription, license, and keywords without digging.
+	if meta, ok := entry["metaContent"].(map[string]interface{}); ok {
+		if _, ok := item["owner"]; !ok {
+			if oh, ok := meta["owner"].(string); ok && oh != "" {
+				item["owner"] = map[string]interface{}{"handle": oh, "displayName": oh}
+				item["ownerHandle"] = oh
+			}
+		}
+		if dd, ok := meta["DisplayDescription"].(string); ok && dd != "" {
+			item["displayDescription"] = dd
+		}
+		if lic, ok := meta["License"].(string); ok && lic != "" {
+			item["license"] = lic
+		}
+		if kw, ok := meta["Keywords"]; ok {
+			if _, exists := item["keywords"]; !exists {
+				item["keywords"] = kw
+			}
+		}
+	}
+	return item
+}
+
+// listVolces queries the volces mirror's REST search endpoint with empty q.
+// Returns the raw enriched body to be cached + returned to the client.
+func (h *ClawHubHandler) listVolces(sort string, limit int, cursor string) ([]byte, http.Header, int, error) {
+	apiURL := fmt.Sprintf("%s/api/v1/search?q=&limit=%d&sort=%s", h.clawHubBaseURL(), limit, url.QueryEscape(sort))
+	if cursor != "" {
+		apiURL += "&marker=" + url.QueryEscape(cursor)
+	}
+	resp, err := h.httpClient.Get(apiURL)
+	if err != nil {
+		return nil, nil, 0, fmt.Errorf("volces list: %w", err)
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, resp.Header, resp.StatusCode, fmt.Errorf("read volces response: %w", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return body, resp.Header, resp.StatusCode, fmt.Errorf("volces returned %d", resp.StatusCode)
+	}
+	if !json.Valid(body) {
+		return body, resp.Header, resp.StatusCode, fmt.Errorf("volces returned invalid JSON")
+	}
+	var volces struct {
+		Results    []map[string]interface{} `json:"results"`
+		NextMarker string                   `json:"nextMarker"`
+	}
+	if err := json.Unmarshal(body, &volces); err != nil {
+		return body, resp.Header, resp.StatusCode, fmt.Errorf("parse volces response: %w", err)
+	}
+	items := make([]map[string]interface{}, 0, len(volces.Results))
+	for _, entry := range volces.Results {
+		items = append(items, mapClawHubVolcesItem(entry))
+	}
+	result := map[string]interface{}{
+		"items":      items,
+		"nextCursor": nil,
+		"_rateLimit": map[string]string{
+			"limit":     resp.Header.Get("Ratelimit-Limit"),
+			"remaining": resp.Header.Get("Ratelimit-Remaining"),
+			"reset":     resp.Header.Get("Ratelimit-Reset"),
+		},
+	}
+	if volces.NextMarker != "" {
+		result["nextCursor"] = volces.NextMarker
+	}
+	enriched, err := json.Marshal(result)
+	if err != nil {
+		return body, resp.Header, resp.StatusCode, err
+	}
+	return enriched, resp.Header, resp.StatusCode, nil
 }
 
 // List lists ClawHub skills (proxied to avoid CORS, supports sort/pagination).
@@ -186,6 +296,34 @@ func (h *ClawHubHandler) List(w http.ResponseWriter, r *http.Request) {
 	if sort == "" {
 		sort = "newest"
 	}
+
+	// volces (China mirror) source: REST GET /api/v1/search.
+	if h.clawHubSource() == "volces" {
+		body, headers, status, err := h.listVolces(sort, limitInt, cursor)
+		if err != nil {
+			// 429: serve stale cache if available
+			if status == http.StatusTooManyRequests {
+				h.cacheMu.RLock()
+				if entry, ok := h.cacheMap[cacheKey]; ok {
+					h.cacheMu.RUnlock()
+					logger.Log.Warn().Str("source", "volces").Msg("ClawHub rate limited, serving stale cache")
+					web.OKRaw(w, r, entry.data)
+					return
+				}
+				h.cacheMu.RUnlock()
+			}
+			logger.Log.Warn().Err(err).Int("status", status).Msg("ClawHub volces list failed")
+			web.Fail(w, r, "CLAWHUB_LIST_FAILED", "ClawHub volces list failed: "+err.Error(), http.StatusBadGateway)
+			return
+		}
+		_ = headers
+		h.cacheMu.Lock()
+		h.cacheMap[cacheKey] = &listCache{data: body, fetchedAt: time.Now()}
+		h.cacheMu.Unlock()
+		web.OKRaw(w, r, body)
+		return
+	}
+
 	convexSort := sort
 	if convexSort != "newest" && convexSort != "downloads" && convexSort != "stars" {
 		convexSort = "newest"
@@ -343,6 +481,18 @@ func (h *ClawHubHandler) Search(w http.ResponseWriter, r *http.Request) {
 		// Inject rate limit headers into response
 		var result map[string]interface{}
 		if json.Unmarshal(body, &result) == nil {
+			// For volces source, normalize each result so latestVersion etc. exist.
+			if h.clawHubSource() == "volces" {
+				if rawResults, ok := result["results"].([]interface{}); ok {
+					mapped := make([]map[string]interface{}, 0, len(rawResults))
+					for _, raw := range rawResults {
+						if entry, ok := raw.(map[string]interface{}); ok {
+							mapped = append(mapped, mapClawHubVolcesItem(entry))
+						}
+					}
+					result["results"] = mapped
+				}
+			}
 			result["_rateLimit"] = map[string]string{
 				"limit":     resp.Header.Get("Ratelimit-Limit"),
 				"remaining": resp.Header.Get("Ratelimit-Remaining"),
@@ -361,7 +511,11 @@ func (h *ClawHubHandler) Search(w http.ResponseWriter, r *http.Request) {
 	web.OKRaw(w, r, body)
 }
 
-// SkillDetail returns skill details.
+// SkillDetail returns skill details. For both Convex and volces sources the
+// response is normalized into a flat shape friendly to the frontend modal:
+// at minimum {slug, displayName, summary, latestVersion, owner, stats, tags}
+// plus optional enriched fields when available (readme, versions, keywords,
+// files, license, displayDescription, latestCommit, history with commit URLs).
 func (h *ClawHubHandler) SkillDetail(w http.ResponseWriter, r *http.Request) {
 	slug := r.URL.Query().Get("slug")
 	if slug == "" {
@@ -383,7 +537,137 @@ func (h *ClawHubHandler) SkillDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if !json.Valid(body) {
+		web.OKRaw(w, r, body)
+		return
+	}
+
+	var raw map[string]interface{}
+	if err := json.Unmarshal(body, &raw); err != nil {
+		web.OKRaw(w, r, body)
+		return
+	}
+
+	enriched := normalizeClawHubDetail(raw, h.clawHubSource())
+	if out, err := json.Marshal(enriched); err == nil {
+		web.OKRaw(w, r, out)
+		return
+	}
 	web.OKRaw(w, r, body)
+}
+
+// normalizeClawHubDetail flattens both Convex and volces detail responses into
+// a single shape used by the frontend modal. Volces contributes far richer
+// content (skillMd, history with commit URLs, files, keywords, displayDesc).
+func normalizeClawHubDetail(raw map[string]interface{}, source string) map[string]interface{} {
+	out := map[string]interface{}{}
+	// Carry over original top-level fields so callers can still access them.
+	for k, v := range raw {
+		out[k] = v
+	}
+
+	// Lift skill subobject keys to top level so the frontend doesn't need to
+	// know whether something lives at root or nested under "skill".
+	if skill, ok := raw["skill"].(map[string]interface{}); ok {
+		for k, v := range skill {
+			if _, exists := out[k]; !exists {
+				out[k] = v
+			}
+		}
+	}
+
+	// Owner: prefer object form; fall back to plain string handle.
+	if owner, ok := raw["owner"].(map[string]interface{}); ok {
+		if handle, ok := owner["handle"].(string); ok && handle != "" {
+			out["ownerHandle"] = handle
+		}
+	}
+
+	// Latest version metadata is already at raw["latestVersion"] for both sources.
+
+	// Volces-specific enrichment from metaContent.
+	if meta, ok := raw["metaContent"].(map[string]interface{}); ok {
+		if v, ok := meta["DisplayDescription"].(string); ok && v != "" {
+			out["displayDescription"] = v
+		}
+		if v, ok := meta["skillMd"].(string); ok && v != "" {
+			// readme is what the existing UI renders.
+			out["readme"] = v
+			out["skillMd"] = v
+		}
+		if v, ok := meta["Files"]; ok {
+			out["files"] = v
+		}
+		if v, ok := meta["Keywords"]; ok {
+			out["keywords"] = v
+		}
+		if v, ok := meta["License"].(string); ok && v != "" {
+			out["license"] = v
+		}
+		if latest, ok := meta["latest"].(map[string]interface{}); ok {
+			if commit, ok := latest["commit"].(string); ok && commit != "" {
+				out["latestCommit"] = commit
+			}
+			// Merge into latestVersion if present so frontend can show commit URL.
+			if lv, ok := out["latestVersion"].(map[string]interface{}); ok {
+				if _, exists := lv["commit"]; !exists {
+					if commit, ok := latest["commit"].(string); ok && commit != "" {
+						lv["commit"] = commit
+					}
+				}
+				if _, exists := lv["publishedAt"]; !exists {
+					if pub, ok := latest["publishedAt"]; ok {
+						lv["publishedAt"] = pub
+					}
+				}
+			}
+		}
+	}
+
+	// History → versions array (with commit URLs) for the version list UI.
+	// Source priority: top-level `history` (volces detail) > metaContent.history.
+	var historyRaw []interface{}
+	if v, ok := raw["history"].([]interface{}); ok {
+		historyRaw = v
+	} else if meta, ok := raw["metaContent"].(map[string]interface{}); ok {
+		if v, ok := meta["history"].([]interface{}); ok {
+			historyRaw = v
+		}
+	}
+	if len(historyRaw) > 0 {
+		versions := make([]map[string]interface{}, 0, len(historyRaw))
+		for _, raw := range historyRaw {
+			if entry, ok := raw.(map[string]interface{}); ok {
+				v := map[string]interface{}{}
+				if version, ok := entry["version"]; ok {
+					v["version"] = version
+				}
+				if commit, ok := entry["commit"]; ok {
+					v["commit"] = commit
+				}
+				if pub, ok := entry["publishedAt"]; ok {
+					// Frontend reads `createdAt` for date display; mirror publishedAt.
+					v["publishedAt"] = pub
+					if _, exists := v["createdAt"]; !exists {
+						v["createdAt"] = pub
+					}
+				}
+				if cAt, ok := entry["createdAt"]; ok {
+					v["createdAt"] = cAt
+				}
+				versions = append(versions, v)
+			}
+		}
+		// Only set `versions` if not already provided by upstream (Convex may not).
+		if _, ok := out["versions"]; !ok {
+			out["versions"] = versions
+		}
+	}
+
+	// Mark which upstream source produced this payload — useful for debugging
+	// and lets the frontend decide whether to show a "China mirror" hint.
+	out["_source"] = source
+	return out
 }
 
 // Install installs a ClawHub skill via clawhub CLI.

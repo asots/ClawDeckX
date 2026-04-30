@@ -516,6 +516,7 @@ func RunServe(args []string) int {
 
 	router.GET("/api/v1/server-config", serverConfigHandler.Get)
 	router.PUT("/api/v1/server-config", web.RequireAdmin(serverConfigHandler.Update))
+	router.POST("/api/v1/server-config/restart", web.RequireAdmin(serverConfigHandler.Restart))
 
 	router.GET("/api/v1/gateway/status", gatewayHandler.Status)
 	router.POST("/api/v1/gateway/start", web.RequireAdmin(gatewayHandler.Start))
@@ -611,8 +612,9 @@ func RunServe(args []string) int {
 	router.POST("/api/v1/migrate/plan", migrateHandler.Plan)
 	router.POST("/api/v1/migrate/apply", web.RequireAdmin(migrateHandler.Apply))
 
-	observabilityHandler := handlers.NewObservabilityHandler(gwClient)
+	observabilityHandler := handlers.NewObservabilityHandler(gwClient, svc)
 	router.GET("/api/v1/observability/metrics", observabilityHandler.Metrics)
+	router.GET("/api/v1/observability/gateway-state", observabilityHandler.GatewayState)
 	router.GET("/api/v1/observability/scrape-config", observabilityHandler.ScrapeConfig)
 	router.POST("/api/v1/observability/enable-plugin", web.RequireAdmin(observabilityHandler.EnablePlugin))
 
@@ -676,6 +678,7 @@ func RunServe(args []string) int {
 
 	router.GET("/api/v1/gateway/log", gwLogHandler.GetLog)
 
+	router.GET("/api/v1/gateway/readyz", gatewayHandler.GetReadyz)
 	router.GET("/api/v1/gateway/health-check", gatewayHandler.GetHealthCheck)
 	router.PUT("/api/v1/gateway/health-check", web.RequireAdmin(gatewayHandler.SetHealthCheck))
 
