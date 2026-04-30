@@ -127,6 +127,11 @@ export const AgentsSection: React.FC<SectionProps> = ({ config, schema, setField
         <NumberField label={es.maxResults} tooltip={tip('agents.defaults.memorySearch.maxResults')} value={d(['memorySearch', 'maxResults'])} onChange={v => sd(['memorySearch', 'maxResults'], v)} min={1} placeholder={def('agents.defaults.memorySearch.maxResults')} />
       </ConfigSection>
 
+      <ConfigSection title={es.commitments || 'Commitments'} icon="task_alt" iconColor="text-rose-500" defaultOpen={false} desc={es.commitmentsDesc}>
+        <SwitchField label={es.commitmentsEnabled || 'Enable Commitments'} tooltip={tip('commitments.enabled')} value={getField(['commitments', 'enabled']) === true} onChange={v => setField(['commitments', 'enabled'], v)} />
+        <NumberField label={es.commitmentsMaxPerDay || 'Max Per Day'} tooltip={tip('commitments.maxPerDay')} value={getField(['commitments', 'maxPerDay'])} onChange={v => setField(['commitments', 'maxPerDay'], v)} min={0} max={100} placeholder={def('commitments.maxPerDay')} />
+      </ConfigSection>
+
       <ConfigSection title={es.sandbox} icon="shield" iconColor="text-emerald-500" defaultOpen={false}>
         <SelectField label={es.sandboxMode || 'Sandbox Mode'} tooltip={tip('agents.defaults.sandbox.mode')} value={d(['sandbox', 'mode']) || 'off'} onChange={v => sd(['sandbox', 'mode'], v)} options={SANDBOX_MODE_OPTIONS} />
         <SelectField label={es.sandboxBackend || 'Sandbox Backend'} tooltip={tip('agents.defaults.sandbox.backend')} value={d(['sandbox', 'backend']) || 'docker'} onChange={v => sd(['sandbox', 'backend'], v)} options={SANDBOX_BACKEND_OPTIONS} />

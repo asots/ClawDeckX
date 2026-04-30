@@ -86,6 +86,10 @@ const DreamsPanel: React.FC<DreamsPanelProps> = ({ gw, toast }) => {
   const [backfilling, setBackfilling] = useState(false);
   const [resettingDiary, setResettingDiary] = useState(false);
   const [resettingGrounded, setResettingGrounded] = useState(false);
+  const [remLoading, setRemLoading] = useState(false);
+  const [remContent, setRemContent] = useState<string | null>(null);
+  const [remPath, setRemPath] = useState<string | null>(null);
+  const [remOpen, setRemOpen] = useState(false);
   const mountedRef = useRef(true);
 
   const fetchStatus = useCallback(async () => {
@@ -206,6 +210,22 @@ const DreamsPanel: React.FC<DreamsPanelProps> = ({ gw, toast }) => {
       if (mountedRef.current) setResettingDiary(false);
     }
   }, [resettingDiary, confirm, dr, toast, fetchStatus]);
+
+  const loadRemHarness = useCallback(async () => {
+    setRemLoading(true);
+    try {
+      const res: any = await gwApi.memoryRemHarness();
+      if (mountedRef.current) {
+        setRemPath(res?.path || null);
+        setRemContent(res?.found ? (res?.content || '') : null);
+        setRemOpen(true);
+      }
+    } catch (err: any) {
+      toast('error', err?.message || 'Failed to load REM harness');
+    } finally {
+      if (mountedRef.current) setRemLoading(false);
+    }
+  }, [toast]);
 
   const handleResetGrounded = useCallback(async () => {
     if (resettingGrounded) return;
@@ -463,6 +483,20 @@ const DreamsPanel: React.FC<DreamsPanelProps> = ({ gw, toast }) => {
               <p className="text-[9px] text-slate-400 dark:text-white/30">{dr.resetDiaryDesc || 'Clear all dream diary entries'}</p>
             </div>
           </button>
+          {/* Preview REM Harness */}
+          <button
+            onClick={() => remOpen ? setRemOpen(false) : loadRemHarness()}
+            disabled={remLoading}
+            className="flex items-center gap-2 rounded-lg border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.02] hover:bg-purple-50 dark:hover:bg-purple-500/5 hover:border-purple-300 dark:hover:border-purple-500/20 px-3 py-2.5 transition-colors text-start disabled:opacity-50"
+          >
+            <span className="material-symbols-outlined text-[16px] text-purple-500">
+              {remLoading ? 'progress_activity' : 'auto_awesome'}
+            </span>
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] font-bold text-slate-700 dark:text-white/70">{dr.remPreview || 'Preview REM'}</p>
+              <p className="text-[9px] text-slate-400 dark:text-white/30">{dr.remPreviewDesc || 'Preview REM dreaming output'}</p>
+            </div>
+          </button>
           {/* Reset Grounded Short-term */}
           <button
             onClick={handleResetGrounded}
@@ -479,6 +513,33 @@ const DreamsPanel: React.FC<DreamsPanelProps> = ({ gw, toast }) => {
           </button>
         </div>
       </div>
+
+      {/* REM Harness Preview */}
+      {remOpen && (
+        <div className="rounded-xl border border-slate-200/60 dark:border-white/[0.06] bg-white dark:bg-white/[0.02] p-4 sci-card">
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-[16px] text-purple-500">auto_awesome</span>
+            <h4 className="text-[10px] font-bold text-slate-500 dark:text-white/40 uppercase tracking-wider flex-1">
+              {dr.remPreview || 'REM Harness Preview'}
+            </h4>
+            <button onClick={() => setRemOpen(false)} className="text-[10px] text-primary font-bold hover:underline">{dr.hide || 'Hide'}</button>
+          </div>
+          <div className="mt-3">
+            {remContent === null ? (
+              <p className="text-[10px] text-slate-400 dark:text-white/30 italic">
+                {dr.remEmpty || 'No REM harness output available.'}
+              </p>
+            ) : (
+              <>
+                {remPath && <p className="text-[9px] font-mono text-slate-400 dark:text-white/25 mb-2">{remPath}</p>}
+                <pre className="text-[10px] text-slate-600 dark:text-white/60 font-mono whitespace-pre-wrap max-h-80 overflow-y-auto custom-scrollbar neon-scrollbar bg-slate-50 dark:bg-white/[0.02] rounded-lg p-3 border border-slate-100 dark:border-white/5">
+                  {remContent || '(empty)'}
+                </pre>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Storage Info */}
       {(status.storePath || status.storeError || status.phaseSignalError) && (

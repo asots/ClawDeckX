@@ -174,7 +174,7 @@ func SecurityHeadersMiddleware(next http.Handler) http.Handler {
 			"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.loli.net https://fonts.geekzu.org",
 			"img-src 'self' data: https:",
 			"font-src 'self' data: https://fonts.gstatic.com https://fonts.loli.net https://fonts.geekzu.org",
-			"connect-src 'self' ws: wss: https://github.com https://ghproxy.com https://mirror.ghproxy.com https://api.github.com https://raw.githubusercontent.com https://registry.npmjs.org https://registry.npmmirror.com https://mirrors.cloud.tencent.com https://picsum.photos https://i.picsum.photos https://fastly.picsum.photos",
+			"connect-src 'self' ws: wss: https://github.com https://ghproxy.com https://mirror.ghproxy.com https://api.github.com https://raw.githubusercontent.com https://registry.npmjs.org https://registry.npmmirror.com https://mirrors.cloud.tencent.com https://picsum.photos https://i.picsum.photos https://fastly.picsum.photos https://market.clawdeckx.com",
 		}, "; "))
 		next.ServeHTTP(w, r)
 	})

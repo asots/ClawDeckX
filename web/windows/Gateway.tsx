@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Language, OpenWindowDetail } from '../types';
 import { getTranslation } from '../locales';
-import { eventsApi, gatewayApi, gatewayProfileApi, gwApi } from '../services/api';
+import { eventsApi, gatewayApi, gatewayProfileApi, gwApi, observabilityApi, GatewayObservedState } from '../services/api';
 import { useVisibilityPolling } from '../hooks/useVisibilityPolling';
 import { settle as settlePromise } from '../utils/settle';
 import { useToast } from '../components/Toast';
@@ -40,6 +40,7 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
 
   // 网关状态 & 日志
   const [status, setStatus] = useState<any>(null);
+  const [gatewayObservedState, setGatewayObservedState] = useState<GatewayObservedState | null>(null);
   const [initialDetecting, setInitialDetecting] = useState(false);
   const hasStartedInitialDetectingRef = useRef(false);
   const [logs, setLogs] = useState<string[]>([]);
@@ -162,7 +163,7 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
     grace_remaining_sec: number;
     restarting: boolean;
     next_check_in_sec: number;
-    phase: 'healthy' | 'probing' | 'degraded' | 'restarting' | 'grace' | 'disabled';
+    phase: 'healthy' | 'probing' | 'degraded' | 'restarting' | 'grace' | 'starting' | 'disabled';
     notify_channels: string[];
     notify_sending: boolean;
     notify_last_event: string;
@@ -184,7 +185,13 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
   const [watchdogBackoffCapSec, setWatchdogBackoffCapSec] = useState('30');
   const [watchdogGraceSec, setWatchdogGraceSec] = useState('120');
   const [watchdogAdvancedOpen, setWatchdogAdvancedOpen] = useState(false);
+  const [gatewayDetailsOpen, setGatewayDetailsOpen] = useState(false);
   const [watchdogSaving, setWatchdogSaving] = useState(false);
+  const gatewayRecoveringRef = useRef(false);
+
+  // 恢复/未就绪过程计时：从横幅出现到全绿持续多久
+  const recoveryStartRef = useRef<number | null>(null);
+  const [recoveryElapsedSec, setRecoveryElapsedSec] = useState(0);
 
   // WebSocket 连接状态（用于 tab 标题指示灯 + 头部指示器）
   const [gwWsConnected, setGwWsConnected] = useState<boolean | null>(null);
@@ -326,6 +333,13 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
     }).catch(() => {});
   }, []);
 
+  const fetchGatewayObservedState = useCallback((force = false) => {
+    observabilityApi.gatewayStateCached(3000, force).then((data) => {
+      setGatewayObservedState(data);
+      gatewayRecoveringRef.current = !!data?.recovering || data?.phase === 'restarting' || data?.phase === 'grace' || data?.phase === 'starting';
+    }).catch(() => {});
+  }, []);
+
   const fetchEvents = useCallback(async (page?: number) => {
     setEventsLoading(true);
     try {
@@ -356,6 +370,7 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
         Promise.resolve(fetchProfiles()),
         Promise.resolve(fetchStatus()),
         Promise.resolve(fetchHealthCheck()),
+        Promise.resolve(fetchGatewayObservedState()),
         Promise.resolve(fetchChannels()),
       ]).finally(() => {
         setInitialDetecting(false);
@@ -364,6 +379,7 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
       fetchProfiles();
       fetchStatus();
       fetchHealthCheck();
+      fetchGatewayObservedState();
       fetchChannels();
     }
     const deferTimer = setTimeout(() => {
@@ -371,7 +387,7 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
       if (activeTab === 'events') fetchEvents();
     }, 0);
     return () => clearTimeout(deferTimer);
-  }, [fetchProfiles, fetchStatus, fetchHealthCheck, fetchLogs, fetchEvents, fetchChannels, activeTab]);
+  }, [fetchProfiles, fetchStatus, fetchHealthCheck, fetchGatewayObservedState, fetchLogs, fetchEvents, fetchChannels, activeTab]);
 
   // WS connection status polling + disconnect/reconnect toast + gateway uptime
   useEffect(() => {
@@ -381,7 +397,7 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
         setGwWsConnected(prev => {
           if (prev !== null && prev !== connected) {
             if (connected) toast('success', gw.svcWsReconnected || 'WebSocket reconnected');
-            else toast('error', gw.svcWsLost || 'WebSocket disconnected');
+            else if (!gatewayRecoveringRef.current) toast('error', gw.svcWsLost || 'WebSocket disconnected');
           }
           return connected;
         });
@@ -408,6 +424,7 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
   // Auto-diagnose when WS is disconnected — debounced + cooldown to avoid repeated calls
   const wsDiagCooldownRef = useRef(0); // timestamp of last completed diagnose
   useEffect(() => {
+    if (gatewayRecoveringRef.current || gatewayObservedState?.recovering) return;
     if (gwWsConnected === true) {
       setWsDiagResult(null);
       return;
@@ -426,7 +443,7 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
       });
     }, 2000);
     return () => clearTimeout(timer);
-  }, [gwWsConnected, wsDiagResult, wsDiagLoading]);
+  }, [gwWsConnected, wsDiagResult, wsDiagLoading, gatewayObservedState]);
 
   // Close WS indicator popover on click-outside
   useEffect(() => {
@@ -453,7 +470,7 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
   }, [toast, gw]);
 
   // Status + health polling with visibility pause
-  const fetchStatusAndHealth = useCallback(() => { fetchStatus(); fetchHealthCheck(); }, [fetchStatus, fetchHealthCheck]);
+  const fetchStatusAndHealth = useCallback(() => { fetchStatus(); fetchHealthCheck(); fetchGatewayObservedState(); }, [fetchStatus, fetchHealthCheck, fetchGatewayObservedState]);
   useVisibilityPolling(fetchStatusAndHealth, 8000);
 
 
@@ -466,8 +483,8 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
 
   // Real-time gateway events via WebSocket
   useGatewayEvents({
-    health: () => { fetchStatus(true); fetchHealthCheck(true); fetchChannels(true); },
-    shutdown: () => { fetchStatus(true); },
+    health: () => { fetchStatus(true); fetchHealthCheck(true); fetchGatewayObservedState(true); fetchChannels(true); },
+    shutdown: () => { fetchStatus(true); fetchGatewayObservedState(true); },
     cron: () => { if (activeTab === 'events') fetchEvents(); },
   });
 
@@ -476,10 +493,11 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
     fetchProfiles(force);
     fetchStatus(force);
     fetchHealthCheck(force);
+    fetchGatewayObservedState(force);
     fetchChannels(force);
     if (activeTab === 'logs') { logCursorRef.current = undefined; logInitializedRef.current = false; fetchLogs(force); }
     if (activeTab === 'events') fetchEvents();
-  }, [activeTab, fetchProfiles, fetchStatus, fetchLogs, fetchHealthCheck, fetchEvents, fetchChannels]);
+  }, [activeTab, fetchProfiles, fetchStatus, fetchLogs, fetchHealthCheck, fetchGatewayObservedState, fetchEvents, fetchChannels]);
 
   const actionLabels: Record<string, string> = {
     start: gw.start, stop: gw.stop, restart: gw.restart, kill: gw.kill || 'Kill',
@@ -805,6 +823,123 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
     return { phase, hasProbe, tcpOk, liveOk, readyOk, fullyHealthy, hasFailedProbe };
   }, [healthStatus]);
 
+  const gatewayObservedView = useMemo(() => {
+    const state = gatewayObservedState;
+    const phase = state?.phase || 'stopped';
+    const probe = state?.probe || {};
+    const ws = state?.ws || {};
+    const rpc = state?.rpc || {};
+    // WS 已连接 ⇒ 网关 HTTP 服务一定可用，TCP/health/ready 不应因为
+    // 一帧探针抖动而显示为灰（grace 期间网关繁忙时偶发探针超时常见）。
+    const wsLive = !!ws.connected;
+    const phaseImpliesHttp = ['http_ready', 'ws_connected', 'rpc_ready'].includes(phase);
+    // RPC 通道走 WS：WS 连通且没有明确 RPC 错误 ⇒ RPC 已可用（仅是后端那一帧的 2s
+    // health RPC 还没等到回包，常发生在 grace 早期网关刚起、handler 还在注册时）。
+    const rpcInferOk = wsLive && !rpc.error;
+    const steps = [
+      { key: 'tcp', label: 'TCP', ok: !!probe.tcp_reachable || wsLive || ['http_live', 'http_ready', 'ws_connected', 'rpc_ready'].includes(phase), active: phase === 'tcp_open' },
+      { key: 'health', label: '/health', ok: !!probe.live?.ok || wsLive || phaseImpliesHttp, active: phase === 'http_live' },
+      { key: 'ready', label: '/ready', ok: !!probe.ready?.ok || wsLive || ['ws_connected', 'rpc_ready'].includes(phase), active: phase === 'http_ready' },
+      { key: 'ws', label: 'WebSocket', ok: wsLive || phase === 'rpc_ready', active: phase === 'pairing' || phase === 'auth_refresh' || phase === 'ws_connected' },
+      { key: 'rpc', label: 'RPC', ok: !!rpc.ready || rpcInferOk || phase === 'rpc_ready' || !!state?.ready, active: phase === 'rpc_ready' },
+    ];
+    const allGreen = steps.every(s => s.ok);
+    const recovering = !!state?.recovering || phase === 'restarting' || phase === 'grace' || phase === 'starting';
+    const ready = !!state?.ready || phase === 'rpc_ready' || allGreen;
+    const title = ready
+      ? (gw.obReady || 'Gateway ready')
+      : recovering
+        ? (gw.obRecovering || 'Gateway recovering...')
+        : phase === 'stopped'
+          ? (gw.obStopped || 'Gateway stopped')
+          : (gw.obDegraded || 'Gateway not fully ready');
+    const descMap: Record<string, string> = {
+      restarting: gw.obRestartingDesc || 'Gateway is restarting; transient WebSocket and readiness errors are suppressed.',
+      grace: `${gw.obGraceDesc || 'Restart grace period is active; waiting for the gateway to stabilize.'}${state?.grace_remaining_sec ? ` ${state.grace_remaining_sec}s` : ''}`,
+      starting: gw.obStartingDesc || 'Gateway process is starting; waiting for health and WebSocket readiness.',
+      tcp_open: gw.obTcpDesc || 'TCP port is open; waiting for HTTP health.',
+      http_live: gw.obHealthDesc || 'HTTP health is available; waiting for readiness.',
+      http_ready: gw.obReadyDesc || 'HTTP ready is available; waiting for WebSocket/RPC.',
+      pairing: gw.obPairingDesc || 'Device pairing is being approved automatically.',
+      auth_refresh: gw.obAuthDesc || 'Gateway token is being refreshed automatically.',
+      ws_connected: gw.obWsDesc || 'WebSocket is connected; waiting for RPC health.',
+      rpc_ready: gw.obRpcDesc || 'Gateway RPC is ready.',
+      stopped: gw.obStoppedDesc || 'Gateway is not running or not reachable.',
+    };
+    const phaseLabelMap: Record<string, string> = {
+      stopped: gw.obPhaseStopped || 'stopped',
+      starting: gw.obPhaseStarting || 'starting',
+      tcp_open: gw.obPhaseTcpOpen || 'tcp',
+      http_live: gw.obPhaseHttpLive || 'health',
+      http_ready: gw.obPhaseHttpReady || 'ready',
+      pairing: gw.obPhasePairing || 'pairing',
+      auth_refresh: gw.obPhaseAuth || 'auth',
+      ws_connected: gw.obPhaseWs || 'ws',
+      rpc_ready: gw.obPhaseRpc || 'rpc',
+      restarting: gw.obPhaseRestarting || 'restarting',
+      grace: gw.obPhaseGrace || 'grace',
+    };
+    return { phase, phaseLabel: phaseLabelMap[phase] || phase, steps, recovering, ready, allGreen, title, desc: descMap[phase] || descMap.stopped };
+  }, [gatewayObservedState, gw]);
+
+  // 看门狗状态摘要（用于顶部统一状态卡片的副标签）
+  const watchdogChip = useMemo(() => {
+    if (!healthCheckEnabled) {
+      return { tone: 'muted' as const, icon: 'shield_off', label: gw.serviceWatchdogInactive || 'Watchdog inactive', spin: false };
+    }
+    if (!healthStatus) return null;
+    const wdPhase = healthStatus.phase;
+    if (wdPhase === 'restarting') return { tone: 'danger' as const, icon: 'progress_activity', label: gw.wdRestarting || 'Restarting...', spin: true };
+    if (wdPhase === 'grace') return { tone: 'warn' as const, icon: 'hourglass_top', label: `${gw.wdGraceShort || 'Grace'}${(healthStatus.grace_remaining_sec ?? 0) > 0 ? ` ${healthStatus.grace_remaining_sec}s` : ''}`, spin: false };
+    if (wdPhase === 'degraded') return { tone: 'danger' as const, icon: 'heart_broken', label: `${gw.hbUnhealthy || 'Unhealthy'} (${healthStatus.fail_count}/${healthStatus.max_fails})`, spin: false };
+    if (wdPhase === 'probing') return { tone: 'info' as const, icon: 'progress_activity', label: gw.hbProbing || 'Probing...', spin: true };
+    if (wdPhase === 'starting') return { tone: 'info' as const, icon: 'progress_activity', label: gw.hbProbing || 'Probing...', spin: true };
+    if (wdPhase === 'healthy') {
+      const next = healthStatus.next_check_in_sec ?? 0;
+      return { tone: 'ok' as const, icon: 'shield', label: `${gw.hbHealthy || 'Healthy'}${next > 0 ? ` · ${next}s` : ''}`, spin: false };
+    }
+    return null;
+  }, [healthCheckEnabled, healthStatus, gw]);
+
+  // 计时管理：horn 状态进入「未就绪」时记录起点，全绿后清空，未就绪期间每秒刷新
+  const allGreen = gatewayObservedView.allGreen;
+  useEffect(() => {
+    if (!gatewayObservedState) return;
+    if (allGreen) {
+      if (recoveryStartRef.current !== null) {
+        recoveryStartRef.current = null;
+        setRecoveryElapsedSec(0);
+      }
+      return;
+    }
+    if (recoveryStartRef.current === null) {
+      recoveryStartRef.current = Date.now();
+      setRecoveryElapsedSec(0);
+    }
+    const tick = () => {
+      if (recoveryStartRef.current !== null) {
+        setRecoveryElapsedSec(Math.floor((Date.now() - recoveryStartRef.current) / 1000));
+      }
+    };
+    tick();
+    const id = window.setInterval(tick, 1000);
+    return () => window.clearInterval(id);
+  }, [allGreen, gatewayObservedState]);
+
+  const fmtElapsed = useCallback((sec: number): string => {
+    if (sec < 60) return `${sec}${gw.unitSec || 's'}`;
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    if (m < 60) {
+      const ss = s.toString().padStart(2, '0');
+      return `${m}:${ss}`;
+    }
+    const h = Math.floor(m / 60);
+    const mm = (m % 60).toString().padStart(2, '0');
+    const ss = s.toString().padStart(2, '0');
+    return `${h}:${mm}:${ss}`;
+  }, [gw]);
+
   const fmtUptime = (ms: number): string => {
     const s = Math.floor(ms / 1000);
     if (s < 60) return `${s}${gw.unitSec}`;
@@ -1044,8 +1179,85 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
             <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
           </div>
         )}
-        {/* WS 数据通道未连接提示 — 适用所有网关（含网关停止时） */}
-        {!initialDetecting && gwWsConnected === false && (
+        {/* 统一网关观测状态机 — 全绿即关闭，状态退回再恢复显示 */}
+        {!initialDetecting && gatewayObservedState && !gatewayObservedView.allGreen && (
+          <div className={`rounded-xl border px-3 py-2.5 animate-fade-in ${
+            gatewayObservedView.recovering
+              ? 'border-amber-500/25 bg-amber-500/5'
+              : 'border-mac-red/25 bg-mac-red/5'
+          }`}>
+            <div className="flex items-center gap-2.5">
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                gatewayObservedView.recovering ? 'bg-amber-500/15' : 'bg-mac-red/15'
+              }`}>
+                <span className={`material-symbols-outlined text-[18px] ${
+                  gatewayObservedView.recovering ? 'text-amber-500 animate-spin' : 'text-mac-red'
+                }`}>
+                  {gatewayObservedView.recovering ? 'progress_activity' : 'troubleshoot'}
+                </span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className={`text-[11px] font-bold ${gatewayObservedView.recovering ? 'text-amber-600 dark:text-amber-400' : 'text-mac-red'}`}>
+                    {gatewayObservedView.title}
+                  </p>
+                  <span className="text-[9px] px-1.5 py-0.5 rounded-md font-mono theme-field theme-text-muted">{gatewayObservedView.phaseLabel}</span>
+                  <span
+                    className="inline-flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-md font-mono font-bold border border-slate-200/60 dark:border-white/10 theme-field theme-text-secondary"
+                    title={gw.obElapsed || 'Elapsed'}
+                  >
+                    <span className="material-symbols-outlined text-[11px]">timer</span>
+                    {fmtElapsed(recoveryElapsedSec)}
+                  </span>
+                  {watchdogChip && (() => {
+                    const toneCls = watchdogChip.tone === 'ok' ? 'border-mac-green/30 bg-mac-green/5 text-mac-green'
+                      : watchdogChip.tone === 'warn' ? 'border-amber-500/30 bg-amber-500/5 text-amber-500'
+                      : watchdogChip.tone === 'danger' ? 'border-mac-red/30 bg-mac-red/5 text-mac-red'
+                      : watchdogChip.tone === 'info' ? 'border-primary/30 bg-primary/5 text-primary'
+                      : 'border-slate-200/60 dark:border-white/10 theme-field theme-text-muted';
+                    return (
+                      <span className={`inline-flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded-md font-bold border ${toneCls}`} title={gw.serviceWatchdog || 'Watchdog'}>
+                        <span className={`material-symbols-outlined text-[11px] ${watchdogChip.spin ? 'animate-spin' : ''}`}>{watchdogChip.icon}</span>
+                        {watchdogChip.label}
+                      </span>
+                    );
+                  })()}
+                </div>
+                <p className="text-[10px] theme-text-secondary mt-0.5 leading-relaxed">{gatewayObservedView.desc}</p>
+              </div>
+              <button
+                onClick={() => refreshAll(true)}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg theme-field theme-text-secondary font-bold text-[10px] hover:text-primary transition-all shrink-0"
+              >
+                <span className="material-symbols-outlined text-[13px]">refresh</span>
+                {gw.refresh || 'Refresh'}
+              </button>
+            </div>
+            <div className="mt-2 ms-[42px] flex items-center gap-1 flex-wrap">
+              {gatewayObservedView.steps.map((step, i) => (
+                <span key={step.key} className="contents">
+                  <span className={`inline-flex items-center gap-0.5 text-[9px] font-bold ${
+                    step.ok
+                      ? 'text-mac-green'
+                      : step.active
+                        ? 'text-amber-500'
+                        : 'theme-text-muted'
+                  }`}>
+                    <span className={`material-symbols-outlined text-[11px] ${step.active && !step.ok ? 'animate-spin' : ''}`}>
+                      {step.ok ? 'check_circle' : step.active ? 'progress_activity' : 'radio_button_unchecked'}
+                    </span>
+                    {step.label}
+                  </span>
+                  {i < gatewayObservedView.steps.length - 1 && (
+                    <span className="material-symbols-outlined text-[8px] theme-text-muted mx-0.5">chevron_right</span>
+                  )}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+        {/* WS 数据通道未连接提示 — 恢复窗口外才显示错误 */}
+        {!initialDetecting && !gatewayObservedView.recovering && gwWsConnected === false && (
           <div className="rounded-xl border border-mac-red/30 bg-mac-red/5 px-3 py-2.5 animate-fade-in">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-lg bg-mac-red/15 flex items-center justify-center shrink-0">
@@ -1235,7 +1447,7 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
           </div>
         )}
         {/* 看门狗异常处理过程提示 — degraded / restarting / grace 时显示 */}
-        {!initialDetecting && healthCheckEnabled && healthStatus && (healthStatus.phase === 'degraded' || healthStatus.phase === 'restarting' || healthStatus.phase === 'grace') && (() => {
+        {false && !initialDetecting && healthCheckEnabled && healthStatus && (healthStatus.phase === 'degraded' || healthStatus.phase === 'restarting' || healthStatus.phase === 'grace') && (() => {
           const phase = healthStatus.phase;
           const fc = healthStatus.fail_count;
           const mf = healthStatus.max_fails;
@@ -1332,7 +1544,7 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
         })()}
         {/* 异常通知发送过程 banner — 有通知渠道且（正在发送 或 最近60s内发过 或 异常阶段中） */}
         {!initialDetecting && healthStatus && healthStatus.notify_channels.length > 0 && (
-          healthStatus.notify_sending || (healthStatus.notify_last_ago_sec > 0 && healthStatus.notify_last_ago_sec < 60) || (healthStatus.phase === 'degraded' || healthStatus.phase === 'restarting' || healthStatus.phase === 'grace')
+          healthStatus.notify_sending || (healthStatus.notify_last_ago_sec > 0 && healthStatus.notify_last_ago_sec < 60)
         ) && (
           <div className="rounded-xl border border-primary/20 bg-primary/5 px-3 py-2 animate-fade-in">
             <div className="flex items-center gap-2.5">
@@ -1377,10 +1589,39 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
             </div>
             <div className="flex-1 min-w-0 flex items-center gap-1.5 flex-wrap">
               <h3 className="text-[var(--color-text)] dark:text-white font-bold text-sm leading-none">{gw.localGateway || 'Local Gateway'}</h3>
-              <span className={`inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-md font-bold ${status?.running ? 'bg-mac-green/10 text-mac-green' : 'bg-mac-yellow/10 text-mac-yellow'}`}>
-                <span className={`w-1.5 h-1.5 rounded-full ${status?.running ? 'bg-mac-green animate-pulse' : 'bg-mac-yellow'}`} />
-                {status?.running ? gw.running : gw.stopped}
-              </span>
+              {(() => {
+                if (!status?.running) {
+                  return (
+                    <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-md font-bold bg-mac-yellow/10 text-mac-yellow">
+                      <span className="w-1.5 h-1.5 rounded-full bg-mac-yellow" />
+                      {gw.stopped}
+                    </span>
+                  );
+                }
+                // 进程在跑，但要根据统一观测状态显示真实就绪/恢复/降级
+                if (gatewayObservedView.allGreen) {
+                  return (
+                    <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-md font-bold bg-mac-green/10 text-mac-green">
+                      <span className="w-1.5 h-1.5 rounded-full bg-mac-green animate-pulse" />
+                      {gw.running}
+                    </span>
+                  );
+                }
+                if (gatewayObservedView.recovering) {
+                  return (
+                    <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-md font-bold bg-amber-500/10 text-amber-500">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                      {gw.obRecovering || 'Gateway recovering...'}
+                    </span>
+                  );
+                }
+                return (
+                  <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-md font-bold bg-mac-red/10 text-mac-red">
+                    <span className="w-1.5 h-1.5 rounded-full bg-mac-red animate-pulse" />
+                    {gw.obDegraded || 'Gateway not fully ready'}
+                  </span>
+                );
+              })()}
               <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-blue-500/10 text-blue-500 font-bold font-mono">{localGatewayHost}:{localGatewayPort}</span>
               {status?.runtime && (
                 <span className="text-[9px] px-1.5 py-0.5 rounded-md theme-field theme-text-muted">{(gw as any)[`runtime_${status.runtime}`] || status.runtime}</span>
@@ -1389,6 +1630,14 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
                 <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-mac-green font-mono font-bold">{fmtUptime(displayUptimeMs)}</span>
               )}
             </div>
+            <button
+              onClick={() => setGatewayDetailsOpen(v => !v)}
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg theme-field theme-text-secondary hover:text-primary transition-colors shrink-0 text-[10px] font-bold"
+              title={gatewayDetailsOpen ? (gw.collapse || 'Collapse') : (gw.details || 'Details')}
+            >
+              <span className={`material-symbols-outlined text-[14px] transition-transform ${gatewayDetailsOpen ? 'rotate-180' : ''}`}>expand_more</span>
+              {gatewayDetailsOpen ? (gw.collapse || 'Collapse') : (gw.details || 'Details')}
+            </button>
             {/* 编辑网关连接参数 */}
             <button
               onClick={() => {
@@ -1404,8 +1653,9 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
               <span className="material-symbols-outlined text-[16px] theme-text-secondary">edit</span>
             </button>
           </div>
-          {/* Detail row: address + watchdog + WS + probe chips */}
-          <div className="flex items-center gap-1.5 flex-wrap">
+          {/* Detail row: watchdog + WS + probe chips */}
+          {gatewayDetailsOpen && (
+          <div className="flex items-center gap-1.5 flex-wrap pt-2 border-t border-slate-200/60 dark:border-white/[0.06]">
             {/* 看门狗探测状态 */}
             {status?.running && (
               <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full border border-slate-200/60 dark:border-white/[0.06] theme-panel">
@@ -1603,6 +1853,7 @@ const Gateway: React.FC<GatewayProps> = ({ language }) => {
               </span>
             ))}
           </div>
+          )}
         </div>
 
         {/* Row 2: 操作按钮 — 单行紧凑 */}

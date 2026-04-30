@@ -45,9 +45,14 @@ export const MessagesSection: React.FC<SectionProps> = ({ config, schema, setFie
         <SwitchField label={es.removeAfterReply} tooltip={tip('messages.removeAckAfterReply')} value={g(['removeAckAfterReply']) === true} onChange={v => s(['removeAckAfterReply'], v)} />
       </ConfigSection>
 
+      <ConfigSection title={es.replyVisibility || 'Reply Visibility'} icon="visibility" iconColor="text-blue-500" defaultOpen={false}>
+        <SwitchField label={es.visibleReplies || 'Visible Replies'} desc={es.visibleRepliesDesc} tooltip={tip('messages.visibleReplies')} value={g(['visibleReplies']) === true} onChange={v => s(['visibleReplies'], v)} />
+      </ConfigSection>
+
       <ConfigSection title={es.groupChat} icon="group" iconColor="text-green-500" defaultOpen={false}>
         <ArrayField label={es.mentionPatterns} tooltip={tip('messages.groupChat.mentionPatterns')} value={g(['groupChat', 'mentionPatterns']) || []} onChange={v => s(['groupChat', 'mentionPatterns'], v)} placeholder={es.phMentionPatterns} />
         <NumberField label={es.historyLimit} tooltip={tip('messages.groupChat.historyLimit')} value={g(['groupChat', 'historyLimit'])} onChange={v => s(['groupChat', 'historyLimit'], v)} min={0} placeholder={def('messages.groupChat.historyLimit')} />
+        <SwitchField label={es.groupVisibleReplies || 'Group Visible Replies'} desc={es.groupVisibleRepliesDesc} tooltip={tip('messages.groupChat.visibleReplies')} value={g(['groupChat', 'visibleReplies']) === true} onChange={v => s(['groupChat', 'visibleReplies'], v)} />
       </ConfigSection>
 
       <ConfigSection title={es.messageQueue} icon="queue" iconColor="text-indigo-500" defaultOpen={false}>
@@ -106,7 +111,9 @@ export const MessagesSection: React.FC<SectionProps> = ({ config, schema, setFie
         sectionPath="messages"
         handledKeys={[
           'prefix', 'responsePrefix', 'ack', 'typing', 'history',
-          'queue', 'tts', 'statusReactions', 'inbound',
+          'queue', 'tts', 'statusReactions', 'inbound', 'visibleReplies',
+          'groupChat', 'messagePrefix', 'responsePrefix', 'ackReaction',
+          'ackReactionScope', 'removeAckAfterReply', 'suppressToolErrors',
         ]}
         config={config}
         setField={setField}

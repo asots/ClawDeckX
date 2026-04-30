@@ -309,6 +309,7 @@ const Dashboard: React.FC<DashboardProps> = ({ language }) => {
   const [refreshCountdown, setRefreshCountdown] = useState(FAST_INTERVAL / 1000);
   const [hasFirstDashboardData, setHasFirstDashboardData] = useState(!!cachedFast?.data || !!cachedFast?.gwStatus);
   const [dreamingStatus, setDreamingStatus] = useState<{ enabled: boolean; shortTermCount: number; promotedTotal: number; promotedToday: number } | null>(null);
+  const [eventLoopStatus, setEventLoopStatus] = useState<{ p99?: number; utilization?: number; degraded?: boolean } | null>(null);
   const [taskCleanupBusy, setTaskCleanupBusy] = useState(false);
   const [cronRunningIds, setCronRunningIds] = useState<Set<string>>(new Set());
 
@@ -367,11 +368,11 @@ const Dashboard: React.FC<DashboardProps> = ({ language }) => {
     if (slowFetchingRef.current) return;
     slowFetchingRef.current = true;
     try {
-      const [sessRes, modelsRes, skillsRes, agentsRes, cronRes, costRes, gwCfgRes, doctorRes, infoRes, memRes] = await Promise.all([
+      const [sessRes, modelsRes, skillsRes, agentsRes, cronRes, costRes, gwCfgRes, doctorRes, infoRes, memRes, readyzRes] = await Promise.all([
         settle(gwApi.sessions()), settle(gwApi.models()), settle(gwApi.skills()),
         settle(gwApi.agents()), settle(gwApi.cronStatus()), settle(gwApi.usageCost({ days: 7 })),
         settle(gwApi.configGet()), settle(doctorApi.summaryCached(30000)),
-        settle(gwApi.info()), settle(gwApi.memoryStatus()),
+        settle(gwApi.info()), settle(gwApi.memoryStatus()), settle(gatewayApi.getReadyz()),
       ]);
       if (abortRef.current) return;
       let cfgObj = gwCfgRes.data?.config || gwCfgRes.data;
@@ -385,6 +386,12 @@ const Dashboard: React.FC<DashboardProps> = ({ language }) => {
         const dr = (memRes.data as any)?.dreaming;
         if (dr && typeof dr === 'object') {
           setDreamingStatus({ enabled: !!dr.enabled, shortTermCount: dr.shortTermCount ?? 0, promotedTotal: dr.promotedTotal ?? 0, promotedToday: dr.promotedToday ?? 0 });
+        }
+      }
+      if (readyzRes.ok && readyzRes.data) {
+        const el = (readyzRes.data as any)?.eventLoop;
+        if (el && typeof el === 'object') {
+          setEventLoopStatus({ p99: el.delay?.p99, utilization: el.utilization, degraded: !!el.degraded });
         }
       }
       const results = [sessRes, modelsRes, skillsRes, agentsRes, cronRes, costRes];
@@ -1363,7 +1370,7 @@ const Dashboard: React.FC<DashboardProps> = ({ language }) => {
               </div>
             )}
             {/* Health Status Cards */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
               <div className="rounded-xl bg-slate-50 dark:bg-white/[0.03] border border-slate-100 dark:border-white/5 p-3">
                 <div className="flex items-center gap-2 mb-2"><HealthDot ok={gwRunning} /><span className="text-[10px] font-bold text-slate-600 dark:text-white/50 uppercase">{d.gwStatus}</span></div>
                 <p className={`text-xs font-bold ${gwRunning ? 'text-mac-green' : 'text-slate-400'}`}>{gwRunning ? d.healthy : d.offline}</p>
@@ -1407,6 +1414,16 @@ const Dashboard: React.FC<DashboardProps> = ({ language }) => {
                   </div>
                 )}
               </button>
+              <div className="rounded-xl bg-slate-50 dark:bg-white/[0.03] border border-slate-100 dark:border-white/5 p-3">
+                <div className="flex items-center gap-2 mb-2"><HealthDot ok={eventLoopStatus ? !eventLoopStatus.degraded : true} /><span className="text-[10px] font-bold text-slate-600 dark:text-white/50 uppercase">{d.eventLoop || 'Event Loop'}</span></div>
+                <p className={`text-xs font-bold ${eventLoopStatus?.degraded ? 'text-red-500' : 'text-mac-green'}`}>{eventLoopStatus ? (eventLoopStatus.degraded ? (d.eventLoopDegraded || 'Degraded') : (d.eventLoopOk || 'Healthy')) : '--'}</p>
+                {eventLoopStatus && (
+                  <div className="flex items-center gap-2 mt-1.5 text-[9px]">
+                    {eventLoopStatus.p99 != null && <span className="px-1.5 py-0.5 rounded-full bg-blue-500/10 text-blue-500 font-bold">{d.eventLoopP99 || 'p99'}: {eventLoopStatus.p99.toFixed(1)}ms</span>}
+                    {eventLoopStatus.utilization != null && <span className="text-slate-500 dark:text-white/40 font-bold">{d.eventLoopUtil || 'util'}: {(eventLoopStatus.utilization * 100).toFixed(0)}%</span>}
+                  </div>
+                )}
+              </div>
             </div>
             {/* Provider Health */}
             {userProviderModels.length > 0 && (

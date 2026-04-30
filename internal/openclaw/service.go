@@ -59,6 +59,19 @@ func (s *Service) SetGWClient(client *GWClient) {
 	s.gwClient = client
 }
 
+// GatewayHTTPAddr returns the host:port string for the gateway HTTP server.
+func (s *Service) GatewayHTTPAddr() string {
+	host := s.GatewayHost
+	if host == "" {
+		host = "127.0.0.1"
+	}
+	port := s.GatewayPort
+	if port == 0 {
+		port = 18789
+	}
+	return fmt.Sprintf("%s:%d", host, port)
+}
+
 func (s *Service) IsRemote() bool {
 	h := strings.TrimSpace(s.GatewayHost)
 	return h != "" && h != "127.0.0.1" && h != "localhost" && h != "::1"

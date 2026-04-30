@@ -215,6 +215,30 @@ func (h *GatewayHandler) Kill(w http.ResponseWriter, r *http.Request) {
 	web.OK(w, r, map[string]string{"message": "ok"})
 }
 
+// GetReadyz proxies the OpenClaw gateway /readyz HTTP endpoint and returns the response.
+func (h *GatewayHandler) GetReadyz(w http.ResponseWriter, r *http.Request) {
+	addr := h.svc.GatewayHTTPAddr()
+	client := &http.Client{Timeout: 5 * time.Second}
+	url := "http://" + addr + "/readyz"
+	req, err := http.NewRequestWithContext(r.Context(), "GET", url, nil)
+	if err != nil {
+		web.Fail(w, r, "READYZ_FAILED", err.Error(), http.StatusBadGateway)
+		return
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		web.Fail(w, r, "READYZ_UNREACHABLE", err.Error(), http.StatusBadGateway)
+		return
+	}
+	defer resp.Body.Close()
+	var body map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		web.Fail(w, r, "READYZ_PARSE_ERROR", err.Error(), http.StatusBadGateway)
+		return
+	}
+	web.OK(w, r, body)
+}
+
 // GetHealthCheck returns health check status.
 func (h *GatewayHandler) GetHealthCheck(w http.ResponseWriter, r *http.Request) {
 	if h.gwClient == nil {

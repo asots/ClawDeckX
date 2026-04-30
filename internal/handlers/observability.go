@@ -23,10 +23,120 @@ const minObservabilityVersion = "2026.4.25"
 // scrape endpoint and provides helper APIs for external Prometheus setups.
 type ObservabilityHandler struct {
 	gwClient *openclaw.GWClient
+	gwSvc    *openclaw.Service
 }
 
-func NewObservabilityHandler(client *openclaw.GWClient) *ObservabilityHandler {
-	return &ObservabilityHandler{gwClient: client}
+func NewObservabilityHandler(client *openclaw.GWClient, svc ...*openclaw.Service) *ObservabilityHandler {
+	h := &ObservabilityHandler{gwClient: client}
+	if len(svc) > 0 {
+		h.gwSvc = svc[0]
+	}
+	return h
+}
+
+func (h *ObservabilityHandler) GatewayState(w http.ResponseWriter, r *http.Request) {
+	if h.gwClient == nil {
+		web.OK(w, r, map[string]interface{}{
+			"phase":      "stopped",
+			"ready":      false,
+			"checked_at": time.Now().Format(time.RFC3339),
+		})
+		return
+	}
+
+	cfg := h.gwClient.GetConfig()
+	host := cfg.Host
+	if host == "" {
+		host = "127.0.0.1"
+	}
+	port := cfg.Port
+	if port == 0 {
+		port = 18789
+	}
+
+	var svcStatus interface{}
+	var running bool
+	var remote bool
+	if h.gwSvc != nil {
+		st := h.gwSvc.Status()
+		running = st.Running
+		remote = h.gwSvc.IsRemote()
+		svcStatus = map[string]interface{}{
+			"running": running,
+			"runtime": string(st.Runtime),
+			"detail":  st.Detail,
+			"remote":  remote,
+		}
+	}
+
+	wsStatus := h.gwClient.ConnectionStatus()
+	healthStatus := h.gwClient.HealthStatus()
+	probe, _ := healthStatus["probe"].(openclaw.GatewayProbeSnapshot)
+	wsConnected, _ := wsStatus["connected"].(bool)
+	wsPhase, _ := wsStatus["phase"].(string)
+	watchdogPhase, _ := healthStatus["phase"].(string)
+	graceRemaining, _ := healthStatus["grace_remaining_sec"].(int)
+
+	rpcReady := false
+	rpcError := ""
+	if wsConnected {
+		if _, err := h.gwClient.RequestWithTimeout("health", map[string]interface{}{"probe": false}, 2*time.Second); err == nil {
+			rpcReady = true
+		} else {
+			rpcError = err.Error()
+		}
+	}
+
+	phase := "stopped"
+	recovering := false
+	if watchdogPhase == "restarting" {
+		phase = "restarting"
+		recovering = true
+	} else if watchdogPhase == "grace" {
+		phase = "grace"
+		recovering = true
+	} else if watchdogPhase == "starting" {
+		phase = "starting"
+		recovering = true
+	} else if wsPhase == "pairing" || wsPhase == "auth_refresh" {
+		phase = wsPhase
+		recovering = true
+	} else if rpcReady {
+		phase = "rpc_ready"
+	} else if wsConnected {
+		phase = "ws_connected"
+	} else if probe.Ready.OK {
+		phase = "http_ready"
+		recovering = true
+	} else if probe.Live.OK {
+		phase = "http_live"
+		recovering = true
+	} else if probe.TCPReachable {
+		phase = "tcp_open"
+		recovering = true
+	} else if running {
+		phase = "starting"
+		recovering = true
+	}
+
+	web.OK(w, r, map[string]interface{}{
+		"phase":      phase,
+		"ready":      rpcReady,
+		"recovering": recovering,
+		"checked_at": time.Now().Format(time.RFC3339),
+		"host":       host,
+		"port":       port,
+		"remote":     remote,
+		"service":    svcStatus,
+		"watchdog":   healthStatus,
+		"ws":         wsStatus,
+		"probe":      probe,
+		"rpc": map[string]interface{}{
+			"ready": rpcReady,
+			"error": rpcError,
+		},
+		"grace_remaining_sec": graceRemaining,
+	})
 }
 
 // ────────────────────────────────────────────────────────────────────────────

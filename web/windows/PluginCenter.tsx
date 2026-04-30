@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { Language } from '../types';
 import { getTranslation } from '../locales';
-import { pluginApi, gwApi, PluginStatusPlugin, PluginDiagnostic, PluginStatusResponse } from '../services/api';
+import { pluginApi, gwApi, observabilityApi, GatewayObservedState, PluginStatusPlugin, PluginDiagnostic, PluginStatusResponse } from '../services/api';
 import { ApiError } from '../services/request';
 import { useToast } from '../components/Toast';
 import { useConfirm } from '../components/ConfirmDialog';
@@ -117,6 +117,8 @@ const PluginCenter: React.FC<PluginCenterProps> = ({ language }) => {
   });
   const [installingSpec, setInstallingSpec] = useState<string | null>(null);
   const [installPhase, setInstallPhase] = useState<'installing' | 'restarting' | 'ready' | null>(null);
+  const [gatewayRecoveryState, setGatewayRecoveryState] = useState<GatewayObservedState | null>(null);
+  const [gatewayRecoveryTimedOut, setGatewayRecoveryTimedOut] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [uninstallingId, setUninstallingId] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
@@ -214,6 +216,33 @@ const PluginCenter: React.FC<PluginCenterProps> = ({ language }) => {
   const slots = statusData?.slots || {};
   const allowList = statusData?.allow || [];
   const denyList = statusData?.deny || [];
+  const gatewayRecoveryView = useMemo(() => {
+    const phase = gatewayRecoveryState?.phase || (installPhase === 'installing' ? 'installing' : 'starting');
+    const probe = gatewayRecoveryState?.probe || {};
+    const ws = gatewayRecoveryState?.ws || {};
+    const rpc = gatewayRecoveryState?.rpc || {};
+    const steps = [
+      { key: 'tcp', label: 'TCP', ok: !!probe.tcp_reachable || ['http_live', 'http_ready', 'ws_connected', 'rpc_ready'].includes(phase), active: phase === 'tcp_open' },
+      { key: 'health', label: '/health', ok: !!probe.live?.ok || ['http_ready', 'ws_connected', 'rpc_ready'].includes(phase), active: phase === 'http_live' },
+      { key: 'ready', label: '/ready', ok: !!probe.ready?.ok || ['ws_connected', 'rpc_ready'].includes(phase), active: phase === 'http_ready' },
+      { key: 'ws', label: 'WS', ok: !!ws.connected || phase === 'rpc_ready', active: phase === 'pairing' || phase === 'auth_refresh' || phase === 'ws_connected' },
+      { key: 'rpc', label: 'RPC', ok: !!rpc.ready || phase === 'rpc_ready' || !!gatewayRecoveryState?.ready, active: phase === 'rpc_ready' },
+    ];
+    const labelMap: Record<string, string> = {
+      installing: sk.pluginInstalling || 'Installing...',
+      restarting: sk.pluginRestarting || 'Restarting gateway...',
+      starting: sk.pluginGatewayStarting || 'Gateway starting...',
+      tcp_open: sk.pluginGatewayTcpOpen || 'TCP port is open',
+      http_live: sk.pluginGatewayHealthOk || 'HTTP health is available',
+      http_ready: sk.pluginGatewayReadyOk || 'HTTP ready is available',
+      pairing: sk.pluginGatewayPairing || 'Approving pairing...',
+      auth_refresh: sk.pluginGatewayAuthRefresh || 'Refreshing gateway token...',
+      ws_connected: sk.pluginGatewayWsConnected || 'WebSocket connected',
+      rpc_ready: sk.pluginReady || 'Gateway ready',
+      grace: sk.pluginGatewayGrace || 'Restart grace active',
+    };
+    return { phase, steps, label: gatewayRecoveryTimedOut ? (sk.pluginGatewayStillStarting || 'Gateway is still starting in the background') : (labelMap[phase] || labelMap.starting) };
+  }, [gatewayRecoveryState, gatewayRecoveryTimedOut, installPhase, sk]);
 
   // ── Actions ──
   // Local only: install, uninstall, update
@@ -221,29 +250,52 @@ const PluginCenter: React.FC<PluginCenterProps> = ({ language }) => {
 
   const pollGatewayAndRefresh = useCallback((onDone: () => void) => {
     let retries = 0;
+    setGatewayRecoveryTimedOut(false);
     const poll = setInterval(async () => {
       retries++;
-      try { await gwApi.proxy('health', {}); clearInterval(poll); onDone(); setTimeout(fetchPlugins, 500); } catch { /* not ready */ }
-      if (retries >= 60) { clearInterval(poll); onDone(); fetchPlugins(); }
+      try {
+        const state = await observabilityApi.gatewayState();
+        setGatewayRecoveryState(state);
+        const phase = state?.phase || '';
+        if (state?.ready || phase === 'rpc_ready') {
+          clearInterval(poll);
+          onDone();
+          setGatewayRecoveryTimedOut(false);
+          setTimeout(fetchPlugins, 500);
+          return;
+        }
+      } catch {
+        try {
+          await gwApi.proxy('health', {});
+          clearInterval(poll);
+          onDone();
+          setGatewayRecoveryTimedOut(false);
+          setTimeout(fetchPlugins, 500);
+          return;
+        } catch {}
+      }
+      if (retries >= 180) { clearInterval(poll); setGatewayRecoveryTimedOut(true); onDone(); fetchPlugins(); }
     }, 1000);
   }, [fetchPlugins]);
 
   const handleInstall = useCallback(async (plugin: MergedPlugin, force: boolean = false) => {
     if (!canInstall) { toast('error', skRef.current.pluginLocalOnlyAction || skRef.current.pluginLocalOnly); return; }
     setInstallingSpec(plugin.spec); setInstallPhase('installing');
+    setGatewayRecoveryState(null);
+    setGatewayRecoveryTimedOut(false);
     try {
       const res = await pluginApi.install(plugin.spec, { force });
       if (res.success) {
         setInstallPhase('restarting');
         // Gateway auto-restarts via config change detection after plugin install;
         // no need for explicit restart (that caused redundant double restart).
-        pollGatewayAndRefresh(() => { toast('success', skRef.current.pluginInstallOk); setInstallingSpec(null); setInstallPhase(null); });
-      } else { toast('error', `${skRef.current.pluginInstallFail}: ${extractFailureMessage(res.output)}`); setInstallingSpec(null); setInstallPhase(null); }
+        pollGatewayAndRefresh(() => { toast('success', skRef.current.pluginInstallOk); setInstallingSpec(null); setInstallPhase(null); setGatewayRecoveryState(null); });
+      } else { toast('error', `${skRef.current.pluginInstallFail}: ${extractFailureMessage(res.output)}`); setInstallingSpec(null); setInstallPhase(null); setGatewayRecoveryState(null); }
     } catch (err: any) {
       // PLUGIN_EXISTS: residue directory from a prior failed install.
       // Ask user to confirm force-reinstall (uninstall the old directory, then install fresh).
       if (err instanceof ApiError && err.code === 'PLUGIN_EXISTS' && !force) {
-        setInstallingSpec(null); setInstallPhase(null);
+        setInstallingSpec(null); setInstallPhase(null); setGatewayRecoveryState(null);
         const ok = await confirm({
           title: skRef.current.pluginForceReinstallTitle || 'Force reinstall?',
           message: skRef.current.pluginForceReinstallConfirm || `A previous install left a residue directory for "${plugin.name}". Force reinstall will uninstall it first, then reinstall cleanly. Continue?`,
@@ -256,7 +308,7 @@ const PluginCenter: React.FC<PluginCenterProps> = ({ language }) => {
         return;
       }
       toast('error', `${skRef.current.pluginInstallFail}: ${err?.message || ''}`);
-      setInstallingSpec(null); setInstallPhase(null);
+      setInstallingSpec(null); setInstallPhase(null); setGatewayRecoveryState(null);
     }
   }, [canInstall, toast, confirm, pollGatewayAndRefresh]);
 
@@ -265,6 +317,8 @@ const PluginCenter: React.FC<PluginCenterProps> = ({ language }) => {
     const ok = await confirm({ title: skRef.current.pluginUninstallBtn || 'Uninstall', message: skRef.current.pluginUninstallConfirm || `Uninstall "${plugin.name}"?`, danger: true, confirmText: skRef.current.pluginUninstallBtn || 'Uninstall' });
     if (!ok) return;
     setUninstallingId(plugin.id);
+    setGatewayRecoveryState(null);
+    setGatewayRecoveryTimedOut(false);
     try {
       const res = await pluginApi.uninstall(plugin.id);
       if (res.success) {
@@ -278,6 +332,8 @@ const PluginCenter: React.FC<PluginCenterProps> = ({ language }) => {
   const handleUpdate = useCallback(async (pluginId?: string, all?: boolean) => {
     if (!canInstall) { toast('error', skRef.current.pluginLocalOnlyAction); return; }
     setUpdatingId(all ? '__all__' : pluginId || null);
+    setGatewayRecoveryState(null);
+    setGatewayRecoveryTimedOut(false);
     try {
       const res = await pluginApi.update(pluginId, all);
       if (res.success) {
@@ -507,15 +563,37 @@ const PluginCenter: React.FC<PluginCenterProps> = ({ language }) => {
 
                     {/* Install/uninstall progress */}
                     {(isCurrentInstalling || isUninstalling || isUpdating) && (
-                      <div className="mb-2 px-2 py-1.5 rounded-lg bg-primary/5 border border-primary/20 flex items-center gap-2">
-                        <span className="material-symbols-outlined text-[14px] text-primary animate-spin">progress_activity</span>
-                        <span className="text-[10px] font-bold text-primary">
-                          {isUninstalling ? (sk.pluginUninstalling || 'Uninstalling...') :
-                           isUpdating ? (sk.pluginUpdating || 'Updating...') :
-                           installPhase === 'installing' ? (sk.pluginInstalling || 'Installing...') :
-                           installPhase === 'restarting' ? (sk.pluginRestarting || 'Restarting gateway...') :
-                           (sk.pluginReady || 'Gateway ready')}
-                        </span>
+                      <div className="mb-2 px-2 py-1.5 rounded-lg bg-primary/5 border border-primary/20 space-y-1.5">
+                        <div className="flex items-center gap-2">
+                          <span className="material-symbols-outlined text-[14px] text-primary animate-spin">progress_activity</span>
+                          <span className="text-[10px] font-bold text-primary">
+                            {isUninstalling ? (sk.pluginUninstalling || 'Uninstalling...') :
+                             isUpdating ? (sk.pluginUpdating || 'Updating...') :
+                             gatewayRecoveryView.label}
+                          </span>
+                          {gatewayRecoveryTimedOut && (
+                            <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-amber-500/10 text-amber-500 font-bold">{sk.pluginGatewayTimeout || 'Timeout'}</span>
+                          )}
+                        </div>
+                        {installPhase !== 'installing' && (
+                          <div className="flex items-center gap-1 flex-wrap ps-5">
+                            {gatewayRecoveryView.steps.map((step, i) => (
+                              <span key={step.key} className="contents">
+                                <span className={`inline-flex items-center gap-0.5 text-[9px] font-bold ${
+                                  step.ok ? 'text-mac-green' : step.active ? 'text-amber-500' : 'theme-text-muted'
+                                }`}>
+                                  <span className={`material-symbols-outlined text-[10px] ${step.active && !step.ok ? 'animate-spin' : ''}`}>
+                                    {step.ok ? 'check_circle' : step.active ? 'progress_activity' : 'radio_button_unchecked'}
+                                  </span>
+                                  {step.label}
+                                </span>
+                                {i < gatewayRecoveryView.steps.length - 1 && (
+                                  <span className="material-symbols-outlined text-[8px] theme-text-muted mx-0.5">chevron_right</span>
+                                )}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     )}
 

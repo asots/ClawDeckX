@@ -188,6 +188,13 @@ type GWClient struct {
 	notifyLastEvent string    // last notification event type
 	notifySending   bool      // true while a notification send is in progress
 
+	// 探针缓存：避免每次 HealthStatus() 调用都触发完整的 TCP+HTTP 探测
+	// （前端每秒轮询，一次 ProbeGateway 最长可能耗时 ~3s，且无 keep-alive，
+	// 重启 grace 期内会因网关繁忙偶发超时，导致前端 /health /ready 状态闪烁）。
+	probeMu      sync.Mutex
+	probeCache   GatewayProbeSnapshot
+	probeCacheAt time.Time
+
 	// v0.4：命名事件 fan-out —— 允许多个子系统并行订阅 gateway 事件流，
 	// 不占用 onEvent 单 owner 语义（gwcollector 仍然作为主消费方持有 onEvent）。
 	// 使用命名 map + RWMutex，子系统 Add 时用唯一 name，Remove 幂等。
@@ -433,7 +440,7 @@ func (c *GWClient) HealthStatus() map[string]interface{} {
 		"post_restart_pending":      postRestartPending,
 		"next_check_in_sec":         nextCheckInSec,
 		"phase":                     phase,
-		"probe":                     ProbeGateway(host, port),
+		"probe":                     c.cachedProbe(host, port),
 		// Notification status
 		"notify_channels":     nfyChannels,
 		"notify_sending":      nfySending,
@@ -441,6 +448,32 @@ func (c *GWClient) HealthStatus() map[string]interface{} {
 		"notify_last_at":      nfyLastAtStr,
 		"notify_last_ago_sec": nfyLastAgoSec,
 	}
+}
+
+// cachedProbe 返回带 ~3s TTL 缓存的 ProbeGateway 快照。
+// 当 host/port 变更或缓存过期时重新探测。
+// 这样前端每秒轮询观测状态时，不会都触发一次完整的 TCP+HTTP 探测，
+// 也避免重启 grace 期内偶发探针超时引起的 /health /ready 状态闪烁。
+func (c *GWClient) cachedProbe(host string, port int) GatewayProbeSnapshot {
+	const probeCacheTTL = 3 * time.Second
+	c.probeMu.Lock()
+	if !c.probeCacheAt.IsZero() &&
+		time.Since(c.probeCacheAt) < probeCacheTTL &&
+		c.probeCache.Host == host &&
+		c.probeCache.Port == port {
+		snap := c.probeCache
+		c.probeMu.Unlock()
+		return snap
+	}
+	c.probeMu.Unlock()
+
+	snap := ProbeGateway(host, port)
+
+	c.probeMu.Lock()
+	c.probeCache = snap
+	c.probeCacheAt = time.Now()
+	c.probeMu.Unlock()
+	return snap
 }
 
 func (c *GWClient) clearPendingRestartSuccessNotifyLocked() {

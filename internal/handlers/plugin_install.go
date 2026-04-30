@@ -582,8 +582,12 @@ func (h *PluginInstallHandler) List(w http.ResponseWriter, r *http.Request) {
 
 // Status returns runtime plugin status from Gateway (works on both local and remote).
 // GET /api/v1/plugins/status
-// This calls the Gateway RPC "plugins.status" which returns loaded/disabled/error plugins
-// plus diagnostics, slots, allow/deny lists — all readable on any gateway.
+//
+// OpenClaw core gateway does NOT expose a "plugins.status" RPC. The only
+// plugin-related methods on the gateway are "plugins.uiDescriptors" (UI
+// descriptors only) and "plugin.approval.*" (approval flows). Plugin
+// loaded/disabled/error state must be derived from "config.get" — see
+// statusFromConfig below.
 func (h *PluginInstallHandler) Status(w http.ResponseWriter, r *http.Request) {
 	isRemote := h.isRemoteGateway()
 
@@ -600,35 +604,11 @@ func (h *PluginInstallHandler) Status(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get runtime plugin status via JSON-RPC
-	statusResp, err := h.gwClient.Request("plugins.status", map[string]interface{}{})
-	if err != nil {
-		logger.Log.Debug().Err(err).Msg("plugins.status RPC failed, falling back to config.get")
-		// Fallback: build status from config.get
-		h.statusFromConfig(w, r, isRemote)
-		return
-	}
-
-	var statusMap map[string]interface{}
-	if err := json.Unmarshal(statusResp, &statusMap); err != nil {
-		logger.Log.Debug().Err(err).Msg("plugins.status: failed to unmarshal response")
-		h.statusFromConfig(w, r, isRemote)
-		return
-	}
-
-	if rawPlugins, ok := statusMap["plugins"].([]interface{}); ok {
-		ctx, cancel := context.WithTimeout(r.Context(), 8*time.Second)
-		defer cancel()
-		enrichPluginUpdateInfo(ctx, rawPlugins)
-	}
-
-	// Pass through the RPC response, adding gateway info
-	statusMap["can_install"] = !isRemote
-	statusMap["is_remote"] = isRemote
-	web.OK(w, r, statusMap)
+	h.statusFromConfig(w, r, isRemote)
 }
 
-// statusFromConfig builds a minimal plugin status from config.get when plugins.status RPC is unavailable.
+// statusFromConfig builds plugin status from config.get. This is the only
+// path supported by upstream OpenClaw — there is no dedicated plugins.status RPC.
 func (h *PluginInstallHandler) statusFromConfig(w http.ResponseWriter, r *http.Request, isRemote bool) {
 	resp, err := h.gwClient.Request("config.get", map[string]interface{}{})
 	if err != nil {

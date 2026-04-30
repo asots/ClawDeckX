@@ -42,7 +42,7 @@ interface ServicePanelProps {
     grace_remaining_sec: number;
     restarting: boolean;
     next_check_in_sec: number;
-    phase: 'healthy' | 'probing' | 'degraded' | 'restarting' | 'grace' | 'disabled';
+    phase: 'healthy' | 'probing' | 'degraded' | 'restarting' | 'grace' | 'starting' | 'disabled';
     notify_channels: string[];
     notify_sending: boolean;
     notify_last_event: string;
@@ -425,6 +425,10 @@ const ServicePanel: React.FC<ServicePanelProps> = ({ status, healthCheckEnabled,
             grace: { bg: 'bg-amber-500/5', border: 'border-amber-500/20', icon: 'hourglass_top', iconColor: 'text-amber-500', spin: false,
               title: `${gw.wdGracePeriod || 'Grace Period Active'}${graceSec > 0 ? ` — ${graceSec}s` : ''}`,
               desc: gw.wdGraceDesc || 'Health checks paused, waiting for gateway to stabilize after restart',
+            },
+            starting: { bg: 'bg-amber-500/5', border: 'border-amber-500/20', icon: 'progress_activity', iconColor: 'text-amber-500', spin: true,
+              title: gw.wdStarting || 'Gateway starting...',
+              desc: gw.wdStartingDesc || 'Waiting for the first successful health check after restart',
             },
           };
           const cfg = bannerCfg[phase] || bannerCfg.probing;

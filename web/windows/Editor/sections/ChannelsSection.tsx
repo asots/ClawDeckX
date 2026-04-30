@@ -3,10 +3,11 @@ import { SectionProps } from '../sectionTypes';
 import { ConfigSection, ConfigField, TextField, PasswordField, SelectField, SwitchField, ArrayField, NumberField, KeyValueField, EmptyState, DiscordGuildField, inputBase } from '../fields';
 import { getTranslation } from '../../../locales';
 import { schemaTooltip, schemaDefault } from '../schemaTooltip';
-import { gwApi, gatewayApi, pairingApi, pluginApi, weixinQRApi } from '../../../services/api';
+import { gwApi, gatewayApi, observabilityApi, pairingApi, pluginApi, weixinQRApi, GatewayObservedState } from '../../../services/api';
 import { post } from '../../../services/request';
 import CustomSelect from '../../../components/CustomSelect';
 import { useToast } from '../../../components/Toast';
+import { useConfirm } from '../../../components/ConfirmDialog';
 import { copyToClipboard } from '../../../utils/clipboard';
 
 // ============================================================================
@@ -280,6 +281,7 @@ const PairingSection: React.FC<{ channel: string; es: any; cw: any; toast: (type
 // ============================================================================
 export const ChannelsSection: React.FC<SectionProps> = ({ config, schema, setField, getField, deleteField, language, save, reload }) => {
   const { toast } = useToast();
+  const { confirm } = useConfirm();
   const es = useMemo(() => (getTranslation(language) as any).es || {}, [language]);
   const cw = useMemo(() => (getTranslation(language) as any).cw || {}, [language]);
   const [showWecomPairing, setShowWecomPairing] = useState(false);
@@ -426,11 +428,48 @@ export const ChannelsSection: React.FC<SectionProps> = ({ config, schema, setFie
     ok: boolean;
     msg: string;
     phase?: 'installed' | 'restarting' | 'ready';
+    gatewayState?: GatewayObservedState;
+    timedOut?: boolean;
     canForceRetry?: boolean;
     retryKind?: 'exists' | 'security';
     pendingSpec?: string;
     pendingChannelId?: string;
   } | null>(null);
+
+  const pluginGatewayRecoveryView = useMemo(() => {
+    const state = pluginInstallResult?.gatewayState;
+    const phase = state?.phase || (pluginInstallResult?.phase === 'restarting' ? 'starting' : 'installed');
+    const probe = state?.probe || {};
+    const ws = state?.ws || {};
+    const rpc = state?.rpc || {};
+    const steps = [
+      { key: 'tcp', label: 'TCP', ok: !!probe.tcp_reachable || ['http_live', 'http_ready', 'ws_connected', 'rpc_ready'].includes(phase), active: phase === 'tcp_open' },
+      { key: 'health', label: '/health', ok: !!probe.live?.ok || ['http_ready', 'ws_connected', 'rpc_ready'].includes(phase), active: phase === 'http_live' },
+      { key: 'ready', label: '/ready', ok: !!probe.ready?.ok || ['ws_connected', 'rpc_ready'].includes(phase), active: phase === 'http_ready' },
+      { key: 'ws', label: 'WS', ok: !!ws.connected || phase === 'rpc_ready', active: phase === 'pairing' || phase === 'auth_refresh' || phase === 'ws_connected' },
+      { key: 'rpc', label: 'RPC', ok: !!rpc.ready || phase === 'rpc_ready' || !!state?.ready, active: phase === 'rpc_ready' },
+    ];
+    const labels: Record<string, string> = {
+      installed: cw.pluginInstallSuccess || 'Plugin installed',
+      starting: cw.gatewayRestarting || 'Gateway restarting...',
+      restarting: cw.gatewayRestarting || 'Gateway restarting...',
+      grace: cw.gatewayRestarting || 'Gateway restart grace active',
+      tcp_open: cw.gatewayTcpOpen || 'TCP port is open',
+      http_live: cw.gatewayHealthOk || 'HTTP health is available',
+      http_ready: cw.gatewayReadyOk || 'HTTP ready is available',
+      pairing: cw.gatewayPairing || 'Approving pairing...',
+      auth_refresh: cw.gatewayAuthRefresh || 'Refreshing gateway token...',
+      ws_connected: cw.gatewayWsConnected || 'WebSocket connected',
+      rpc_ready: cw.pluginReady || 'Gateway ready',
+    };
+    return {
+      phase,
+      steps,
+      label: pluginInstallResult?.timedOut
+        ? (cw.gatewayStillStarting || 'Gateway is still starting in the background')
+        : (labels[phase] || labels.starting),
+    };
+  }, [pluginInstallResult, cw]);
 
   const handleWizardTest = useCallback(async (chId: string, acctKey?: string) => {
     setWizTestStatus('testing');
@@ -615,28 +654,30 @@ export const ChannelsSection: React.FC<SectionProps> = ({ config, schema, setFie
         setPluginInstallResult({ ok: true, msg: 'success', phase: 'restarting' });
         setPluginInstalling(false);
         
-        // Phase 2: Poll for gateway ready (up to 60 seconds — gateway restart can take a while)
+        // Phase 2: Poll the unified gateway observability state (gateway restart can take a while)
         let retries = 0;
-        const maxRetries = 60;
+        const maxRetries = 180;
         const pollInterval = 1000;
-        
-        const checkGatewayReady = async (): Promise<boolean> => {
-          try {
-            const health = await gwApi.proxy('health', {});
-            return !!health;
-          } catch {
-            return false;
-          }
-        };
-        
+
         const poll = setInterval(async () => {
           retries++;
-          const ready = await checkGatewayReady();
+          let state: GatewayObservedState | undefined;
+          let ready = false;
+          try {
+            state = await observabilityApi.gatewayState();
+            ready = !!state?.ready || state?.phase === 'rpc_ready';
+            setPluginInstallResult({ ok: true, msg: 'success', phase: 'restarting', gatewayState: state });
+          } catch {
+            try {
+              await gwApi.proxy('health', {});
+              ready = true;
+            } catch { /* not ready */ }
+          }
           
           if (ready) {
             clearInterval(poll);
             // Phase 3: Gateway ready, refresh plugin status
-            setPluginInstallResult({ ok: true, msg: 'success', phase: 'ready' });
+            setPluginInstallResult({ ok: true, msg: 'success', phase: 'ready', gatewayState: state });
             // Trust the successful install — checkInstalled can race with the
             // gateway's plugin registry reload and return false for a few
             // seconds after restart, which leaves the UI stuck showing the
@@ -654,7 +695,7 @@ export const ChannelsSection: React.FC<SectionProps> = ({ config, schema, setFie
           } else if (retries >= maxRetries) {
             clearInterval(poll);
             // Timeout - gateway didn't come back, but plugin was installed
-            setPluginInstallResult({ ok: true, msg: 'success', phase: 'ready' });
+            setPluginInstallResult({ ok: true, msg: 'success', phase: 'ready', gatewayState: state, timedOut: true });
             setPluginInstalled(prev => ({ ...prev, [channelId]: true }));
             // Still try to reload config even on timeout
             try {
@@ -744,24 +785,23 @@ export const ChannelsSection: React.FC<SectionProps> = ({ config, schema, setFie
     setPairingError('');
   }, []);
 
-  // Wait for the gateway WS to reconnect and answer a health probe after a
-  // restart. gatewayApi.restart() returns as soon as the HTTP call completes,
-  // but the plugin (e.g. WhatsApp / WeChat provider) may still be loading.
-  // Polling /api/v1/gw/status → connected AND a successful gw health probe
-  // ensures we only reveal post-restart UI (QR button) once the gateway is
-  // actually able to service requests.
-  const waitGatewayReady = useCallback(async (timeoutMs = 30000): Promise<boolean> => {
+  const waitGatewayReady = useCallback(async (timeoutMs = 120000): Promise<boolean> => {
     const deadline = Date.now() + timeoutMs;
     while (Date.now() < deadline) {
       try {
-        const st = (await gwApi.status()) as any;
-        if (st?.connected) {
-          try {
+        const state = await observabilityApi.gatewayState();
+        if (state?.ready || state?.phase === 'rpc_ready') {
+          return true;
+        }
+      } catch {
+        try {
+          const st = (await gwApi.status()) as any;
+          if (st?.connected) {
             await gwApi.proxy('health', {});
             return true;
-          } catch { /* gateway connected but not ready yet, keep polling */ }
-        }
-      } catch { /* network blip, keep polling */ }
+          }
+        } catch { /* keep polling */ }
+      }
       await new Promise(r => setTimeout(r, 500));
     }
     return false;
@@ -2228,19 +2268,38 @@ export const ChannelsSection: React.FC<SectionProps> = ({ config, schema, setFie
                                             {pluginInstallResult.phase === 'restarting' && (
                                               <>
                                                 <span className="material-symbols-outlined text-[12px] animate-spin">progress_activity</span>
-                                                {cw.gatewayRestarting}
+                                                {pluginGatewayRecoveryView.label}
                                               </>
                                             )}
                                             {pluginInstallResult.phase === 'ready' && (
                                               <>
                                                 <span className="material-symbols-outlined text-[12px]">check_circle</span>
-                                                {cw.pluginReady}
+                                                {pluginInstallResult.timedOut ? pluginGatewayRecoveryView.label : cw.pluginReady}
                                               </>
                                             )}
                                             {!pluginInstallResult.phase && cw.pluginInstallSuccess}
                                           </>
                                         ) : pluginInstallResult.msg}
                                       </div>
+                                      {pluginInstallResult.ok && pluginInstallResult.phase === 'restarting' && (
+                                        <div className="flex items-center gap-1 flex-wrap ps-4">
+                                          {pluginGatewayRecoveryView.steps.map((step, i) => (
+                                            <span key={step.key} className="contents">
+                                              <span className={`inline-flex items-center gap-0.5 text-[9px] font-bold ${
+                                                step.ok ? 'text-green-600 dark:text-green-400' : step.active ? 'text-amber-500' : 'text-slate-400 dark:text-white/35'
+                                              }`}>
+                                                <span className={`material-symbols-outlined text-[10px] ${step.active && !step.ok ? 'animate-spin' : ''}`}>
+                                                  {step.ok ? 'check_circle' : step.active ? 'progress_activity' : 'radio_button_unchecked'}
+                                                </span>
+                                                {step.label}
+                                              </span>
+                                              {i < pluginGatewayRecoveryView.steps.length - 1 && (
+                                                <span className="material-symbols-outlined text-[8px] text-slate-400 dark:text-white/35 mx-0.5">chevron_right</span>
+                                              )}
+                                            </span>
+                                          ))}
+                                        </div>
+                                      )}
                                       {pluginInstallResult.canForceRetry && pluginInstallResult.pendingSpec && pluginInstallResult.pendingChannelId && (
                                         pluginInstallResult.retryKind === 'security' ? (
                                           <div className="flex flex-col gap-1">
@@ -2248,11 +2307,14 @@ export const ChannelsSection: React.FC<SectionProps> = ({ config, schema, setFie
                                               {cw.pluginSecurityWarning || '⚠️ The upstream installer blocked this plugin due to dangerous code patterns (often false-positive on plugin test files). Only proceed if you trust this plugin source.'}
                                             </p>
                                             <button
-                                              onClick={() => {
-                                                const confirmMsg = cw.pluginForceUnsafeConfirm || 'This will install the plugin WITHOUT security scanning. Continue only if you trust the source. Proceed?';
-                                                if (window.confirm(confirmMsg)) {
-                                                  handleInstallPlugin(pluginInstallResult.pendingSpec!, pluginInstallResult.pendingChannelId!, { dangerouslyForce: true });
-                                                }
+                                              onClick={async () => {
+                                                const ok = await confirm({
+                                                  title: cw.pluginForceUnsafeInstall || 'Force install',
+                                                  message: cw.pluginForceUnsafeConfirm || 'This will install the plugin WITHOUT security scanning. Continue only if you trust the source. Proceed?',
+                                                  danger: true,
+                                                  confirmText: cw.pluginForceUnsafeInstall || 'Force install',
+                                                });
+                                                if (ok) handleInstallPlugin(pluginInstallResult.pendingSpec!, pluginInstallResult.pendingChannelId!, { dangerouslyForce: true });
                                               }}
                                               disabled={pluginInstalling}
                                               className="flex items-center justify-center gap-1 px-2 py-1 rounded bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold transition-all disabled:opacity-50 self-start"
