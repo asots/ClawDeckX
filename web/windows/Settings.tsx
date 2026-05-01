@@ -9,6 +9,7 @@ import CustomSelect from '../components/CustomSelect';
 import { SmartLink } from '../components/SmartLink';
 import NotifyChannelCard from '../components/NotifyChannelCard';
 import type { NotifyChannelDef } from '../components/NotifyChannelCard';
+import DailyDigestCard from '../components/DailyDigestCard';
 import SnapshotTab from './Settings/SnapshotTab';
 import UpdateTab from './Settings/UpdateTab';
 import PreferencesTab from './Settings/PreferencesTab';
@@ -681,6 +682,14 @@ const Settings: React.FC<SettingsProps> = ({ language, onLogout, pendingTab, onT
                   })}
                 </div>
               </div>
+
+              {/* Daily Digest */}
+              <DailyDigestCard
+                activeChannels={notifyActive}
+                s={s as unknown as Record<string, string>}
+                inputClassName={inputCls}
+                rowClassName={rowCls}
+              />
 
               {/* Notification channels — data-driven via NotifyChannelCard */}
               {notifyChannelDefs.map(ch => (

@@ -1,4 +1,4 @@
-﻿package handlers
+package handlers
 
 import (
 	"encoding/json"
@@ -160,8 +160,12 @@ func (h *SettingsHandler) SetLanguage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	lang := req.Language
-	if lang != "en" && lang != "zh" {
+	if lang != "en" && lang != "zh" && lang != "zh-TW" && lang != "ja" && lang != "ko" {
 		lang = "en"
+	}
+	if err := h.settingRepo.Set("language", lang); err != nil {
+		web.FailErr(w, r, web.ErrSettingsUpdateFail)
+		return
 	}
 
 	i18n.SetLanguage(lang)

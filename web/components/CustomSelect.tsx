@@ -49,7 +49,8 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
     // 计算下拉面板位置（portal 模式需要绝对坐标）
     useEffect(() => {
         if (!open || !ref.current) return;
-        const update = () => {
+        const update = (event?: Event) => {
+            if (event?.target && listRef.current?.contains(event.target as Node)) return;
             const rect = ref.current!.getBoundingClientRect();
             const spaceBelow = window.innerHeight - rect.bottom;
             const dropH = Math.min(options.length * 30 + 8, 208); // max-h-52 = 208px
@@ -178,7 +179,7 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
                             type="button"
                             title={o.label}
                             onMouseEnter={() => setHl(idx)}
-                            onClick={() => { onChange(o.value); setOpen(false); }}
+                            onMouseDown={(e) => { e.preventDefault(); onChange(o.value); setOpen(false); }}
                             className={`w-full text-start px-3 py-1.5 text-[11px] transition-colors truncate inline-flex items-center gap-2 ${o.value === value
                                 ? 'text-primary font-bold bg-primary/5 dark:bg-primary/10'
                                 : idx === hl

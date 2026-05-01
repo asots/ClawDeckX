@@ -126,6 +126,8 @@ func autoMigrate() error {
 		&AgentRoomRetro{},
 		// v1.0 定时会议
 		&AgentRoomSchedule{},
+		// Daily digest
+		&DailyDigest{},
 	)
 }
 

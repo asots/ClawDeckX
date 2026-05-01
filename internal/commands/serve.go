@@ -27,6 +27,7 @@ import (
 	"ClawDeckX/internal/logger"
 	"ClawDeckX/internal/monitor"
 	"ClawDeckX/internal/notify"
+	"ClawDeckX/internal/notify/digest"
 	"ClawDeckX/internal/openclaw"
 	"ClawDeckX/internal/proclock"
 	"ClawDeckX/internal/runtime"
@@ -414,6 +415,20 @@ func RunServe(args []string) int {
 	defer schedulerCancel()
 	go snapshotHandler.Scheduler().Start(schedulerCtx)
 	snapshotHandler.Service().StartTokenCleanup(schedulerCtx.Done())
+	// Daily digest engine + scheduler. Builds a once-per-day summary report
+	// (yesterday's gateway health, alerts, sessions usage, audit, snapshots,
+	// updates, dream content, etc.) and dispatches it through the existing
+	// notify manager. The scheduler also performs a startup catch-up if the
+	// configured time was missed while the host was offline.
+	digestCollector := digest.NewCollector(digest.CollectorOptions{
+		Gateway: gwClient,
+		Dream:   digest.NoopDreamProvider{},
+	})
+	digestEngine := digest.NewEngine(database.NewSettingRepo(), notifyMgr, digestCollector)
+	digestScheduler := digest.NewScheduler(digestEngine, database.NewSettingRepo())
+	digestScheduler.Start(schedulerCtx)
+	defer digestScheduler.Stop()
+	digestHandler := handlers.NewDigestHandler(digestEngine)
 	doctorHandler := handlers.NewDoctorHandler(svc)
 	doctorHandler.SetGWClient(gwClient)
 	llmHealthHandler := handlers.NewLLMHealthHandler(svc)
@@ -550,6 +565,11 @@ func RunServe(args []string) int {
 	router.POST("/api/v1/notify/test", web.RequireAdmin(notifyHandler.TestSend))
 	router.GET("/api/v1/notify/events", notifyHandler.GetEventConfig)
 	router.PUT("/api/v1/notify/events", web.RequireAdmin(notifyHandler.UpdateEventConfig))
+	router.GET("/api/v1/notify/digest/config", digestHandler.GetConfig)
+	router.PUT("/api/v1/notify/digest/config", web.RequireAdmin(digestHandler.UpdateConfig))
+	router.POST("/api/v1/notify/digest/preview", digestHandler.Preview)
+	router.POST("/api/v1/notify/digest/test", web.RequireAdmin(digestHandler.TestSend))
+	router.GET("/api/v1/notify/digest/history", digestHandler.History)
 
 	router.GET("/api/v1/audit-logs", auditHandler.List)
 
@@ -993,6 +1013,7 @@ func RunServe(args []string) int {
 		web.CORSMiddleware(cfg.Server.CORSOrigins),
 		web.MaxBodySizeMiddleware(20<<20), // 20 MB (image attachments need ~13 MB base64 for 10 MB file)
 		web.RateLimitMiddleware(loginLimiter, rateLimitPaths),
+		web.LanguageMiddleware,
 		web.InputSanitizeMiddleware,
 		web.AuthMiddleware(cfg.Auth.JWTSecret, skipAuthPaths),
 	)

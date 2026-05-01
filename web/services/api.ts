@@ -369,6 +369,47 @@ export const notifyApi = {
     put<{ message: string }>('/api/v1/notify/events', { events }),
 };
 
+// ==================== 每日汇报 ====================
+export interface DigestConfigResponse {
+  config: Record<string, string>;
+  sections: Array<{ id: string }>;
+  timezone: string;
+  local_time: string;
+}
+export interface DigestPreviewResponse {
+  date: string;
+  subject: string;
+  content: string;
+  sections: Array<{ id: string; title: string; empty: boolean; lines: string[] }>;
+}
+export interface DigestSendResponse {
+  date: string;
+  status: string; // success | partial | empty | failed | preview
+  subject: string;
+  content: string;
+  errors?: string[];
+}
+export interface DigestHistoryItem {
+  id: number;
+  digest_date: string;
+  generated_at: string;
+  channels: string;
+  sections: string;
+  status: string;
+  subject: string;
+  content: string;
+  error_detail?: string;
+}
+export const digestApi = {
+  getConfig: () => get<DigestConfigResponse>('/api/v1/notify/digest/config'),
+  updateConfig: (data: Record<string, string>) =>
+    put<{ message: string }>('/api/v1/notify/digest/config', data),
+  preview: () => post<DigestPreviewResponse>('/api/v1/notify/digest/preview', {}),
+  testSend: () => post<DigestSendResponse>('/api/v1/notify/digest/test', {}),
+  history: (limit = 7) =>
+    get<{ list: DigestHistoryItem[] }>(`/api/v1/notify/digest/history?limit=${limit}`),
+};
+
 // ==================== 告警 ====================
 export const alertApi = {
   list: (params?: { page?: number; page_size?: number }) => {

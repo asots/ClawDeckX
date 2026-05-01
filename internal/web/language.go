@@ -41,8 +41,14 @@ func normalizeLanguage(lang string) string {
 	lang = strings.ToLower(strings.TrimSpace(lang))
 
 	switch {
+	case strings.HasPrefix(lang, "zh-tw") || strings.HasPrefix(lang, "zh_hant") || strings.HasPrefix(lang, "zh-hant"):
+		return "zh-TW"
 	case strings.HasPrefix(lang, "zh"):
 		return "zh"
+	case strings.HasPrefix(lang, "ja"):
+		return "ja"
+	case strings.HasPrefix(lang, "ko"):
+		return "ko"
 	case strings.HasPrefix(lang, "en"):
 		return "en"
 	default:

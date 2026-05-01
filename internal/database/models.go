@@ -157,6 +157,20 @@ type GatewayLifecycle struct {
 	CreatedAt   time.Time `json:"created_at"`
 }
 
+// DailyDigest records a generated daily digest (one row per day per dispatch).
+type DailyDigest struct {
+	ID          uint      `gorm:"primaryKey" json:"id"`
+	DigestDate  string    `gorm:"index;not null;size:10" json:"digest_date"` // YYYY-MM-DD (the day being summarized)
+	GeneratedAt time.Time `gorm:"index;not null" json:"generated_at"`
+	Channels    string    `json:"channels"`                     // CSV of target channel names
+	Sections    string    `gorm:"type:text" json:"sections"`    // CSV of section ids included
+	Status      string    `gorm:"index;not null" json:"status"` // success | partial | failed | empty | preview
+	Subject     string    `json:"subject"`
+	Content     string    `gorm:"type:text" json:"content"` // plain or markdown rendered text
+	ErrorDetail string    `gorm:"type:text" json:"error_detail,omitempty"`
+	CreatedAt   time.Time `json:"created_at"`
+}
+
 type Template struct {
 	ID         uint      `gorm:"primaryKey" json:"id"`
 	TemplateID string    `gorm:"uniqueIndex;not null" json:"template_id"`

@@ -67,6 +67,7 @@ async function request<T = any>(
 ): Promise<T> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
+    'X-Language': localStorage.getItem('lang') || 'zh',
     ...(options.headers as Record<string, string> || {}),
   };
 
