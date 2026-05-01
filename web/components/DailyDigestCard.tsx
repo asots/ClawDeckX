@@ -185,14 +185,14 @@ const DailyDigestCard: React.FC<DailyDigestCardProps> = ({ activeChannels, s, in
                   value={hh}
                   onChange={v => setTime(v, mm || '00')}
                   options={ALL_HOURS.map(h => ({ value: h, label: h }))}
-                  className={`${inputClassName} !w-16 min-w-16`}
+                  className={`${inputClassName} !w-20 min-w-20`}
                 />
                 <span className="text-slate-400">:</span>
                 <CustomSelect
                   value={ALL_MINUTES.includes(mm || '') ? mm : '00'}
                   onChange={v => setTime(hh || '08', v)}
                   options={ALL_MINUTES.map(m => ({ value: m, label: m }))}
-                  className={`${inputClassName} !w-16 min-w-16`}
+                  className={`${inputClassName} !w-20 min-w-20`}
                 />
                 <span className="text-[10px] text-slate-400 dark:text-white/30">
                   {s.digestTimeHint || 'Local server time. Missed runs are caught up on next start.'}
