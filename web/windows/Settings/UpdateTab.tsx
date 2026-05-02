@@ -394,6 +394,7 @@ const UpdateTab: React.FC<UpdateTabProps> = ({ s, language, inputCls, rowCls }) 
           method: 'POST',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tag: ocSelectedTag || '' }),
         });
         const reader = resp.body?.getReader();
         const decoder = new TextDecoder();
@@ -957,6 +958,15 @@ const UpdateTab: React.FC<UpdateTabProps> = ({ s, language, inputCls, rowCls }) 
             </span>
           </div>
 
+          <VersionPicker
+            value={ocSelectedTag}
+            onChange={handleSelectOcTag}
+            releases={ocReleaseList}
+            loading={ocLoadingReleases}
+            onRefresh={() => void loadOcReleaseList(true)}
+            labels={versionPickerLabels}
+          />
+
           {!ocUpdateInfo && !ocUpdateChecking && (
             <div className="flex items-center gap-1.5 text-[11px] text-slate-400 dark:text-white/30">
               <span className="material-symbols-outlined text-[14px]">info</span>
@@ -1141,17 +1151,6 @@ const UpdateTab: React.FC<UpdateTabProps> = ({ s, language, inputCls, rowCls }) 
                   picker 宽度自适应（min 140 / max 240）；执行更新按钮 flex-1 吞剩余空间；
                   Docker runtime 不渲染 picker，此时按钮行仍保留。picker 空值 = @latest。 */}
               <div className="flex items-center gap-2 flex-wrap">
-                {!isDockerRuntime && (
-                  <VersionPicker
-                    inline
-                    value={ocSelectedTag}
-                    onChange={handleSelectOcTag}
-                    releases={ocReleaseList}
-                    loading={ocLoadingReleases}
-                    onRefresh={() => void loadOcReleaseList(true)}
-                    labels={versionPickerLabels}
-                  />
-                )}
                 <button onClick={handleOcUpdateRun} disabled={effectiveOcUpdating}
                   className="flex-1 min-w-[140px] flex items-center justify-center gap-1.5 px-4 h-9 rounded-lg bg-emerald-500 text-white text-[12px] font-bold disabled:opacity-40 hover:opacity-90 shadow-sm transition-all">
                   <span className={`material-symbols-outlined text-[16px] ${effectiveOcUpdating ? 'animate-spin' : ''}`}>{effectiveOcUpdating ? 'progress_activity' : 'download'}</span>
@@ -1177,30 +1176,19 @@ const UpdateTab: React.FC<UpdateTabProps> = ({ s, language, inputCls, rowCls }) 
           )}
           {/* 已是最新 / 未安装 / 出错状态下，available 分支不渲染主按钮，此处补齐 picker + 按钮同一行。
               picker 总是渲染；"执行更新"按钮仅在选中 tag 时出现，防止误触"重装最新"。 */}
-          {!isDockerRuntime && ocReleaseList.length > 0 && !ocUpdateInfo?.available && (
+          {!ocUpdateInfo?.available && ocSelectedTag && (
             <div className="mt-3 flex items-center gap-2">
-              <VersionPicker
-                inline
-                value={ocSelectedTag}
-                onChange={handleSelectOcTag}
-                releases={ocReleaseList}
-                loading={ocLoadingReleases}
-                onRefresh={() => void loadOcReleaseList(true)}
-                labels={versionPickerLabels}
-              />
-              {ocSelectedTag && (
-                <button
-                  onClick={handleOcUpdateRun}
-                  disabled={effectiveOcUpdating}
-                  className="shrink-0 flex items-center justify-center gap-1.5 px-4 h-9 rounded-lg bg-emerald-500 text-white text-[12px] font-bold disabled:opacity-40 hover:opacity-90 shadow-sm transition-all">
-                  <span className={`material-symbols-outlined text-[16px] ${effectiveOcUpdating ? 'animate-spin' : ''}`}>
-                    {effectiveOcUpdating ? 'progress_activity' : 'download'}
-                  </span>
-                  {effectiveOcUpdating
-                    ? s.openclawUpdateRunning
-                    : `${s.openclawUpdateRun || 'Update'} → v${ocSelectedTag}`}
-                </button>
-              )}
+              <button
+                onClick={handleOcUpdateRun}
+                disabled={effectiveOcUpdating}
+                className="shrink-0 flex items-center justify-center gap-1.5 px-4 h-9 rounded-lg bg-emerald-500 text-white text-[12px] font-bold disabled:opacity-40 hover:opacity-90 shadow-sm transition-all">
+                <span className={`material-symbols-outlined text-[16px] ${effectiveOcUpdating ? 'animate-spin' : ''}`}>
+                  {effectiveOcUpdating ? 'progress_activity' : 'download'}
+                </span>
+                {effectiveOcUpdating
+                  ? s.openclawUpdateRunning
+                  : `${s.openclawUpdateRun || 'Update'} → v${ocSelectedTag}`}
+              </button>
             </div>
           )}
 

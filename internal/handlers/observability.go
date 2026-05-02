@@ -76,6 +76,13 @@ func (h *ObservabilityHandler) GatewayState(w http.ResponseWriter, r *http.Reque
 	wsPhase, _ := wsStatus["phase"].(string)
 	watchdogPhase, _ := healthStatus["phase"].(string)
 	graceRemaining, _ := healthStatus["grace_remaining_sec"].(int)
+	lastRPCOKAt, _ := wsStatus["last_rpc_ok_at"].(string)
+	recentRPCOK := false
+	if lastRPCOKAt != "" {
+		if t, err := time.Parse(time.RFC3339, lastRPCOKAt); err == nil && time.Since(t) < 30*time.Second {
+			recentRPCOK = true
+		}
+	}
 
 	rpcReady := false
 	rpcError := ""
@@ -85,6 +92,10 @@ func (h *ObservabilityHandler) GatewayState(w http.ResponseWriter, r *http.Reque
 		} else {
 			rpcError = err.Error()
 		}
+	}
+	if !rpcReady && recentRPCOK {
+		rpcReady = true
+		rpcError = ""
 	}
 
 	phase := "stopped"

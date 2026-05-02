@@ -141,7 +141,7 @@ func (m *Manager) InstallClawDeckX(ctx context.Context, downloadURL string, prog
 
 // InstallOpenClaw runs `npm install -g openclaw@latest` with the prefix
 // pointing to the runtime overlay directory, so the binary persists in the volume.
-func (m *Manager) InstallOpenClaw(ctx context.Context, progressFn func(updater.ApplyProgress)) error {
+func (m *Manager) InstallOpenClaw(ctx context.Context, tag string, progressFn func(updater.ApplyProgress)) error {
 	if err := m.EnsureDirs(); err != nil {
 		return err
 	}
@@ -171,7 +171,12 @@ func (m *Manager) InstallOpenClaw(ctx context.Context, progressFn func(updater.A
 	// pressure during install on low-resource Docker hosts.
 	// Also set MAKEFLAGS=-j1 to serialize native addon compilation (e.g.
 	// better-sqlite3) which is the primary CPU bottleneck during upgrades.
-	cmd := exec.CommandContext(ctx, "npm", "install", "-g", "openclaw@latest",
+	tag = trimAll(tag)
+	if tag == "" {
+		tag = "latest"
+	}
+	pkg := "openclaw@" + tag
+	cmd := exec.CommandContext(ctx, "npm", "install", "-g", pkg,
 		"--prefix", npmPrefix, "--maxsockets=3")
 	executil.HideWindow(cmd)
 	cmd.Env = append(os.Environ(),

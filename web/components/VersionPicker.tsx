@@ -56,8 +56,6 @@ const VersionPicker: React.FC<VersionPickerProps> = ({
   placement = 'auto',
   inline = false,
 }) => {
-  if (releases.length === 0) return null;
-
   const options = [
     { value: '', label: labels.latest },
     ...releases.map(r => {

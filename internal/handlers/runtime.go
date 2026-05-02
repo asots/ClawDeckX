@@ -184,7 +184,17 @@ func (h *RuntimeHandler) UpdateOpenClaw(w http.ResponseWriter, r *http.Request) 
 	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Minute)
 	defer cancel()
 
-	err := h.mgr.InstallOpenClaw(ctx, sendSSE)
+	tag := ""
+	if r.Body != nil {
+		var body struct {
+			Tag string `json:"tag"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err == nil {
+			tag = body.Tag
+		}
+	}
+
+	err := h.mgr.InstallOpenClaw(ctx, tag, sendSSE)
 	if err != nil {
 		h.auditRepo.Create(&database.AuditLog{
 			UserID: web.GetUserID(r), Username: web.GetUsername(r),

@@ -142,6 +142,7 @@ type GWClient struct {
 	gwUptimeMs    int64     // gateway uptime from hello-ok snapshot
 	gwConnectedAt time.Time // when we received hello-ok (for local elapsed calc)
 	protoCaps     gwProtocolCaps
+	lastRPCOKAt   time.Time
 
 	reconnectCount int
 	backoffMs      int
@@ -792,6 +793,10 @@ func (c *GWClient) ConnectionStatus() map[string]interface{} {
 	if !c.lastTick.IsZero() {
 		lastTickAge = time.Since(c.lastTick).Round(time.Second).String()
 	}
+	lastRPCOKAt := ""
+	if !c.lastRPCOKAt.IsZero() {
+		lastRPCOKAt = c.lastRPCOKAt.Format(time.RFC3339)
+	}
 	tickIntervalMs := c.tickInterval.Milliseconds()
 	c.mu.Unlock()
 
@@ -848,6 +853,7 @@ func (c *GWClient) ConnectionStatus() map[string]interface{} {
 		"last_seq":          lastSeq,
 		"last_tick_age":     lastTickAge,
 		"tick_interval_ms":  tickIntervalMs,
+		"last_rpc_ok_at":    lastRPCOKAt,
 	}
 }
 
@@ -1052,6 +1058,9 @@ func (c *GWClient) RequestWithTimeout(method string, params interface{}, timeout
 			}
 			return nil, &GatewayRPCError{Msg: fmt.Sprintf(i18n.T(i18n.MsgErrGatewayError), msg)}
 		}
+		c.mu.Lock()
+		c.lastRPCOKAt = time.Now()
+		c.mu.Unlock()
 		return resp.Payload, nil
 	case <-time.After(timeout):
 		c.mu.Lock()
