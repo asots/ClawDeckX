@@ -302,6 +302,14 @@ func (h *RuntimeHandler) Rollback(w http.ResponseWriter, r *http.Request) {
 		Detail: body.Component + " rolled back to image version", IP: r.RemoteAddr,
 	})
 
+	if comp == runtime.ComponentOpenClaw && h.gwSvc != nil {
+		if err := h.gwSvc.Restart(); err != nil {
+			logger.Log.Warn().Err(err).Msg("gateway restart after OpenClaw rollback failed")
+		} else {
+			logger.Log.Info().Msg("gateway restarted after OpenClaw rollback")
+		}
+	}
+
 	web.OK(w, r, map[string]interface{}{
 		"message": body.Component + " rolled back to image version",
 		"status":  h.mgr.GetStatus(comp),

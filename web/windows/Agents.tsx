@@ -5,7 +5,7 @@ import { getTranslation } from '../locales';
 import { gwApi, workspaceMemoryApi, MemoryFileEntry, multiAgentApi, WizardStep2Request } from '../services/api';
 import { useGatewayStatus } from '../hooks/useGatewayStatus';
 import { fmtAgoCompact } from '../utils/time';
-import { normalizeExecSecurity, type ExecSecurity, type ExecAsk, type AskFallback } from '../utils/exec-policy';
+import { normalizeExecHost, normalizeExecSecurity, type ExecSecurity, type ExecAsk, type AskFallback } from '../utils/exec-policy';
 import { SecurityPolicyBadges } from '../components/SecurityPolicyBadges';
 import { subscribeManagerWS } from '../services/manager-ws';
 import { templateSystem, WorkspaceTemplate, resolveTemplatePrompt, MultiAgentTemplate } from '../services/template-system';
@@ -1265,7 +1265,7 @@ const Agents: React.FC<AgentsProps> = ({ language }) => {
                       const draft = toolDraft || {};
                       const liveProfile = agentTools.profile || globalTools.profile || 'full';
                       const liveExec = {
-                        host: agentTools.exec?.host ?? globalTools.exec?.host ?? '',
+                        host: normalizeExecHost(agentTools.exec?.host ?? globalTools.exec?.host ?? ''),
                         security: normalizeExecSecurity(agentTools.exec?.security ?? globalTools.exec?.security ?? ''),
                         ask: agentTools.exec?.ask ?? globalTools.exec?.ask ?? 'off',
                         askFallback: agentTools.exec?.askFallback ?? globalTools.exec?.askFallback ?? 'deny',
@@ -1275,7 +1275,7 @@ const Agents: React.FC<AgentsProps> = ({ language }) => {
                       const liveDeny: string[] = Array.isArray(agentTools.deny) ? agentTools.deny : (Array.isArray(globalTools.deny) ? globalTools.deny : []);
                       const liveAlsoAllow: string[] = Array.isArray(agentTools.alsoAllow) ? agentTools.alsoAllow : (Array.isArray(globalTools.alsoAllow) ? globalTools.alsoAllow : []);
                       const profile = draft.profile ?? liveProfile;
-                      const execHost = draft.execHost ?? liveExec.host;
+                      const execHost = normalizeExecHost(draft.execHost ?? liveExec.host);
                       const execSecurity = normalizeExecSecurity(draft.execSecurity ?? liveExec.security);
                       const execAsk = draft.execAsk ?? liveExec.ask;
                       const execAskFallback = draft.execAskFallback ?? liveExec.askFallback;
@@ -1294,7 +1294,8 @@ const Agents: React.FC<AgentsProps> = ({ language }) => {
                           toolsPatch.allow = toolDraft.allow?.length > 0 ? toolDraft.allow : [];
                           toolsPatch.deny = toolDraft.deny?.length > 0 ? toolDraft.deny : [];
                           toolsPatch.alsoAllow = toolDraft.alsoAllow?.length > 0 ? toolDraft.alsoAllow : [];
-                          toolsPatch.exec = { host: toolDraft.execHost || undefined, security: normalizedExecSecurity || undefined, ask: toolDraft.execAsk || undefined };
+                          const normalizedExecHost = normalizeExecHost(toolDraft.execHost);
+                          toolsPatch.exec = { host: normalizedExecHost || undefined, security: normalizedExecSecurity || undefined, ask: toolDraft.execAsk || undefined };
                           toolsPatch.fs = { workspaceOnly: toolDraft.fsWsOnly || undefined };
                           const fresh = await gwApi.configSafePatch({ agents: { list: [{ id: selected.id, tools: toolsPatch }] } });
                           setConfig(fresh);
@@ -1340,9 +1341,16 @@ const Agents: React.FC<AgentsProps> = ({ language }) => {
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
                               <div>
                                 <label className="text-[9px] font-bold text-slate-400 dark:text-white/20 uppercase block mb-1">{a.toolExecHost || 'Host'}</label>
-                                <input value={execHost} onChange={e => { const d = initDraft(); setToolDraft({ ...d, execHost: e.target.value }); }}
-                                  placeholder="e.g. local"
-                                  className="w-full h-7 px-2 bg-white dark:bg-white/[0.03] border border-slate-200 dark:border-white/10 rounded-md text-[10px] font-mono text-slate-600 dark:text-white/60 outline-none" />
+                                <CustomSelect value={execHost}
+                                  onChange={v => { const d = initDraft(); setToolDraft({ ...d, execHost: v }); }}
+                                  options={[
+                                    { value: '', label: a.execHostDefault || 'Default' },
+                                    { value: 'auto', label: es.optAuto || 'Auto' },
+                                    { value: 'sandbox', label: es.optSandbox || 'Sandbox' },
+                                    { value: 'gateway', label: es.optGateway || 'Gateway' },
+                                    { value: 'node', label: es.optNode || 'Node' },
+                                  ]}
+                                  className="w-full max-w-[140px] h-7 px-2 bg-white dark:bg-white/[0.03] border border-slate-200 dark:border-white/10 rounded-md text-[10px] text-slate-600 dark:text-white/60" />
                               </div>
                               <div>
                                 <label className="text-[9px] font-bold text-slate-400 dark:text-white/20 uppercase block mb-1">{a.toolExecSecurity || 'Security'}</label>
@@ -1825,7 +1833,7 @@ const Agents: React.FC<AgentsProps> = ({ language }) => {
                   if (toolDraft) return toolDraft;
                   const liveProfile = agentTools.profile || globalTools.profile || 'full';
                   const liveExec = {
-                    host: agentTools.exec?.host ?? globalTools.exec?.host ?? '',
+                    host: normalizeExecHost(agentTools.exec?.host ?? globalTools.exec?.host ?? ''),
                     security: normalizeExecSecurity(agentTools.exec?.security ?? globalTools.exec?.security ?? ''),
                     ask: agentTools.exec?.ask ?? globalTools.exec?.ask ?? false,
                   };
@@ -1842,7 +1850,8 @@ const Agents: React.FC<AgentsProps> = ({ language }) => {
                     toolsPatch.allow = toolDraft.allow?.length > 0 ? toolDraft.allow : [];
                     toolsPatch.deny = toolDraft.deny?.length > 0 ? toolDraft.deny : [];
                     toolsPatch.alsoAllow = toolDraft.alsoAllow?.length > 0 ? toolDraft.alsoAllow : [];
-                    toolsPatch.exec = { host: toolDraft.execHost || undefined, security: normalizedExecSecurity || undefined, ask: toolDraft.execAsk || undefined };
+                    const normalizedExecHost = normalizeExecHost(toolDraft.execHost);
+                    toolsPatch.exec = { host: normalizedExecHost || undefined, security: normalizedExecSecurity || undefined, ask: toolDraft.execAsk || undefined };
                     toolsPatch.fs = { workspaceOnly: toolDraft.fsWsOnly || undefined };
                     const fresh = await gwApi.configSafePatch({ agents: { list: [{ id: selected.id, tools: toolsPatch }] } });
                     setConfig(fresh);

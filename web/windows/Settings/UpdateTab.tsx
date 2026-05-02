@@ -540,6 +540,9 @@ const UpdateTab: React.FC<UpdateTabProps> = ({ s, language, inputCls, rowCls }) 
       await runtimeApi.rollback(component);
       toast('success', s.runtimeRollbackOk || 'Rolled back to image version');
       await loadRuntimeStatus();
+      if (component === 'openclaw') {
+        setTimeout(() => void loadRuntimeStatus(), 3000);
+      }
     } catch (err: any) {
       toast('error', (s.runtimeRollbackFailed || 'Rollback failed') + ': ' + (err.message || ''));
     } finally {
@@ -1320,9 +1323,10 @@ const UpdateTab: React.FC<UpdateTabProps> = ({ s, language, inputCls, rowCls }) 
               {/* OpenClaw Runtime */}
               {(() => {
                 const c = runtimeStatus.openclaw;
+                const canRollback = c.using_overlay || !!c.overlay_mismatch;
                 return (
                   <div className={`flex items-center gap-3 px-3 py-2.5 rounded-lg border transition-colors ${
-                    c.using_overlay
+                    canRollback
                       ? 'bg-blue-50 dark:bg-blue-500/5 border-blue-200 dark:border-blue-500/20'
                       : 'bg-slate-50 dark:bg-white/[0.02] border-slate-200 dark:border-white/[0.06]'
                   }`}>
@@ -1335,6 +1339,11 @@ const UpdateTab: React.FC<UpdateTabProps> = ({ s, language, inputCls, rowCls }) 
                             {s.runtimeUsingOverlay || 'Using overlay'}
                           </span>
                         )}
+                        {c.overlay_mismatch && !c.using_overlay && (
+                          <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 dark:bg-amber-500/15 text-amber-600 dark:text-amber-400">
+                            {s.runtimeRestartHint || 'Restart required'}
+                          </span>
+                        )}
                       </div>
                       <div className="flex items-center gap-3 mt-0.5 text-[10px] text-slate-400 dark:text-white/30">
                         <span>{s.runtimeImageVersion || 'Image'}: <span className="font-mono font-medium text-slate-500 dark:text-white/50">{c.image_version || '—'}</span></span>
@@ -1344,7 +1353,7 @@ const UpdateTab: React.FC<UpdateTabProps> = ({ s, language, inputCls, rowCls }) 
                         <span>{s.runtimeActiveVersion || 'Active'}: <span className="font-mono font-bold text-slate-600 dark:text-white/60">{c.active_version || '—'}</span></span>
                       </div>
                     </div>
-                    {c.using_overlay && (
+                    {canRollback && (
                       <button
                         onClick={() => handleRuntimeRollback('openclaw')}
                         disabled={runtimeRollingBack}

@@ -11,7 +11,7 @@
 export type ExecSecurity = 'deny' | 'allowlist' | 'full' | '';
 export type ExecAsk      = 'off' | 'on-miss' | 'always' | '';
 export type AskFallback  = 'deny' | 'allowlist' | '';
-export type ExecHost     = string;       // 'sandbox' | 'local' | 'node' | custom
+export type ExecHost     = 'auto' | 'sandbox' | 'gateway' | 'node' | '';
 export type ToolProfile  = 'minimal' | 'coding' | 'messaging' | 'full' | string;
 export type SandboxMode  = string;       // 'Off' | mode/backend value
 
@@ -35,6 +35,15 @@ export function normalizeExecAsk(value: unknown): ExecAsk {
   if (v === 'off' || v === 'on-miss' || v === 'always') return v;
   if (v === 'false' || v === 'no' || v === '0') return 'off';
   if (v === 'true' || v === 'yes' || v === '1') return 'on-miss';
+  return '';
+}
+
+export function normalizeExecHost(value: unknown): ExecHost {
+  if (typeof value !== 'string') return '';
+  const v = value.trim();
+  if (!v) return '';
+  if (v === 'local') return 'gateway';
+  if (v === 'auto' || v === 'sandbox' || v === 'gateway' || v === 'node') return v;
   return '';
 }
 
@@ -78,7 +87,7 @@ export function resolveEffectivePolicy(
 
   const profile     = pick(at.profile, gt.profile, 'full');
   const security    = pick(normalizeExecSecurity(at.exec?.security), normalizeExecSecurity(gt.exec?.security), 'full' as ExecSecurity);
-  const host        = pick(at.exec?.host, gt.exec?.host, 'sandbox');
+  const host        = pick(normalizeExecHost(at.exec?.host), normalizeExecHost(gt.exec?.host), 'sandbox' as ExecHost);
   const ask         = pick(normalizeExecAsk(at.exec?.ask), normalizeExecAsk(gt.exec?.ask), 'off' as ExecAsk);
   const fallback    = pick(at.exec?.askFallback, gt.exec?.askFallback, 'deny' as AskFallback);
   const sandbox     = pick(ae.sandbox?.mode || ae.sandbox?.backend, ad.sandbox?.mode || ad.sandbox?.backend, 'Off');

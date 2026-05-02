@@ -29,14 +29,15 @@ type Manifest struct {
 
 // Status represents the current state of a runtime component.
 type Status struct {
-	Component      Component `json:"component"`
-	ActiveVersion  string    `json:"active_version"`
-	ImageVersion   string    `json:"image_version"`
-	RuntimeVersion string    `json:"runtime_version,omitempty"`
-	Source         string    `json:"source,omitempty"`
-	InstalledAt    string    `json:"installed_at,omitempty"`
-	PrevVersion    string    `json:"prev_version,omitempty"`
-	UsingOverlay   bool      `json:"using_overlay"`
+	Component       Component `json:"component"`
+	ActiveVersion   string    `json:"active_version"`
+	ImageVersion    string    `json:"image_version"`
+	RuntimeVersion  string    `json:"runtime_version,omitempty"`
+	Source          string    `json:"source,omitempty"`
+	InstalledAt     string    `json:"installed_at,omitempty"`
+	PrevVersion     string    `json:"prev_version,omitempty"`
+	UsingOverlay    bool      `json:"using_overlay"`
+	OverlayMismatch bool      `json:"overlay_mismatch,omitempty"`
 }
 
 // AllStatus is the combined status for both components.

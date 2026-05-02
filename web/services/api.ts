@@ -117,6 +117,7 @@ export interface RuntimeComponentStatus {
   installed_at?: string;
   prev_version?: string;
   using_overlay: boolean;
+  overlay_mismatch?: boolean;
 }
 export interface RuntimeStatus {
   is_docker: boolean;

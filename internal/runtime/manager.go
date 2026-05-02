@@ -84,6 +84,9 @@ func (m *Manager) GetStatus(comp Component) Status {
 		st.UsingOverlay = true
 		st.ActiveVersion = mf.Version
 	}
+	if !st.UsingOverlay && st.ImageVersion != "" && st.ActiveVersion != "" && st.ImageVersion != st.ActiveVersion {
+		st.OverlayMismatch = true
+	}
 
 	return st
 }
